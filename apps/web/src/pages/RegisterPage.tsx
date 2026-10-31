@@ -19,7 +19,11 @@ import {
   TrendingUpIcon,
   HeartPulseIcon,
   CameraIcon,
-  UsersIcon
+  UsersIcon,
+  UserIcon,
+  MailIcon,
+  PhoneIcon,
+  SparklesIcon
 } from '../components/Icons';
 
 export const RegisterPage: React.FC = () => {
@@ -308,9 +312,9 @@ export const RegisterPage: React.FC = () => {
                     <div
                       className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                         isCompleted
-                          ? 'bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-100'
+                          ? 'bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-100 scale-100'
                           : isActive
-                          ? 'bg-blue-600 text-white shadow-md ring-4 ring-blue-100 scale-110'
+                          ? 'bg-blue-600 text-white shadow-md ring-4 ring-blue-100 scale-110 pulse-glow-ring'
                           : 'bg-slate-100 text-slate-400 border border-slate-200'
                       }`}
                     >
@@ -354,12 +358,18 @@ export const RegisterPage: React.FC = () => {
             STEP 1: BASIC ACCOUNT SETUP
            ======================================================== */}
         {step === 1 && (
-          <div className="animate-in fade-in slide-in-from-bottom-3 duration-300">
+          <div className="animate-step-in">
             <Card
               title="Create Your Member Account"
               subtitle="Step 1 of 6: Enter your primary contact details and confirm legal adult eligibility (18+)"
               className="shadow-sm border border-slate-200"
             >
+              <div className="mb-4">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200/60">
+                  <SparklesIcon size={14} className="text-blue-600" />
+                  Official Ecosystem Onboarding
+                </span>
+              </div>
               <form onSubmit={handleStep1Submit} className="space-y-5">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
@@ -446,7 +456,7 @@ export const RegisterPage: React.FC = () => {
             STEP 2: REDESIGNED PROFESSIONAL SECTOR & ROLE ARCHITECTURE
            ======================================================== */}
         {step === 2 && (
-          <div className="animate-in fade-in slide-in-from-bottom-3 duration-300 space-y-6">
+          <div className="animate-step-in space-y-6">
             <Card
               title="Select Your Primary Business Sector"
               subtitle="Step 2 of 6: Choose the single core industry that defines your enterprise or professional activity"
@@ -464,16 +474,16 @@ export const RegisterPage: React.FC = () => {
                         onClick={() => handleCategorySelect(cat)}
                         className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 relative flex items-start gap-3.5 ${
                           isSelected
-                            ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-2 ring-blue-100'
-                            : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-xs'
+                            ? 'border-blue-600 bg-blue-50/50 shadow-sm ring-2 ring-blue-100 scale-[1.01]'
+                            : 'border-slate-200 bg-white hover:border-blue-400 hover:shadow-md hover:-translate-y-0.5'
                         }`}
                       >
                         {/* Sector Icon */}
                         <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${
                             isSelected
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-slate-100 text-slate-600'
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'bg-slate-100 text-slate-600 group-hover:bg-blue-50'
                           }`}
                         >
                           {renderCategoryIcon(cat.iconName, 20)}
@@ -511,7 +521,7 @@ export const RegisterPage: React.FC = () => {
                 </div>
 
                 {/* DEDICATED ROLES & SUBCATEGORIES SELECTION PANEL */}
-                <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/80 shadow-xs space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/30 border border-blue-200/80 shadow-xs space-y-4 animate-slide-down">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-100 pb-3">
                     <div>
                       <div className="flex items-center gap-2">
@@ -544,8 +554,8 @@ export const RegisterPage: React.FC = () => {
                           onClick={() => toggleSubcategory(sub)}
                           className={`p-3 rounded-xl border text-xs cursor-pointer transition-all flex items-center justify-between gap-2 select-none ${
                             isChecked
-                              ? 'bg-blue-600 text-white border-blue-600 font-semibold shadow-xs'
-                              : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                              ? 'bg-blue-600 text-white border-blue-600 font-semibold shadow-xs scale-[1.01]'
+                              : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-blue-50/30 hover:-translate-y-0.5'
                           }`}
                         >
                           <span className="truncate">{sub}</span>
@@ -583,7 +593,7 @@ export const RegisterPage: React.FC = () => {
             STEP 3: DYNAMIC SECTOR DETAILS FORM
            ======================================================== */}
         {step === 3 && (
-          <div className="animate-in fade-in slide-in-from-bottom-3 duration-300">
+          <div className="animate-step-in">
             <Card
               title={`${selectedCategory.name} Details`}
               subtitle={`Step 3 of 6: Dynamic configuration-driven questions customized for ${selectedCategory.name}`}
@@ -663,7 +673,7 @@ export const RegisterPage: React.FC = () => {
             STEP 4: MEMBERSHIP PAYMENT CHECKOUT (₹99)
            ======================================================== */}
         {step === 4 && (
-          <div className="animate-in fade-in slide-in-from-bottom-3 duration-300">
+          <div className="animate-step-in">
             <Card
               title="First-Year Membership Fee"
               subtitle="Step 4 of 6: Transparent annual onboarding pass for FIC Business Hub"
@@ -736,7 +746,7 @@ export const RegisterPage: React.FC = () => {
             STEP 5: REAL KYC DOCUMENT UPLOAD (WITH ATTACHMENT COMPONENT)
            ======================================================== */}
         {step === 5 && (
-          <div className="animate-in fade-in slide-in-from-bottom-3 duration-300">
+          <div className="animate-step-in">
             <Card
               title="Category KYC Document Upload"
               subtitle="Step 5 of 6: Upload verification documents to activate your account"
@@ -883,7 +893,7 @@ export const RegisterPage: React.FC = () => {
             STEP 6: APPLICATION TRACKING & DEMO ACCESS
            ======================================================== */}
         {step === 6 && (
-          <div className="animate-in fade-in slide-in-from-bottom-3 duration-300">
+          <div className="animate-step-in">
             <Card
               title="Application Submitted & Under Review"
               subtitle="Step 6 of 6: KYC verification tracking & activation timeline"
