@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button, Input, Card, Badge } from '@fic/ui';
 import { INITIAL_CATEGORIES_DATA } from '../services/mockData';
-import { apiRequest, setAuthToken, setStoredUser } from '../services/api';
+import { apiRequest, setAuthToken, setStoredUser, getStoredUser } from '../services/api';
 import { ShieldCheckIcon, CheckCircleIcon, ArrowRightIcon, LockIcon } from '../components/Icons';
 
 export const RegisterPage: React.FC = () => {
@@ -604,3 +604,4 @@ export const RegisterPage: React.FC = () => {
     </div>
   );
 };
+
