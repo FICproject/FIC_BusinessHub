@@ -1,14 +1,37 @@
 import { Router } from 'express';
 import { healthRouter } from './health.routes';
+import { authRouter } from '../modules/auth/auth.routes';
+import { categoriesRouter } from '../modules/categories/categories.routes';
+import { categoryConfigurationsRouter } from '../modules/category-configurations/category-configurations.routes';
+import { registrationRouter } from '../modules/registration/registration.routes';
+import { membershipRouter } from '../modules/membership/membership.routes';
+import { paymentsRouter } from '../modules/payments/payments.routes';
+import { kycRouter } from '../modules/kyc/kyc.routes';
+import { marketplaceRouter } from '../modules/marketplace/marketplace.routes';
+import { connectionsRouter } from '../modules/connections/connections.routes';
+import { businessIdeasRouter } from '../modules/business-ideas/business-ideas.routes';
+import { businessDevRouter } from '../modules/business-development/business-development.routes';
+import { investmentRouter } from '../modules/investment/investment.routes';
+import { partnershipsRouter } from '../modules/partnerships/partnerships.routes';
+import { dashboardRouter } from '../modules/dashboard/dashboard.routes';
 
 export const apiRouter = Router();
 
-// Base health route
+// Healthcheck
 apiRouter.use(healthRouter);
 
-// Domain API routes will be registered here
-// e.g., apiRouter.use('/auth', authRouter);
-// e.g., apiRouter.use('/categories', categoriesRouter);
-// e.g., apiRouter.use('/kyc', kycRouter);
-// e.g., apiRouter.use('/services', servicesRouter);
-
+// Domain Routes
+apiRouter.use('/auth', authRouter);
+apiRouter.use('/categories', categoriesRouter);
+apiRouter.use('/category-configurations', categoryConfigurationsRouter);
+apiRouter.use('/registration-submissions', registrationRouter);
+apiRouter.use('/membership', membershipRouter);
+apiRouter.use('/payments', paymentsRouter);
+apiRouter.use('/kyc', kycRouter);
+apiRouter.use('/marketplace', marketplaceRouter);
+apiRouter.use('/connections', connectionsRouter);
+apiRouter.use('/business-ideas', businessIdeasRouter);
+apiRouter.use('/business-development-requests', businessDevRouter);
+apiRouter.use('/investment-profiles', investmentRouter);
+apiRouter.use('/partnership-requests', partnershipsRouter);
+apiRouter.use('/dashboard', dashboardRouter);

@@ -1,9 +1,11 @@
 import { createApp } from './app';
 import { config } from './config';
 import { connectDatabase } from './database/connect';
+import { seedDatabase } from './database/seed';
 
 const startServer = async (): Promise<void> => {
   await connectDatabase();
+  await seedDatabase();
 
   const app = createApp();
 
@@ -27,4 +29,3 @@ startServer().catch((error) => {
   console.error('Fatal startup error:', error);
   process.exit(1);
 });
-
