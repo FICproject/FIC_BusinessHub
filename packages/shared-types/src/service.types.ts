@@ -42,3 +42,4 @@ export interface IServiceRequest {
   createdAt: Date | string;
   updatedAt: Date | string;
 }
+

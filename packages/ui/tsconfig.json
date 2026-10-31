@@ -1,5 +1,5 @@
 {
-  "extends": "@fic/typescript-config/react-app.json",
+  "extends": "../typescript-config/react-app.json",
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",

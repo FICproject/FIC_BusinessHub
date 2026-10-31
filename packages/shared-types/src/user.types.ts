@@ -16,3 +16,4 @@ export interface IUser {
   createdAt: Date | string;
   updatedAt: Date | string;
 }
+

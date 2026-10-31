@@ -18,3 +18,4 @@ export const kycReviewSchema = z.object({
 
 export type KycUploadInput = z.infer<typeof kycUploadSchema>;
 export type KycReviewInput = z.infer<typeof kycReviewSchema>;
+

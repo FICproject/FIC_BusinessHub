@@ -21,3 +21,4 @@ export const canVerifyKyc = (role: UserRole): boolean => {
     role === UserRole.VERIFICATION_EXECUTIVE
   );
 };
+

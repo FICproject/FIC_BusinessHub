@@ -27,3 +27,4 @@ export interface IKYCSubmission {
   createdAt: Date | string;
   updatedAt: Date | string;
 }
+

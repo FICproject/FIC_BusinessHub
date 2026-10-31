@@ -9,3 +9,4 @@ export const dynamicSubmissionSchema = z.object({
 });
 
 export type DynamicSubmissionInput = z.infer<typeof dynamicSubmissionSchema>;
+

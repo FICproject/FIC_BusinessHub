@@ -1,9 +1,13 @@
 {
-  "extends": "@fic/typescript-config/base.json",
+  "extends": "../typescript-config/base.json",
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@fic/shared-types": ["../shared-types/src"]
+    }
   },
   "include": ["src/**/*"]
 }

@@ -71,3 +71,4 @@ pnpm --filter @fic/backend dev
 - `pnpm typecheck` - Run TypeScript typecheck across all projects
 - `pnpm test` - Execute unit and integration tests
 - `pnpm clean` - Clean build artifacts and caches
+

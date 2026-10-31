@@ -1,10 +1,15 @@
 {
-  "extends": "@fic/typescript-config/react-app.json",
+  "extends": "../../packages/typescript-config/react-app.json",
   "compilerOptions": {
     "rootDir": "./src",
     "baseUrl": "./",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@fic/ui": ["../../packages/ui/src"],
+      "@fic/shared-types": ["../../packages/shared-types/src"],
+      "@fic/validators": ["../../packages/validators/src"],
+      "@fic/api-client": ["../../packages/api-client/src"],
+      "@fic/auth": ["../../packages/auth/src"]
     }
   },
   "include": ["src/**/*"]

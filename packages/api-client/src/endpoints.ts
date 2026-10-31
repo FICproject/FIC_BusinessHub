@@ -26,3 +26,4 @@ export const API_ENDPOINTS = {
   ADMIN_KYC_REVIEW: (id: string) => `/api/v1/admin/kyc/${id}/review`,
   ADMIN_CONFIG_BUILDER: '/api/v1/admin/category-configurations'
 };
+

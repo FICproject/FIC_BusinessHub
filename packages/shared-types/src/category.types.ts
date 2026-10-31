@@ -30,3 +30,4 @@ export interface ICategoryConfiguration {
   dashboardWidgets: string[];
   featuresEnabled: string[];
 }
+

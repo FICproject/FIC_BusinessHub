@@ -13,3 +13,4 @@ export const isMemberFullDashboardEligible = (status: MemberEligibility): boolea
     status.isAccountActive
   );
 };
+
