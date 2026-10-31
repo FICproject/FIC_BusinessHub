@@ -54,3 +54,62 @@ body {
 .pulse-glow-ring {
   animation: pulseGlow 2.4s infinite;
 }
+
+/* Light zoom-in zoom-out breathing animation for the ₹99 pricing card */
+@keyframes gentleZoomInOut {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    border-color: rgba(51, 65, 85, 0.8);
+  }
+  50% {
+    transform: scale(1.03);
+    box-shadow: 0 16px 32px -8px rgba(37, 99, 235, 0.35), 0 0 20px 2px rgba(245, 158, 11, 0.35);
+    border-color: rgba(245, 158, 11, 0.7);
+  }
+}
+
+.animate-zoom-in-out {
+  animation: gentleZoomInOut 3.2s ease-in-out infinite;
+  transform-origin: center center;
+  transition: all 0.3s ease;
+}
+
+.animate-zoom-in-out:hover {
+  animation-play-state: paused;
+  transform: scale(1.04);
+}
+
+/* Animated laser scan beam for KYC preview */
+@keyframes laserScan {
+  0% {
+    top: 5%;
+    opacity: 0.6;
+  }
+  50% {
+    top: 85%;
+    opacity: 1;
+  }
+  100% {
+    top: 5%;
+    opacity: 0.6;
+  }
+}
+
+.animate-laser-scan {
+  animation: laserScan 2.2s ease-in-out infinite;
+}
+
+/* Moving shimmer beam */
+@keyframes shimmerBeam {
+  0% {
+    transform: translateX(-150%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.animate-shimmer-beam {
+  animation: shimmerBeam 2.8s infinite linear;
+}
