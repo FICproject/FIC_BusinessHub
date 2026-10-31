@@ -1,0 +1,3 @@
+// Admin Feature: complaints
+export {};
+

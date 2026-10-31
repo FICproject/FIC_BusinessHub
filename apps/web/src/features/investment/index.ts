@@ -1,0 +1,3 @@
+// Feature: investment
+export {};
+

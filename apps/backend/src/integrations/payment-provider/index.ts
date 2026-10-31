@@ -1,0 +1,3 @@
+// Integration: payment-provider
+export {};
+

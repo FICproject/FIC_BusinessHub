@@ -1,0 +1,18 @@
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+WORKDIR /app
+
+FROM base AS builder
+COPY pnpm-lock.yaml* pnpm-workspace.yaml package.json turbo.json ./
+COPY apps/backend ./apps/backend
+COPY packages ./packages
+RUN pnpm install --frozen-lockfile || pnpm install
+RUN pnpm --filter @fic/backend build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=builder /app/apps/backend/dist ./dist
+COPY --from=builder /app/apps/backend/package.json ./package.json
+EXPOSE 5000
+CMD ["node", "dist/server.js"]

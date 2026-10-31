@@ -1,0 +1,3 @@
+// Integration: object-storage
+export {};
+

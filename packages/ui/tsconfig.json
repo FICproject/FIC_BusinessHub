@@ -1,0 +1,9 @@
+{
+  "extends": "@fic/typescript-config/react-app.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "noEmit": true
+  },
+  "include": ["src/**/*"]
+}

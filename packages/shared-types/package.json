@@ -1,0 +1,14 @@
+{
+  "name": "@fic/shared-types",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@fic/typescript-config": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}

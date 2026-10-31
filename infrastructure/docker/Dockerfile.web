@@ -1,0 +1,15 @@
+FROM node:20-alpine AS base
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+WORKDIR /app
+
+FROM base AS builder
+COPY pnpm-lock.yaml* pnpm-workspace.yaml package.json turbo.json ./
+COPY apps/web ./apps/web
+COPY packages ./packages
+RUN pnpm install --frozen-lockfile || pnpm install
+RUN pnpm --filter @fic/web build
+
+FROM nginx:alpine AS runner
+COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

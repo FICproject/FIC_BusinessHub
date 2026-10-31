@@ -1,0 +1,3 @@
+// FIC Module: payments
+export {};
+
