@@ -3,7 +3,15 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Button, Input, Card, Badge } from '@fic/ui';
 import { INITIAL_CATEGORIES_DATA } from '../services/mockData';
 import { apiRequest, setAuthToken, setStoredUser, getStoredUser } from '../services/api';
-import { ShieldCheckIcon, CheckCircleIcon, ArrowRightIcon, LockIcon } from '../components/Icons';
+import {
+  ShieldCheckIcon,
+  CheckCircleIcon,
+  ArrowRightIcon,
+  LockIcon,
+  UploadIcon,
+  FileTextIcon,
+  TrashIcon
+} from '../components/Icons';
 
 export const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,8 +41,40 @@ export const RegisterPage: React.FC = () => {
   // Step 4: Payment simulation
   const [paymentDone, setPaymentDone] = useState(false);
 
-  // Step 5: KYC document
-  const [uploadedDocs, setUploadedDocs] = useState<Record<string, string>>({});
+  // Step 5: Real Document Attachment state
+  const [docNumbers, setDocNumbers] = useState<Record<string, string>>({});
+  const [attachedFiles, setAttachedFiles] = useState<
+    Record<string, { name: string; size: string; fileUrl: string }>
+  >({});
+
+  // File attach handler
+  const handleFileChange = (docType: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const sizeStr =
+        file.size > 1024 * 1024
+          ? (file.size / (1024 * 1024)).toFixed(2) + ' MB'
+          : (file.size / 1024).toFixed(1) + ' KB';
+
+      setAttachedFiles((prev) => ({
+        ...prev,
+        [docType]: {
+          name: file.name,
+          size: sizeStr,
+          fileUrl: URL.createObjectURL(file)
+        }
+      }));
+      setErrorMessage('');
+    }
+  };
+
+  const handleRemoveFile = (docType: string) => {
+    setAttachedFiles((prev) => {
+      const updated = { ...prev };
+      delete updated[docType];
+      return updated;
+    });
+  };
 
   // Step 1 Submit
   const handleStep1Submit = (e: React.FormEvent) => {
@@ -155,11 +195,29 @@ export const RegisterPage: React.FC = () => {
   // Step 5 KYC Upload
   const handleKycSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
+
+    // Validate that required documents have both number and attached file
+    for (const doc of selectedCategory.kycDocuments) {
+      if (doc.required) {
+        if (!docNumbers[doc.type]?.trim()) {
+          setErrorMessage(`Please enter the document / license number for "${doc.label}".`);
+          return;
+        }
+        if (!attachedFiles[doc.type]) {
+          setErrorMessage(`Please attach / upload the document file (PDF or Image) for "${doc.label}".`);
+          return;
+        }
+      }
+    }
+
     setIsLoading(true);
 
     const docItems = selectedCategory.kycDocuments.map((doc) => ({
       documentType: doc.type,
-      fileUrl: uploadedDocs[doc.type] || 'https://ficapp.in/uploads/mock-id.pdf'
+      documentNumber: docNumbers[doc.type] || '',
+      fileName: attachedFiles[doc.type]?.name || '',
+      fileUrl: attachedFiles[doc.type]?.fileUrl || 'https://ficapp.in/uploads/mock-id.pdf'
     }));
 
     await apiRequest('/kyc/submit', {
@@ -483,7 +541,7 @@ export const RegisterPage: React.FC = () => {
           </Card>
         )}
 
-        {/* STEP 5: KYC DOCUMENT UPLOAD */}
+        {/* STEP 5: REAL KYC DOCUMENT UPLOAD */}
         {step === 5 && (
           <Card
             title="Category KYC Document Upload"
@@ -491,33 +549,126 @@ export const RegisterPage: React.FC = () => {
             className="shadow-md"
           >
             <form onSubmit={handleKycSubmit} className="space-y-6">
-              <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
-                ✅ ₹99 Payment confirmed! Complete your KYC verification below to activate full dashboard access.
+              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2.5">
+                <CheckCircleIcon size={20} className="text-emerald-600 shrink-0" />
+                <span>
+                  <strong>₹99 Payment Confirmed!</strong> Attach your sector verification documents below to complete KYC and activate full dashboard access.
+                </span>
               </div>
 
-              <div className="space-y-4">
-                {selectedCategory.kycDocuments.map((doc, i) => (
-                  <div key={i} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-800">{doc.label}</span>
-                      {doc.required && <Badge variant="warning">Required</Badge>}
-                    </div>
+              <div className="space-y-5">
+                {selectedCategory.kycDocuments.map((doc, i) => {
+                  const isAttached = !!attachedFiles[doc.type];
+                  const fileInfo = attachedFiles[doc.type];
 
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="text"
-                        placeholder="Document / License Number (e.g. 1234-5678-9012)"
-                        className="text-xs px-3 py-2 border border-slate-300 rounded-md flex-1 bg-white"
-                        value={uploadedDocs[doc.type] || ''}
-                        onChange={(e) => setUploadedDocs({ ...uploadedDocs, [doc.type]: e.target.value })}
-                        required={doc.required}
-                      />
-                      <span className="text-xs text-emerald-600 font-semibold bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
-                        Document Attached
-                      </span>
+                  return (
+                    <div
+                      key={i}
+                      className="p-4 sm:p-5 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-bold text-slate-900 block">{doc.label}</span>
+                          {(doc as any).description && (
+                            <span className="text-[11px] text-slate-500">{(doc as any).description}</span>
+                          )}
+                        </div>
+                        {doc.required ? (
+                          <Badge variant="warning">Required</Badge>
+                        ) : (
+                          <Badge variant="neutral">Optional</Badge>
+                        )}
+                      </div>
+
+                      {/* Document Number Input */}
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-semibold text-slate-700 block">
+                          Document / Registration Number {doc.required && <span className="text-red-500">*</span>}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 12-digit Aadhaar / 10-char PAN / GSTIN / Reg No."
+                          className="w-full text-xs px-3 py-2 border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={docNumbers[doc.type] || ''}
+                          onChange={(e) =>
+                            setDocNumbers({ ...docNumbers, [doc.type]: e.target.value })
+                          }
+                          required={doc.required}
+                        />
+                      </div>
+
+                      {/* Real File Upload & Attachment Component */}
+                      <div className="space-y-1.5 pt-1">
+                        <label className="text-[11px] font-semibold text-slate-700 block">
+                          Attach Document File (PDF, PNG, JPG) {doc.required && <span className="text-red-500">*</span>}
+                        </label>
+
+                        {isAttached ? (
+                          <div className="flex items-center justify-between p-3.5 rounded-lg bg-emerald-50 border border-emerald-300">
+                            <div className="flex items-center gap-3 overflow-hidden">
+                              <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                                <FileTextIcon size={20} />
+                              </div>
+                              <div className="truncate">
+                                <span className="text-xs font-bold text-slate-900 block truncate">
+                                  {fileInfo.name}
+                                </span>
+                                <span className="text-[11px] text-emerald-700 font-medium flex items-center gap-1 mt-0.5">
+                                  <CheckCircleIcon size={13} /> {fileInfo.size} • File Attached & Ready
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                              <label className="text-xs font-semibold text-blue-600 hover:text-blue-800 cursor-pointer px-2.5 py-1 bg-white rounded border border-slate-200 hover:bg-slate-50 transition-colors shadow-xs">
+                                Change
+                                <input
+                                  type="file"
+                                  accept=".pdf,.png,.jpg,.jpeg"
+                                  className="hidden"
+                                  onChange={(e) => handleFileChange(doc.type, e)}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFile(doc.type)}
+                                className="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                                title="Remove File"
+                              >
+                                <TrashIcon size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-500 bg-white hover:bg-blue-50/20 cursor-pointer transition-all gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                                <UploadIcon size={18} />
+                              </div>
+                              <div className="text-center sm:text-left">
+                                <span className="text-xs font-semibold text-slate-900 block">
+                                  Click to browse or drop {doc.label.toLowerCase()} file
+                                </span>
+                                <span className="text-[11px] text-slate-500">
+                                  Supports PDF, PNG, JPG (up to 5MB)
+                                </span>
+                              </div>
+                            </div>
+                            <span className="px-3.5 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-md shrink-0 shadow-sm transition-colors">
+                              Attach Document
+                            </span>
+                            <input
+                              type="file"
+                              accept=".pdf,.png,.jpg,.jpeg"
+                              className="hidden"
+                              onChange={(e) => handleFileChange(doc.type, e)}
+                            />
+                          </label>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="pt-4 flex justify-end">
@@ -604,4 +755,3 @@ export const RegisterPage: React.FC = () => {
     </div>
   );
 };
-
