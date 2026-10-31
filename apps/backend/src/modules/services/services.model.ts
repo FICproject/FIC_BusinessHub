@@ -43,3 +43,4 @@ const ServiceListingSchema = new Schema<IServiceListingDocument>(
 );
 
 export const ServiceListingModel = mongoose.model<IServiceListingDocument>('ServiceListing', ServiceListingSchema);
+

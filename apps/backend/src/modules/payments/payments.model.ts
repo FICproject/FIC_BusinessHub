@@ -43,3 +43,4 @@ const PaymentSchema = new Schema<IPaymentDocument>(
 );
 
 export const PaymentModel = mongoose.model<IPaymentDocument>('Payment', PaymentSchema);
+

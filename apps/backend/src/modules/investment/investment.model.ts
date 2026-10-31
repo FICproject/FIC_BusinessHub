@@ -41,3 +41,4 @@ export const InvestmentProfileModel = mongoose.model<IInvestmentProfileDocument>
   'InvestmentProfile',
   InvestmentProfileSchema
 );
+

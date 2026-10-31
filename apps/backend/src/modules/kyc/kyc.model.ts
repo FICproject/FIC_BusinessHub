@@ -53,3 +53,4 @@ const KYCSubmissionSchema = new Schema<IKYCSubmissionDocument>(
 );
 
 export const KYCSubmissionModel = mongoose.model<IKYCSubmissionDocument>('KYCSubmission', KYCSubmissionSchema);
+

@@ -209,3 +209,4 @@ export const InvestmentPage: React.FC = () => {
     </div>
   );
 };
+

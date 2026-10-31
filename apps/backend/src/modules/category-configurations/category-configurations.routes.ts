@@ -16,3 +16,4 @@ categoryConfigurationsRouter.get('/:categoryId', async (req: Request, res: Respo
     next(error);
   }
 });
+

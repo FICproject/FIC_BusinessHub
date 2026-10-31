@@ -68,3 +68,4 @@ export const CategoryConfigurationModel = mongoose.model<ICategoryConfigurationD
   'CategoryConfiguration',
   CategoryConfigurationSchema
 );
+

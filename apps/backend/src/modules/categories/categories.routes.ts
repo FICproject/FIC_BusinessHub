@@ -63,3 +63,4 @@ categoriesRouter.get('/:idOrSlug', async (req: Request, res: Response, next: Nex
     next(error);
   }
 });
+

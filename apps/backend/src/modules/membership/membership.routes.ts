@@ -45,3 +45,4 @@ membershipRouter.get('/status', authenticate, async (req: AuthenticatedRequest, 
     next(error);
   }
 });
+

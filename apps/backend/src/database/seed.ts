@@ -373,3 +373,4 @@ export const seedDatabase = async (): Promise<void> => {
     console.error('❌ Database seed error:', error);
   }
 };
+

@@ -36,3 +36,4 @@ const BusinessIdeaSchema = new Schema<IBusinessIdeaDocument>(
 );
 
 export const BusinessIdeaModel = mongoose.model<IBusinessIdeaDocument>('BusinessIdea', BusinessIdeaSchema);
+

@@ -40,3 +40,4 @@ partnershipsRouter.get('/me', authenticate, async (req: AuthenticatedRequest, re
     next(error);
   }
 });
+

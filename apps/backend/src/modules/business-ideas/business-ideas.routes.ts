@@ -43,3 +43,4 @@ businessIdeasRouter.get('/me', authenticate, async (req: AuthenticatedRequest, r
     next(error);
   }
 });
+

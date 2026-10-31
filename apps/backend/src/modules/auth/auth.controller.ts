@@ -158,3 +158,4 @@ export const getMe = async (req: AuthenticatedRequest, res: Response, next: Next
     next(error);
   }
 };
+

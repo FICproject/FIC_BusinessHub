@@ -89,3 +89,4 @@ kycRouter.post('/dev-approve-me', authenticate, async (req: AuthenticatedRequest
     next(error);
   }
 });
+

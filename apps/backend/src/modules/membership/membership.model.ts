@@ -35,3 +35,4 @@ const MembershipSchema = new Schema<IMembershipDocument>(
 );
 
 export const MembershipModel = mongoose.model<IMembershipDocument>('Membership', MembershipSchema);
+

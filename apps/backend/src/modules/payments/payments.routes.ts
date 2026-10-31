@@ -90,3 +90,4 @@ paymentsRouter.post('/membership/confirm', authenticate, async (req: Authenticat
     next(error);
   }
 });
+

@@ -43,3 +43,4 @@ investmentRouter.get('/me', authenticate, async (req: AuthenticatedRequest, res:
     next(error);
   }
 });
+

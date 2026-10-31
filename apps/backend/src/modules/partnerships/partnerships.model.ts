@@ -52,3 +52,4 @@ export const PartnershipRequestModel = mongoose.model<IPartnershipRequestDocumen
   'PartnershipRequest',
   PartnershipRequestSchema
 );
+
