@@ -181,6 +181,66 @@ export const ProfilePage: React.FC = () => {
     return <BriefcaseIcon size={24} className="text-slate-700" />;
   };
 
+  // Helper: Overall KYC status calculation
+  const getOverallKycStatus = (
+    docs: { status: string }[],
+    userKycApproved?: boolean,
+    userKycStatus?: string
+  ): string => {
+    if (!docs || docs.length === 0) return userKycStatus || (userKycApproved ? 'VERIFIED' : 'PENDING');
+    const normalized = docs.map((d) => (d.status || '').toUpperCase().replace(/_/g, ' '));
+    if (normalized.some((s) => s === 'REJECTED')) return 'REJECTED';
+    if (normalized.some((s) => s.includes('ADDITIONAL'))) return 'ADDITIONAL DOCUMENT REQUIRED';
+    if (normalized.some((s) => s === 'PENDING')) return 'PENDING';
+    if (normalized.some((s) => s === 'UNDER REVIEW')) return 'UNDER REVIEW';
+    if (normalized.every((s) => s === 'VERIFIED' || s === 'APPROVED')) return 'VERIFIED';
+    return userKycStatus || 'PENDING';
+  };
+
+  // Helper: Visual KYC Status Badge
+  const renderKycBadge = (rawStatus: string) => {
+    const status = (rawStatus || 'PENDING').toUpperCase().replace(/_/g, ' ');
+
+    if (status === 'VERIFIED' || status === 'APPROVED') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+          VERIFIED
+        </span>
+      );
+    }
+    if (status === 'UNDER REVIEW') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+          UNDER REVIEW
+        </span>
+      );
+    }
+    if (status === 'REJECTED') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-800 border border-rose-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+          REJECTED
+        </span>
+      );
+    }
+    if (status.includes('ADDITIONAL')) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-800 border border-purple-200">
+          <span className="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
+          ADDITIONAL REQUIRED
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+        PENDING
+      </span>
+    );
+  };
+
   return (
     <div className="bg-slate-100/70 min-h-screen py-10 selection:bg-[#C66B52] selection:text-white">
       <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
@@ -438,12 +498,12 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* ========================================================
-            D. MEMBERSHIP & PAYMENT INFORMATION
+            D. MEMBERSHIP & TERMS INFORMATION (PAYMENT TABLE REMOVED)
            ======================================================== */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-6">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Membership Terms & Payment History</h3>
+              <h3 className="text-base font-bold text-slate-900">Membership Terms & Standing</h3>
               <p className="text-xs text-slate-500">Official commercial credentials for your account</p>
             </div>
             <span className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200">
@@ -469,7 +529,7 @@ export const ProfilePage: React.FC = () => {
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
               <span className="text-slate-400 block font-medium">Validity Term</span>
               <strong className="text-slate-900 text-sm block mt-1">
-                {user.membershipExpiryDate || '365 Days'}
+                {user.membershipExpiryDate || 'Valid for 365 Days (₹99)'}
               </strong>
             </div>
 
@@ -484,90 +544,46 @@ export const ProfilePage: React.FC = () => {
           <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900">
             <strong>Renewal Terms:</strong> {user.renewalInfo || 'Annual renewal available at ₹5,999/yr for Year 2+.'}
           </div>
-
-          {/* Payment Transactions Table */}
-          <div>
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Payment Invoices & Records
-            </h4>
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
-                  <tr>
-                    <th className="py-2.5 px-4">Order ID</th>
-                    <th className="py-2.5 px-4">Transaction Reference</th>
-                    <th className="py-2.5 px-4">Date</th>
-                    <th className="py-2.5 px-4">Amount</th>
-                    <th className="py-2.5 px-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {user.paymentHistory && user.paymentHistory.length > 0 ? (
-                    user.paymentHistory.map((p, i) => (
-                      <tr key={i} className="hover:bg-slate-50/50">
-                        <td className="py-3 px-4 font-mono font-medium text-slate-800">{p.orderId}</td>
-                        <td className="py-3 px-4 font-mono text-slate-600">{p.transactionId}</td>
-                        <td className="py-3 px-4 text-slate-600">{p.date}</td>
-                        <td className="py-3 px-4 font-bold text-slate-900">{p.amount}</td>
-                        <td className="py-3 px-4">
-                          <Badge variant="success">{p.status}</Badge>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={5} className="py-4 text-center text-slate-400">
-                        No transactions recorded.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
 
         {/* ========================================================
-            E. KYC & VERIFICATION STATUS
+            E. KYC VERIFICATION & DOCUMENTS (SIMPLIFIED & COMPACT)
            ======================================================== */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-5">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
             <div>
-              <h3 className="text-base font-bold text-slate-900">KYC Verification & Compliance Files</h3>
-              <p className="text-xs text-slate-500">Government credentials verified under FIC intermediary guidelines</p>
+              <h3 className="text-base font-bold text-slate-900">KYC Verification & Documents</h3>
+              <p className="text-xs text-slate-500">Government & business verification records for your account</p>
             </div>
             <div className="flex items-center gap-2">
-              <ShieldCheckIcon size={18} className="text-emerald-600" />
-              <Badge variant={user.isKycApproved ? 'success' : 'warning'}>
-                {user.kycStatus || 'APPROVED'}
-              </Badge>
+              <span className="text-xs text-slate-500 font-semibold">Overall Status:</span>
+              {renderKycBadge(
+                getOverallKycStatus(user.submittedDocuments || [], user.isKycApproved, user.kycStatus)
+              )}
             </div>
           </div>
 
           <div className="divide-y divide-slate-100">
             {user.submittedDocuments && user.submittedDocuments.length > 0 ? (
               user.submittedDocuments.map((doc, idx) => (
-                <div key={idx} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div
+                  key={idx}
+                  className="py-3.5 flex items-center justify-between gap-4 text-xs transition-colors hover:bg-slate-50/50 px-2 rounded-xl"
+                >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
-                      <FileTextIcon size={18} />
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 border border-slate-200">
+                      <FileTextIcon size={16} />
                     </div>
-                    <div>
-                      <strong className="text-slate-900 block font-semibold">{doc.name}</strong>
-                      <span className="text-slate-400 text-[11px] font-mono">
-                        Number: {doc.documentNumber || 'Verified on Record'}
-                      </span>
-                    </div>
+                    <span className="font-bold text-slate-900 text-xs sm:text-sm">
+                      {doc.name}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-slate-500">{doc.uploadedAt}</span>
-                    <Badge variant="success">{doc.status}</Badge>
-                  </div>
+                  <div>{renderKycBadge(doc.status)}</div>
                 </div>
               ))
             ) : (
-              <div className="py-4 text-center text-xs text-slate-400">
-                Documents submitted during registration are verified by compliance officers.
+              <div className="py-6 text-center text-xs text-slate-400">
+                No KYC documents uploaded yet.
               </div>
             )}
           </div>

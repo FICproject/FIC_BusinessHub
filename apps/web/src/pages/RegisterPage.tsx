@@ -416,6 +416,12 @@ export const RegisterPage: React.FC = () => {
       user.isKycApproved = false;
       user.kycStatus = 'PENDING';
       user.uploadedDocumentsCount = allDocItems.length;
+      user.submittedDocuments = allDocItems.map((doc) => ({
+        type: doc.documentType,
+        name: doc.documentName,
+        status: 'PENDING',
+        uploadedAt: 'On Registration'
+      }));
       user.personalInfo = {
         ...(user.personalInfo || {}),
         dob: formattedDob

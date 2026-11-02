@@ -111,16 +111,20 @@ const INITIAL_SEED_ACCOUNTS: AuthenticatedUser[] = [
     uploadedDocumentsCount: 2,
     submittedDocuments: [
       {
-        type: 'AADHAAR_OR_PAN',
-        name: 'Proprietor PAN Card',
-        documentNumber: 'ABCDE1234F',
+        type: 'AADHAAR_CARD',
+        name: 'Aadhaar Card',
+        status: 'VERIFIED',
+        uploadedAt: '01 Nov 2026'
+      },
+      {
+        type: 'PAN_CARD',
+        name: 'PAN Card',
         status: 'VERIFIED',
         uploadedAt: '01 Nov 2026'
       },
       {
         type: 'TECHNICAL_PORTFOLIO',
-        name: 'Technical Verification & Work Portfolio',
-        documentNumber: 'PORT-K01',
+        name: 'Professional Technical Credentials',
         status: 'VERIFIED',
         uploadedAt: '01 Nov 2026'
       }
@@ -179,16 +183,26 @@ const INITIAL_SEED_ACCOUNTS: AuthenticatedUser[] = [
     uploadedDocumentsCount: 2,
     submittedDocuments: [
       {
+        type: 'AADHAAR_CARD',
+        name: 'Aadhaar Card',
+        status: 'VERIFIED',
+        uploadedAt: '28 Oct 2026'
+      },
+      {
+        type: 'PAN_CARD',
+        name: 'PAN Card',
+        status: 'VERIFIED',
+        uploadedAt: '28 Oct 2026'
+      },
+      {
         type: 'GST_CERTIFICATE',
-        name: 'GST Registration Certificate',
-        documentNumber: '33AAAAA0000A1Z5',
+        name: 'GSTIN Certificate',
         status: 'VERIFIED',
         uploadedAt: '28 Oct 2026'
       },
       {
         type: 'UDYAM_MSME',
-        name: 'Udyam MSME Registration Certificate',
-        documentNumber: 'UDYAM-TN-03-0012345',
+        name: 'Business Registration Certificate',
         status: 'VERIFIED',
         uploadedAt: '28 Oct 2026'
       }
@@ -256,11 +270,49 @@ export const getStoredUser = (): AuthenticatedUser | null => {
   if (!userStr) return null;
   try {
     const user = JSON.parse(userStr);
-    if (user && user.email?.toLowerCase() === 'kathir@gmail.com' && !user.personalInfo?.dob) {
-      user.personalInfo = {
-        ...(user.personalInfo || {}),
-        dob: '15 Aug 1996'
-      };
+    let changed = false;
+
+    if (user && user.email?.toLowerCase() === 'kathir@gmail.com') {
+      if (!user.personalInfo?.dob) {
+        user.personalInfo = {
+          ...(user.personalInfo || {}),
+          dob: '15 Aug 1996'
+        };
+        changed = true;
+      }
+      if (
+        !user.submittedDocuments ||
+        user.submittedDocuments.length === 0 ||
+        (user.submittedDocuments.length === 1 && user.submittedDocuments[0].name?.includes('Proprietor Identity Proof'))
+      ) {
+        user.submittedDocuments = [
+          { type: 'AADHAAR_CARD', name: 'Aadhaar Card', status: 'VERIFIED', uploadedAt: '01 Nov 2026' },
+          { type: 'PAN_CARD', name: 'PAN Card', status: 'VERIFIED', uploadedAt: '01 Nov 2026' },
+          { type: 'TECHNICAL_PORTFOLIO', name: 'Professional Technical Credentials', status: 'VERIFIED', uploadedAt: '01 Nov 2026' }
+        ];
+        user.uploadedDocumentsCount = 3;
+        changed = true;
+      }
+    }
+
+    if (user && user.email?.toLowerCase() === 'moorthy@ficapp.in') {
+      if (
+        !user.submittedDocuments ||
+        user.submittedDocuments.length === 0 ||
+        (user.submittedDocuments.length === 1 && user.submittedDocuments[0].name?.includes('Proprietor Identity Proof'))
+      ) {
+        user.submittedDocuments = [
+          { type: 'AADHAAR_CARD', name: 'Aadhaar Card', status: 'VERIFIED', uploadedAt: '28 Oct 2026' },
+          { type: 'PAN_CARD', name: 'PAN Card', status: 'VERIFIED', uploadedAt: '28 Oct 2026' },
+          { type: 'GST_CERTIFICATE', name: 'GSTIN Certificate', status: 'VERIFIED', uploadedAt: '28 Oct 2026' },
+          { type: 'UDYAM_MSME', name: 'Business Registration Certificate', status: 'VERIFIED', uploadedAt: '28 Oct 2026' }
+        ];
+        user.uploadedDocumentsCount = 4;
+        changed = true;
+      }
+    }
+
+    if (changed) {
       localStorage.setItem('fic_user', JSON.stringify(user));
     }
     return user;
@@ -308,7 +360,7 @@ export const getRegisteredAccounts = (): AuthenticatedUser[] => {
   try {
     const parsed = JSON.parse(data);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Ensure existing seeded accounts have latest subcategories and dob schema
+      // Ensure existing seeded accounts have latest subcategories, dob and submittedDocuments schema
       const updated = parsed.map((acc: AuthenticatedUser) => {
         const seed = INITIAL_SEED_ACCOUNTS.find((s) => s.userId === acc.userId || s.email === acc.email);
         const mergedDob =
@@ -327,10 +379,17 @@ export const getRegisteredAccounts = (): AuthenticatedUser[] => {
             ? acc.subcategories
             : seed?.subcategories || ['Freelance Specialist'];
 
+        // If documents are generic or missing, use seed documents
+        const currentDocs = acc.submittedDocuments || [];
+        const isGeneric = currentDocs.length === 1 && currentDocs[0].name?.includes('Proprietor Identity Proof');
+        const resolvedDocs = (!currentDocs.length || isGeneric) && seed?.submittedDocuments ? seed.submittedDocuments : currentDocs;
+
         return {
           ...acc,
           subcategories: subcats,
           subCategory: acc.subCategory || subcats[0],
+          submittedDocuments: resolvedDocs,
+          uploadedDocumentsCount: resolvedDocs.length,
           personalInfo: mergedPersonalInfo
         };
       });
@@ -400,16 +459,25 @@ export const saveRegisteredAccount = (account: Partial<AuthenticatedUser> & { em
     ],
     role: account.role || 'MEMBER',
     roles: account.roles || ['MEMBER'],
-    uploadedDocumentsCount: account.uploadedDocumentsCount || 2,
-    submittedDocuments: account.submittedDocuments || [
-      {
-        type: 'ID_PROOF',
-        name: 'Proprietor Identity Proof (Aadhaar / PAN)',
-        documentNumber: 'Verified on Onboarding',
-        status: 'VERIFIED',
-        uploadedAt: 'On Registration'
-      }
-    ],
+    uploadedDocumentsCount:
+      account.submittedDocuments?.length ||
+      existingAccount?.submittedDocuments?.length ||
+      account.uploadedDocumentsCount ||
+      2,
+    submittedDocuments:
+      account.submittedDocuments && account.submittedDocuments.length > 0
+        ? account.submittedDocuments
+        : existingAccount?.submittedDocuments && existingAccount.submittedDocuments.length > 0
+        ? existingAccount.submittedDocuments
+        : normalizedEmail === 'kathir@gmail.com'
+        ? [
+            { type: 'AADHAAR_CARD', name: 'Aadhaar Card', status: 'VERIFIED', uploadedAt: '01 Nov 2026' },
+            { type: 'PAN_CARD', name: 'PAN Card', status: 'VERIFIED', uploadedAt: '01 Nov 2026' },
+            { type: 'TECHNICAL_PORTFOLIO', name: 'Professional Technical Credentials', status: 'VERIFIED', uploadedAt: '01 Nov 2026' }
+          ]
+        : [
+            { type: 'AADHAAR_CARD', name: 'Aadhaar Card', status: 'VERIFIED', uploadedAt: 'On Registration' }
+          ],
     personalInfo: {
       ...(existingAccount?.personalInfo || {}),
       ...(account.personalInfo || {}),
