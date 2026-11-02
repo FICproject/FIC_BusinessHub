@@ -67,8 +67,8 @@ export const ProfilePage: React.FC = () => {
   const [txStatusFilter, setTxStatusFilter] = useState<string>('ALL');
   const [txSearchQuery, setTxSearchQuery] = useState<string>('');
   
-  // Inline Wallet Activity State (Toggled by "View Details" button)
-  const [showTransactionDetails, setShowTransactionDetails] = useState<boolean>(false);
+  // Wallet Activity Modal State (Opened by "View Details" popup button)
+  const [isTransactionModalOpen, setIsTransactionModalOpen] = useState<boolean>(false);
   const [txFlowFilter, setTxFlowFilter] = useState<'ALL' | 'CREDIT' | 'DEBIT'>('ALL');
   const [txCurrentPage, setTxCurrentPage] = useState<number>(1);
   const txPerPage = 6;
@@ -549,24 +549,18 @@ export const ProfilePage: React.FC = () => {
               <span>Universal Member Wallet</span>
             </div>
 
-            {/* View Details / Hide Details Toggle Button */}
+            {/* View Details Popup Button */}
             <button
               type="button"
               onClick={() => {
-                setShowTransactionDetails(!showTransactionDetails);
+                setIsTransactionModalOpen(true);
                 setTxCurrentPage(1);
               }}
-              className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer shadow-xs border ${
-                showTransactionDetails
-                  ? 'bg-[#29302D] text-white border-[#29302D] hover:bg-[#1E2421]'
-                  : 'bg-white text-[#D99B43] hover:text-[#B87A28] border-[#D99B43]/50 hover:border-[#D99B43] hover:bg-[#FCFAF6]'
-              }`}
-              title={showTransactionDetails ? 'Collapse wallet activity ledger' : 'Expand full wallet transaction history'}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer shadow-xs border bg-white text-[#D99B43] hover:text-[#B87A28] border-[#D99B43]/50 hover:border-[#D99B43] hover:bg-[#FCFAF6]"
+              title="Open wallet transaction history & audit ledger in a popup"
             >
-              <span>{showTransactionDetails ? 'Hide Details' : 'View Details'}</span>
-              <span className="font-bold text-base leading-none">
-                {showTransactionDetails ? '↑' : '→'}
-              </span>
+              <span>View Details</span>
+              <span className="font-bold text-base leading-none">→</span>
             </button>
           </div>
 
@@ -703,420 +697,6 @@ export const ProfilePage: React.FC = () => {
             </strong>
           </div>
         </div>
-
-        {/* ========================================================
-            INLINE EXPANDABLE WALLET ACTIVITY & AUDIT LEDGER
-            (Moved from bottom into Personal Wallet section)
-           ======================================================== */}
-        <AnimatePresence>
-          {showTransactionDetails && (
-            <motion.div
-              initial={{ opacity: 0, height: 0, y: -8 }}
-              animate={{ opacity: 1, height: 'auto', y: 0 }}
-              exit={{ opacity: 0, height: 0, y: -8 }}
-              transition={{ duration: 0.35, ease: 'easeInOut' }}
-              className="overflow-hidden pt-6 border-t border-[#EADFCF] space-y-6"
-            >
-              {/* Header / Subheading Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 gap-3">
-                <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-[11px] font-black uppercase tracking-wider mb-1">
-                    <SparklesIcon size={12} />
-                    <span>Real-Time Ledger Audit</span>
-                  </div>
-                  <h3 className="text-lg sm:text-xl font-black text-[#29302D] tracking-tight">
-                    Wallet Transaction History & Audit Ledger
-                  </h3>
-                  <p className="text-xs text-[#77786E]">
-                    Immutable double-entry record of all credits, top-ups, referral bonuses, renewals and withdrawals.
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleDownloadStatement}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-[#EADFCF] hover:border-[#8064A9] text-[#29302D] hover:text-[#8064A9] transition-all cursor-pointer shadow-2xs"
-                  >
-                    <FileTextIcon size={14} />
-                    <span>Download Statement</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowTransactionDetails(false)}
-                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold bg-[#FAF7F2] hover:bg-[#EADFCF] text-[#77786E] transition-all cursor-pointer"
-                  >
-                    <span>Hide Details ↑</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* 5 Transaction Summary KPI Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                {/* 1. Total Transactions */}
-                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] shadow-2xs">
-                  <span className="text-[11px] font-bold text-[#77786E] uppercase tracking-wider block">
-                    Total Transactions
-                  </span>
-                  <div className="text-xl sm:text-2xl font-black text-[#29302D] mt-1">
-                    {totalTxCount}
-                  </div>
-                  <span className="text-[11px] text-[#77786E] font-medium block mt-0.5">
-                    Recorded entries
-                  </span>
-                </div>
-
-                {/* 2. Total Credits */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#F6FBF7] border border-[#2E7D32]/25 shadow-2xs">
-                  <span className="text-[11px] font-bold text-[#1B5E20] uppercase tracking-wider block">
-                    Total Credits
-                  </span>
-                  <div className="text-xl sm:text-2xl font-black text-[#2E7D32] mt-1">
-                    +₹{totalCreditsAmount.toLocaleString('en-IN')}
-                  </div>
-                  <span className="text-[11px] text-[#2E7D32]/80 font-medium block mt-0.5">
-                    Total inflows & top-ups
-                  </span>
-                </div>
-
-                {/* 3. Total Debits */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#FFF4F0] border border-[#C66B52]/25 shadow-2xs">
-                  <span className="text-[11px] font-bold text-[#C66B52] uppercase tracking-wider block">
-                    Total Debits
-                  </span>
-                  <div className="text-xl sm:text-2xl font-black text-[#C66B52] mt-1">
-                    -₹{totalDebitsAmount.toLocaleString('en-IN')}
-                  </div>
-                  <span className="text-[11px] text-[#C66B52]/80 font-medium block mt-0.5">
-                    Renewals & withdrawals
-                  </span>
-                </div>
-
-                {/* 4. Pending */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#FDF6E9] border border-[#D99B43]/25 shadow-2xs">
-                  <span className="text-[11px] font-bold text-[#9C6818] uppercase tracking-wider block">
-                    Pending
-                  </span>
-                  <div className="text-xl sm:text-2xl font-black text-[#9C6818] mt-1">
-                    {pendingTxCount}
-                  </div>
-                  <span className="text-[11px] text-[#B87A28] font-medium block mt-0.5">
-                    Under verification
-                  </span>
-                </div>
-
-                {/* 5. Completed */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#FAF8FD] border border-[#8064A9]/25 shadow-2xs">
-                  <span className="text-[11px] font-bold text-[#8064A9] uppercase tracking-wider block">
-                    Completed
-                  </span>
-                  <div className="text-xl sm:text-2xl font-black text-[#8064A9] mt-1">
-                    {completedTxCount}
-                  </div>
-                  <span className="text-[11px] text-[#8064A9]/80 font-medium block mt-0.5">
-                    Settled ledger entries
-                  </span>
-                </div>
-              </div>
-
-              {/* Filters, Flow Selector & Search Toolbar */}
-              <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] space-y-3.5">
-                {/* Row 1: Category Filter Pills + Flow Selector */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-                  {/* Category Type Pills */}
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-[#77786E] mr-1">
-                      Type:
-                    </span>
-                    {[
-                      { key: 'ALL', label: 'All Transactions' },
-                      { key: WalletTransactionType.ADD_FUNDS, label: 'Add Funds' },
-                      { key: WalletTransactionType.REFERRAL_REWARD, label: 'Referral Rewards' },
-                      { key: WalletTransactionType.MEMBERSHIP_RENEWAL, label: 'Renewals' },
-                      { key: WalletTransactionType.WITHDRAWAL, label: 'Withdrawals' },
-                      { key: WalletTransactionType.ADJUSTMENT, label: 'Adjustments' }
-                    ].map((tab) => (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => {
-                          setTxTypeFilter(tab.key);
-                          setTxCurrentPage(1);
-                        }}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                          txTypeFilter === tab.key
-                            ? 'bg-[#29302D] text-white shadow-xs'
-                            : 'bg-white text-[#77786E] border border-[#EADFCF] hover:border-[#8064A9] hover:text-[#29302D]'
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Flow Toggle: All / Credit / Debit */}
-                  <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#EADFCF] shrink-0 self-start lg:self-auto">
-                    <span className="text-[11px] font-black text-[#77786E] px-2 uppercase tracking-wider">
-                      Flow:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTxFlowFilter('ALL');
-                        setTxCurrentPage(1);
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        txFlowFilter === 'ALL'
-                          ? 'bg-[#29302D] text-white shadow-xs'
-                          : 'text-[#77786E] hover:text-[#29302D]'
-                      }`}
-                    >
-                      All Flows
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTxFlowFilter('CREDIT');
-                        setTxCurrentPage(1);
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        txFlowFilter === 'CREDIT'
-                          ? 'bg-[#2E7D32] text-white shadow-xs'
-                          : 'text-[#2E7D32] hover:bg-[#2E7D32]/10'
-                      }`}
-                    >
-                      + Credits
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTxFlowFilter('DEBIT');
-                        setTxCurrentPage(1);
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        txFlowFilter === 'DEBIT'
-                          ? 'bg-[#C66B52] text-white shadow-xs'
-                          : 'text-[#C66B52] hover:bg-[#C66B52]/10'
-                      }`}
-                    >
-                      - Debits
-                    </button>
-                  </div>
-                </div>
-
-                {/* Row 2: Status Filter + Search Input */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-[#EADFCF]">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-black text-[#77786E] uppercase tracking-wider">
-                      Status:
-                    </span>
-                    <select
-                      value={txStatusFilter}
-                      onChange={(e) => {
-                        setTxStatusFilter(e.target.value);
-                        setTxCurrentPage(1);
-                      }}
-                      className="px-3 py-1.5 text-xs font-bold bg-white border border-[#EADFCF] rounded-xl text-[#29302D] focus:outline-none focus:ring-1 focus:ring-[#8064A9] cursor-pointer"
-                    >
-                      <option value="ALL">All Statuses</option>
-                      <option value={WalletTransactionStatus.COMPLETED}>Completed</option>
-                      <option value={WalletTransactionStatus.PENDING}>Pending Verification</option>
-                      <option value={WalletTransactionStatus.FAILED}>Failed</option>
-                    </select>
-
-                    {(txTypeFilter !== 'ALL' || txFlowFilter !== 'ALL' || txStatusFilter !== 'ALL' || txSearchQuery) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTxTypeFilter('ALL');
-                          setTxFlowFilter('ALL');
-                          setTxStatusFilter('ALL');
-                          setTxSearchQuery('');
-                          setTxCurrentPage(1);
-                        }}
-                        className="text-xs font-bold text-[#8064A9] hover:underline ml-2 cursor-pointer"
-                      >
-                        Reset Filters
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Search box */}
-                  <div className="relative sm:w-72">
-                    <SearchIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#77786E]" />
-                    <input
-                      type="text"
-                      placeholder="Search ref ID, description or ₹..."
-                      value={txSearchQuery}
-                      onChange={(e) => {
-                        setTxSearchQuery(e.target.value);
-                        setTxCurrentPage(1);
-                      }}
-                      className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-[#EADFCF] rounded-xl text-[#29302D] placeholder-[#77786E]/70 focus:outline-none focus:ring-1 focus:ring-[#8064A9]"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Comprehensive 8-Column Transaction Table */}
-              <div className="border border-[#EADFCF] rounded-2xl overflow-hidden bg-white shadow-2xs">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left text-[#29302D]">
-                    <thead className="bg-[#FAF7F2] border-b border-[#EADFCF] text-[11px] uppercase tracking-wider text-[#77786E] font-black">
-                      <tr>
-                        <th className="px-4 py-3.5 whitespace-nowrap">Reference ID</th>
-                        <th className="px-4 py-3.5 whitespace-nowrap">Date & Time</th>
-                        <th className="px-4 py-3.5 whitespace-nowrap">Transaction Type</th>
-                        <th className="px-4 py-3.5">Description</th>
-                        <th className="px-4 py-3.5 text-right whitespace-nowrap">Credit (+)</th>
-                        <th className="px-4 py-3.5 text-right whitespace-nowrap">Debit (-)</th>
-                        <th className="px-4 py-3.5 whitespace-nowrap">Transaction Status</th>
-                        <th className="px-4 py-3.5 text-right whitespace-nowrap">Balance After</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#EADFCF]/60">
-                      {paginatedTransactions.length === 0 ? (
-                        <tr>
-                          <td colSpan={8} className="px-4 py-12 text-center">
-                            <div className="max-w-xs mx-auto text-center space-y-2">
-                              <div className="w-10 h-10 mx-auto rounded-full bg-[#FAF7F2] border border-[#EADFCF] flex items-center justify-center text-[#77786E]">
-                                <FileTextIcon size={18} />
-                              </div>
-                              <p className="text-sm font-bold text-[#29302D]">No transactions found</p>
-                              <p className="text-xs text-[#77786E]">
-                                No wallet transactions match your active filters or search keyword.
-                              </p>
-                            </div>
-                          </td>
-                        </tr>
-                      ) : (
-                        paginatedTransactions.map((tx) => {
-                          const isCredit = tx.direction === 'CREDIT';
-                          return (
-                            <tr key={tx.transactionId} className="hover:bg-[#FAF7F2]/60 transition-colors">
-                              {/* 1. Reference ID */}
-                              <td className="px-4 py-3.5 font-mono font-black text-[#29302D] whitespace-nowrap">
-                                <span className="bg-[#FAF7F2] px-2 py-1 rounded-md border border-[#EADFCF] text-[11.5px]">
-                                  {tx.transactionId}
-                                </span>
-                              </td>
-
-                              {/* 2. Date & Time */}
-                              <td className="px-4 py-3.5 text-[#77786E] whitespace-nowrap font-medium">
-                                {tx.createdAt}
-                              </td>
-
-                              {/* 3. Transaction Type */}
-                              <td className="px-4 py-3.5 whitespace-nowrap">
-                                {getTxTypeBadge(tx.transactionType)}
-                              </td>
-
-                              {/* 4. Description */}
-                              <td className="px-4 py-3.5 max-w-[240px] truncate font-medium text-[#29302D]" title={tx.description}>
-                                {tx.description}
-                              </td>
-
-                              {/* 5. Credit (+) */}
-                              <td className="px-4 py-3.5 text-right whitespace-nowrap font-black">
-                                {isCredit ? (
-                                  <span className="text-[#2E7D32] bg-[#E8F5E9]/60 border border-[#2E7D32]/20 px-2 py-0.5 rounded-lg">
-                                    +₹{(tx.amount || 0).toLocaleString('en-IN')}
-                                  </span>
-                                ) : (
-                                  <span className="text-[#77786E]/40 font-bold">—</span>
-                                )}
-                              </td>
-
-                              {/* 6. Debit (-) */}
-                              <td className="px-4 py-3.5 text-right whitespace-nowrap font-black">
-                                {!isCredit ? (
-                                  <span className="text-[#C66B52] bg-[#FFF4F0] border border-[#C66B52]/20 px-2 py-0.5 rounded-lg">
-                                    -₹{(tx.amount || 0).toLocaleString('en-IN')}
-                                  </span>
-                                ) : (
-                                  <span className="text-[#77786E]/40 font-bold">—</span>
-                                )}
-                              </td>
-
-                              {/* 7. Status */}
-                              <td className="px-4 py-3.5 whitespace-nowrap">
-                                {getTxStatusBadge(tx.status)}
-                              </td>
-
-                              {/* 8. Balance After */}
-                              <td className="px-4 py-3.5 text-right font-mono font-black text-[#29302D] whitespace-nowrap">
-                                ₹{(tx.balanceAfter || 0).toLocaleString('en-IN')}
-                              </td>
-                            </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination Toolbar */}
-                {filteredTransactions.length > 0 && (
-                  <div className="px-4 py-3 border-t border-[#EADFCF] bg-[#FAF7F2] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <span className="text-[#77786E] font-medium">
-                      Showing{' '}
-                      <strong className="text-[#29302D] font-black">
-                        {startIdx + 1}
-                      </strong>{' '}
-                      to{' '}
-                      <strong className="text-[#29302D] font-black">
-                        {Math.min(startIdx + txPerPage, filteredTransactions.length)}
-                      </strong>{' '}
-                      of{' '}
-                      <strong className="text-[#29302D] font-black">
-                        {filteredTransactions.length}
-                      </strong>{' '}
-                      transactions
-                    </span>
-
-                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
-                      <button
-                        type="button"
-                        disabled={currentSafePage <= 1}
-                        onClick={() => setTxCurrentPage((p) => Math.max(1, p - 1))}
-                        className="px-3 py-1.5 rounded-xl border border-[#EADFCF] bg-white text-[#29302D] font-bold hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
-                      >
-                        ← Prev
-                      </button>
-
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                          <button
-                            key={pageNum}
-                            type="button"
-                            onClick={() => setTxCurrentPage(pageNum)}
-                            className={`w-7 h-7 rounded-lg text-xs font-black transition-all cursor-pointer ${
-                              currentSafePage === pageNum
-                                ? 'bg-[#29302D] text-white shadow-xs'
-                                : 'bg-white border border-[#EADFCF] text-[#77786E] hover:border-[#8064A9] hover:text-[#29302D]'
-                            }`}
-                          >
-                            {pageNum}
-                          </button>
-                        ))}
-                      </div>
-
-                      <button
-                        type="button"
-                        disabled={currentSafePage >= totalPages}
-                        onClick={() => setTxCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        className="px-3 py-1.5 rounded-xl border border-[#EADFCF] bg-white text-[#29302D] font-bold hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
-                      >
-                        Next →
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
 
       {/* ========================================================
@@ -1559,6 +1139,438 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ========================================================
+          MODAL 0: WALLET TRANSACTION HISTORY & AUDIT LEDGER POPUP
+         ======================================================== */}
+      {isTransactionModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in"
+          onClick={() => setIsTransactionModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative my-auto border border-[#EADFCF] space-y-6 max-h-[92vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EADFCF] gap-3 shrink-0">
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-[11px] font-black uppercase tracking-wider mb-1">
+                  <SparklesIcon size={12} />
+                  <span>Real-Time Ledger Audit</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
+                  Wallet Transaction History & Audit Ledger
+                </h3>
+                <p className="text-xs text-[#77786E]">
+                  Immutable double-entry record of all credits, top-ups, referral bonuses, renewals and withdrawals.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={handleDownloadStatement}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-[#EADFCF] hover:border-[#8064A9] text-[#29302D] hover:text-[#8064A9] transition-all cursor-pointer shadow-2xs"
+                >
+                  <FileTextIcon size={14} />
+                  <span>Download Statement</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsTransactionModalOpen(false)}
+                  className="w-9 h-9 rounded-xl bg-[#FAF7F2] hover:bg-[#EADFCF] text-[#77786E] hover:text-[#29302D] flex items-center justify-center font-bold text-base transition-all cursor-pointer border border-[#EADFCF]"
+                  title="Close modal"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="overflow-y-auto space-y-6 pr-1 flex-1">
+              {/* 5 Transaction Summary KPI Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {/* 1. Total Transactions */}
+                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] shadow-2xs">
+                  <span className="text-[11px] font-bold text-[#77786E] uppercase tracking-wider block">
+                    Total Transactions
+                  </span>
+                  <div className="text-xl sm:text-2xl font-black text-[#29302D] mt-1">
+                    {totalTxCount}
+                  </div>
+                  <span className="text-[11px] text-[#77786E] font-medium block mt-0.5">
+                    Recorded entries
+                  </span>
+                </div>
+
+                {/* 2. Total Credits */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#F6FBF7] border border-[#2E7D32]/25 shadow-2xs">
+                  <span className="text-[11px] font-bold text-[#1B5E20] uppercase tracking-wider block">
+                    Total Credits
+                  </span>
+                  <div className="text-xl sm:text-2xl font-black text-[#2E7D32] mt-1">
+                    +₹{totalCreditsAmount.toLocaleString('en-IN')}
+                  </div>
+                  <span className="text-[11px] text-[#2E7D32]/80 font-medium block mt-0.5">
+                    Total inflows & top-ups
+                  </span>
+                </div>
+
+                {/* 3. Total Debits */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#FFF4F0] border border-[#C66B52]/25 shadow-2xs">
+                  <span className="text-[11px] font-bold text-[#C66B52] uppercase tracking-wider block">
+                    Total Debits
+                  </span>
+                  <div className="text-xl sm:text-2xl font-black text-[#C66B52] mt-1">
+                    -₹{totalDebitsAmount.toLocaleString('en-IN')}
+                  </div>
+                  <span className="text-[11px] text-[#C66B52]/80 font-medium block mt-0.5">
+                    Renewals & withdrawals
+                  </span>
+                </div>
+
+                {/* 4. Pending */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#FDF6E9] border border-[#D99B43]/25 shadow-2xs">
+                  <span className="text-[11px] font-bold text-[#9C6818] uppercase tracking-wider block">
+                    Pending
+                  </span>
+                  <div className="text-xl sm:text-2xl font-black text-[#9C6818] mt-1">
+                    {pendingTxCount}
+                  </div>
+                  <span className="text-[11px] text-[#B87A28] font-medium block mt-0.5">
+                    Under verification
+                  </span>
+                </div>
+
+                {/* 5. Completed */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#FAF8FD] border border-[#8064A9]/25 shadow-2xs">
+                  <span className="text-[11px] font-bold text-[#8064A9] uppercase tracking-wider block">
+                    Completed
+                  </span>
+                  <div className="text-xl sm:text-2xl font-black text-[#8064A9] mt-1">
+                    {completedTxCount}
+                  </div>
+                  <span className="text-[11px] text-[#8064A9]/80 font-medium block mt-0.5">
+                    Settled ledger entries
+                  </span>
+                </div>
+              </div>
+
+              {/* Filters, Flow Selector & Search Toolbar */}
+              <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] space-y-3.5">
+                {/* Row 1: Category Filter Pills + Flow Selector */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                  {/* Category Type Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-[#77786E] mr-1">
+                      Type:
+                    </span>
+                    {[
+                      { key: 'ALL', label: 'All Transactions' },
+                      { key: WalletTransactionType.ADD_FUNDS, label: 'Add Funds' },
+                      { key: WalletTransactionType.REFERRAL_REWARD, label: 'Referral Rewards' },
+                      { key: WalletTransactionType.MEMBERSHIP_RENEWAL, label: 'Renewals' },
+                      { key: WalletTransactionType.WITHDRAWAL, label: 'Withdrawals' },
+                      { key: WalletTransactionType.ADJUSTMENT, label: 'Adjustments' }
+                    ].map((tab) => (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => {
+                          setTxTypeFilter(tab.key);
+                          setTxCurrentPage(1);
+                        }}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          txTypeFilter === tab.key
+                            ? 'bg-[#29302D] text-white shadow-xs'
+                            : 'bg-white text-[#77786E] border border-[#EADFCF] hover:border-[#8064A9] hover:text-[#29302D]'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Flow Toggle: All / Credit / Debit */}
+                  <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#EADFCF] shrink-0 self-start lg:self-auto">
+                    <span className="text-[11px] font-black text-[#77786E] px-2 uppercase tracking-wider">
+                      Flow:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTxFlowFilter('ALL');
+                        setTxCurrentPage(1);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        txFlowFilter === 'ALL'
+                          ? 'bg-[#29302D] text-white shadow-xs'
+                          : 'text-[#77786E] hover:text-[#29302D]'
+                      }`}
+                    >
+                      All Flows
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTxFlowFilter('CREDIT');
+                        setTxCurrentPage(1);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        txFlowFilter === 'CREDIT'
+                          ? 'bg-[#2E7D32] text-white shadow-xs'
+                          : 'text-[#2E7D32] hover:bg-[#2E7D32]/10'
+                      }`}
+                    >
+                      + Credits
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTxFlowFilter('DEBIT');
+                        setTxCurrentPage(1);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        txFlowFilter === 'DEBIT'
+                          ? 'bg-[#C66B52] text-white shadow-xs'
+                          : 'text-[#C66B52] hover:bg-[#C66B52]/10'
+                      }`}
+                    >
+                      - Debits
+                    </button>
+                  </div>
+                </div>
+
+                {/* Row 2: Status Filter + Search Input */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-[#EADFCF]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-black text-[#77786E] uppercase tracking-wider">
+                      Status:
+                    </span>
+                    <select
+                      value={txStatusFilter}
+                      onChange={(e) => {
+                        setTxStatusFilter(e.target.value);
+                        setTxCurrentPage(1);
+                      }}
+                      className="px-3 py-1.5 text-xs font-bold bg-white border border-[#EADFCF] rounded-xl text-[#29302D] focus:outline-none focus:ring-1 focus:ring-[#8064A9] cursor-pointer"
+                    >
+                      <option value="ALL">All Statuses</option>
+                      <option value={WalletTransactionStatus.COMPLETED}>Completed</option>
+                      <option value={WalletTransactionStatus.PENDING}>Pending Verification</option>
+                      <option value={WalletTransactionStatus.FAILED}>Failed</option>
+                    </select>
+
+                    {(txTypeFilter !== 'ALL' || txFlowFilter !== 'ALL' || txStatusFilter !== 'ALL' || txSearchQuery) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTxTypeFilter('ALL');
+                          setTxFlowFilter('ALL');
+                          setTxStatusFilter('ALL');
+                          setTxSearchQuery('');
+                          setTxCurrentPage(1);
+                        }}
+                        className="text-xs font-bold text-[#8064A9] hover:underline ml-2 cursor-pointer"
+                      >
+                        Reset Filters
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Search box */}
+                  <div className="relative sm:w-72">
+                    <SearchIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#77786E]" />
+                    <input
+                      type="text"
+                      placeholder="Search ref ID, description or ₹..."
+                      value={txSearchQuery}
+                      onChange={(e) => {
+                        setTxSearchQuery(e.target.value);
+                        setTxCurrentPage(1);
+                      }}
+                      className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-[#EADFCF] rounded-xl text-[#29302D] placeholder-[#77786E]/70 focus:outline-none focus:ring-1 focus:ring-[#8064A9]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Comprehensive 8-Column Transaction Table */}
+              <div className="border border-[#EADFCF] rounded-2xl overflow-hidden bg-white shadow-2xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left text-[#29302D]">
+                    <thead className="bg-[#FAF7F2] border-b border-[#EADFCF] text-[11px] uppercase tracking-wider text-[#77786E] font-black">
+                      <tr>
+                        <th className="px-4 py-3.5 whitespace-nowrap">Reference ID</th>
+                        <th className="px-4 py-3.5 whitespace-nowrap">Date & Time</th>
+                        <th className="px-4 py-3.5 whitespace-nowrap">Transaction Type</th>
+                        <th className="px-4 py-3.5">Description</th>
+                        <th className="px-4 py-3.5 text-right whitespace-nowrap">Credit (+)</th>
+                        <th className="px-4 py-3.5 text-right whitespace-nowrap">Debit (-)</th>
+                        <th className="px-4 py-3.5 whitespace-nowrap">Transaction Status</th>
+                        <th className="px-4 py-3.5 text-right whitespace-nowrap">Balance After</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#EADFCF]/60">
+                      {paginatedTransactions.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-12 text-center">
+                            <div className="max-w-xs mx-auto text-center space-y-2">
+                              <div className="w-10 h-10 mx-auto rounded-full bg-[#FAF7F2] border border-[#EADFCF] flex items-center justify-center text-[#77786E]">
+                                <FileTextIcon size={18} />
+                              </div>
+                              <p className="text-sm font-bold text-[#29302D]">No transactions found</p>
+                              <p className="text-xs text-[#77786E]">
+                                No wallet transactions match your active filters or search keyword.
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedTransactions.map((tx) => {
+                          const isCredit = tx.direction === 'CREDIT';
+                          return (
+                            <tr key={tx.transactionId} className="hover:bg-[#FAF7F2]/60 transition-colors">
+                              {/* 1. Reference ID */}
+                              <td className="px-4 py-3.5 font-mono font-black text-[#29302D] whitespace-nowrap">
+                                <span className="bg-[#FAF7F2] px-2 py-1 rounded-md border border-[#EADFCF] text-[11.5px]">
+                                  {tx.transactionId}
+                                </span>
+                              </td>
+
+                              {/* 2. Date & Time */}
+                              <td className="px-4 py-3.5 text-[#77786E] whitespace-nowrap font-medium">
+                                {tx.createdAt}
+                              </td>
+
+                              {/* 3. Transaction Type */}
+                              <td className="px-4 py-3.5 whitespace-nowrap">
+                                {getTxTypeBadge(tx.transactionType)}
+                              </td>
+
+                              {/* 4. Description */}
+                              <td className="px-4 py-3.5 max-w-[240px] truncate font-medium text-[#29302D]" title={tx.description}>
+                                {tx.description}
+                              </td>
+
+                              {/* 5. Credit (+) */}
+                              <td className="px-4 py-3.5 text-right whitespace-nowrap font-black">
+                                {isCredit ? (
+                                  <span className="text-[#2E7D32] bg-[#E8F5E9]/60 border border-[#2E7D32]/20 px-2 py-0.5 rounded-lg">
+                                    +₹{(tx.amount || 0).toLocaleString('en-IN')}
+                                  </span>
+                                ) : (
+                                  <span className="text-[#77786E]/40 font-bold">—</span>
+                                )}
+                              </td>
+
+                              {/* 6. Debit (-) */}
+                              <td className="px-4 py-3.5 text-right whitespace-nowrap font-black">
+                                {!isCredit ? (
+                                  <span className="text-[#C66B52] bg-[#FFF4F0] border border-[#C66B52]/20 px-2 py-0.5 rounded-lg">
+                                    -₹{(tx.amount || 0).toLocaleString('en-IN')}
+                                  </span>
+                                ) : (
+                                  <span className="text-[#77786E]/40 font-bold">—</span>
+                                )}
+                              </td>
+
+                              {/* 7. Status */}
+                              <td className="px-4 py-3.5 whitespace-nowrap">
+                                {getTxStatusBadge(tx.status)}
+                              </td>
+
+                              {/* 8. Balance After */}
+                              <td className="px-4 py-3.5 text-right font-mono font-black text-[#29302D] whitespace-nowrap">
+                                ₹{(tx.balanceAfter || 0).toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Toolbar */}
+                {filteredTransactions.length > 0 && (
+                  <div className="px-4 py-3 border-t border-[#EADFCF] bg-[#FAF7F2] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <span className="text-[#77786E] font-medium">
+                      Showing{' '}
+                      <strong className="text-[#29302D] font-black">
+                        {startIdx + 1}
+                      </strong>{' '}
+                      to{' '}
+                      <strong className="text-[#29302D] font-black">
+                        {Math.min(startIdx + txPerPage, filteredTransactions.length)}
+                      </strong>{' '}
+                      of{' '}
+                      <strong className="text-[#29302D] font-black">
+                        {filteredTransactions.length}
+                      </strong>{' '}
+                      transactions
+                    </span>
+
+                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                      <button
+                        type="button"
+                        disabled={currentSafePage <= 1}
+                        onClick={() => setTxCurrentPage((p) => Math.max(1, p - 1))}
+                        className="px-3 py-1.5 rounded-xl border border-[#EADFCF] bg-white text-[#29302D] font-bold hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                      >
+                        ← Prev
+                      </button>
+
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setTxCurrentPage(pageNum)}
+                            className={`w-7 h-7 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                              currentSafePage === pageNum
+                                ? 'bg-[#29302D] text-white shadow-xs'
+                                : 'bg-white border border-[#EADFCF] text-[#77786E] hover:border-[#8064A9] hover:text-[#29302D]'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={currentSafePage >= totalPages}
+                        onClick={() => setTxCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        className="px-3 py-1.5 rounded-xl border border-[#EADFCF] bg-white text-[#29302D] font-bold hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-[#EADFCF] flex items-center justify-between text-xs text-[#77786E] shrink-0">
+              <span className="flex items-center gap-1.5 font-medium">
+                <ShieldCheckIcon size={15} className="text-[#2E7D32]" />
+                <span>Ledger cryptographically verified & audit compliant</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsTransactionModalOpen(false)}
+                className="px-5 py-2 rounded-xl bg-[#29302D] hover:bg-[#1E2421] text-white font-bold transition-all cursor-pointer shadow-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================
           MODAL 1: ADD FUNDS TO WALLET (SECTION 4)
