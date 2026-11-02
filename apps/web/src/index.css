@@ -36,10 +36,10 @@ body {
 
 @keyframes pulseGlow {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.35);
+    box-shadow: 0 0 0 0 rgba(57, 123, 85, 0.35);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(37, 99, 235, 0);
+    box-shadow: 0 0 0 8px rgba(57, 123, 85, 0);
   }
 }
 
@@ -59,13 +59,13 @@ body {
 @keyframes gentleZoomInOut {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    border-color: rgba(51, 65, 85, 0.8);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+    border-color: rgba(198, 166, 106, 0.4);
   }
   50% {
     transform: scale(1.03);
-    box-shadow: 0 16px 32px -8px rgba(37, 99, 235, 0.35), 0 0 20px 2px rgba(245, 158, 11, 0.35);
-    border-color: rgba(245, 158, 11, 0.7);
+    box-shadow: 0 16px 32px -8px rgba(24, 59, 45, 0.25), 0 0 20px 2px rgba(198, 166, 106, 0.35);
+    border-color: rgba(198, 166, 106, 0.85);
   }
 }
 
@@ -132,11 +132,11 @@ body {
 /* Tree node active energy pulse */
 @keyframes treeNodePulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5);
+    box-shadow: 0 0 0 0 rgba(57, 123, 85, 0.5);
     transform: scale(1);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
+    box-shadow: 0 0 0 10px rgba(57, 123, 85, 0);
     transform: scale(1.08);
   }
 }
@@ -165,4 +165,57 @@ body {
 .animate-branch-grow-right {
   transform-origin: left center;
   animation: branchGrow 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Luxury Organic Palette Keyframes & Classes (Warm Ivory, Forest Green, Champagne Gold) */
+@keyframes orbitalSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbitalReverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes goldPulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(198, 166, 106, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(198, 166, 106, 0);
+  }
+}
+
+.animate-orbital {
+  animation: orbitalSlow 35s linear infinite;
+}
+
+.animate-orbital-reverse {
+  animation: orbitalReverse 45s linear infinite;
+}
+
+.animate-float-gentle {
+  animation: floatGentle 5s ease-in-out infinite;
+}
+
+.animate-gold-pulse {
+  animation: goldPulseGlow 3s infinite ease-in-out;
 }
