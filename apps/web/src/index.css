@@ -113,3 +113,56 @@ body {
 .animate-shimmer-beam {
   animation: shimmerBeam 2.8s infinite linear;
 }
+
+/* Animated tree trunk flowing dash line */
+@keyframes treeFlow {
+  from {
+    stroke-dashoffset: 48;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-tree-flow {
+  stroke-dasharray: 8 6;
+  animation: treeFlow 1.6s linear infinite;
+}
+
+/* Tree node active energy pulse */
+@keyframes treeNodePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
+    transform: scale(1.08);
+  }
+}
+
+.animate-tree-node-active {
+  animation: treeNodePulse 2s infinite ease-in-out;
+}
+
+/* Branch horizontal grow */
+@keyframes branchGrow {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+.animate-branch-grow-left {
+  transform-origin: right center;
+  animation: branchGrow 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-branch-grow-right {
+  transform-origin: left center;
+  animation: branchGrow 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
