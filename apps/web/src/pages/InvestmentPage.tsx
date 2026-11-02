@@ -129,7 +129,7 @@ export const InvestmentPage: React.FC = () => {
       ) : (
         <WorkspaceCard variant="default">
           <form onSubmit={handleSubmit} className="space-y-6">
-            
+
             {/* Orientation Selector Cards */}
             <div>
               <label className="text-xs font-black uppercase tracking-wider text-[#29302D] block mb-2.5">
@@ -138,11 +138,10 @@ export const InvestmentPage: React.FC = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div
                   onClick={() => setProfileType('FUNDING_SEEKER')}
-                  className={`p-5 rounded-2xl border cursor-pointer text-left transition-all duration-200 ${
-                    profileType === 'FUNDING_SEEKER'
+                  className={`p-5 rounded-2xl border cursor-pointer text-left transition-all duration-200 ${profileType === 'FUNDING_SEEKER'
                       ? 'border-[#C66B52] bg-gradient-to-br from-white via-[#FFFBF9] to-[#FFF4F0] shadow-md'
                       : 'border-[#EADFCF] hover:border-[#C66B52]/40 bg-white'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-black text-[#29302D]">Funding Seeker</span>
@@ -159,11 +158,10 @@ export const InvestmentPage: React.FC = () => {
 
                 <div
                   onClick={() => setProfileType('INVESTOR')}
-                  className={`p-5 rounded-2xl border cursor-pointer text-left transition-all duration-200 ${
-                    profileType === 'INVESTOR'
+                  className={`p-5 rounded-2xl border cursor-pointer text-left transition-all duration-200 ${profileType === 'INVESTOR'
                       ? 'border-[#8064A9] bg-gradient-to-br from-white via-[#FAF8FD] to-[#F4EEFB] shadow-md'
                       : 'border-[#EADFCF] hover:border-[#8064A9]/40 bg-white'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-black text-[#29302D]">Private / Angel Investor</span>
@@ -223,11 +221,10 @@ export const InvestmentPage: React.FC = () => {
                       type="button"
                       key={i}
                       onClick={() => toggleSector(sec)}
-                      className={`text-xs px-3.5 py-2 rounded-xl border transition-all duration-200 cursor-pointer ${
-                        isSelected
+                      className={`text-xs px-3.5 py-2 rounded-xl border transition-all duration-200 cursor-pointer ${isSelected
                           ? 'bg-[#29302D] text-[#FCFAF6] border-[#29302D] font-extrabold shadow-xs'
                           : 'bg-white text-[#77786E] border-[#EADFCF] hover:bg-[#F5EBDD]/60 hover:text-[#29302D] font-bold'
-                      }`}
+                        }`}
                     >
                       {isSelected ? '✓ ' : '+ '}
                       {sec}

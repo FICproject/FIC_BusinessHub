@@ -375,3 +375,4 @@ export const WorkspaceEmptyState: React.FC<WorkspaceEmptyStateProps> = ({
     </div>
   );
 };
+
