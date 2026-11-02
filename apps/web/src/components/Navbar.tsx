@@ -17,6 +17,7 @@ export const Navbar: React.FC = () => {
     '/business-development',
     '/investment',
     '/partnerships',
+    '/meetings',
     '/my-requests',
     '/my-services',
     '/profile'

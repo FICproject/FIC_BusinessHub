@@ -11,7 +11,8 @@ import {
   TrendingUpIcon,
   HandshakeIcon,
   ArrowRightIcon,
-  LockIcon
+  LockIcon,
+  CalendarIcon
 } from '../components/Icons';
 
 export const DashboardPage: React.FC = () => {
@@ -142,7 +143,7 @@ export const DashboardPage: React.FC = () => {
             <span className="text-xs text-slate-400">Moderated by FIC Intermediary</span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
             <Link to="/marketplace">
               <div className="p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 transition-all text-center space-y-2 cursor-pointer h-full flex flex-col justify-center items-center">
                 <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
@@ -200,6 +201,16 @@ export const DashboardPage: React.FC = () => {
                 </div>
                 <strong className="text-xs text-slate-900 block font-semibold">B2B Partnerships</strong>
                 <span className="text-[11px] text-slate-500 leading-tight">Tie-ups & distributors</span>
+              </div>
+            </Link>
+
+            <Link to="/meetings">
+              <div className="p-4 rounded-xl border border-slate-200 hover:border-[#8064A9] hover:bg-[#8064A9]/10 transition-all text-center space-y-2 cursor-pointer h-full flex flex-col justify-center items-center">
+                <div className="w-10 h-10 rounded-full bg-[#8064A9]/15 text-[#8064A9] flex items-center justify-center">
+                  <CalendarIcon size={20} />
+                </div>
+                <strong className="text-xs text-slate-900 block font-semibold">Meetings</strong>
+                <span className="text-[11px] text-slate-500 leading-tight">Facilitated consultations</span>
               </div>
             </Link>
           </div>

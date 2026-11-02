@@ -973,3 +973,242 @@ export const deleteMemberService = (serviceId: string): boolean => {
   return true;
 };
 
+// ============================================================================
+// FIC MEMBER MEETINGS & FACILITATED CONSULTATIONS
+// ============================================================================
+export type MeetingStatus = 'SCHEDULED' | 'PENDING_COORDINATION' | 'COMPLETED' | 'CANCELLED';
+export type MeetingMode = 'VIRTUAL_MEET' | 'IN_PERSON' | 'PHONE';
+
+export interface MeetingItem {
+  id: string;
+  userId: string;
+  title: string;
+  category: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  mode: MeetingMode;
+  modeLabel: string;
+  locationOrUrl?: string;
+  facilitatorName: string;
+  facilitatorRole: string;
+  agenda: string;
+  status: MeetingStatus;
+  coordinatorNotes?: string;
+  createdAt: string;
+}
+
+const MEETINGS_STORAGE_KEY = 'fic_member_meetings_db';
+
+const INITIAL_SEED_MEETINGS: MeetingItem[] = [
+  // Kathir's Meetings
+  {
+    id: 'mtg_k1',
+    userId: 'usr_kathir_001',
+    title: 'Enterprise Cloud Architecture & Technical Scope Review',
+    category: 'Service Scope Alignment',
+    scheduledDate: '2026-11-06',
+    scheduledTime: '11:00 AM - 11:45 AM IST',
+    mode: 'VIRTUAL_MEET',
+    modeLabel: 'Google Meet (Encrypted Video)',
+    locationOrUrl: 'https://meet.google.com/fic-tec-qwx',
+    facilitatorName: 'Er. R. Sundaram',
+    facilitatorRole: 'FIC Senior Technical Coordinator',
+    agenda: 'Review multi-tenant cloud SaaS deployment scope, database optimization, and intermediary proposal coordination for enterprise client.',
+    status: 'SCHEDULED',
+    coordinatorNotes: 'Meeting confirmed. Video link active. Intermediary client requirements will be reviewed during session.',
+    createdAt: '01 Nov 2026'
+  },
+  {
+    id: 'mtg_k2',
+    userId: 'usr_kathir_001',
+    title: 'Marketplace Service Listing & Verification Advisory',
+    category: 'FIC Opportunity Consultation',
+    scheduledDate: '2026-11-08',
+    scheduledTime: '03:00 PM - 03:30 PM IST',
+    mode: 'VIRTUAL_MEET',
+    modeLabel: 'Google Meet (Encrypted Video)',
+    locationOrUrl: 'https://meet.google.com/fic-adv-jkl',
+    facilitatorName: 'Dr. V. Anand',
+    facilitatorRole: 'FIC Marketplace Ecosystem Lead',
+    agenda: 'Guidance on listing scalable cloud dev services to corporate buyers and exploring cross-sector B2B partnerships.',
+    status: 'PENDING_COORDINATION',
+    coordinatorNotes: 'FIC Desk is currently scheduling suitable slot with the industry advisory panel.',
+    createdAt: '02 Nov 2026'
+  },
+  {
+    id: 'mtg_k3',
+    userId: 'usr_kathir_001',
+    title: 'FIC Onboarding & Ecosystem Orientation',
+    category: 'FIC Opportunity Consultation',
+    scheduledDate: '2026-10-28',
+    scheduledTime: '10:00 AM - 10:30 AM IST',
+    mode: 'PHONE',
+    modeLabel: 'FIC Coordinator Direct Phone Line',
+    facilitatorName: 'Ms. S. Meenakshi',
+    facilitatorRole: 'FIC Member Onboarding Officer',
+    agenda: 'Account activation confirmation, ₹99 introductory pass privileges, KYC document verification completion, and intermediary privacy briefing.',
+    status: 'COMPLETED',
+    coordinatorNotes: 'Completed successfully. Member profile active and verified.',
+    createdAt: '28 Oct 2026'
+  },
+  // Moorthy's Meetings
+  {
+    id: 'mtg_m1',
+    userId: 'usr_moorthy_002',
+    title: 'Garment OEM Expansion & Modernization Consultation',
+    category: 'Business Scaling Advisory',
+    scheduledDate: '2026-11-07',
+    scheduledTime: '02:30 PM - 03:30 PM IST',
+    mode: 'IN_PERSON',
+    modeLabel: 'FIC Regional Hub (Tiruppur Cluster Office)',
+    locationOrUrl: 'FIC Regional Hub, Avinashi Road, Tiruppur, TN',
+    facilitatorName: 'Thiru. K. Rajendran',
+    facilitatorRole: 'FIC Industrial Infrastructure Director',
+    agenda: 'Review 50,000 units/mo weaving & knitting expansion plan, automated cutter procurement subsidy, and export compliance validation.',
+    status: 'SCHEDULED',
+    coordinatorNotes: 'In-person meeting confirmed at Tiruppur Hub. Please bring factory layout blueprints.',
+    createdAt: '01 Nov 2026'
+  },
+  {
+    id: 'mtg_m2',
+    userId: 'usr_moorthy_002',
+    title: 'Retail Brand OEM Supply Tie-Up Exploration',
+    category: 'B2B Partnership Exploration',
+    scheduledDate: '2026-11-10',
+    scheduledTime: '04:00 PM - 04:45 PM IST',
+    mode: 'VIRTUAL_MEET',
+    modeLabel: 'Google Meet (Encrypted Video)',
+    locationOrUrl: 'https://meet.google.com/fic-oem-b2b',
+    facilitatorName: 'Mr. P. Vignesh',
+    facilitatorRole: 'FIC B2B Partnerships Officer',
+    agenda: 'Discussion on intermediary matching with domestic apparel retail chains seeking Tiruppur manufacturing partners.',
+    status: 'PENDING_COORDINATION',
+    coordinatorNotes: 'FIC team reviewing corporate buyer requirements before finalizing session time.',
+    createdAt: '02 Nov 2026'
+  },
+  {
+    id: 'mtg_m3',
+    userId: 'usr_moorthy_002',
+    title: 'Textile Export KYC & Compliance Assessment',
+    category: 'Service Scope Alignment',
+    scheduledDate: '2026-10-25',
+    scheduledTime: '11:30 AM - 12:15 PM IST',
+    mode: 'PHONE',
+    modeLabel: 'FIC Coordinator Direct Phone Line',
+    facilitatorName: 'CA. M. Senthil',
+    facilitatorRole: 'FIC Compliance & Legal Advisor',
+    agenda: 'Statutory GST, IEC code, and Udyam MSME certification verification review.',
+    status: 'COMPLETED',
+    coordinatorNotes: 'All industrial compliance documents verified.',
+    createdAt: '25 Oct 2026'
+  }
+];
+
+export const getAllMeetings = (): MeetingItem[] => {
+  try {
+    const raw = localStorage.getItem(MEETINGS_STORAGE_KEY);
+    if (!raw) {
+      localStorage.setItem(MEETINGS_STORAGE_KEY, JSON.stringify(INITIAL_SEED_MEETINGS));
+      return [...INITIAL_SEED_MEETINGS];
+    }
+    return JSON.parse(raw);
+  } catch {
+    return [...INITIAL_SEED_MEETINGS];
+  }
+};
+
+export const saveAllMeetings = (meetings: MeetingItem[]): void => {
+  try {
+    localStorage.setItem(MEETINGS_STORAGE_KEY, JSON.stringify(meetings));
+  } catch (err) {
+    console.error('Failed to save meetings to localStorage:', err);
+  }
+};
+
+export const getUserMeetings = (userId: string): MeetingItem[] => {
+  const all = getAllMeetings();
+  return all.filter((m) => m.userId === userId);
+};
+
+export const scheduleMeeting = (
+  userId: string,
+  data: {
+    title: string;
+    category: string;
+    scheduledDate: string;
+    scheduledTime: string;
+    mode: MeetingMode;
+    agenda: string;
+  }
+): MeetingItem => {
+  const all = getAllMeetings();
+  const newMeeting: MeetingItem = {
+    id: `mtg_${Date.now()}`,
+    userId,
+    title: data.title,
+    category: data.category,
+    scheduledDate: data.scheduledDate,
+    scheduledTime: data.scheduledTime,
+    mode: data.mode,
+    modeLabel:
+      data.mode === 'VIRTUAL_MEET'
+        ? 'Google Meet (Encrypted Video)'
+        : data.mode === 'IN_PERSON'
+        ? 'FIC Regional Hub'
+        : 'FIC Coordinator Direct Phone Line',
+    locationOrUrl:
+      data.mode === 'VIRTUAL_MEET'
+        ? `https://meet.google.com/fic-mtg-${Math.floor(100 + Math.random() * 900)}`
+        : data.mode === 'IN_PERSON'
+        ? 'FIC Regional Hub Center'
+        : '+91 80 4567 8900 (Coordinator Extension)',
+    facilitatorName: 'FIC Assigned Coordinator',
+    facilitatorRole: 'Designated FIC Specialist',
+    agenda: data.agenda,
+    status: 'PENDING_COORDINATION',
+    coordinatorNotes: 'Request received. FIC Desk coordinator is assigning specialist and confirming schedule.',
+    createdAt: 'Today'
+  };
+
+  all.unshift(newMeeting);
+  saveAllMeetings(all);
+  return newMeeting;
+};
+
+export const rescheduleMeeting = (
+  meetingId: string,
+  newDate: string,
+  newTime: string
+): MeetingItem | null => {
+  const all = getAllMeetings();
+  const index = all.findIndex((m) => m.id === meetingId);
+  if (index === -1) return null;
+
+  all[index] = {
+    ...all[index],
+    scheduledDate: newDate,
+    scheduledTime: newTime,
+    status: 'PENDING_COORDINATION',
+    coordinatorNotes: `Reschedule requested for ${newDate} (${newTime}). Awaiting FIC coordinator confirmation.`
+  };
+
+  saveAllMeetings(all);
+  return all[index];
+};
+
+export const cancelMeeting = (meetingId: string, reason?: string): boolean => {
+  const all = getAllMeetings();
+  const index = all.findIndex((m) => m.id === meetingId);
+  if (index === -1) return false;
+
+  all[index] = {
+    ...all[index],
+    status: 'CANCELLED',
+    coordinatorNotes: reason ? `Cancelled by member: ${reason}` : 'Cancelled by member.'
+  };
+
+  saveAllMeetings(all);
+  return true;
+};
+
+
