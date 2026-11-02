@@ -306,3 +306,4 @@ walletRouter.get('/admin/wallets', authenticate, async (_req: AuthenticatedReque
     next(error);
   }
 });
+

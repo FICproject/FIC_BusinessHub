@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { Card, Button, Input } from '@fic/ui';
-import { RocketIcon, CheckCircleIcon, ArrowRightIcon } from '../components/Icons';
+import { motion } from 'framer-motion';
+import {
+  WorkspaceShell,
+  WorkspaceHero,
+  WorkspaceCard,
+  WorkspaceButton,
+  WorkspaceBadge
+} from '../components/workspace/WorkspaceComponents';
+import { RocketIcon, CheckCircleIcon, ArrowRightIcon, SparklesIcon, ShieldCheckIcon } from '../components/Icons';
 import { apiRequest } from '../services/api';
 
 export const BusinessDevPage: React.FC = () => {
@@ -34,105 +41,159 @@ export const BusinessDevPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen py-10">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
-              <RocketIcon size={22} />
+    <WorkspaceShell maxWidth="4xl">
+      {/* ========================================================
+          1. HERO HEADER
+         ======================================================== */}
+      <WorkspaceHero
+        accent="violet"
+        badge={
+          <div className="flex items-center gap-2">
+            <WorkspaceBadge variant="luxury">
+              <SparklesIcon size={12} className="text-[#8064A9]" />
+              Enterprise Scaling
+            </WorkspaceBadge>
+            <span className="text-[11px] font-bold text-[#8064A9] bg-white/80 border border-[#8064A9]/30 px-2.5 py-0.5 rounded-lg">
+              Specialist Advisory
+            </span>
+          </div>
+        }
+        title="Business Development & Scaling Support"
+        subtitle="Request specialized management consulting, cloud modernization, regional market expansion, or operational turnarounds directly from FIC domain specialists."
+      />
+
+      {/* ========================================================
+          2. FORM OR SUBMITTED STATE
+         ======================================================== */}
+      {isSubmitted ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <WorkspaceCard variant="violet" className="text-center py-12 px-6 space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#8064A9] to-[#9B7CC6] text-white flex items-center justify-center mx-auto shadow-lg">
+              <CheckCircleIcon size={32} />
             </div>
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                Business Development & Scaling Support
-              </h1>
-              <p className="text-xs text-slate-500">
-                Request specialized consulting, digital transformation, expansion, or restructuring.
+            <div className="space-y-1.5 max-w-lg mx-auto">
+              <h3 className="text-xl font-black text-[#29302D]">Scaling Request Registered!</h3>
+              <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
+                FIC Business Development wing has received your diagnostic requirement for <strong className="text-[#29302D]">{businessName}</strong>. A dedicated sector director will coordinate with you within 48 hours.
               </p>
             </div>
-          </div>
-        </div>
-
-        {isSubmitted ? (
-          <Card className="shadow-md text-center py-10">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
-              <CheckCircleIcon size={28} />
+            <div className="pt-4 flex justify-center gap-3">
+              <WorkspaceButton
+                variant="violet"
+                size="md"
+                onClick={() => {
+                  setBusinessName('');
+                  setCurrentChallenges('');
+                  setExpectedOutcomes('');
+                  setIsSubmitted(false);
+                }}
+              >
+                Submit Another Scaling Requirement
+              </WorkspaceButton>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Request Registered!</h3>
-            <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed mb-6">
-              FIC Business Development wing has received your requirement for <strong>{businessName}</strong>. A domain specialist will contact you with diagnostic steps.
-            </p>
-            <Button variant="primary" size="sm" onClick={() => setIsSubmitted(false)}>
-              Submit Another Request
-            </Button>
-          </Card>
-        ) : (
-          <Card className="shadow-md">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <Input
-                label="Enterprise / Business Name"
-                placeholder="e.g. Tiruppur Weaving Unit No. 4"
+          </WorkspaceCard>
+        </motion.div>
+      ) : (
+        <WorkspaceCard variant="default">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            
+            {/* Business Name */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-[#29302D] block">
+                Enterprise / Business Entity Name <span className="text-[#C66B52]">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Tiruppur Weaving Unit No. 4 / Apex Logistics"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
                 required
+                className="w-full text-xs sm:text-sm p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#8064A9] bg-white text-[#29302D] placeholder-[#77786E]/60 shadow-2xs"
               />
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 block">Required Service Area</label>
-                <select
-                  className="w-full text-xs px-3 py-2 border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  value={supportType}
-                  onChange={(e) => setSupportType(e.target.value)}
-                >
-                  <option value="BUSINESS_PLANNING">Strategic Business Planning</option>
-                  <option value="SETUP_GUIDANCE">New Entity Setup & Licensing</option>
-                  <option value="MARKET_RESEARCH">Market Research & Customer Discovery</option>
-                  <option value="BRANDING_MARKETING">Branding & Digital Acquisition</option>
-                  <option value="TECHNOLOGY_DEVELOPMENT">Technology & Cloud Software Modernization</option>
-                  <option value="OPERATIONAL_IMPROVEMENT">Operational & Factory Floor Lean Optimization</option>
-                  <option value="EXPANSION_SCALING">Regional Expansion & Distributor Expansion</option>
-                  <option value="GENERAL_CONSULTANCY">General Business Advisory</option>
-                </select>
-              </div>
+            {/* Support Type */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-[#29302D] block">
+                Required Growth & Development Area
+              </label>
+              <select
+                className="w-full text-xs sm:text-sm p-3.5 border border-[#EADFCF] rounded-2xl bg-white text-[#29302D] focus:outline-none focus:ring-2 focus:ring-[#8064A9] shadow-2xs font-semibold"
+                value={supportType}
+                onChange={(e) => setSupportType(e.target.value)}
+              >
+                <option value="BUSINESS_PLANNING">Strategic Business Planning & Turnaround</option>
+                <option value="SETUP_GUIDANCE">New Entity Setup & Statutory Compliance</option>
+                <option value="MARKET_RESEARCH">Market Research & Customer Discovery</option>
+                <option value="BRANDING_MARKETING">Branding & Digital Customer Acquisition</option>
+                <option value="TECHNOLOGY_DEVELOPMENT">Technology Modernization & Cloud Systems</option>
+                <option value="OPERATIONAL_IMPROVEMENT">Operational & Factory Floor Lean Optimization</option>
+                <option value="EXPANSION_SCALING">Regional Expansion & Distributor Channel Onboarding</option>
+                <option value="GENERAL_CONSULTANCY">General Business Advisory & Mentoring</option>
+              </select>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 block">
-                  Current Operational Bottlenecks or Challenges <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  rows={3}
-                  className="w-full text-xs p-3 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Describe what is currently limiting your growth or operational efficiency..."
-                  value={currentChallenges}
-                  onChange={(e) => setCurrentChallenges(e.target.value)}
-                  required
-                ></textarea>
-              </div>
+            {/* Current Challenges */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-[#29302D] block">
+                Current Operational Bottlenecks or Challenges <span className="text-[#C66B52]">*</span>
+              </label>
+              <textarea
+                rows={3}
+                className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#8064A9] bg-white text-[#29302D] placeholder-[#77786E]/60 shadow-2xs leading-relaxed"
+                placeholder="Describe current pain points, working capital issues, legacy bottlenecks, or market headwinds..."
+                value={currentChallenges}
+                onChange={(e) => setCurrentChallenges(e.target.value)}
+                required
+              ></textarea>
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 block">
-                  Target Objectives & Milestones <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  rows={3}
-                  className="w-full text-xs p-3 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g. Double monthly order volume, launch cloud billing, obtain export accreditation..."
-                  value={expectedOutcomes}
-                  onChange={(e) => setExpectedOutcomes(e.target.value)}
-                  required
-                ></textarea>
-              </div>
+            {/* Expected Outcomes */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-[#29302D] block">
+                Target Objectives & Desired Milestones <span className="text-[#C66B52]">*</span>
+              </label>
+              <textarea
+                rows={3}
+                className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#8064A9] bg-white text-[#29302D] placeholder-[#77786E]/60 shadow-2xs leading-relaxed"
+                placeholder="e.g. Double monthly output, establish 20 state-wide distributors, modernize ERP, obtain export accreditation..."
+                value={expectedOutcomes}
+                onChange={(e) => setExpectedOutcomes(e.target.value)}
+                required
+              ></textarea>
+            </div>
 
-              <div className="pt-4 flex justify-end">
-                <Button variant="primary" type="submit" isLoading={isLoading}>
-                  Submit Scaling Request
-                  <ArrowRightIcon className="ml-2" size={16} />
-                </Button>
+            {/* Governance note */}
+            <div className="p-4 rounded-2xl bg-[#F4EEFB] border border-[#8064A9]/30 text-xs text-[#29302D] flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-[#8064A9]/15 text-[#8064A9] flex items-center justify-center shrink-0">
+                <ShieldCheckIcon size={16} />
               </div>
-            </form>
-          </Card>
-        )}
-      </div>
-    </div>
+              <p className="text-[11px] text-[#77786E] leading-relaxed">
+                All business financial metrics and operational figures are encrypted. Only designated FIC senior consultants access diagnostic files.
+              </p>
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-2 flex justify-end">
+              <WorkspaceButton
+                variant="violet"
+                size="md"
+                type="submit"
+                loading={isLoading}
+                icon={<ArrowRightIcon size={15} />}
+              >
+                Submit Scaling Request
+              </WorkspaceButton>
+            </div>
+          </form>
+        </WorkspaceCard>
+      )}
+    </WorkspaceShell>
   );
 };
 
+export default BusinessDevPage;

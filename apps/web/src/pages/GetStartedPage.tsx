@@ -239,32 +239,28 @@ export const GetStartedPage: React.FC = () => {
                         {isLeft ? (
                           /* Step 1 or Step 3 Text (Right-aligned, NO BOX) */
                           <div
-                            className={`text-right transition-all duration-500 ${
-                              isReached
+                            className={`text-right transition-all duration-500 ${isReached
                                 ? 'opacity-100 translate-x-0'
                                 : 'opacity-30 -translate-x-3'
-                            }`}
+                              }`}
                           >
                             <span
-                              className={`text-xs font-black uppercase tracking-wider block mb-1 transition-colors duration-300 ${
-                                isReached ? step.textActiveColor : 'text-slate-400'
-                              }`}
+                              className={`text-xs font-black uppercase tracking-wider block mb-1 transition-colors duration-300 ${isReached ? step.textActiveColor : 'text-slate-400'
+                                }`}
                             >
                               Step 0{step.num}
                             </span>
 
                             <h3
-                              className={`text-lg sm:text-xl font-bold leading-snug transition-colors duration-300 ${
-                                isReached ? step.titleActiveColor : 'text-slate-400'
-                              }`}
+                              className={`text-lg sm:text-xl font-bold leading-snug transition-colors duration-300 ${isReached ? step.titleActiveColor : 'text-slate-400'
+                                }`}
                             >
                               {step.title}
                             </h3>
 
                             <p
-                              className={`text-xs sm:text-sm mt-1 transition-colors duration-300 ${
-                                isReached ? 'text-slate-600 font-normal' : 'text-slate-400'
-                              }`}
+                              className={`text-xs sm:text-sm mt-1 transition-colors duration-300 ${isReached ? 'text-slate-600 font-normal' : 'text-slate-400'
+                                }`}
                             >
                               {step.oneLiner}
                             </p>
@@ -278,11 +274,10 @@ export const GetStartedPage: React.FC = () => {
                       {/* Center Column: Node Circle (Directly on S-curve) */}
                       <div className="col-span-2 flex items-center justify-center">
                         <div
-                          className={`w-12 h-12 rounded-full flex items-center justify-center font-extrabold text-sm transition-all duration-500 select-none ${
-                            isReached
+                          className={`w-12 h-12 rounded-full flex items-center justify-center font-extrabold text-sm transition-all duration-500 select-none ${isReached
                               ? `${step.bgActiveColor} text-white ring-4 ${step.ringActiveColor} ${step.shadowActiveColor} shadow-lg scale-110`
                               : 'bg-white text-slate-400 border-2 border-slate-300 scale-90'
-                          }`}
+                            }`}
                         >
                           <span className="text-xs font-black">
                             {isReached && scrollProgress >= step.threshold + 0.15
@@ -297,32 +292,28 @@ export const GetStartedPage: React.FC = () => {
                         {!isLeft ? (
                           /* Step 2 or Step 4 Text (Left-aligned, NO BOX) */
                           <div
-                            className={`text-left transition-all duration-500 ${
-                              isReached
+                            className={`text-left transition-all duration-500 ${isReached
                                 ? 'opacity-100 translate-x-0'
                                 : 'opacity-30 translate-x-3'
-                            }`}
+                              }`}
                           >
                             <span
-                              className={`text-xs font-black uppercase tracking-wider block mb-1 transition-colors duration-300 ${
-                                isReached ? step.textActiveColor : 'text-slate-400'
-                              }`}
+                              className={`text-xs font-black uppercase tracking-wider block mb-1 transition-colors duration-300 ${isReached ? step.textActiveColor : 'text-slate-400'
+                                }`}
                             >
                               Step 0{step.num}
                             </span>
 
                             <h3
-                              className={`text-lg sm:text-xl font-bold leading-snug transition-colors duration-300 ${
-                                isReached ? step.titleActiveColor : 'text-slate-400'
-                              }`}
+                              className={`text-lg sm:text-xl font-bold leading-snug transition-colors duration-300 ${isReached ? step.titleActiveColor : 'text-slate-400'
+                                }`}
                             >
                               {step.title}
                             </h3>
 
                             <p
-                              className={`text-xs sm:text-sm mt-1 transition-colors duration-300 ${
-                                isReached ? 'text-slate-600 font-normal' : 'text-slate-400'
-                              }`}
+                              className={`text-xs sm:text-sm mt-1 transition-colors duration-300 ${isReached ? 'text-slate-600 font-normal' : 'text-slate-400'
+                                }`}
                             >
                               {step.oneLiner}
                             </p>
@@ -337,40 +328,35 @@ export const GetStartedPage: React.FC = () => {
                     {/* MOBILE LAYOUT (< md screens: Simple clean text, NO BOX) */}
                     <div className="md:hidden flex items-start gap-4 pl-1">
                       <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition-all duration-300 ${
-                          isReached
+                        className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition-all duration-300 ${isReached
                             ? `${step.bgActiveColor} text-white shadow-md ring-4 ${step.ringActiveColor} scale-105`
                             : 'bg-white text-slate-400 border border-slate-300'
-                        }`}
+                          }`}
                       >
                         {step.num}
                       </div>
 
                       <div
-                        className={`flex-1 transition-all duration-300 ${
-                          isReached ? 'opacity-100' : 'opacity-35'
-                        }`}
+                        className={`flex-1 transition-all duration-300 ${isReached ? 'opacity-100' : 'opacity-35'
+                          }`}
                       >
                         <span
-                          className={`text-[10px] font-black uppercase block ${
-                            isReached ? step.textActiveColor : 'text-slate-400'
-                          }`}
+                          className={`text-[10px] font-black uppercase block ${isReached ? step.textActiveColor : 'text-slate-400'
+                            }`}
                         >
                           Step 0{step.num}
                         </span>
 
                         <h3
-                          className={`text-sm font-bold leading-tight ${
-                            isReached ? 'text-slate-900' : 'text-slate-400'
-                          }`}
+                          className={`text-sm font-bold leading-tight ${isReached ? 'text-slate-900' : 'text-slate-400'
+                            }`}
                         >
                           {step.title}
                         </h3>
 
                         <p
-                          className={`text-xs mt-0.5 ${
-                            isReached ? 'text-slate-600' : 'text-slate-400'
-                          }`}
+                          className={`text-xs mt-0.5 ${isReached ? 'text-slate-600' : 'text-slate-400'
+                            }`}
                         >
                           {step.oneLiner}
                         </p>

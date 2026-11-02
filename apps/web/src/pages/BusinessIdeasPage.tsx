@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
-import { Card, Button, Input, Badge } from '@fic/ui';
-import { LightbulbIcon, CheckCircleIcon, ArrowRightIcon } from '../components/Icons';
+import { motion } from 'framer-motion';
+import {
+  WorkspaceShell,
+  WorkspaceHero,
+  WorkspaceCard,
+  WorkspaceButton,
+  WorkspaceBadge
+} from '../components/workspace/WorkspaceComponents';
+import { LightbulbIcon, CheckCircleIcon, ArrowRightIcon, SparklesIcon, ShieldCheckIcon } from '../components/Icons';
 import { apiRequest } from '../services/api';
 
 export const BusinessIdeasPage: React.FC = () => {
@@ -53,123 +60,183 @@ export const BusinessIdeasPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-slate-50 min-h-screen py-10">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
-              <LightbulbIcon size={22} />
+    <WorkspaceShell maxWidth="4xl">
+      {/* ========================================================
+          1. HERO HEADER
+         ======================================================== */}
+      <WorkspaceHero
+        accent="amber"
+        badge={
+          <div className="flex items-center gap-2">
+            <WorkspaceBadge variant="luxury">
+              <SparklesIcon size={12} className="text-[#D99B43]" />
+              FIC Incubation Desk
+            </WorkspaceBadge>
+            <span className="text-[11px] font-bold text-[#D99B43] bg-white/80 border border-[#D99B43]/30 px-2.5 py-0.5 rounded-lg">
+              Feasibility & Mentorship
+            </span>
+          </div>
+        }
+        title="Submit Business Idea for Incubation"
+        subtitle="Get your concept validated by experienced industry mentors and FIC consultants. We evaluate business viability, market size, technical feasibility, and prepare strategic roadmaps."
+      />
+
+      {/* ========================================================
+          2. FORM OR SUBMITTED STATE
+         ======================================================== */}
+      {isSubmitted ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <WorkspaceCard variant="amber" className="text-center py-12 px-6 space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#2E7D32] to-[#4CAF50] text-white flex items-center justify-center mx-auto shadow-lg">
+              <CheckCircleIcon size={32} />
             </div>
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                Submit Business Idea for FIC Incubation
-              </h1>
-              <p className="text-xs text-slate-500">
-                Get your concept validated by experienced industry mentors and FIC consultants.
+            <div className="space-y-1.5 max-w-lg mx-auto">
+              <h3 className="text-xl font-black text-[#29302D]">Idea Submitted Successfully!</h3>
+              <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
+                Your business concept <strong className="text-[#29302D]">"{title}"</strong> has been securely logged with the FIC Incubation Desk. An industry advisor will evaluate initial feasibility within 3 business days.
               </p>
             </div>
-          </div>
-        </div>
-
-        {isSubmitted ? (
-          <Card className="shadow-md text-center py-10">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4">
-              <CheckCircleIcon size={28} />
+            <div className="pt-4 flex justify-center gap-3">
+              <WorkspaceButton
+                variant="primary"
+                size="md"
+                onClick={() => {
+                  setTitle('');
+                  setDescription('');
+                  setTargetMarket('');
+                  setIsSubmitted(false);
+                }}
+              >
+                Submit Another Business Idea
+              </WorkspaceButton>
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Idea Submitted Successfully!</h3>
-            <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed mb-6">
-              Your business concept <strong>"{title}"</strong> has been securely logged with the FIC Incubation Desk. An advisor will review feasibility within 3 business days.
-            </p>
-            <Button variant="primary" size="sm" onClick={() => setIsSubmitted(false)}>
-              Submit Another Idea
-            </Button>
-          </Card>
-        ) : (
-          <Card className="shadow-md">
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <Input
-                label="Business Idea Title"
+          </WorkspaceCard>
+        </motion.div>
+      ) : (
+        <WorkspaceCard variant="default">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            
+            {/* Idea Title */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-[#29302D] block">
+                Business Idea Title <span className="text-[#C66B52]">*</span>
+              </label>
+              <input
+                type="text"
                 placeholder="e.g. AI-driven Supply Chain Automation for Garments"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
+                className="w-full text-xs sm:text-sm p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D99B43] bg-white text-[#29302D] placeholder-[#77786E]/60 shadow-2xs"
               />
+            </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-700 block">
-                  Detailed Concept Description <span className="text-red-500">*</span>
+            {/* Concept Description */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-[#29302D] block">
+                Detailed Concept Description <span className="text-[#C66B52]">*</span>
+              </label>
+              <textarea
+                rows={4}
+                className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D99B43] bg-white text-[#29302D] placeholder-[#77786E]/60 shadow-2xs leading-relaxed"
+                placeholder="Explain what core problem your idea solves, how it works, target customers, and what makes it commercially unique..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                required
+              ></textarea>
+            </div>
+
+            {/* Target Market & Stage */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-[#29302D] block">
+                  Target Market / Geography <span className="text-[#C66B52]">*</span>
                 </label>
-                <textarea
-                  rows={4}
-                  className="w-full text-xs p-3 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Explain what problem your idea solves, how it works, and what makes it unique..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
-                ></textarea>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  label="Target Market / Geography"
-                  placeholder="e.g. Tamil Nadu textile hubs, Pan-India MSMEs"
+                <input
+                  type="text"
+                  placeholder="e.g. Tamil Nadu textile hubs, Tier-2 MSMEs"
                   value={targetMarket}
                   onChange={(e) => setTargetMarket(e.target.value)}
                   required
+                  className="w-full text-xs sm:text-sm p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D99B43] bg-white text-[#29302D] placeholder-[#77786E]/60 shadow-2xs"
                 />
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-slate-700 block">Current Stage</label>
-                  <select
-                    className="w-full text-xs px-3 py-2 border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={stage}
-                    onChange={(e) => setStage(e.target.value)}
-                  >
-                    <option value="IDEA">Idea on Paper</option>
-                    <option value="PROTOTYPE">Prototype / MVP Ready</option>
-                    <option value="EARLY_TRACTION">Early Customers / Traction</option>
-                    <option value="GROWTH">Ready for Scale</option>
-                  </select>
-                </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-700 block">
-                  What Support Do You Need from FIC?
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-[#29302D] block">
+                  Current Maturity Stage
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {supportOptions.map((opt, i) => {
-                    const isSelected = supportNeeded.includes(opt);
-                    return (
-                      <button
-                        type="button"
-                        key={i}
-                        onClick={() => toggleSupport(opt)}
-                        className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${
-                          isSelected
-                            ? 'bg-blue-600 text-white border-blue-600 font-semibold'
-                            : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                        }`}
-                      >
-                        {isSelected ? '✓ ' : '+ '}
-                        {opt}
-                      </button>
-                    );
-                  })}
-                </div>
+                <select
+                  className="w-full text-xs sm:text-sm p-3.5 border border-[#EADFCF] rounded-2xl bg-white text-[#29302D] focus:outline-none focus:ring-2 focus:ring-[#D99B43] shadow-2xs font-semibold"
+                  value={stage}
+                  onChange={(e) => setStage(e.target.value)}
+                >
+                  <option value="IDEA">Idea on Paper</option>
+                  <option value="PROTOTYPE">Prototype / MVP Ready</option>
+                  <option value="EARLY_TRACTION">Early Customers / Traction</option>
+                  <option value="GROWTH">Ready for Scale</option>
+                </select>
               </div>
+            </div>
 
-              <div className="pt-4 flex justify-end">
-                <Button variant="primary" type="submit" isLoading={isLoading}>
-                  Submit Idea for FIC Review
-                  <ArrowRightIcon className="ml-2" size={16} />
-                </Button>
+            {/* Support Needed Multi-select Pills */}
+            <div className="space-y-2.5">
+              <label className="text-xs font-black text-[#29302D] block">
+                What Support Do You Need from FIC?
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {supportOptions.map((opt, i) => {
+                  const isSelected = supportNeeded.includes(opt);
+                  return (
+                    <button
+                      type="button"
+                      key={i}
+                      onClick={() => toggleSupport(opt)}
+                      className={`text-xs px-3.5 py-2 rounded-xl border transition-all duration-200 cursor-pointer ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-[#D99B43] to-[#B87A28] text-white border-transparent font-black shadow-xs'
+                          : 'bg-white text-[#77786E] border-[#EADFCF] hover:bg-[#FDF6E9]/60 hover:text-[#29302D] font-bold'
+                      }`}
+                    >
+                      {isSelected ? '✓ ' : '+ '}
+                      {opt}
+                    </button>
+                  );
+                })}
               </div>
-            </form>
-          </Card>
-        )}
-      </div>
-    </div>
+            </div>
+
+            {/* Confidentiality Notice */}
+            <div className="p-4 rounded-2xl bg-[#FDF6E9] border border-[#D99B43]/30 text-xs text-[#29302D] flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-[#D99B43]/15 text-[#9C6818] flex items-center justify-center shrink-0">
+                <ShieldCheckIcon size={16} />
+              </div>
+              <p className="text-[11px] text-[#77786E] leading-relaxed">
+                FIC guarantees proprietary IP protection. Your concept is handled strictly under non-disclosure protocol and is reviewed only by accredited FIC consultants.
+              </p>
+            </div>
+
+            {/* Submit Button */}
+            <div className="pt-2 flex justify-end">
+              <WorkspaceButton
+                variant="amber"
+                size="md"
+                type="submit"
+                loading={isLoading}
+                icon={<ArrowRightIcon size={15} />}
+              >
+                Submit Idea for FIC Review
+              </WorkspaceButton>
+            </div>
+          </form>
+        </WorkspaceCard>
+      )}
+    </WorkspaceShell>
   );
 };
 
+export default BusinessIdeasPage;

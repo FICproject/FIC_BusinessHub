@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Button, Badge, Card } from '@fic/ui';
+import { motion } from 'framer-motion';
 import { getStoredUser, apiRequest, getUserRequests, AuthenticatedUser } from '../services/api';
+import {
+  WorkspaceShell,
+  WorkspaceHero,
+  WorkspaceCard,
+  WorkspaceKpi,
+  WorkspaceButton,
+  WorkspaceBadge
+} from '../components/workspace/WorkspaceComponents';
 import {
   BriefcaseIcon,
   ShieldCheckIcon,
@@ -12,7 +20,8 @@ import {
   HandshakeIcon,
   ArrowRightIcon,
   LockIcon,
-  CalendarIcon
+  CalendarIcon,
+  SparklesIcon
 } from '../components/Icons';
 
 export const DashboardPage: React.FC = () => {
@@ -34,7 +43,6 @@ export const DashboardPage: React.FC = () => {
       if (res?.data && Array.isArray(res.data)) {
         setActiveRequests(res.data);
       } else {
-        // Fallback user-isolated requests
         const userSpecific = getUserRequests(stored.id || stored.userId);
         setActiveRequests(userSpecific);
       }
@@ -45,261 +53,370 @@ export const DashboardPage: React.FC = () => {
 
   if (!user) return null;
 
+  const quickActions = [
+    {
+      title: 'Browse Marketplace',
+      subtitle: 'Universal verified services',
+      icon: <BriefcaseIcon size={20} />,
+      path: '/marketplace',
+      gradient: 'from-[#C66B52] to-[#E58C72]',
+      borderHover: 'hover:border-[#E58C72]',
+      bgHover: 'hover:bg-[#FFF4F0]/60'
+    },
+    {
+      title: 'My Services',
+      subtitle: 'Add & manage capabilities',
+      icon: <ShieldCheckIcon size={20} />,
+      path: '/my-services',
+      gradient: 'from-[#8064A9] to-[#9B7CC6]',
+      borderHover: 'hover:border-[#8064A9]',
+      bgHover: 'hover:bg-[#F3EEFA]/60'
+    },
+    {
+      title: 'Submit Business Idea',
+      subtitle: 'Incubation & validation',
+      icon: <LightbulbIcon size={20} />,
+      path: '/business-ideas',
+      gradient: 'from-[#D99B43] to-[#F5B453]',
+      borderHover: 'hover:border-[#D99B43]',
+      bgHover: 'hover:bg-[#FDF6E9]/60'
+    },
+    {
+      title: 'Business Scaling',
+      subtitle: 'Technology & expansion',
+      icon: <RocketIcon size={20} />,
+      path: '/business-development',
+      gradient: 'from-[#8064A9] to-[#D78E9A]',
+      borderHover: 'hover:border-[#8064A9]',
+      bgHover: 'hover:bg-[#F9F5FD]/60'
+    },
+    {
+      title: 'Investment & Funding',
+      subtitle: 'Private syndicates',
+      icon: <TrendingUpIcon size={20} />,
+      path: '/investment',
+      gradient: 'from-[#D99B43] to-[#C66B52]',
+      borderHover: 'hover:border-[#D99B43]',
+      bgHover: 'hover:bg-[#FCFAF5]/60'
+    },
+    {
+      title: 'B2B Partnerships',
+      subtitle: 'Tie-ups & distributors',
+      icon: <HandshakeIcon size={20} />,
+      path: '/partnerships',
+      gradient: 'from-[#C66B52] to-[#D78E9A]',
+      borderHover: 'hover:border-[#C66B52]',
+      bgHover: 'hover:bg-[#FFF6F7]/60'
+    },
+    {
+      title: 'Meetings',
+      subtitle: 'Facilitated consultations',
+      icon: <CalendarIcon size={20} />,
+      path: '/meetings',
+      gradient: 'from-[#29302D] to-[#8064A9]',
+      borderHover: 'hover:border-[#29302D]',
+      bgHover: 'hover:bg-[#F5EBDD]/60'
+    }
+  ];
+
   return (
-    <div className="bg-slate-100/70 min-h-screen py-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        {/* Welcome & Member Status Banner */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                {user.subcategories && user.subcategories.length > 0 ? (
-                  user.subcategories.map((sub, idx) => (
-                    <span
-                      key={idx}
-                      className="text-xs font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-md"
-                    >
-                      {sub}
-                    </span>
-                  ))
-                ) : user.subCategory ? (
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-md">
-                    {user.subCategory}
-                  </span>
-                ) : (
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-md">
-                    VERIFIED MEMBER
-                  </span>
-                )}
-                <Badge variant={user.accountStatus === 'ACTIVE' ? 'success' : 'warning'}>
-                  {user.accountStatus || 'Active'} Account
-                </Badge>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                Welcome back, {user.fullName || 'Member'}!
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Your FIC Business Hub ecosystem dashboard is fully active and verified.
-              </p>
+    <WorkspaceShell maxWidth="7xl">
+      {/* ========================================================
+          1. WELCOME & STATUS HERO
+         ======================================================== */}
+      <WorkspaceHero
+        accent="coral"
+        badge={
+          <div className="flex flex-wrap items-center gap-2">
+            {user.subcategories && user.subcategories.length > 0 ? (
+              user.subcategories.map((sub, idx) => (
+                <span
+                  key={idx}
+                  className="text-[11px] font-black uppercase tracking-wider text-[#C66B52] bg-white/80 border border-[#E58C72]/40 px-2.5 py-0.5 rounded-lg shadow-2xs"
+                >
+                  {sub}
+                </span>
+              ))
+            ) : user.subCategory ? (
+              <span className="text-[11px] font-black uppercase tracking-wider text-[#C66B52] bg-white/80 border border-[#E58C72]/40 px-2.5 py-0.5 rounded-lg shadow-2xs">
+                {user.subCategory}
+              </span>
+            ) : (
+              <span className="text-[11px] font-black uppercase tracking-wider text-[#C66B52] bg-white/80 border border-[#E58C72]/40 px-2.5 py-0.5 rounded-lg shadow-2xs">
+                VERIFIED MEMBER
+              </span>
+            )}
+            <WorkspaceBadge variant={user.accountStatus === 'ACTIVE' ? 'active' : 'pending'}>
+              {user.accountStatus || 'Active'} Account
+            </WorkspaceBadge>
+          </div>
+        }
+        title={`Welcome back, ${user.fullName || 'Member'}!`}
+        subtitle="Your FIC Business Hub ecosystem workspace is fully active and verified. Access universal capabilities, confidential opportunities, and track ongoing coordination."
+        rightActions={
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Membership Validity Pill */}
+            <div className="px-4 py-2.5 rounded-2xl bg-white/90 border border-[#D99B43]/40 shadow-xs text-xs space-y-0.5">
+              <span className="text-[#9C6818] font-black block">
+                {user.membershipPlan || '1st Year Membership'}
+              </span>
+              <span className="text-[#B87A28] text-[11px] font-bold">
+                {user.membershipExpiryDate || 'Valid for 365 Days (₹99)'}
+              </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-xs">
-                <span className="text-amber-800 font-bold block">
-                  {user.membershipPlan || '1st Year Membership'}
-                </span>
-                <span className="text-amber-600 text-[11px]">
-                  {user.membershipExpiryDate || 'Valid for 365 Days (₹99)'}
-                </span>
+            {/* KYC Status Pill */}
+            <div className="px-4 py-2.5 rounded-2xl bg-white/90 border border-[#2E7D32]/30 shadow-xs text-xs flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-[#2E7D32]/15 flex items-center justify-center text-[#2E7D32] shrink-0">
+                <ShieldCheckIcon size={16} />
               </div>
-              <div className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs flex items-center gap-2">
-                <ShieldCheckIcon size={18} className="text-emerald-600" />
-                <div>
-                  <span className="text-emerald-900 font-bold block">
-                    {user.isKycApproved ? 'KYC Verified' : 'KYC Under Review'}
-                  </span>
-                  <span className="text-emerald-600 text-[11px]">
-                    {user.isKycApproved ? 'Sector Approved' : 'Submitted for Approval'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 4 Metric Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <span className="text-xs text-slate-500 font-medium block">Active FIC Requests</span>
-            <div className="text-2xl font-bold text-slate-900 mt-1">{activeRequests.length}</div>
-            <span className="text-[11px] text-blue-600 font-medium mt-1 block">In FIC Coordination</span>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <span className="text-xs text-slate-500 font-medium block">Submitted Ideas</span>
-            <div className="text-2xl font-bold text-slate-900 mt-1">1</div>
-            <span className="text-[11px] text-emerald-600 font-medium mt-1 block">Review Scheduled</span>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <span className="text-xs text-slate-500 font-medium block">Scaling Support</span>
-            <div className="text-2xl font-bold text-slate-900 mt-1">Available</div>
-            <span className="text-[11px] text-purple-600 font-medium mt-1 block">Specialists Ready</span>
-          </div>
-
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-            <span className="text-xs text-slate-500 font-medium block">Confidential Channel</span>
-            <div className="text-2xl font-bold text-emerald-600 mt-1">Active</div>
-            <span className="text-[11px] text-slate-500 mt-1 block">Private Investments</span>
-          </div>
-        </div>
-
-        {/* Quick Opportunity Launcher */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-base font-bold text-slate-900">
-              Opportunity Actions & Services
-            </h3>
-            <span className="text-xs text-slate-400">Moderated by FIC Intermediary</span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-            <Link to="/marketplace">
-              <div className="p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 transition-all text-center space-y-2 cursor-pointer h-full flex flex-col justify-center items-center">
-                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
-                  <BriefcaseIcon size={20} />
-                </div>
-                <strong className="text-xs text-slate-900 block font-semibold">Browse Marketplace</strong>
-                <span className="text-[11px] text-slate-500 leading-tight">Universal verified services</span>
-              </div>
-            </Link>
-
-            <Link to="/my-services">
-              <div className="p-4 rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/40 transition-all text-center space-y-2 cursor-pointer h-full flex flex-col justify-center items-center">
-                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
-                  <ShieldCheckIcon size={20} />
-                </div>
-                <strong className="text-xs text-slate-900 block font-semibold">My Services</strong>
-                <span className="text-[11px] text-slate-500 leading-tight">Manage & add capabilities</span>
-              </div>
-            </Link>
-
-            <Link to="/business-ideas">
-              <div className="p-4 rounded-xl border border-slate-200 hover:border-amber-500 hover:bg-amber-50/40 transition-all text-center space-y-2 cursor-pointer h-full flex flex-col justify-center items-center">
-                <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
-                  <LightbulbIcon size={20} />
-                </div>
-                <strong className="text-xs text-slate-900 block font-semibold">Submit Business Idea</strong>
-                <span className="text-[11px] text-slate-500 leading-tight">Incubation & validation</span>
-              </div>
-            </Link>
-
-            <Link to="/business-development">
-              <div className="p-4 rounded-xl border border-slate-200 hover:border-purple-500 hover:bg-purple-50/40 transition-all text-center space-y-2 cursor-pointer h-full flex flex-col justify-center items-center">
-                <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
-                  <RocketIcon size={20} />
-                </div>
-                <strong className="text-xs text-slate-900 block font-semibold">Business Scaling</strong>
-                <span className="text-[11px] text-slate-500 leading-tight">Technology & expansion</span>
-              </div>
-            </Link>
-
-            <Link to="/investment">
-              <div className="p-4 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 transition-all text-center space-y-2 cursor-pointer h-full flex flex-col justify-center items-center">
-                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
-                  <TrendingUpIcon size={20} />
-                </div>
-                <strong className="text-xs text-slate-900 block font-semibold">Investment & Funding</strong>
-                <span className="text-[11px] text-slate-500 leading-tight">Private syndicates</span>
-              </div>
-            </Link>
-
-            <Link to="/partnerships">
-              <div className="p-4 rounded-xl border border-slate-200 hover:border-sky-500 hover:bg-sky-50/40 transition-all text-center space-y-2 cursor-pointer h-full flex flex-col justify-center items-center">
-                <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center">
-                  <HandshakeIcon size={20} />
-                </div>
-                <strong className="text-xs text-slate-900 block font-semibold">B2B Partnerships</strong>
-                <span className="text-[11px] text-slate-500 leading-tight">Tie-ups & distributors</span>
-              </div>
-            </Link>
-
-            <Link to="/meetings">
-              <div className="p-4 rounded-xl border border-slate-200 hover:border-[#8064A9] hover:bg-[#8064A9]/10 transition-all text-center space-y-2 cursor-pointer h-full flex flex-col justify-center items-center">
-                <div className="w-10 h-10 rounded-full bg-[#8064A9]/15 text-[#8064A9] flex items-center justify-center">
-                  <CalendarIcon size={20} />
-                </div>
-                <strong className="text-xs text-slate-900 block font-semibold">Meetings</strong>
-                <span className="text-[11px] text-slate-500 leading-tight">Facilitated consultations</span>
-              </div>
-            </Link>
-          </div>
-        </div>
-
-        {/* Active Requests Tracker & FIC Bulletin */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Active Requests */}
-          <div className="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
-                <h3 className="text-base font-bold text-slate-900">
+                <span className="text-[#1B5E20] font-black block">
+                  {user.isKycApproved ? 'KYC Verified' : 'KYC Under Review'}
+                </span>
+                <span className="text-[#2E7D32] text-[11px] font-semibold">
+                  {user.isKycApproved ? 'Sector Approved' : 'Submitted for Approval'}
+                </span>
+              </div>
+            </div>
+          </div>
+        }
+      />
+
+      {/* ========================================================
+          2. 4 EXECUTIVE KPI STAT CARDS
+         ======================================================== */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+        <WorkspaceKpi
+          title="Active Requests"
+          value={activeRequests.length}
+          subtitle="In FIC Coordination"
+          icon={<BriefcaseIcon size={18} />}
+          accent="coral"
+          trend="Live Tracker"
+          onClick={() => navigate('/my-requests')}
+        />
+        <WorkspaceKpi
+          title="Submitted Ideas"
+          value="1"
+          subtitle="Review Scheduled"
+          icon={<LightbulbIcon size={18} />}
+          accent="amber"
+          trend="Incubation"
+          onClick={() => navigate('/business-ideas')}
+        />
+        <WorkspaceKpi
+          title="Scaling Support"
+          value="Available"
+          subtitle="Specialists Ready"
+          icon={<RocketIcon size={18} />}
+          accent="violet"
+          trend="Advisory"
+          onClick={() => navigate('/business-development')}
+        />
+        <WorkspaceKpi
+          title="Confidential Channel"
+          value="Active"
+          subtitle="Private Deal Flow"
+          icon={<TrendingUpIcon size={18} />}
+          accent="emerald"
+          trend="Private Access"
+          onClick={() => navigate('/investment')}
+        />
+      </div>
+
+      {/* ========================================================
+          3. OPPORTUNITY ACTIONS & SERVICES (7 MODULES)
+         ======================================================== */}
+      <WorkspaceCard variant="glass" padded={false} className="overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#EADFCF] bg-white/60 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#C66B52]" />
+            <h2 className="text-base font-black text-[#29302D]">
+              Opportunity Actions & Services
+            </h2>
+          </div>
+          <span className="text-xs font-semibold text-[#77786E] hidden sm:inline">
+            Moderated by FIC Intermediary Governance
+          </span>
+        </div>
+
+        <div className="p-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
+            {quickActions.map((action, idx) => (
+              <motion.div
+                key={action.path}
+                whileHover={{ y: -3, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Link
+                  to={action.path}
+                  className={`p-4 rounded-2xl border border-[#EADFCF] ${action.borderHover} ${action.bgHover} bg-white/90 transition-all text-center space-y-2.5 cursor-pointer h-full flex flex-col justify-center items-center group shadow-2xs`}
+                >
+                  <div
+                    className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${action.gradient} text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform`}
+                  >
+                    {action.icon}
+                  </div>
+                  <strong className="text-xs text-[#29302D] block font-extrabold group-hover:text-[#C66B52] transition-colors">
+                    {action.title}
+                  </strong>
+                  <span className="text-[11px] text-[#77786E] leading-tight">
+                    {action.subtitle}
+                  </span>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </WorkspaceCard>
+
+      {/* ========================================================
+          4. ACTIVE REQUESTS TRACKER & FIC BULLETIN
+         ======================================================== */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        
+        {/* Left Column: Active Service Requests */}
+        <div className="lg:col-span-8">
+          <WorkspaceCard variant="default" padded={false} className="h-full flex flex-col">
+            <div className="px-6 py-4 border-b border-[#EADFCF] bg-[#FAF7F2]/60 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-black text-[#29302D]">
                   Active Service Requests & Coordination
                 </h3>
-                <span className="text-xs text-slate-500">Live tracker for your requirements</span>
+                <span className="text-xs text-[#77786E]">
+                  Live status of your requirements under FIC intermediary review
+                </span>
               </div>
               <Link to="/my-requests">
-                <Button variant="outline" size="sm">
-                  View All
-                </Button>
+                <WorkspaceButton variant="outline" size="sm">
+                  View All &rarr;
+                </WorkspaceButton>
               </Link>
             </div>
 
-            {activeRequests.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-500 space-y-2">
-                <p>No active service requests submitted yet for this account.</p>
-                <Link to="/marketplace" className="text-blue-600 font-bold hover:underline inline-block">
-                  Browse Marketplace to submit your first request &rarr;
-                </Link>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {activeRequests.map((req, idx) => (
-                  <div key={idx} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900">{req.serviceTitle || req.title}</h4>
-                      <span className="text-xs text-slate-500">Requested: {req.date || 'Active'}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={req.status === 'IN_PROGRESS' ? 'info' : 'warning'}>
-                        {req.statusText || req.status}
-                      </Badge>
-                    </div>
+            <div className="p-6 flex-1 flex flex-col justify-between">
+              {activeRequests.length === 0 ? (
+                <div className="py-12 text-center text-xs text-[#77786E] space-y-3">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FFF4F0] border border-[#E58C72]/30 text-[#C66B52] flex items-center justify-center mx-auto">
+                    <BriefcaseIcon size={22} />
                   </div>
-                ))}
+                  <div className="space-y-1">
+                    <p className="font-bold text-[#29302D]">No active requests yet</p>
+                    <p className="max-w-xs mx-auto">Browse the Universal Marketplace to submit requirements across any business sector.</p>
+                  </div>
+                  <Link to="/marketplace" className="inline-block pt-1">
+                    <WorkspaceButton variant="primary" size="sm">
+                      Browse Marketplace &rarr;
+                    </WorkspaceButton>
+                  </Link>
+                </div>
+              ) : (
+                <div className="divide-y divide-[#EADFCF]/60">
+                  {activeRequests.map((req, idx) => (
+                    <div
+                      key={idx}
+                      className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                    >
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-extrabold text-[#29302D] group-hover:text-[#C66B52] transition-colors">
+                          {req.serviceTitle || req.title}
+                        </h4>
+                        <div className="flex items-center gap-2 text-xs text-[#77786E]">
+                          <span>Requested: {req.date || 'Active'}</span>
+                          <span>•</span>
+                          <span className="text-[#8064A9] font-semibold">FIC Officer Assigned</span>
+                        </div>
+                      </div>
+                      <div className="shrink-0">
+                        <WorkspaceBadge
+                          variant={req.status === 'IN_PROGRESS' ? 'proposal' : 'pending'}
+                        >
+                          {req.statusText || req.status || 'Under Review'}
+                        </WorkspaceBadge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Privacy Safeguard Footer */}
+              <div className="pt-4 mt-6 border-t border-[#EADFCF] text-xs text-[#77786E] flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-[#C66B52]/10 text-[#C66B52] flex items-center justify-center shrink-0">
+                  <LockIcon size={13} />
+                </div>
+                <span>
+                  Provider communication is strictly coordinated by FIC Officers to maintain confidentiality and guarantee compliance.
+                </span>
               </div>
-            )}
-
-            <div className="pt-2 border-t border-slate-100 text-xs text-slate-500 flex items-center gap-2">
-              <LockIcon size={14} className="text-blue-600 shrink-0" />
-              <span>Provider communication is coordinated by FIC Officers to maintain privacy and agreement terms.</span>
             </div>
-          </div>
+          </WorkspaceCard>
+        </div>
 
-          {/* FIC Opportunity Bulletin */}
-          <div className="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">
-                FIC Opportunity Bulletin
-              </h3>
-              <Badge variant="success">Verified</Badge>
+        {/* Right Column: Opportunity Bulletin */}
+        <div className="lg:col-span-4">
+          <WorkspaceCard variant="amber" padded={false} className="h-full flex flex-col">
+            <div className="px-6 py-4 border-b border-[#D99B43]/30 bg-[#FDF6E9]/60 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <SparklesIcon size={18} className="text-[#D99B43]" />
+                <h3 className="text-sm font-black text-[#29302D]">
+                  FIC Opportunity Bulletin
+                </h3>
+              </div>
+              <WorkspaceBadge variant="luxury" size="sm">
+                Verified
+              </WorkspaceBadge>
             </div>
 
-            <div className="space-y-3">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-                <strong className="text-slate-900 block font-semibold">Universal Discovery Enabled</strong>
-                <p className="text-slate-600 leading-relaxed">
+            <div className="p-6 space-y-3.5 flex-1">
+              <div className="p-4 rounded-2xl bg-white/95 border border-[#D99B43]/30 shadow-2xs space-y-1.5 hover:border-[#D99B43] transition-colors">
+                <div className="flex items-center justify-between gap-2">
+                  <strong className="text-xs text-[#29302D] font-black">
+                    Universal Discovery Enabled
+                  </strong>
+                  <span className="text-[10px] font-bold text-[#D99B43] bg-[#D99B43]/15 px-2 py-0.5 rounded-md">
+                    All Sectors
+                  </span>
+                </div>
+                <p className="text-xs text-[#77786E] leading-relaxed">
                   As an approved member, you can browse listings across all 10 business sectors regardless of your primary category.
                 </p>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-                <strong className="text-slate-900 block font-semibold">Tiruppur Textile OEM Tie-Up</strong>
-                <p className="text-slate-600 leading-relaxed">
+              <div className="p-4 rounded-2xl bg-white/95 border border-[#8064A9]/30 shadow-2xs space-y-1.5 hover:border-[#8064A9] transition-colors">
+                <div className="flex items-center justify-between gap-2">
+                  <strong className="text-xs text-[#29302D] font-black">
+                    Tiruppur Textile OEM Tie-Up
+                  </strong>
+                  <span className="text-[10px] font-bold text-[#8064A9] bg-[#8064A9]/15 px-2 py-0.5 rounded-md">
+                    Manufacturing
+                  </span>
+                </div>
+                <p className="text-xs text-[#77786E] leading-relaxed">
                   Export-grade uniform stitching capacity open for franchise chains and school suppliers through FIC.
                 </p>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-                <strong className="text-slate-900 block font-semibold">Strict Regulatory Standards</strong>
-                <p className="text-slate-600 leading-relaxed">
+              <div className="p-4 rounded-2xl bg-white/95 border border-[#C66B52]/30 shadow-2xs space-y-1.5 hover:border-[#C66B52] transition-colors">
+                <div className="flex items-center justify-between gap-2">
+                  <strong className="text-xs text-[#29302D] font-black">
+                    Strict Regulatory Standards
+                  </strong>
+                  <span className="text-[10px] font-bold text-[#C66B52] bg-[#C66B52]/15 px-2 py-0.5 rounded-md">
+                    Compliance
+                  </span>
+                </div>
+                <p className="text-xs text-[#77786E] leading-relaxed">
                   FIC does not hold custody of investment funds. Financial expressions are strictly confidential introduction requests.
                 </p>
               </div>
             </div>
-          </div>
+          </WorkspaceCard>
         </div>
+
       </div>
-    </div>
+    </WorkspaceShell>
   );
 };
 

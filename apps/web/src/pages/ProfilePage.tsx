@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Badge, Button, Input } from '@fic/ui';
 import {
+  WorkspaceShell,
+  WorkspaceHero,
+  WorkspaceCard,
+  WorkspaceKpi,
+  WorkspaceButton,
+  WorkspaceBadge
+} from '../components/workspace/WorkspaceComponents';
+import {
   getStoredUser,
   updateUserProfile,
   removeAuthToken,
@@ -41,7 +49,8 @@ import {
   SearchIcon,
   AlertCircleIcon,
   ClockIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  SparklesIcon
 } from '../components/Icons';
 
 export const ProfilePage: React.FC = () => {
@@ -327,11 +336,11 @@ export const ProfilePage: React.FC = () => {
   const renewalShortfall = isRenewalSufficient ? 0 : renewalFee - availableBal;
 
   return (
-    <div className="space-y-8 pb-16">
+    <WorkspaceShell maxWidth="7xl">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#29302D] text-[#FCFAF6] px-5 py-3.5 rounded-xl shadow-2xl border border-[#D99B43]/50 flex items-center gap-3 animate-fade-in max-w-md">
-          <CheckCircleIcon size={20} className="text-[#27AE60] shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 bg-[#29302D] text-[#FCFAF6] px-5 py-3.5 rounded-2xl shadow-2xl border border-[#D99B43]/50 flex items-center gap-3 animate-fade-in max-w-md">
+          <CheckCircleIcon size={20} className="text-[#2E7D32] shrink-0" />
           <p className="text-xs sm:text-sm font-semibold">{toastMessage}</p>
         </div>
       )}
@@ -339,38 +348,38 @@ export const ProfilePage: React.FC = () => {
       {/* ========================================================
           A. HEADER IDENTITY & STANDING CARD
          ======================================================== */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm">
+      <div className="bg-white/95 rounded-3xl border border-[#EADFCF] p-6 sm:p-8 shadow-[0_4px_24px_-4px_rgba(41,48,45,0.06)] backdrop-blur-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#29302D] to-[#1E2421] text-[#D99B43] flex items-center justify-center font-black text-3xl shadow-md shrink-0 border border-[#D99B43]/30">
+            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#29302D] via-[#222725] to-[#1E2421] text-[#D99B43] flex items-center justify-center font-black text-3xl shadow-lg shrink-0 border border-[#D99B43]/40">
               {user.fullName?.charAt(0).toUpperCase() || 'M'}
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                <span className="text-[11px] font-mono font-bold text-[#77786E] bg-[#FAF7F2] border border-[#EADFCF] px-2.5 py-0.5 rounded-lg">
                   ID: {user.id || user.userId}
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <WorkspaceBadge variant="active" size="sm">
                   ● ACTIVE Account
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                </WorkspaceBadge>
+                <WorkspaceBadge variant="luxury" size="sm">
                   {user.membershipPlan || '1st Year Member'}
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                </WorkspaceBadge>
+                <WorkspaceBadge variant="proposal" size="sm">
                   KYC Verified
-                </span>
+                </WorkspaceBadge>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-2xl sm:text-3xl font-black text-[#29302D] tracking-tight">
                 {user.fullName}
               </h1>
               <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                <span className="px-2.5 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
+                <span className="px-3 py-1 rounded-xl bg-[#FFF4F0] text-[#C66B52] border border-[#E58C72]/30 text-xs font-black">
                   {user.primaryCategory || user.categoryName}
                 </span>
                 {(user.subcategories || [user.subCategory]).filter(Boolean).map((sub, idx) => (
                   <span
                     key={idx}
-                    className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200"
+                    className="px-3 py-1 rounded-xl bg-white text-[#77786E] text-xs font-bold border border-[#EADFCF]"
                   >
                     {sub}
                   </span>
@@ -380,13 +389,14 @@ export const ProfilePage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            <button
+            <WorkspaceButton
+              variant="charcoal"
+              size="md"
+              icon={<EditIcon size={16} />}
               onClick={handleOpenEdit}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-[#29302D] hover:bg-[#8064A9] text-white shadow-xs transition-colors"
             >
-              <EditIcon size={16} />
-              <span>Edit Profile</span>
-            </button>
+              Edit Profile
+            </WorkspaceButton>
           </div>
         </div>
       </div>
@@ -394,25 +404,25 @@ export const ProfilePage: React.FC = () => {
       {/* ========================================================
           B. UNIVERSAL MEMBER WALLET & BALANCES (SECTION 2 & 3)
          ======================================================== */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-3">
+      <div className="bg-white/95 rounded-3xl border border-[#EADFCF] p-6 sm:p-8 shadow-[0_4px_24px_-4px_rgba(41,48,45,0.05)] space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF] pb-4 gap-3">
           <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#27AE60]/10 text-[#27AE60] text-xs font-bold uppercase tracking-wider mb-1">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2E7D32]/10 text-[#2E7D32] text-xs font-black uppercase tracking-wider mb-1">
               <span>Universal Member Wallet</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
               Personal Wallet & Balances
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-[#77786E] mt-0.5">
               Secure, ledger-backed stored-value account with auditable transaction tracking.
             </p>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={() => setIsAddFundsModalOpen(true)}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-[#27AE60] hover:bg-[#219653] text-white shadow-xs transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-[#2E7D32] to-[#388E3C] hover:from-[#1B5E20] hover:to-[#2E7D32] text-white shadow-md transition-all cursor-pointer"
             >
               <PlusIcon size={16} />
               <span>Add Funds</span>
@@ -422,13 +432,13 @@ export const ProfilePage: React.FC = () => {
                 setWithdrawError('');
                 setIsWithdrawModalOpen(true);
               }}
-              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white border border-slate-300 hover:border-[#8064A9] text-slate-800 hover:text-[#8064A9] transition-colors"
+              className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-white border border-[#EADFCF] hover:border-[#8064A9] text-[#29302D] hover:text-[#8064A9] transition-all cursor-pointer shadow-2xs"
             >
               Withdraw Funds
             </button>
             <button
               onClick={() => setIsRenewModalOpen(true)}
-              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-[#FFF9F0] border border-[#D99B43] text-[#D99B43] hover:bg-[#D99B43] hover:text-white transition-colors"
+              className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-[#D99B43] to-[#B87A28] text-white shadow-md hover:from-[#C88A32] hover:to-[#9C6818] transition-all cursor-pointer"
             >
               Renew Membership
             </button>
@@ -438,53 +448,53 @@ export const ProfilePage: React.FC = () => {
         {/* 4 Primary Balance Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {/* 1. Available Balance */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-[#29302D] to-[#1E2421] text-white shadow-md border border-[#D99B43]/30">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#D99B43] block mb-1">
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-[#29302D] via-[#222725] to-[#1E2421] text-white shadow-lg border border-[#D99B43]/30">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#D99B43] block mb-1">
               Available Balance
             </span>
             <div className="text-2xl sm:text-3xl font-black text-[#FCFAF6]">
               ₹{(wallet?.availableBalance || 0).toLocaleString('en-IN')}
             </div>
-            <span className="text-[11px] text-slate-300 block mt-1.5">
+            <span className="text-[11px] text-white/70 block mt-1.5">
               Ready for renewal & services
             </span>
           </div>
 
           {/* 2. Pending Referral Rewards */}
-          <div className="p-5 rounded-2xl bg-amber-50/70 border border-amber-200">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 block mb-1">
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#FCFAF6] to-[#FDF6E9] border border-[#D99B43]/30 shadow-xs">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#9C6818] block mb-1">
               Pending Rewards
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-amber-900">
+            <div className="text-2xl sm:text-3xl font-black text-[#9C6818]">
               ₹{(wallet?.pendingBalance || 0).toLocaleString('en-IN')}
             </div>
-            <span className="text-[11px] text-amber-700 block mt-1.5">
+            <span className="text-[11px] text-[#B87A28] block mt-1.5 font-medium">
               Under verification review
             </span>
           </div>
 
           {/* 3. Total Referral Earnings */}
-          <div className="p-5 rounded-2xl bg-purple-50/70 border border-purple-200">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-800 block mb-1">
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#FAF8FD] to-[#F4EEFB] border border-[#8064A9]/30 shadow-xs">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#8064A9] block mb-1">
               Referral Earnings
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-purple-900">
+            <div className="text-2xl sm:text-3xl font-black text-[#8064A9]">
               ₹{(wallet?.totalReferralEarnings || 0).toLocaleString('en-IN')}
             </div>
-            <span className="text-[11px] text-purple-700 block mt-1.5">
+            <span className="text-[11px] text-[#8064A9]/80 block mt-1.5 font-medium">
               Approved rewards to date
             </span>
           </div>
 
           {/* 4. Total Wallet Credits */}
-          <div className="p-5 rounded-2xl bg-emerald-50/70 border border-emerald-200">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-800 block mb-1">
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#F6FBF7] to-[#E8F5E9] border border-[#2E7D32]/30 shadow-xs">
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#1B5E20] block mb-1">
               Total Credits
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-900">
+            <div className="text-2xl sm:text-3xl font-black text-[#1B5E20]">
               ₹{((wallet?.totalAdded || 0) + (wallet?.totalReferralEarnings || 0)).toLocaleString('en-IN')}
             </div>
-            <span className="text-[11px] text-emerald-700 block mt-1.5">
+            <span className="text-[11px] text-[#2E7D32] block mt-1.5 font-medium">
               Lifetime inflows & top-ups
             </span>
           </div>
@@ -492,39 +502,39 @@ export const ProfilePage: React.FC = () => {
 
         {/* Secondary Ledger Breakdown */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 text-xs">
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-500 block">For Renewal</span>
-            <strong className="text-slate-900 font-bold block mt-0.5">
+          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
+            <span className="text-[#77786E] block font-bold">For Renewal</span>
+            <strong className="text-[#29302D] font-black block mt-0.5">
               ₹{(wallet?.membershipEligibleBalance || 0).toLocaleString('en-IN')}
             </strong>
           </div>
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-500 block">For Withdrawal</span>
-            <strong className="text-slate-900 font-bold block mt-0.5">
+          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
+            <span className="text-[#77786E] block font-bold">For Withdrawal</span>
+            <strong className="text-[#29302D] font-black block mt-0.5">
               ₹{(wallet?.withdrawalEligibleBalance || 0).toLocaleString('en-IN')}
             </strong>
           </div>
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-500 block">Total Added</span>
-            <strong className="text-emerald-700 font-bold block mt-0.5">
+          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
+            <span className="text-[#77786E] block font-bold">Total Added</span>
+            <strong className="text-[#2E7D32] font-black block mt-0.5">
               ₹{(wallet?.totalAdded || 0).toLocaleString('en-IN')}
             </strong>
           </div>
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-500 block">Total Withdrawn</span>
-            <strong className="text-slate-900 font-bold block mt-0.5">
+          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
+            <span className="text-[#77786E] block font-bold">Total Withdrawn</span>
+            <strong className="text-[#29302D] font-black block mt-0.5">
               ₹{(wallet?.totalWithdrawn || 0).toLocaleString('en-IN')}
             </strong>
           </div>
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-500 block">Renewal Debits</span>
-            <strong className="text-slate-900 font-bold block mt-0.5">
+          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
+            <span className="text-[#77786E] block font-bold">Renewal Debits</span>
+            <strong className="text-[#29302D] font-black block mt-0.5">
               ₹{(wallet?.totalRenewalSpent || 0).toLocaleString('en-IN')}
             </strong>
           </div>
-          <div className="p-3 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-500 block">Wallet Standing</span>
-            <strong className="text-emerald-600 font-bold block mt-0.5">
+          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
+            <span className="text-[#77786E] block font-bold">Wallet Standing</span>
+            <strong className="text-[#2E7D32] font-black block mt-0.5">
               ● {wallet?.status || 'ACTIVE'}
             </strong>
           </div>
@@ -534,22 +544,22 @@ export const ProfilePage: React.FC = () => {
       {/* ========================================================
           C. REFERRAL PROGRAMME (SECTION 7 & 8)
          ======================================================== */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 gap-3">
+      <div className="bg-white/95 rounded-3xl border border-[#EADFCF] p-6 sm:p-8 shadow-[0_4px_24px_-4px_rgba(41,48,45,0.05)] space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF] pb-4 gap-3">
           <div>
-            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-xs font-bold uppercase tracking-wider mb-1">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-xs font-black uppercase tracking-wider mb-1">
               <span>Universal Member Rewards</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
               Referral Programme & Earnings
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-[#77786E] mt-0.5">
               Invite entrepreneurs and businesses to FIC Business Hub and earn ₹500 wallet reward per verified membership.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
+            <span className="px-3.5 py-1.5 rounded-xl bg-[#2E7D32]/10 text-[#1B5E20] text-xs font-black border border-[#2E7D32]/30 shadow-2xs">
               Reward: ₹500 per Referral
             </span>
           </div>
@@ -558,33 +568,33 @@ export const ProfilePage: React.FC = () => {
         {/* Unique Code & Link Boxes */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Referral Code */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+          <div className="p-5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] flex items-center justify-between gap-3 shadow-2xs">
             <div>
-              <span className="text-xs text-slate-500 block font-medium">Your Unique Referral Code</span>
-              <span className="text-lg font-black font-mono text-slate-900 tracking-wider block mt-0.5">
+              <span className="text-xs text-[#77786E] block font-bold">Your Unique Referral Code</span>
+              <span className="text-lg font-black font-mono text-[#29302D] tracking-wider block mt-0.5">
                 {referralData?.referralCode}
               </span>
             </div>
             <button
               onClick={handleCopyCode}
-              className="px-3.5 py-2 rounded-lg text-xs font-bold bg-white border border-slate-300 hover:border-[#8064A9] hover:text-[#8064A9] transition-colors shrink-0"
+              className="px-4 py-2 rounded-xl text-xs font-black bg-white border border-[#EADFCF] hover:border-[#8064A9] hover:text-[#8064A9] text-[#29302D] transition-all shrink-0 cursor-pointer shadow-2xs"
             >
               Copy Code
             </button>
           </div>
 
           {/* Referral Link */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+          <div className="p-5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] flex items-center justify-between gap-3 shadow-2xs">
             <div className="min-w-0">
-              <span className="text-xs text-slate-500 block font-medium">Your Unique Referral Link</span>
-              <span className="text-xs font-mono text-slate-700 truncate block mt-1">
+              <span className="text-xs text-[#77786E] block font-bold">Your Unique Referral Link</span>
+              <span className="text-xs font-mono text-[#29302D] truncate block mt-1 font-semibold">
                 {referralData?.referralLink}
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={handleCopyLink}
-                className="px-3.5 py-2 rounded-lg text-xs font-bold bg-[#29302D] hover:bg-[#8064A9] text-white transition-colors"
+                className="px-4 py-2 rounded-xl text-xs font-black bg-[#29302D] hover:bg-[#8064A9] text-white transition-all cursor-pointer shadow-2xs"
               >
                 Copy Link
               </button>
@@ -1759,7 +1769,7 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </WorkspaceShell>
   );
 };
 

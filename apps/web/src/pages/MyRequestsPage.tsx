@@ -1,7 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Badge, Button } from '@fic/ui';
+import { motion, AnimatePresence } from 'framer-motion';
 import { apiRequest, getStoredUser, getUserRequests } from '../services/api';
-import { ShieldCheckIcon, LockIcon } from '../components/Icons';
+import {
+  WorkspaceShell,
+  WorkspaceHero,
+  WorkspaceCard,
+  WorkspaceButton,
+  WorkspaceBadge,
+  WorkspaceEmptyState
+} from '../components/workspace/WorkspaceComponents';
+import {
+  ShieldCheckIcon,
+  LockIcon,
+  BriefcaseIcon,
+  LightbulbIcon,
+  RocketIcon,
+  HandshakeIcon,
+  SparklesIcon,
+  CheckCircleIcon
+} from '../components/Icons';
 
 export const MyRequestsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'services' | 'ideas' | 'scaling' | 'partnerships'>('services');
@@ -101,167 +118,240 @@ export const MyRequestsPage: React.FC = () => {
         ];
 
   return (
-    <div className="bg-slate-50 min-h-screen py-10">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                My Requests & FIC Communications Hub
-              </h1>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Track all requirements, proposals, and coordination for{' '}
-                <span className="font-semibold text-slate-900">{user?.fullName || 'your account'}</span>.
-              </p>
+    <WorkspaceShell maxWidth="6xl">
+      {/* ========================================================
+          1. HERO HEADER
+         ======================================================== */}
+      <WorkspaceHero
+        accent="coral"
+        badge={
+          <div className="flex items-center gap-2">
+            <WorkspaceBadge variant="luxury">
+              <SparklesIcon size={12} className="text-[#C66B52]" />
+              Intermediary Tracker
+            </WorkspaceBadge>
+            <span className="text-[11px] font-bold text-[#C66B52] bg-white/80 border border-[#E58C72]/30 px-2.5 py-0.5 rounded-lg">
+              FIC Monitored Status
+            </span>
+          </div>
+        }
+        title="My Requests & Communications Hub"
+        subtitle={`Track all service requirements, incubation concepts, scaling tickets, and partnership discussions for ${
+          user?.fullName || 'your account'
+        }.`}
+        rightActions={
+          <div className="p-3.5 bg-white/90 border border-[#E58C72]/30 rounded-2xl shadow-xs text-xs flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#2E7D32]/10 text-[#2E7D32] flex items-center justify-center shrink-0">
+              <ShieldCheckIcon size={18} />
             </div>
-            <div className="flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-              <ShieldCheckIcon size={16} />
-              <span>FIC Monitored Status</span>
+            <div>
+              <span className="font-black text-[#29302D] block">Confidential Routing</span>
+              <span className="text-[11px] text-[#77786E]">Assigned FIC Officers Only</span>
             </div>
           </div>
+        }
+      />
+
+      {/* ========================================================
+          2. LUXURY PILL TABS
+         ======================================================== */}
+      <WorkspaceCard variant="glass" padded={false} className="p-2 sm:p-2.5">
+        <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 text-xs no-scrollbar">
+          {[
+            {
+              id: 'services',
+              label: 'Service Requests',
+              count: services.length,
+              icon: <BriefcaseIcon size={14} />
+            },
+            {
+              id: 'ideas',
+              label: 'Business Ideas',
+              count: sampleIdeas.length,
+              icon: <LightbulbIcon size={14} />
+            },
+            {
+              id: 'scaling',
+              label: 'Scaling Support',
+              count: sampleScaling.length,
+              icon: <RocketIcon size={14} />
+            },
+            {
+              id: 'partnerships',
+              label: 'B2B Partnerships',
+              count: samplePartnerships.length,
+              icon: <HandshakeIcon size={14} />
+            }
+          ].map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 shrink-0 cursor-pointer ${
+                  isActive
+                    ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
+                    : 'text-[#77786E] hover:text-[#29302D] hover:bg-[#F5EBDD]/60'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-[#EADFCF]/70 text-[#29302D]'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
+      </WorkspaceCard>
 
-        {/* Tabs */}
-        <div className="flex gap-2 border-b border-slate-200 overflow-x-auto pb-1 text-xs font-semibold">
-          <button
-            onClick={() => setActiveTab('services')}
-            className={`px-4 py-2 rounded-t-lg transition-colors border-b-2 ${
-              activeTab === 'services'
-                ? 'border-blue-600 text-blue-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Service Requests ({services.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('ideas')}
-            className={`px-4 py-2 rounded-t-lg transition-colors border-b-2 ${
-              activeTab === 'ideas'
-                ? 'border-blue-600 text-blue-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Business Ideas ({sampleIdeas.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('scaling')}
-            className={`px-4 py-2 rounded-t-lg transition-colors border-b-2 ${
-              activeTab === 'scaling'
-                ? 'border-blue-600 text-blue-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            Scaling Support ({sampleScaling.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('partnerships')}
-            className={`px-4 py-2 rounded-t-lg transition-colors border-b-2 ${
-              activeTab === 'partnerships'
-                ? 'border-blue-600 text-blue-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
-          >
-            B2B Partnerships ({samplePartnerships.length})
-          </button>
-        </div>
-
-        {/* Tab Content */}
-        <div className="space-y-4">
-          {activeTab === 'services' && (
-            <div className="space-y-4">
-              {services.length === 0 ? (
-                <Card className="border border-slate-200 text-center py-8 text-xs text-slate-500">
-                  No service requests placed yet for this account.
-                </Card>
-              ) : (
-                services.map((req) => (
-                  <Card key={req.id} className="border border-slate-200 shadow-sm space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
-                      <div>
-                        <span className="text-[11px] text-slate-400 block font-mono">REQ ID: {req.id}</span>
-                        <h3 className="text-base font-bold text-slate-900">{req.title}</h3>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500">{req.date}</span>
-                        <Badge variant={req.status === 'IN_PROGRESS' ? 'info' : 'warning'}>
-                          {req.statusLabel}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 text-xs">
-                      <div>
-                        <strong className="text-slate-700 block">Your Stated Requirements:</strong>
-                        <p className="text-slate-600 mt-0.5">{req.notes}</p>
-                      </div>
-
-                      <div className="p-3 rounded-lg bg-blue-50/70 border border-blue-200/80 space-y-1">
-                        <div className="flex items-center gap-1 font-bold text-blue-900">
-                          <LockIcon size={13} className="text-blue-700" />
-                          FIC Coordinator Progress & Notes:
-                        </div>
-                        <p className="text-blue-800 leading-relaxed">{req.ficRemark}</p>
-                      </div>
-                    </div>
-                  </Card>
-                ))
-              )}
-            </div>
-          )}
-
-          {activeTab === 'ideas' && (
-            <div className="space-y-4">
-              {sampleIdeas.map((idea) => (
-                <Card key={idea.id} className="border border-slate-200 shadow-sm">
-                  <div className="flex items-center justify-between">
+      {/* ========================================================
+          3. TAB CONTENT
+         ======================================================== */}
+      <div className="space-y-5">
+        
+        {/* Service Requests Tab */}
+        {activeTab === 'services' && (
+          <div className="space-y-4">
+            {services.length === 0 ? (
+              <WorkspaceEmptyState
+                icon={<BriefcaseIcon size={26} />}
+                title="No active service requests"
+                description="You haven't requested any marketplace services yet. Browse the universal catalog across all 10 business sectors."
+                actionText="Browse Marketplace"
+                onAction={() => (window.location.href = '/marketplace')}
+                accent="coral"
+              />
+            ) : (
+              services.map((req) => (
+                <WorkspaceCard key={req.id} variant="default" className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3.5 gap-2.5">
                     <div>
-                      <span className="text-[11px] text-slate-400 font-mono">IDEA ID: {idea.id}</span>
-                      <h3 className="text-base font-bold text-slate-900">{idea.title}</h3>
-                      <span className="text-xs text-slate-500">Stage: {idea.stage} • Submitted: {idea.date}</span>
+                      <span className="text-[10px] text-[#77786E] block font-mono font-bold tracking-wider">
+                        REQ ID: {req.id}
+                      </span>
+                      <h3 className="text-base sm:text-lg font-black text-[#29302D] mt-0.5">
+                        {req.title}
+                      </h3>
                     </div>
-                    <Badge variant="warning">{idea.statusLabel}</Badge>
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-xs text-[#77786E] font-semibold">{req.date}</span>
+                      <WorkspaceBadge
+                        variant={req.status === 'IN_PROGRESS' ? 'proposal' : 'pending'}
+                      >
+                        {req.statusLabel}
+                      </WorkspaceBadge>
+                    </div>
                   </div>
-                </Card>
-              ))}
-            </div>
-          )}
 
-          {activeTab === 'scaling' && (
-            <div className="space-y-4">
-              {sampleScaling.map((scale) => (
-                <Card key={scale.id} className="border border-slate-200 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[11px] text-slate-400 font-mono">SCALE ID: {scale.id}</span>
-                      <h3 className="text-base font-bold text-slate-900">{scale.businessName}</h3>
-                      <span className="text-xs text-slate-500">Focus: {scale.supportType} • Date: {scale.date}</span>
+                  <div className="space-y-3 text-xs sm:text-sm">
+                    <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]/60">
+                      <strong className="text-[#29302D] font-black block mb-1">
+                        Your Stated Requirements:
+                      </strong>
+                      <p className="text-[#77786E] leading-relaxed">{req.notes}</p>
                     </div>
-                    <Badge variant="info">{scale.statusLabel}</Badge>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
 
-          {activeTab === 'partnerships' && (
-            <div className="space-y-4">
-              {samplePartnerships.map((part) => (
-                <Card key={part.id} className="border border-slate-200 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[11px] text-slate-400 font-mono">PART ID: {part.id}</span>
-                      <h3 className="text-base font-bold text-slate-900">{part.organizationName}</h3>
-                      <span className="text-xs text-slate-500">Type: {part.type} • Date: {part.date}</span>
+                    <div className="p-4 rounded-2xl bg-[#F4EEFB] border border-[#8064A9]/30 space-y-1">
+                      <div className="flex items-center gap-1.5 font-black text-[#8064A9]">
+                        <LockIcon size={14} />
+                        FIC Coordinator Progress & Notes:
+                      </div>
+                      <p className="text-xs text-[#29302D]/85 leading-relaxed font-medium">
+                        {req.ficRemark}
+                      </p>
                     </div>
-                    <Badge variant="warning">{part.statusLabel}</Badge>
                   </div>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+                </WorkspaceCard>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Business Ideas Tab */}
+        {activeTab === 'ideas' && (
+          <div className="space-y-4">
+            {sampleIdeas.map((idea) => (
+              <WorkspaceCard key={idea.id} variant="amber">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-[#D99B43] font-mono font-bold">
+                      IDEA ID: {idea.id}
+                    </span>
+                    <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                      {idea.title}
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs text-[#77786E]">
+                      <span className="font-bold text-[#D99B43]">Stage: {idea.stage}</span>
+                      <span>•</span>
+                      <span>Submitted: {idea.date}</span>
+                    </div>
+                  </div>
+                  <WorkspaceBadge variant="pending">{idea.statusLabel}</WorkspaceBadge>
+                </div>
+              </WorkspaceCard>
+            ))}
+          </div>
+        )}
+
+        {/* Scaling Support Tab */}
+        {activeTab === 'scaling' && (
+          <div className="space-y-4">
+            {sampleScaling.map((scale) => (
+              <WorkspaceCard key={scale.id} variant="violet">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-[#8064A9] font-mono font-bold">
+                      SCALE ID: {scale.id}
+                    </span>
+                    <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                      {scale.businessName}
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs text-[#77786E]">
+                      <span className="font-bold text-[#8064A9]">Focus: {scale.supportType}</span>
+                      <span>•</span>
+                      <span>Date: {scale.date}</span>
+                    </div>
+                  </div>
+                  <WorkspaceBadge variant="proposal">{scale.statusLabel}</WorkspaceBadge>
+                </div>
+              </WorkspaceCard>
+            ))}
+          </div>
+        )}
+
+        {/* B2B Partnerships Tab */}
+        {activeTab === 'partnerships' && (
+          <div className="space-y-4">
+            {samplePartnerships.map((part) => (
+              <WorkspaceCard key={part.id} variant="rose">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <span className="text-[10px] text-[#D78E9A] font-mono font-bold">
+                      PART ID: {part.id}
+                    </span>
+                    <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                      {part.organizationName}
+                    </h3>
+                    <div className="flex items-center gap-2 text-xs text-[#77786E]">
+                      <span className="font-bold text-[#D78E9A]">Type: {part.type}</span>
+                      <span>•</span>
+                      <span>Date: {part.date}</span>
+                    </div>
+                  </div>
+                  <WorkspaceBadge variant="urgent">{part.statusLabel}</WorkspaceBadge>
+                </div>
+              </WorkspaceCard>
+            ))}
+          </div>
+        )}
+
       </div>
-    </div>
+    </WorkspaceShell>
   );
 };
 

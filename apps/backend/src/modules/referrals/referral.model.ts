@@ -92,3 +92,4 @@ export const ReferralProgrammeConfigModel = mongoose.model<IReferralProgrammeCon
   'ReferralProgrammeConfig',
   ReferralProgrammeConfigSchema
 );
+

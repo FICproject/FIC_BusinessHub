@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Card, Button, Modal } from '@fic/ui';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Modal } from '@fic/ui';
 import { INITIAL_CATEGORIES_DATA } from '../services/mockData';
 import {
   getStoredUser,
@@ -14,6 +15,15 @@ import {
   ServiceListing
 } from '../services/api';
 import {
+  WorkspaceShell,
+  WorkspaceHero,
+  WorkspaceCard,
+  WorkspaceKpi,
+  WorkspaceButton,
+  WorkspaceBadge,
+  WorkspaceEmptyState
+} from '../components/workspace/WorkspaceComponents';
+import {
   BriefcaseIcon,
   ShieldCheckIcon,
   CheckCircleIcon,
@@ -24,7 +34,8 @@ import {
   TrashIcon,
   ArrowRightIcon,
   LockIcon,
-  FileTextIcon
+  FileTextIcon,
+  SparklesIcon
 } from '../components/Icons';
 
 export const MyServicesPage: React.FC = () => {
@@ -244,199 +255,172 @@ export const MyServicesPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#FAF7F2] min-h-screen py-10">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        
-        {/* Toast Notification */}
-        {toastMessage && (
-          <div className="p-4 rounded-xl bg-[#29302D] text-white shadow-lg flex items-center justify-between border border-[#D99B43]/50 transition-all">
-            <div className="flex items-center gap-3">
-              <CheckCircleIcon size={20} className="text-[#D99B43]" />
-              <span className="text-xs sm:text-sm font-semibold">{toastMessage.text}</span>
-            </div>
-            <button
-              onClick={() => setToastMessage(null)}
-              className="text-slate-400 hover:text-white text-xs font-bold px-2 py-1"
-            >
-              &times;
-            </button>
+    <WorkspaceShell maxWidth="7xl">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-[#29302D] text-[#FCFAF6] px-5 py-3.5 rounded-2xl shadow-2xl border border-[#D99B43]/40 flex items-center justify-between gap-3 animate-fade-in max-w-md">
+          <div className="flex items-center gap-3">
+            <CheckCircleIcon size={20} className="text-[#2E7D32]" />
+            <span className="text-xs sm:text-sm font-semibold">{toastMessage.text}</span>
           </div>
-        )}
+          <button
+            onClick={() => setToastMessage(null)}
+            className="text-white/60 hover:text-white text-xs font-bold px-2 py-1 cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
-        {/* Header Banner */}
-        <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-bold text-[#C66B52] uppercase tracking-wider">
-              <span>Member Workspace</span>
-              <span>/</span>
-              <span>My Services & Capabilities</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-[#29302D] tracking-tight">
-              My Services & Offerings
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
-              List and manage your enterprise and professional capabilities. Approved services are published directly into the Universal Marketplace across all 10 business sectors with FIC intermediary privacy safeguards.
-            </p>
+      {/* ========================================================
+          1. HERO HEADER
+         ======================================================== */}
+      <WorkspaceHero
+        accent="coral"
+        badge={
+          <div className="flex items-center gap-2">
+            <WorkspaceBadge variant="luxury">
+              <SparklesIcon size={12} className="text-[#C66B52]" />
+              Service Capability Console
+            </WorkspaceBadge>
+            <span className="text-[11px] font-bold text-[#C66B52] bg-white/80 border border-[#E58C72]/30 px-2.5 py-0.5 rounded-lg">
+              Universal Marketplace Creator
+            </span>
           </div>
-
-          <div className="flex items-center gap-3 shrink-0">
+        }
+        title="My Services & Capabilities"
+        subtitle="List and manage your enterprise and professional capabilities. Approved services are published directly into the Universal Marketplace across all 10 business sectors with FIC intermediary privacy safeguards."
+        rightActions={
+          <div className="flex items-center gap-3">
             <Link to="/marketplace">
-              <button
-                type="button"
-                className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors shadow-xs"
-              >
+              <WorkspaceButton variant="outline" size="md">
                 View Marketplace
-              </button>
+              </WorkspaceButton>
             </Link>
-            <button
-              type="button"
+            <WorkspaceButton
+              variant="primary"
+              size="md"
+              icon={<PlusIcon size={16} />}
               onClick={handleOpenAddModal}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#29302D] hover:bg-[#8064A9] text-white transition-colors flex items-center gap-2 shadow-xs"
             >
-              <PlusIcon size={16} />
-              <span>Add New Service</span>
-            </button>
+              Add New Service
+            </WorkspaceButton>
           </div>
-        </div>
+        }
+      />
 
-        {/* KPI Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs">
-            <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wider block">
-              Total Services
-            </span>
-            <div className="text-2xl font-black text-[#29302D] mt-1">{totalCount}</div>
-            <span className="text-[11px] text-slate-500 mt-1 block">In your account</span>
-          </div>
+      {/* ========================================================
+          2. 5 KPI SUMMARY CARDS
+         ======================================================== */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <WorkspaceKpi
+          title="Total Services"
+          value={totalCount}
+          subtitle="In your account"
+          icon={<BriefcaseIcon size={18} />}
+          accent="coral"
+        />
+        <WorkspaceKpi
+          title="Active (Approved)"
+          value={approvedCount}
+          subtitle="Live on Marketplace"
+          icon={<CheckCircleIcon size={18} />}
+          accent="emerald"
+        />
+        <WorkspaceKpi
+          title="Under Review"
+          value={pendingCount}
+          subtitle="Awaiting FIC Review"
+          icon={<ClockIcon size={18} />}
+          accent="amber"
+        />
+        <WorkspaceKpi
+          title="Drafts"
+          value={draftCount}
+          subtitle="Not submitted yet"
+          icon={<FileTextIcon size={18} />}
+          accent="violet"
+        />
+        <WorkspaceKpi
+          title="Needs Revision"
+          value={rejectedCount}
+          subtitle="Check feedback"
+          icon={<AlertCircleIcon size={18} />}
+          accent="rose"
+        />
+      </div>
 
-          <div className="bg-white p-4 rounded-xl border border-emerald-200/90 shadow-xs bg-emerald-50/20">
-            <span className="text-[11px] font-bold uppercase text-emerald-700 tracking-wider block flex items-center gap-1">
-              <CheckCircleIcon size={13} /> Active (Approved)
-            </span>
-            <div className="text-2xl font-black text-emerald-800 mt-1">{approvedCount}</div>
-            <span className="text-[11px] text-emerald-600 mt-1 block">Live on Marketplace</span>
-          </div>
-
-          <div className="bg-white p-4 rounded-xl border border-amber-200/90 shadow-xs bg-amber-50/20">
-            <span className="text-[11px] font-bold uppercase text-amber-700 tracking-wider block flex items-center gap-1">
-              <ClockIcon size={13} /> Under Review
-            </span>
-            <div className="text-2xl font-black text-amber-800 mt-1">{pendingCount}</div>
-            <span className="text-[11px] text-amber-600 mt-1 block">Awaiting FIC Review</span>
-          </div>
-
-          <div className="bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs">
-            <span className="text-[11px] font-bold uppercase text-slate-500 tracking-wider block">
-              Drafts
-            </span>
-            <div className="text-2xl font-black text-slate-700 mt-1">{draftCount}</div>
-            <span className="text-[11px] text-slate-400 mt-1 block">Not submitted</span>
-          </div>
-
-          <div className="bg-white p-4 rounded-xl border border-rose-200/90 shadow-xs bg-rose-50/20">
-            <span className="text-[11px] font-bold uppercase text-rose-700 tracking-wider block flex items-center gap-1">
-              <AlertCircleIcon size={13} /> Needs Revision
-            </span>
-            <div className="text-2xl font-black text-rose-800 mt-1">{rejectedCount}</div>
-            <span className="text-[11px] text-rose-600 mt-1 block">Check feedback</span>
-          </div>
-        </div>
-
-        {/* Status Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs border-b border-slate-200/80">
-          <button
-            onClick={() => setActiveTab('ALL')}
-            className={`px-4 py-2 font-bold rounded-lg transition-colors ${
-              activeTab === 'ALL'
-                ? 'bg-[#29302D] text-white shadow-xs'
-                : 'text-slate-600 hover:bg-white hover:text-slate-900'
-            }`}
-          >
-            All Services ({totalCount})
-          </button>
-          <button
-            onClick={() => setActiveTab('APPROVED')}
-            className={`px-4 py-2 font-bold rounded-lg transition-colors ${
-              activeTab === 'APPROVED'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-white hover:text-emerald-700'
-            }`}
-          >
-            Active & Live ({approvedCount})
-          </button>
-          <button
-            onClick={() => setActiveTab('PENDING_APPROVAL')}
-            className={`px-4 py-2 font-bold rounded-lg transition-colors ${
-              activeTab === 'PENDING_APPROVAL'
-                ? 'bg-amber-600 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-white hover:text-amber-700'
-            }`}
-          >
-            Under Review ({pendingCount})
-          </button>
-          <button
-            onClick={() => setActiveTab('DRAFT')}
-            className={`px-4 py-2 font-bold rounded-lg transition-colors ${
-              activeTab === 'DRAFT'
-                ? 'bg-slate-700 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-white hover:text-slate-900'
-            }`}
-          >
-            Drafts ({draftCount})
-          </button>
-          <button
-            onClick={() => setActiveTab('REJECTED')}
-            className={`px-4 py-2 font-bold rounded-lg transition-colors ${
-              activeTab === 'REJECTED'
-                ? 'bg-rose-700 text-white shadow-xs'
-                : 'text-slate-600 hover:bg-white hover:text-rose-700'
-            }`}
-          >
-            Needs Revision ({rejectedCount})
-          </button>
-        </div>
-
-        {/* Services Listings Grid */}
-        <div className="space-y-4">
-          {filteredServices.length === 0 ? (
-            <div className="bg-white p-12 rounded-2xl border border-slate-200 text-center space-y-4">
-              <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
-                <BriefcaseIcon size={28} />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-base font-bold text-slate-800">
-                  {activeTab === 'ALL'
-                    ? 'You have not added any services yet'
-                    : `No services found in "${activeTab}" status`}
-                </h3>
-                <p className="text-xs text-slate-500 max-w-md mx-auto">
-                  Add your business capabilities, manufacturing lines, software competencies, or professional advisory offerings so other members can discover them in the Universal Marketplace.
-                </p>
-              </div>
+      {/* ========================================================
+          3. STATUS FILTER TABS
+         ======================================================== */}
+      <WorkspaceCard variant="glass" padded={false} className="p-2 sm:p-2.5">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 text-xs no-scrollbar">
+          {[
+            { key: 'ALL', label: 'All Services', count: totalCount },
+            { key: 'APPROVED', label: 'Active & Live', count: approvedCount },
+            { key: 'PENDING_APPROVAL', label: 'Under Review', count: pendingCount },
+            { key: 'DRAFT', label: 'Drafts', count: draftCount },
+            { key: 'REJECTED', label: 'Needs Revision', count: rejectedCount }
+          ].map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
               <button
-                type="button"
-                onClick={handleOpenAddModal}
-                className="px-5 py-2.5 bg-[#29302D] hover:bg-[#8064A9] text-white rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-2"
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as any)}
+                className={`px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 shrink-0 cursor-pointer ${
+                  isActive
+                    ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
+                    : 'text-[#77786E] hover:text-[#29302D] hover:bg-[#F5EBDD]/60'
+                }`}
               >
-                <PlusIcon size={15} />
-                <span>Add Your First Service</span>
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-[#EADFCF]/70 text-[#29302D]'
+                  }`}
+                >
+                  {tab.count}
+                </span>
               </button>
-            </div>
-          ) : (
-            filteredServices.map((service) => (
-              <div
-                key={service.id}
-                className="bg-white p-6 rounded-2xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition-all flex flex-col justify-between gap-5"
-              >
-                <div className="space-y-3">
+            );
+          })}
+        </div>
+      </WorkspaceCard>
+
+      {/* ========================================================
+          4. SERVICES LISTINGS GRID
+         ======================================================== */}
+      <div className="space-y-5">
+        {filteredServices.length === 0 ? (
+          <WorkspaceEmptyState
+            icon={<BriefcaseIcon size={28} />}
+            title={
+              activeTab === 'ALL'
+                ? 'You have not added any services yet'
+                : `No services found in "${activeTab}" status`
+            }
+            description="Add your business capabilities, manufacturing lines, software competencies, or professional advisory offerings so other members can discover them in the Universal Marketplace."
+            actionText="Add Your First Service"
+            onAction={handleOpenAddModal}
+            accent="coral"
+          />
+        ) : (
+          filteredServices.map((service) => (
+            <motion.div
+              key={service.id}
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.2 }}
+            >
+              <div className="bg-white/95 rounded-3xl border border-[#EADFCF] p-6 sm:p-7 shadow-[0_4px_20px_-4px_rgba(41,48,45,0.05)] hover:border-[#C66B52]/40 transition-all flex flex-col justify-between gap-5">
+                <div className="space-y-3.5">
                   {/* Top Bar: Sector + Status Badge */}
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-1 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                      <span className="px-3 py-1 rounded-xl text-[11px] font-black bg-[#FFF4F0] text-[#C66B52] border border-[#E58C72]/30">
                         {service.categoryName}
                       </span>
                       {service.subcategoryName && (
-                        <span className="text-[11px] text-slate-500 font-semibold">
+                        <span className="text-xs text-[#8064A9] font-bold">
                           • {service.subcategoryName}
                         </span>
                       )}
@@ -444,51 +428,53 @@ export const MyServicesPage: React.FC = () => {
 
                     <div>
                       {service.status === 'APPROVED' && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
-                          <CheckCircleIcon size={14} className="text-emerald-600" />
+                        <WorkspaceBadge variant="active">
+                          <CheckCircleIcon size={13} />
                           Live on Marketplace
-                        </span>
+                        </WorkspaceBadge>
                       )}
                       {service.status === 'PENDING_APPROVAL' && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-xs font-bold">
-                          <ClockIcon size={14} className="text-amber-600" />
+                        <WorkspaceBadge variant="pending">
+                          <ClockIcon size={13} />
                           Pending FIC Admin Review
-                        </span>
+                        </WorkspaceBadge>
                       )}
                       {service.status === 'DRAFT' && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold">
-                          <FileTextIcon size={14} className="text-slate-500" />
+                        <WorkspaceBadge variant="neutral">
+                          <FileTextIcon size={13} />
                           Draft (Not Submitted)
-                        </span>
+                        </WorkspaceBadge>
                       )}
                       {service.status === 'REJECTED' && (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-rose-800 border border-rose-200 text-xs font-bold">
-                          <AlertCircleIcon size={14} className="text-rose-600" />
+                        <WorkspaceBadge variant="urgent">
+                          <AlertCircleIcon size={13} />
                           Needs Revision
-                        </span>
+                        </WorkspaceBadge>
                       )}
                     </div>
                   </div>
 
                   {/* Title & Description */}
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 leading-snug">{service.title}</h3>
-                    <p className="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">
+                    <h3 className="text-lg sm:text-xl font-black text-[#29302D] leading-snug">
+                      {service.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-[#77786E] mt-1.5 leading-relaxed">
                       {service.description}
                     </p>
                   </div>
 
-                  {/* Capabilities / Services Offered */}
+                  {/* Deliverables */}
                   {service.servicesOffered && service.servicesOffered.length > 0 && (
-                    <div className="pt-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                    <div className="pt-1">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-[#77786E] block mb-2">
                         Offered Deliverables:
                       </span>
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-2">
                         {service.servicesOffered.map((item, idx) => (
                           <span
                             key={idx}
-                            className="text-[11px] px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200"
+                            className="text-xs px-3 py-1 rounded-xl bg-[#FAF7F2] text-[#29302D] border border-[#EADFCF] font-bold"
                           >
                             ✓ {item}
                           </span>
@@ -497,15 +483,15 @@ export const MyServicesPage: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Tags & Meta */}
-                  <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-slate-500">
-                    <span className="font-semibold text-slate-700">
-                      Coverage: <strong className="text-slate-900">{service.coverageArea}</strong>
+                  {/* Metadata Bar */}
+                  <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-[#77786E]">
+                    <span className="font-bold text-[#29302D]">
+                      Coverage: <strong className="text-[#C66B52]">{service.coverageArea}</strong>
                     </span>
                     <span>•</span>
-                    <span className="font-semibold text-slate-700">
+                    <span className="font-bold text-[#29302D]">
                       Mode:{' '}
-                      <strong className="text-slate-900">
+                      <strong className="text-[#8064A9]">
                         {service.deliveryMode === 'ONLINE'
                           ? 'Remote / Online'
                           : service.deliveryMode === 'IN_PERSON'
@@ -517,28 +503,28 @@ export const MyServicesPage: React.FC = () => {
                     <span>Created: {service.createdAt}</span>
                   </div>
 
-                  {/* Rejection Feedback Note if applicable */}
+                  {/* Rejection Feedback Note */}
                   {service.status === 'REJECTED' && service.adminFeedback && (
-                    <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-900 space-y-1">
-                      <div className="font-bold flex items-center gap-1.5">
-                        <AlertCircleIcon size={15} className="text-rose-700" />
+                    <div className="p-4 rounded-2xl bg-[#FFF4F0] border border-[#E58C72]/40 text-xs text-[#29302D] space-y-1">
+                      <div className="font-black text-[#C66B52] flex items-center gap-1.5">
+                        <AlertCircleIcon size={16} />
                         FIC Coordinator Feedback for Revision:
                       </div>
-                      <p className="text-[12px] leading-relaxed text-rose-800">
+                      <p className="text-xs leading-relaxed text-[#77786E]">
                         {service.adminFeedback}
                       </p>
                     </div>
                   )}
 
-                  {/* SIMULATED ADMIN REVIEW BAR (For PENDING_APPROVAL services) */}
+                  {/* SIMULATED ADMIN REVIEW BAR */}
                   {service.status === 'PENDING_APPROVAL' && (
-                    <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/90 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="p-4 rounded-2xl bg-[#FDF6E9] border border-[#D99B43]/30 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="space-y-0.5">
-                        <div className="font-bold text-amber-900 flex items-center gap-1.5">
-                          <ShieldCheckIcon size={14} className="text-amber-700" />
+                        <div className="font-black text-[#9C6818] flex items-center gap-1.5">
+                          <ShieldCheckIcon size={16} />
                           FIC Admin Approval Simulation:
                         </div>
-                        <p className="text-[11px] text-amber-800">
+                        <p className="text-[11px] text-[#77786E]">
                           Test the full workflow: Approve this service to publish it live to the Universal Marketplace, or Reject it with revision notes.
                         </p>
                       </div>
@@ -547,14 +533,14 @@ export const MyServicesPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleSimulateApprove(service.id)}
-                          className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
+                          className="px-3.5 py-2 bg-[#2E7D32] hover:bg-[#1B5E20] text-white rounded-xl text-xs font-black transition-colors shadow-xs cursor-pointer"
                         >
                           Simulate Approval & Publish
                         </button>
                         <button
                           type="button"
                           onClick={() => handleOpenRejectModal(service.id)}
-                          className="px-3 py-1.5 bg-rose-700 hover:bg-rose-800 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
+                          className="px-3.5 py-2 bg-[#C66B52] hover:bg-[#A34A32] text-white rounded-xl text-xs font-black transition-colors shadow-xs cursor-pointer"
                         >
                           Simulate Rejection
                         </button>
@@ -563,62 +549,62 @@ export const MyServicesPage: React.FC = () => {
                   )}
                 </div>
 
-                {/* Bottom Action Buttons */}
-                <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
+                {/* Bottom Action Row */}
+                <div className="pt-4 border-t border-[#EADFCF] flex flex-wrap items-center justify-between gap-3">
+                  <div>
                     {service.status === 'APPROVED' && (
                       <Link to="/marketplace">
-                        <button
-                          type="button"
-                          className="px-4 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
+                        <WorkspaceButton
+                          variant="outline"
+                          size="sm"
+                          icon={<ArrowRightIcon size={13} />}
                         >
-                          <span>View in Universal Marketplace</span>
-                          <ArrowRightIcon size={13} />
-                        </button>
+                          View in Universal Marketplace
+                        </WorkspaceButton>
                       </Link>
                     )}
                   </div>
 
                   <div className="flex items-center gap-2">
                     {service.status === 'DRAFT' && (
-                      <button
-                        type="button"
+                      <WorkspaceButton
+                        variant="primary"
+                        size="sm"
                         onClick={() => handleSubmitForApproval(service.id)}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
                       >
                         Submit for FIC Approval
-                      </button>
+                      </WorkspaceButton>
                     )}
 
                     {(service.status === 'DRAFT' || service.status === 'REJECTED') && (
-                      <button
-                        type="button"
+                      <WorkspaceButton
+                        variant="outline"
+                        size="sm"
+                        icon={<EditIcon size={14} />}
                         onClick={() => handleOpenEditModal(service)}
-                        className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
                       >
-                        <EditIcon size={14} />
-                        <span>Edit</span>
-                      </button>
+                        Edit
+                      </WorkspaceButton>
                     )}
 
                     {service.status === 'APPROVED' && (
-                      <button
-                        type="button"
+                      <WorkspaceButton
+                        variant="ghost"
+                        size="sm"
                         onClick={() => {
                           updateMemberService(service.id, { status: 'DRAFT' });
                           showToast('Service unpublished and moved to Drafts.', 'info');
                           loadUserServices();
                         }}
-                        className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl text-xs font-semibold transition-colors"
                       >
                         Move to Draft
-                      </button>
+                      </WorkspaceButton>
                     )}
 
                     <button
                       type="button"
                       onClick={() => handleDelete(service.id)}
-                      className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors"
+                      className="p-2 text-[#77786E] hover:text-[#C66B52] rounded-xl hover:bg-[#FFF4F0] transition-colors cursor-pointer"
                       title="Delete Service"
                     >
                       <TrashIcon size={16} />
@@ -626,12 +612,14 @@ export const MyServicesPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            </motion.div>
+          ))
+        )}
       </div>
 
-      {/* ADD / EDIT SERVICE MODAL */}
+      {/* ========================================================
+          5. ADD / EDIT SERVICE MODAL
+         ======================================================== */}
       <Modal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
@@ -640,33 +628,33 @@ export const MyServicesPage: React.FC = () => {
         <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
           {/* Section 1: Basic Information */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <h4 className="text-xs font-black text-[#8064A9] uppercase tracking-wider">
               1. Basic Information
             </h4>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
-                Service Title <span className="text-red-500">*</span>
+              <label className="text-xs font-black text-[#29302D] block mb-1">
+                Service Title <span className="text-[#C66B52]">*</span>
               </label>
               <input
                 type="text"
                 placeholder="e.g. Bulk Cotton Garment & Uniform Manufacturing or Cloud Native Microservices"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D]"
                 required
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
-                  Primary Sector <span className="text-red-500">*</span>
+                <label className="text-xs font-black text-[#29302D] block mb-1">
+                  Primary Sector <span className="text-[#C66B52]">*</span>
                 </label>
                 <select
                   value={categoryId}
                   onChange={(e) => handleCategorySelect(e.target.value)}
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D] font-semibold"
                 >
                   {INITIAL_CATEGORIES_DATA.map((cat) => (
                     <option key={cat.id} value={cat.id}>
@@ -677,7 +665,7 @@ export const MyServicesPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-black text-[#29302D] block mb-1">
                   Subcategory / Specialization
                 </label>
                 <input
@@ -685,13 +673,13 @@ export const MyServicesPage: React.FC = () => {
                   placeholder="e.g. Textile OEM Manufacturing or Cloud Architecture"
                   value={subcategoryName}
                   onChange={(e) => setSubcategoryName(e.target.value)}
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
+              <label className="text-xs font-black text-[#29302D] block mb-1">
                 Short Card Summary (1-2 sentences)
               </label>
               <input
@@ -699,33 +687,33 @@ export const MyServicesPage: React.FC = () => {
                 placeholder="Brief summary shown on the marketplace card preview..."
                 value={shortDescription}
                 onChange={(e) => setShortDescription(e.target.value)}
-                className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D]"
               />
             </div>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
-                Full Description & Scope of Capability <span className="text-red-500">*</span>
+              <label className="text-xs font-black text-[#29302D] block mb-1">
+                Full Description & Scope of Capability <span className="text-[#C66B52]">*</span>
               </label>
               <textarea
                 rows={4}
                 placeholder="Describe your facilities, team capabilities, quality standards, infrastructure, and commercial readiness in detail..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D]"
                 required
               ></textarea>
             </div>
           </div>
 
-          {/* Section 2: Capabilities & Deliverables */}
-          <div className="space-y-3 pt-3 border-t border-slate-200">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          {/* Section 2: Scope, Deliverables & Delivery */}
+          <div className="space-y-3 pt-3 border-t border-[#EADFCF]">
+            <h4 className="text-xs font-black text-[#8064A9] uppercase tracking-wider">
               2. Scope, Deliverables & Delivery
             </h4>
 
             <div>
-              <label className="text-xs font-bold text-slate-700 block mb-1">
+              <label className="text-xs font-black text-[#29302D] block mb-1">
                 Key Services Offered / Deliverables (Enter one per line or comma-separated)
               </label>
               <textarea
@@ -733,13 +721,13 @@ export const MyServicesPage: React.FC = () => {
                 placeholder="e.g.&#10;Institutional Uniform Stitching&#10;Corporate Workwear&#10;Quality Assurance & Packaging"
                 value={servicesOfferedInput}
                 onChange={(e) => setServicesOfferedInput(e.target.value)}
-                className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D]"
               ></textarea>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-black text-[#29302D] block mb-1">
                   Core Skills & Competencies
                 </label>
                 <input
@@ -747,12 +735,12 @@ export const MyServicesPage: React.FC = () => {
                   placeholder="e.g. Fabric Processing, OEM Stitching, Supply Chain"
                   value={skillsInput}
                   onChange={(e) => setSkillsInput(e.target.value)}
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-black text-[#29302D] block mb-1">
                   Marketplace Tags
                 </label>
                 <input
@@ -760,20 +748,20 @@ export const MyServicesPage: React.FC = () => {
                   placeholder="e.g. Textiles, Export Quality, Bulk Orders"
                   value={tagsInput}
                   onChange={(e) => setTagsInput(e.target.value)}
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D]"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-black text-[#29302D] block mb-1">
                   Coverage Area
                 </label>
                 <select
                   value={coverageArea}
                   onChange={(e) => setCoverageArea(e.target.value)}
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D] font-semibold"
                 >
                   <option value="Pan India">Pan India</option>
                   <option value="Tamil Nadu">Tamil Nadu</option>
@@ -784,13 +772,13 @@ export const MyServicesPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-black text-[#29302D] block mb-1">
                   Delivery Mode
                 </label>
                 <select
                   value={deliveryMode}
                   onChange={(e) => setDeliveryMode(e.target.value as any)}
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D] font-semibold"
                 >
                   <option value="ONLINE">Online / Remote Delivery</option>
                   <option value="IN_PERSON">In-Person / On-Site / Factory</option>
@@ -801,14 +789,14 @@ export const MyServicesPage: React.FC = () => {
           </div>
 
           {/* Section 3: Supporting Details */}
-          <div className="space-y-3 pt-3 border-t border-slate-200">
-            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+          <div className="space-y-3 pt-3 border-t border-[#EADFCF]">
+            <h4 className="text-xs font-black text-[#8064A9] uppercase tracking-wider">
               3. Portfolio & Supporting Proof (Optional)
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-black text-[#29302D] block mb-1">
                   Portfolio / Website Link
                 </label>
                 <input
@@ -816,12 +804,12 @@ export const MyServicesPage: React.FC = () => {
                   placeholder="https://yourwebsite.com or github/portfolio"
                   value={portfolioUrl}
                   onChange={(e) => setPortfolioUrl(e.target.value)}
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D]"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-700 block mb-1">
+                <label className="text-xs font-black text-[#29302D] block mb-1">
                   Certification / Supporting Doc Reference
                 </label>
                 <input
@@ -829,19 +817,19 @@ export const MyServicesPage: React.FC = () => {
                   placeholder="e.g. ISO 9001:2015, MSME Registered, Trade License"
                   value={supportingDocument}
                   onChange={(e) => setSupportingDocument(e.target.value)}
-                  className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D]"
                 />
               </div>
             </div>
           </div>
 
           {/* Section 4: FIC Intermediary Notice & Declaration */}
-          <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-900 space-y-2">
-            <div className="font-bold flex items-center gap-1.5">
-              <ShieldCheckIcon size={15} className="text-blue-700" />
+          <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] text-xs text-[#29302D] space-y-2">
+            <div className="font-black text-[#C66B52] flex items-center gap-1.5">
+              <ShieldCheckIcon size={16} />
               FIC Intermediary Governance Protocol:
             </div>
-            <p className="text-[11px] leading-relaxed text-blue-800">
+            <p className="text-[11px] leading-relaxed text-[#77786E]">
               Timeline and Pricing are not required upfront. When members request your service via FIC, our coordinator will validate requirements and reach out to collect your tailored commercial quote. Direct personal contact details are kept strictly confidential.
             </p>
             <label className="flex items-start gap-2 pt-1 cursor-pointer">
@@ -849,73 +837,79 @@ export const MyServicesPage: React.FC = () => {
                 type="checkbox"
                 checked={confirmGovernance}
                 onChange={(e) => setConfirmGovernance(e.target.checked)}
-                className="mt-0.5 rounded text-blue-600 focus:ring-blue-500"
+                className="mt-0.5 rounded text-[#C66B52] focus:ring-[#C66B52]"
               />
-              <span className="text-[11px] font-semibold text-blue-950">
+              <span className="text-[11px] font-bold text-[#29302D]">
                 I declare that this capability listing is authentic and agree to FIC Intermediary Proposal Coordination.
               </span>
             </label>
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-3 border-t border-slate-200 flex flex-wrap items-center justify-end gap-3">
-            <Button
+          <div className="pt-3 border-t border-[#EADFCF] flex flex-wrap items-center justify-end gap-3">
+            <WorkspaceButton
               variant="outline"
               size="sm"
               type="button"
               onClick={() => setIsFormModalOpen(false)}
             >
               Cancel
-            </Button>
-            <button
+            </WorkspaceButton>
+            <WorkspaceButton
+              variant="outline"
+              size="sm"
               type="button"
               onClick={() => handleSaveService(false)}
-              className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-bold transition-colors"
             >
               Save as Draft
-            </button>
-            <button
+            </WorkspaceButton>
+            <WorkspaceButton
+              variant="primary"
+              size="sm"
               type="button"
               onClick={() => handleSaveService(true)}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors shadow-xs"
             >
               Submit for FIC Approval
-            </button>
+            </WorkspaceButton>
           </div>
         </div>
       </Modal>
 
-      {/* SIMULATED REJECTION MODAL */}
+      {/* ========================================================
+          6. SIMULATED REJECTION MODAL
+         ======================================================== */}
       <Modal
         isOpen={!!rejectingServiceId}
         onClose={() => setRejectingServiceId(null)}
         title="Simulate FIC Reviewer Feedback (Needs Revision)"
       >
         <div className="space-y-4">
-          <p className="text-xs text-slate-600 leading-relaxed">
+          <p className="text-xs text-[#77786E] leading-relaxed">
             Provide feedback explaining why this service listing requires modification before publication on the Universal Marketplace:
           </p>
           <textarea
             rows={4}
             value={rejectionFeedback}
             onChange={(e) => setRejectionFeedback(e.target.value)}
-            className="w-full text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500"
+            className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] text-[#29302D]"
             placeholder="Enter reason or requested adjustments..."
           ></textarea>
           <div className="flex justify-end gap-3 pt-2">
-            <Button variant="outline" size="sm" onClick={() => setRejectingServiceId(null)}>
+            <WorkspaceButton variant="outline" size="sm" onClick={() => setRejectingServiceId(null)}>
               Cancel
-            </Button>
-            <button
-              type="button"
+            </WorkspaceButton>
+            <WorkspaceButton
+              variant="primary"
+              size="sm"
               onClick={handleConfirmReject}
-              className="px-4 py-2 bg-rose-700 hover:bg-rose-800 text-white rounded-xl text-xs font-bold transition-colors"
             >
               Confirm Rejection Feedback
-            </button>
+            </WorkspaceButton>
           </div>
         </div>
       </Modal>
-    </div>
+    </WorkspaceShell>
   );
 };
+
+export default MyServicesPage;
