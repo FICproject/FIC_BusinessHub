@@ -142,7 +142,7 @@ export const DashboardPage: React.FC = () => {
             <span className="text-xs text-slate-400">Moderated by FIC Intermediary</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <Link to="/marketplace">
               <div className="p-4 rounded-xl border border-slate-200 hover:border-blue-500 hover:bg-blue-50/40 transition-all text-center space-y-2 cursor-pointer h-full flex flex-col justify-center items-center">
                 <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
@@ -150,6 +150,16 @@ export const DashboardPage: React.FC = () => {
                 </div>
                 <strong className="text-xs text-slate-900 block font-semibold">Browse Marketplace</strong>
                 <span className="text-[11px] text-slate-500 leading-tight">Universal verified services</span>
+              </div>
+            </Link>
+
+            <Link to="/my-services">
+              <div className="p-4 rounded-xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/40 transition-all text-center space-y-2 cursor-pointer h-full flex flex-col justify-center items-center">
+                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                  <ShieldCheckIcon size={20} />
+                </div>
+                <strong className="text-xs text-slate-900 block font-semibold">My Services</strong>
+                <span className="text-[11px] text-slate-500 leading-tight">Manage & add capabilities</span>
               </div>
             </Link>
 

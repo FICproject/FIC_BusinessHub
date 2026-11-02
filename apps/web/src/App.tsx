@@ -31,6 +31,7 @@ import { BusinessDevPage } from './pages/BusinessDevPage';
 import { InvestmentPage } from './pages/InvestmentPage';
 import { PartnershipsPage } from './pages/PartnershipsPage';
 import { MyRequestsPage } from './pages/MyRequestsPage';
+import { MyServicesPage } from './pages/MyServicesPage';
 import { ProfilePage } from './pages/ProfilePage';
 
 export const App: React.FC = () => {
@@ -79,6 +80,7 @@ export const App: React.FC = () => {
           <Route path="/investment" element={<InvestmentPage />} />
           <Route path="/partnerships" element={<PartnershipsPage />} />
           <Route path="/my-requests" element={<MyRequestsPage />} />
+          <Route path="/my-services" element={<MyServicesPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
 

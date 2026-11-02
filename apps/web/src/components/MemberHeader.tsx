@@ -15,7 +15,7 @@ export const MemberHeader: React.FC = () => {
 
   const closeMenu = () => setMobileMenuOpen(false);
 
-  // Exact 8 member portal navigation routes with Profile immediately after My Requests
+  // Exact 9 member portal navigation routes with My Services and Profile
   const navLinks = [
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Marketplace', path: '/marketplace' },
@@ -24,6 +24,7 @@ export const MemberHeader: React.FC = () => {
     { label: 'Investment', path: '/investment' },
     { label: 'Partnerships', path: '/partnerships' },
     { label: 'My Requests', path: '/my-requests' },
+    { label: 'My Services', path: '/my-services' },
     { label: 'Profile', path: '/profile' }
   ];
 
@@ -53,10 +54,10 @@ export const MemberHeader: React.FC = () => {
         </Link>
 
         {/* ========================================================
-            CENTER: 8 NAVIGATION LINKS (13.5px, single row, no wrap)
-            Dashboard | Marketplace | Ideas | Scaling | Investment | Partnerships | My Requests | Profile
+            CENTER: 9 NAVIGATION LINKS (13px-13.5px, single row, no wrap)
+            Dashboard | Marketplace | Ideas | Scaling | Investment | Partnerships | My Requests | My Services | Profile
            ======================================================== */}
-        <nav className="hidden lg:flex items-center gap-1 xl:gap-2 whitespace-nowrap">
+        <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1.5 whitespace-nowrap">
           {navLinks.map((item) => {
             const isActive =
               location.pathname === item.path ||
@@ -65,7 +66,7 @@ export const MemberHeader: React.FC = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`px-2.5 xl:px-3 py-1.5 rounded-lg text-[13.5px] transition-colors duration-150 ${
+                className={`px-2 xl:px-2.5 py-1.5 rounded-lg text-[13px] xl:text-[13.5px] transition-colors duration-150 ${
                   isActive
                     ? 'bg-[#29302D] text-[#FCFAF6] font-bold shadow-xs'
                     : 'text-[#29302D]/80 hover:text-[#29302D] hover:bg-[#FFF9F0] font-medium'

@@ -8,19 +8,15 @@ export const marketplaceRouter = Router();
 // Provider personal contact info (name, email, mobile) is strictly excluded at field projection level!
 marketplaceRouter.get('/services', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { categoryId, search, pricingType, page = 1, limit = 20 } = req.query;
+    const { categoryId, search, page = 1, limit = 50 } = req.query;
 
     const filter: Record<string, any> = {
       status: ServiceListingStatus.APPROVED,
       isActive: true
     };
 
-    if (categoryId) {
+    if (categoryId && categoryId !== 'all') {
       filter.categoryId = categoryId;
-    }
-
-    if (pricingType) {
-      filter.pricingType = pricingType;
     }
 
     if (search) {
@@ -33,10 +29,13 @@ marketplaceRouter.get('/services', async (req: Request, res: Response, next: Nex
 
     const skip = (Number(page) - 1) * Number(limit);
 
-    // Strict projection: NEVER return provider details (no populate on providerId personal data)
+    // Strict projection: NEVER return provider details (no populate on provider personal data)
+    // Timeline and Pricing are NOT included for public card view.
     const [listings, total] = await Promise.all([
       ServiceListingModel.find(filter)
-        .select('_id title description categoryId subcategoryId pricingType price deliveryTimeline tags createdAt')
+        .select(
+          '_id title shortDescription description categoryId subcategoryId categoryName categorySlug subcategoryName servicesOffered skills tags targetCustomers coverageArea deliveryMode createdAt'
+        )
         .populate('categoryId', 'name slug iconName')
         .populate('subcategoryId', 'name slug')
         .sort({ createdAt: -1 })
@@ -71,7 +70,9 @@ marketplaceRouter.get('/services/:id', async (req: Request, res: Response, next:
       status: ServiceListingStatus.APPROVED,
       isActive: true
     })
-      .select('_id title description categoryId subcategoryId pricingType price deliveryTimeline tags createdAt')
+      .select(
+        '_id title shortDescription description categoryId subcategoryId categoryName categorySlug subcategoryName servicesOffered skills tags targetCustomers coverageArea deliveryMode createdAt'
+      )
       .populate('categoryId', 'name slug iconName')
       .populate('subcategoryId', 'name slug')
       .lean();
@@ -89,4 +90,3 @@ marketplaceRouter.get('/services/:id', async (req: Request, res: Response, next:
     next(error);
   }
 });
-

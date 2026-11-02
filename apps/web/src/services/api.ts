@@ -506,3 +506,337 @@ export const apiRequest = async (endpoint: string, options: RequestInit = {}): P
 
   return null;
 };
+
+// ========================================================
+// UNIVERSAL SERVICES CATALOG & MEMBER SERVICE MANAGEMENT
+// ========================================================
+
+export interface ServiceListing {
+  id: string;
+  ownerUserId: string;
+  ownerName?: string;
+  categoryId: string;
+  categoryName: string;
+  categorySlug: string;
+  subcategoryId?: string;
+  subcategoryName?: string;
+  title: string;
+  shortDescription?: string;
+  description: string;
+  servicesOffered: string[];
+  skills: string[];
+  tags: string[];
+  targetCustomers?: string[];
+  coverageArea?: string;
+  deliveryMode: 'ONLINE' | 'IN_PERSON' | 'BOTH';
+  portfolioUrl?: string;
+  supportingDocument?: string;
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'ARCHIVED';
+  adminFeedback?: string;
+  submittedAt?: string;
+  approvedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const SERVICES_CATALOG_KEY = 'fic_services_catalog';
+
+const INITIAL_SEED_SERVICES: ServiceListing[] = [
+  {
+    id: 'srv-1',
+    ownerUserId: 'usr_moorthy_002',
+    ownerName: 'S. Moorthy',
+    categoryId: 'cat-2',
+    categoryName: 'Manufacturing & Industrial',
+    categorySlug: 'manufacturing-industrial',
+    subcategoryId: 'Textile OEM Manufacturing',
+    subcategoryName: 'Textile OEM Manufacturing',
+    title: 'Bulk Cotton Garment & Uniform Manufacturing',
+    shortDescription: 'ISO-certified textile facility offering weaving, dyeing, cutting, stitching and private-label packaging.',
+    description: 'ISO-certified textile facility offering end-to-end weaving, dyeing, cutting, stitching and private-label packaging for domestic and export orders.',
+    servicesOffered: [
+      'Institutional Uniform Stitching',
+      'Corporate Workwear Manufacturing',
+      'Custom Pattern Cutting & Dyeing',
+      'Export Quality Finishing & Packaging'
+    ],
+    skills: ['Fabric Processing', 'OEM Stitching', 'Quality Assurance', 'Supply Chain Management'],
+    tags: ['Textiles', 'Export Quality', 'OEM Garments', 'Bulk Orders'],
+    targetCustomers: ['Schools & Colleges', 'Corporates', 'Export Houses', 'Uniform Retailers'],
+    coverageArea: 'Pan India & Export',
+    deliveryMode: 'BOTH',
+    status: 'APPROVED',
+    createdAt: '28 Oct 2026',
+    updatedAt: '28 Oct 2026'
+  },
+  {
+    id: 'srv-2',
+    ownerUserId: 'usr_kathir_001',
+    ownerName: 'Kathir',
+    categoryId: 'cat-3',
+    categoryName: 'Technology & Digital',
+    categorySlug: 'technology-digital',
+    subcategoryId: 'Cloud Architecture',
+    subcategoryName: 'Cloud Architecture & Web Apps',
+    title: 'Enterprise Web & Mobile Cloud Application Development',
+    shortDescription: 'Full-stack software engineering team specializing in React, Node.js, microservices, AWS cloud migration.',
+    description: 'Full-stack software engineering team specializing in React, Node.js, microservices, AWS cloud migration, and secure payment gateway integrations.',
+    servicesOffered: [
+      'B2B SaaS Web Application Development',
+      'Cross-Platform Mobile Apps (iOS & Android)',
+      'AWS / GCP Cloud Native Architecture',
+      'REST & GraphQL API Microservices'
+    ],
+    skills: ['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'AWS Lambda', 'Docker'],
+    tags: ['Web Apps', 'Mobile Apps', 'Cloud Architecture', 'API Development'],
+    targetCustomers: ['Startups', 'MSMEs', 'Enterprises', 'E-Commerce Brands'],
+    coverageArea: 'Pan India & Global',
+    deliveryMode: 'ONLINE',
+    status: 'APPROVED',
+    createdAt: '01 Nov 2026',
+    updatedAt: '01 Nov 2026'
+  },
+  {
+    id: 'srv-3',
+    ownerUserId: 'usr_pro_003',
+    ownerName: 'Apex Advisory',
+    categoryId: 'cat-5',
+    categoryName: 'Professional & Personal Services',
+    categorySlug: 'professional-personal-services',
+    subcategoryId: 'Tax Advisory',
+    subcategoryName: 'Chartered Accountancy & Tax',
+    title: 'Statutory GST, Company Incorporation & Annual Tax Audit',
+    shortDescription: 'Comprehensive financial advisory, secretarial compliance, monthly GST filing, TDS reconciliation, and startup valuation support.',
+    description: 'Comprehensive financial advisory, secretarial compliance, monthly GST filing, TDS reconciliation, and startup valuation support.',
+    servicesOffered: [
+      'Private Limited & LLP Incorporation',
+      'Monthly GST & TDS Compliance',
+      'Annual Statutory & Tax Audits',
+      'Startup Valuation Reports'
+    ],
+    skills: ['Financial Accounting', 'GST Compliance', 'Taxation', 'Corporate Law'],
+    tags: ['GST Filing', 'Audit', 'Company Setup', 'Legal Compliance'],
+    targetCustomers: ['Early Stage Startups', 'SME Business Owners', 'Freelancers'],
+    coverageArea: 'Pan India',
+    deliveryMode: 'BOTH',
+    status: 'APPROVED',
+    createdAt: '25 Oct 2026',
+    updatedAt: '25 Oct 2026'
+  },
+  {
+    id: 'srv-4',
+    ownerUserId: 'usr_agri_004',
+    ownerName: 'GreenField Agri',
+    categoryId: 'cat-6',
+    categoryName: 'Agriculture & Natural Resources',
+    categorySlug: 'agriculture-natural-resources',
+    subcategoryId: 'Cold Storage Supply',
+    subcategoryName: 'Agri Cold Chain Logistics',
+    title: 'Cold Storage & Bulk Organic Produce Aggregation',
+    shortDescription: 'Farm-gate temperature-controlled aggregation and supply logistics for fruits, vegetables, and grain commodities.',
+    description: 'Farm-gate temperature-controlled aggregation and supply logistics for fruits, vegetables, and grain commodities direct to distributors.',
+    servicesOffered: [
+      'Temperature Controlled Warehousing',
+      'Farm-Gate Quality Grading & Packaging',
+      'Refrigerated Transit Logistics',
+      'Bulk Contract Procurement'
+    ],
+    skills: ['Cold Chain Logistics', 'Organic Certification', 'Agri Procurement', 'Quality Grading'],
+    tags: ['Cold Storage', 'Organic Produce', 'B2B Agri Supply', 'Farm Gate'],
+    targetCustomers: ['Retail Supermarket Chains', 'Food Processors', 'Wholesale Distributors'],
+    coverageArea: 'Tamil Nadu & South India',
+    deliveryMode: 'IN_PERSON',
+    status: 'APPROVED',
+    createdAt: '22 Oct 2026',
+    updatedAt: '22 Oct 2026'
+  },
+  {
+    id: 'srv-5',
+    ownerUserId: 'usr_biz_005',
+    ownerName: 'ScaleVenture Partners',
+    categoryId: 'cat-1',
+    categoryName: 'Business & Entrepreneurship',
+    categorySlug: 'business-entrepreneurship',
+    subcategoryId: 'Franchise Setup',
+    subcategoryName: 'Retail & Franchise Expansion',
+    title: 'Franchise Expansion Strategy & Distributor Network Setup',
+    shortDescription: 'Strategic market development for brands looking to expand distributor footprints across South India tier-2 and tier-3 towns.',
+    description: 'Strategic market development for brands looking to expand distributor footprints across South India tier-2 and tier-3 towns.',
+    servicesOffered: [
+      'Franchise Model Legal & Commercial Structuring',
+      'Channel Partner & Distributor Vetting',
+      'Regional Master Franchise Pitching',
+      'Store SOPs & Onboarding Operations'
+    ],
+    skills: ['Franchise Development', 'Distribution Strategy', 'B2B Sales', 'Retail Operations'],
+    tags: ['Franchise', 'Distribution Network', 'Business Expansion'],
+    targetCustomers: ['D2C Brands', 'Food & Beverage Chains', 'Apparel Retailers'],
+    coverageArea: 'South India',
+    deliveryMode: 'BOTH',
+    status: 'APPROVED',
+    createdAt: '20 Oct 2026',
+    updatedAt: '20 Oct 2026'
+  },
+  {
+    id: 'srv-6',
+    ownerUserId: 'usr_media_006',
+    ownerName: 'VFX & Media Labs',
+    categoryId: 'cat-8',
+    categoryName: 'Creative, Media & Lifestyle',
+    categorySlug: 'creative-media-lifestyle',
+    subcategoryId: 'Video Production',
+    subcategoryName: 'Commercial Filmmaking',
+    title: 'Commercial Video Production & Corporate Ad Filmmaking',
+    shortDescription: 'Full production house handling scriptwriting, high-end 4K cinematography, post-production VFX, and social media advertising campaigns.',
+    description: 'Full production house handling scriptwriting, high-end 4K cinematography, post-production VFX, and social media advertising campaigns.',
+    servicesOffered: [
+      'Brand Commercials & TVCs',
+      'Corporate Profile & Factory Videos',
+      'Product 3D Animation & Explainer Videos',
+      'Social Media Ad Campaigns'
+    ],
+    skills: ['4K Cinematography', 'Video Editing', 'Color Grading', 'Sound Design', 'Motion Graphics'],
+    tags: ['Video Production', 'Ad Film', 'Brand Story', 'Media'],
+    targetCustomers: ['Brands', 'Advertising Agencies', 'Enterprises', 'Startups'],
+    coverageArea: 'Pan India',
+    deliveryMode: 'BOTH',
+    status: 'APPROVED',
+    createdAt: '18 Oct 2026',
+    updatedAt: '18 Oct 2026'
+  }
+];
+
+export const getAllCatalogServices = (): ServiceListing[] => {
+  const data = localStorage.getItem(SERVICES_CATALOG_KEY);
+  if (!data) {
+    localStorage.setItem(SERVICES_CATALOG_KEY, JSON.stringify(INITIAL_SEED_SERVICES));
+    return INITIAL_SEED_SERVICES;
+  }
+  try {
+    const parsed = JSON.parse(data);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
+    }
+    localStorage.setItem(SERVICES_CATALOG_KEY, JSON.stringify(INITIAL_SEED_SERVICES));
+    return INITIAL_SEED_SERVICES;
+  } catch {
+    localStorage.setItem(SERVICES_CATALOG_KEY, JSON.stringify(INITIAL_SEED_SERVICES));
+    return INITIAL_SEED_SERVICES;
+  }
+};
+
+const saveCatalogServices = (services: ServiceListing[]): void => {
+  localStorage.setItem(SERVICES_CATALOG_KEY, JSON.stringify(services));
+};
+
+// 1. Universal Marketplace Discovery: returns ONLY approved services across all categories
+export const getMarketplaceServices = (): ServiceListing[] => {
+  const all = getAllCatalogServices();
+  return all.filter((s) => s.status === 'APPROVED');
+};
+
+// 2. Member Service Management: returns services owned by a specific member
+export const getMemberServices = (userId: string): ServiceListing[] => {
+  const all = getAllCatalogServices();
+  return all.filter((s) => s.ownerUserId === userId && s.status !== 'ARCHIVED');
+};
+
+// 3. Create a new service listing for the member
+export const createMemberService = (
+  userId: string,
+  data: Partial<ServiceListing>
+): ServiceListing => {
+  const all = getAllCatalogServices();
+  const user = getStoredUser();
+
+  const newService: ServiceListing = {
+    id: `srv_${Date.now()}`,
+    ownerUserId: userId,
+    ownerName: user?.fullName || 'FIC Member',
+    categoryId: data.categoryId || 'cat-1',
+    categoryName: data.categoryName || 'Business & Entrepreneurship',
+    categorySlug: data.categorySlug || 'business-entrepreneurship',
+    subcategoryId: data.subcategoryId,
+    subcategoryName: data.subcategoryName,
+    title: data.title?.trim() || 'Untitled Capability Listing',
+    shortDescription: data.shortDescription || data.description?.substring(0, 140) || '',
+    description: data.description?.trim() || '',
+    servicesOffered: data.servicesOffered || [],
+    skills: data.skills || [],
+    tags: data.tags || [],
+    targetCustomers: data.targetCustomers || [],
+    coverageArea: data.coverageArea || 'Pan India',
+    deliveryMode: data.deliveryMode || 'ONLINE',
+    portfolioUrl: data.portfolioUrl?.trim() || '',
+    supportingDocument: data.supportingDocument?.trim() || '',
+    status: data.status || 'DRAFT',
+    createdAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    updatedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    submittedAt: data.status === 'PENDING_APPROVAL' ? 'Today' : undefined
+  };
+
+  all.unshift(newService);
+  saveCatalogServices(all);
+  return newService;
+};
+
+// 4. Update an existing service listing
+export const updateMemberService = (
+  serviceId: string,
+  updates: Partial<ServiceListing>
+): ServiceListing | null => {
+  const all = getAllCatalogServices();
+  const index = all.findIndex((s) => s.id === serviceId);
+  if (index === -1) return null;
+
+  const updated: ServiceListing = {
+    ...all[index],
+    ...updates,
+    updatedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  };
+
+  all[index] = updated;
+  saveCatalogServices(all);
+  return updated;
+};
+
+// 5. Submit a draft or rejected service for FIC approval
+export const submitServiceForApproval = (serviceId: string): ServiceListing | null => {
+  return updateMemberService(serviceId, {
+    status: 'PENDING_APPROVAL',
+    submittedAt: 'Today',
+    adminFeedback: undefined
+  });
+};
+
+// 6. Simulate FIC Reviewer / Admin Approval (instantly publishes to Marketplace)
+export const simulateAdminApproveService = (serviceId: string): ServiceListing | null => {
+  return updateMemberService(serviceId, {
+    status: 'APPROVED',
+    approvedAt: 'Today',
+    adminFeedback: undefined
+  });
+};
+
+// 7. Simulate FIC Reviewer / Admin Rejection with feedback
+export const simulateAdminRejectService = (
+  serviceId: string,
+  reason: string
+): ServiceListing | null => {
+  return updateMemberService(serviceId, {
+    status: 'REJECTED',
+    adminFeedback: reason || 'Please provide more details on deliverables and capabilities.'
+  });
+};
+
+// 8. Delete / Archive service
+export const deleteMemberService = (serviceId: string): boolean => {
+  const all = getAllCatalogServices();
+  const index = all.findIndex((s) => s.id === serviceId);
+  if (index === -1) return false;
+
+  all[index].status = 'ARCHIVED';
+  saveCatalogServices(all);
+  return true;
+};
+

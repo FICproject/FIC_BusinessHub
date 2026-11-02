@@ -1,3 +1,3 @@
 // FIC Module: services
-export {};
-
+export * from './services.model';
+export * from './services.routes';

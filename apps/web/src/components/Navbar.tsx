@@ -18,6 +18,7 @@ export const Navbar: React.FC = () => {
     '/investment',
     '/partnerships',
     '/my-requests',
+    '/my-services',
     '/profile'
   ];
   const isMemberRoute = memberRoutes.some(
