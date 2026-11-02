@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getStoredUser } from '../services/api';
 import {
   BriefcaseIcon,
   FactoryIcon,
@@ -43,6 +44,8 @@ export const LandingPage: React.FC = () => {
   const [selectedEcosystemNode, setSelectedEcosystemNode] = useState<number>(0);
   // Interactive FAQ in Section 8
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  // Logged-in member status
+  const user = getStoredUser();
 
   // Rotate text every 2.8 seconds
   useEffect(() => {
@@ -482,18 +485,28 @@ export const LandingPage: React.FC = () => {
 
             {/* Staggered CTA Buttons */}
             <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+              {user ? (
+                <Link
+                  to="/dashboard"
+                  className="inline-flex items-center justify-center gap-3 px-7 py-4 rounded-xl bg-[#C66B52] text-white font-bold text-sm shadow-lg shadow-[#C66B52]/25 hover:bg-[#D99B43] hover:shadow-xl transition-all duration-200 group"
+                >
+                  <span>Open Member Dashboard</span>
+                  <ArrowRightIcon size={16} className="group-hover:translate-x-1 transition-transform" />
+                </Link>
+              ) : (
+                <a
+                  href="#capabilities"
+                  className="inline-flex items-center justify-center gap-3 px-7 py-4 rounded-xl bg-[#C66B52] text-white font-bold text-sm shadow-lg shadow-[#C66B52]/25 hover:bg-[#D99B43] hover:shadow-xl transition-all duration-200 group"
+                >
+                  <span>Explore Business Hub</span>
+                  <ArrowRightIcon size={16} className="group-hover:translate-x-1 transition-transform" />
+                </a>
+              )}
               <Link
-                to="/marketplace"
-                className="inline-flex items-center justify-center gap-3 px-7 py-4 rounded-xl bg-[#C66B52] text-white font-bold text-sm shadow-lg shadow-[#C66B52]/25 hover:bg-[#D99B43] hover:shadow-xl transition-all duration-200 group"
-              >
-                <span>Explore Business Hub</span>
-                <ArrowRightIcon size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
-                to="/get-started"
+                to={user ? "/marketplace" : "/get-started"}
                 className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl bg-white border border-[#29302D]/20 text-[#29302D] font-bold text-sm hover:bg-[#FFF9F0] hover:border-[#29302D] transition-all duration-200 shadow-xs"
               >
-                <span>Become a Member</span>
+                <span>{user ? "View Marketplace" : "Become a Member"}</span>
               </Link>
             </div>
 
@@ -892,13 +905,23 @@ export const LandingPage: React.FC = () => {
                 An advanced editorial bento grid showcasing the 7 major avenues unlocked with your verified member dashboard.
               </p>
             </div>
-            <Link
-              to="/marketplace"
-              className="inline-flex items-center gap-2 text-sm font-bold text-[#D99B43] hover:text-[#E58C72] transition-colors"
-            >
-              <span>Explore Universal Marketplace</span>
-              <ArrowRightIcon size={16} />
-            </Link>
+            {user ? (
+              <Link
+                to="/marketplace"
+                className="inline-flex items-center gap-2 text-sm font-bold text-[#D99B43] hover:text-[#E58C72] transition-colors"
+              >
+                <span>Explore Universal Marketplace</span>
+                <ArrowRightIcon size={16} />
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 text-sm font-bold text-[#D99B43] hover:text-[#E58C72] transition-colors"
+              >
+                <span>Sign In to Access Marketplace</span>
+                <ArrowRightIcon size={16} />
+              </Link>
+            )}
           </div>
 
           {/* Bento Grid */}
@@ -1035,10 +1058,10 @@ export const LandingPage: React.FC = () => {
               </p>
             </div>
             <Link
-              to={CAPABILITIES[activeCapability].link}
+              to={user ? CAPABILITIES[activeCapability].link : "/get-started"}
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C66B52] text-white text-xs font-bold shrink-0 hover:bg-[#D99B43] transition-colors"
             >
-              <span>{CAPABILITIES[activeCapability].actionText}</span>
+              <span>{user ? CAPABILITIES[activeCapability].actionText : "Become a Member to Access"}</span>
               <ArrowRightIcon size={14} />
             </Link>
           </div>
@@ -1470,12 +1493,12 @@ export const LandingPage: React.FC = () => {
               <span>Become a Member</span>
               <ArrowRightIcon size={16} />
             </Link>
-            <Link
-              to="/marketplace"
+            <a
+              href="#capabilities"
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-transparent border border-white/50 text-white font-bold text-sm hover:bg-white/10 transition-all duration-200"
             >
-              <span>Explore FIC</span>
-            </Link>
+              <span>Explore FIC Capabilities</span>
+            </a>
           </div>
 
           <p className="text-xs text-white/70 pt-4">
