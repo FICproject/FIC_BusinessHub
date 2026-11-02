@@ -2,7 +2,14 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Button, Input, Card, Badge } from '@fic/ui';
 import { INITIAL_CATEGORIES_DATA } from '../services/mockData';
-import { apiRequest, setAuthToken, setStoredUser, getStoredUser } from '../services/api';
+import {
+  apiRequest,
+  setAuthToken,
+  setStoredUser,
+  getStoredUser,
+  calculateAgeFromDob,
+  formatDisplayDob
+} from '../services/api';
 import {
   ShieldCheckIcon,
   CheckCircleIcon,
@@ -53,10 +60,38 @@ export const RegisterPage: React.FC = () => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [dob, setDob] = useState('');
+  const [dobAge, setDobAge] = useState<number | null>(null);
+  const [dobValidationError, setDobValidationError] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+
+  // Maximum allowed Date of Birth is exactly 18 years ago from today
+  const maxDobAllowed = new Date(
+    new Date().setFullYear(new Date().getFullYear() - 18)
+  )
+    .toISOString()
+    .split('T')[0];
+
+  const handleDobChange = (val: string) => {
+    setDob(val);
+    if (!val) {
+      setDobAge(null);
+      setDobValidationError('');
+      return;
+    }
+    const age = calculateAgeFromDob(val);
+    setDobAge(age);
+    if (age < 18) {
+      setDobValidationError(
+        `Underage restriction: You are currently ${age} years old. In accordance with FIC Adult Eligibility Policy, all registered members must be 18 years of age or older.`
+      );
+    } else {
+      setDobValidationError('');
+    }
+  };
 
   // Step 2: Category & Roles
   const [selectedCategory, setSelectedCategory] = useState(INITIAL_CATEGORIES_DATA[0]);
@@ -195,8 +230,21 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
+    if (!dob) {
+      setErrorMessage('Please enter your Date of Birth.');
+      return;
+    }
+
+    const age = calculateAgeFromDob(dob);
+    if (age < 18) {
+      setErrorMessage(
+        `Underage registration restriction: You must be at least 18 years old to register (Calculated age: ${age} years). Under FIC Adult Eligibility Policy, only verified adults can register.`
+      );
+      return;
+    }
+
     if (!ageConfirmed) {
-      setErrorMessage('You must be 18 years or older to register for FIC Business Hub.');
+      setErrorMessage('Please legally confirm that you are 18 years of age or older.');
       return;
     }
 
@@ -285,6 +333,8 @@ export const RegisterPage: React.FC = () => {
     setIsLoading(true);
     setErrorMessage('');
 
+    const formattedDob = formatDisplayDob(dob);
+
     try {
       // 1. Register Account
       const regResponse = await apiRequest('/auth/register', {
@@ -293,6 +343,7 @@ export const RegisterPage: React.FC = () => {
           fullName,
           email,
           phoneNumber,
+          dob: formattedDob || dob,
           password,
           primaryCategoryId: selectedCategory.id,
           subcategoryIds: selectedSubcategories,
@@ -310,7 +361,15 @@ export const RegisterPage: React.FC = () => {
         primaryCategoryId: selectedCategory.id,
         categoryName: selectedCategory.name,
         isMembershipActive: true,
-        isKycApproved: false
+        isKycApproved: false,
+        personalInfo: {
+          dob: formattedDob
+        }
+      };
+
+      user.personalInfo = {
+        ...(user.personalInfo || {}),
+        dob: formattedDob
       };
 
       setAuthToken(token);
@@ -357,6 +416,10 @@ export const RegisterPage: React.FC = () => {
       user.isKycApproved = false;
       user.kycStatus = 'PENDING';
       user.uploadedDocumentsCount = allDocItems.length;
+      user.personalInfo = {
+        ...(user.personalInfo || {}),
+        dob: formattedDob
+      };
       setStoredUser(user);
 
       setPaymentDone(true);
@@ -473,6 +536,48 @@ export const RegisterPage: React.FC = () => {
                     onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
                     required
                   />
+                </div>
+
+                {/* Date of Birth & 18+ Adult Policy Validation */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-[#29302D] block">
+                      Date of Birth (DOB) <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[10px] text-[#77786E] font-medium">
+                      Must be 18+ years old
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      max={maxDobAllowed}
+                      value={dob}
+                      onChange={(e) => handleDobChange(e.target.value)}
+                      className={`w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none focus:ring-2 bg-white transition-colors ${
+                        dobValidationError
+                          ? 'border-red-400 focus:ring-red-500 bg-red-50/20'
+                          : dobAge !== null && dobAge >= 18
+                          ? 'border-emerald-400 focus:ring-emerald-500 bg-emerald-50/20'
+                          : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                      }`}
+                      required
+                    />
+                  </div>
+
+                  {dobValidationError && (
+                    <div className="p-2.5 rounded-lg bg-red-50 border border-red-200 text-red-700 text-[11px] font-semibold flex items-center gap-2 mt-1 animate-slide-down">
+                      <span>⚠</span>
+                      <span>{dobValidationError}</span>
+                    </div>
+                  )}
+
+                  {dob && !dobValidationError && dobAge !== null && dobAge >= 18 && (
+                    <div className="p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold flex items-center gap-1.5 mt-1">
+                      <CheckCircleIcon size={14} className="text-emerald-600" />
+                      <span>Age Verified: {dobAge} Years Old (Adult 18+ Compliant)</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1">

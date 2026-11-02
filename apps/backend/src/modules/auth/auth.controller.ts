@@ -9,10 +9,25 @@ import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { fullName, email, phoneNumber, password, primaryCategoryId, subcategoryIds, ageConfirmed, termsAccepted } = req.body;
+    const { fullName, email, phoneNumber, dob, password, primaryCategoryId, subcategoryIds, ageConfirmed, termsAccepted } = req.body;
 
     if (!ageConfirmed) {
       throw new AppError('You must be at least 18 years of age to register for FIC Business Hub.', 400, 'UNDERAGE_NOT_PERMITTED');
+    }
+
+    if (dob) {
+      const birthDate = new Date(dob);
+      if (!isNaN(birthDate.getTime())) {
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        if (age < 18) {
+          throw new AppError(`You must be at least 18 years of age to register (calculated age: ${age} years).`, 400, 'UNDERAGE_NOT_PERMITTED');
+        }
+      }
     }
 
     if (!termsAccepted) {
@@ -34,6 +49,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       fullName,
       email: email.toLowerCase(),
       phoneNumber,
+      dob,
       passwordHash,
       role: UserRole.MEMBER,
       status: AccountStatus.ACTIVE,
