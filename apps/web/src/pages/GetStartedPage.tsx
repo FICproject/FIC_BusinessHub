@@ -14,54 +14,54 @@ export const GetStartedPage: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const treeContainerRef = useRef<HTMLDivElement>(null);
 
-  // Simple 4 Steps definition with their matching tree colors
+  // Simple 4 Steps definition with their matching tree colors (Aligned with new KYC -> Membership flow)
   const STEPS = [
     {
       num: 1,
       title: 'Basic Account & Age 18+ Verification',
       oneLiner: 'Enter your name, mobile, and confirm 18+ legal adult status.',
-      colorHex: '#2563eb', // Blue
-      textActiveColor: 'text-blue-600',
-      titleActiveColor: 'text-blue-950',
-      bgActiveColor: 'bg-blue-600',
-      ringActiveColor: 'ring-blue-100',
-      shadowActiveColor: 'shadow-blue-500/25',
+      colorHex: '#C66B52', // Terracotta
+      textActiveColor: 'text-[#C66B52]',
+      titleActiveColor: 'text-[#29302D]',
+      bgActiveColor: 'bg-[#C66B52]',
+      ringActiveColor: 'ring-[#C66B52]/20',
+      shadowActiveColor: 'shadow-[#C66B52]/25',
       threshold: 0.1
     },
     {
       num: 2,
       title: 'Primary Sector & Role Selection',
-      oneLiner: 'Choose 1 of 10 business categories and select your specialized roles.',
-      colorHex: '#6366f1', // Indigo
-      textActiveColor: 'text-indigo-600',
-      titleActiveColor: 'text-indigo-950',
-      bgActiveColor: 'bg-indigo-600',
-      ringActiveColor: 'ring-indigo-100',
-      shadowActiveColor: 'shadow-indigo-500/25',
+      oneLiner: 'Choose 1 of 10 business categories and answer dynamic questions.',
+      colorHex: '#8064A9', // Royal Violet
+      textActiveColor: 'text-[#8064A9]',
+      titleActiveColor: 'text-[#29302D]',
+      bgActiveColor: 'bg-[#8064A9]',
+      ringActiveColor: 'ring-[#8064A9]/20',
+      shadowActiveColor: 'shadow-[#8064A9]/25',
       threshold: 0.35
     },
     {
       num: 3,
-      title: 'First-Year Membership Pass (₹99)',
-      oneLiner: 'Complete the transparent ₹99 annual onboarding pass with GST included.',
-      colorHex: '#d97706', // Amber
-      textActiveColor: 'text-amber-500',
-      titleActiveColor: 'text-amber-950',
-      bgActiveColor: 'bg-amber-500',
-      ringActiveColor: 'ring-amber-100',
-      shadowActiveColor: 'shadow-amber-500/25',
+      title: 'Category KYC & Supporting Documents',
+      oneLiner: 'Attach required sector proof and any additional business documents.',
+      colorHex: '#D99B43', // Amber Gold
+      textActiveColor: 'text-[#D99B43]',
+      titleActiveColor: 'text-[#29302D]',
+      bgActiveColor: 'bg-[#D99B43]',
+      ringActiveColor: 'ring-[#D99B43]/20',
+      shadowActiveColor: 'shadow-[#D99B43]/25',
       threshold: 0.62
     },
     {
       num: 4,
-      title: 'Category KYC & Dashboard Activation',
-      oneLiner: 'Attach verification document to unlock your active member dashboard.',
-      colorHex: '#059669', // Emerald
-      textActiveColor: 'text-emerald-600',
-      titleActiveColor: 'text-emerald-950',
-      bgActiveColor: 'bg-emerald-600',
-      ringActiveColor: 'ring-emerald-100',
-      shadowActiveColor: 'shadow-emerald-500/25',
+      title: 'First-Year Membership Pass (₹99) & Activation',
+      oneLiner: 'Complete the transparent ₹99 introductory pass to activate application review.',
+      colorHex: '#E58C72', // Coral
+      textActiveColor: 'text-[#E58C72]',
+      titleActiveColor: 'text-[#29302D]',
+      bgActiveColor: 'bg-[#E58C72]',
+      ringActiveColor: 'ring-[#E58C72]/20',
+      shadowActiveColor: 'shadow-[#E58C72]/25',
       threshold: 0.85
     }
   ];
