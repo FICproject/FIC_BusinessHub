@@ -56,7 +56,7 @@ import {
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<AuthenticatedUser | null>(null);
+  const [user, setUser] = useState<AuthenticatedUser | null>(() => getStoredUser());
   const userId = user?.id || user?.userId || 'usr_kathir_001';
 
   // Live Wallet & Financial State
@@ -200,15 +200,15 @@ export const ProfilePage: React.FC = () => {
     setEditDescription(u.professionalInfo?.description || '');
   };
 
-  if (!user) return null;
-
   const handleLogout = () => {
     removeAuthToken();
     navigate('/login');
   };
 
   const handleOpenEdit = () => {
-    populateForm(user);
+    if (user) {
+      populateForm(user);
+    }
     setDobError('');
     setIsEditModalOpen(true);
   };
@@ -460,6 +460,17 @@ export const ProfilePage: React.FC = () => {
   const availableBal = wallet?.availableBalance || 0;
   const isRenewalSufficient = availableBal >= renewalFee;
   const renewalShortfall = isRenewalSufficient ? 0 : renewalFee - availableBal;
+
+  if (!user) {
+    return (
+      <WorkspaceShell maxWidth="7xl">
+        <div className="py-24 text-center">
+          <p className="text-base font-bold text-[#29302D]">Loading Member Profile...</p>
+          <p className="text-xs text-[#77786E] mt-1">Authenticating and retrieving member workspace credentials</p>
+        </div>
+      </WorkspaceShell>
+    );
+  }
 
   return (
     <WorkspaceShell maxWidth="7xl">
@@ -1010,7 +1021,7 @@ export const ProfilePage: React.FC = () => {
                               <td className="px-4 py-3.5 text-right whitespace-nowrap font-black">
                                 {isCredit ? (
                                   <span className="text-[#2E7D32] bg-[#E8F5E9]/60 border border-[#2E7D32]/20 px-2 py-0.5 rounded-lg">
-                                    +₹{tx.amount.toLocaleString('en-IN')}
+                                    +₹{(tx.amount || 0).toLocaleString('en-IN')}
                                   </span>
                                 ) : (
                                   <span className="text-[#77786E]/40 font-bold">—</span>
@@ -1021,7 +1032,7 @@ export const ProfilePage: React.FC = () => {
                               <td className="px-4 py-3.5 text-right whitespace-nowrap font-black">
                                 {!isCredit ? (
                                   <span className="text-[#C66B52] bg-[#FFF4F0] border border-[#C66B52]/20 px-2 py-0.5 rounded-lg">
-                                    -₹{tx.amount.toLocaleString('en-IN')}
+                                    -₹{(tx.amount || 0).toLocaleString('en-IN')}
                                   </span>
                                 ) : (
                                   <span className="text-[#77786E]/40 font-bold">—</span>
@@ -1035,7 +1046,7 @@ export const ProfilePage: React.FC = () => {
 
                               {/* 8. Balance After */}
                               <td className="px-4 py-3.5 text-right font-mono font-black text-[#29302D] whitespace-nowrap">
-                                ₹{tx.balanceAfter.toLocaleString('en-IN')}
+                                ₹{(tx.balanceAfter || 0).toLocaleString('en-IN')}
                               </td>
                             </tr>
                           );
