@@ -17,7 +17,8 @@ export const Navbar: React.FC = () => {
     '/business-development',
     '/investment',
     '/partnerships',
-    '/my-requests'
+    '/my-requests',
+    '/profile'
   ];
   const isMemberRoute = memberRoutes.some(
     (route) => location.pathname === route || location.pathname.startsWith(route + '/')

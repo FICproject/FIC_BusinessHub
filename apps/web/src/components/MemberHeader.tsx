@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { getStoredUser, removeAuthToken } from '../services/api';
+import { removeAuthToken } from '../services/api';
 
 export const MemberHeader: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const user = getStoredUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -16,7 +15,7 @@ export const MemberHeader: React.FC = () => {
 
   const closeMenu = () => setMobileMenuOpen(false);
 
-  // Exact 7 member portal navigation routes
+  // Exact 8 member portal navigation routes with Profile immediately after My Requests
   const navLinks = [
     { label: 'Dashboard', path: '/dashboard' },
     { label: 'Marketplace', path: '/marketplace' },
@@ -24,7 +23,8 @@ export const MemberHeader: React.FC = () => {
     { label: 'Scaling', path: '/business-development' },
     { label: 'Investment', path: '/investment' },
     { label: 'Partnerships', path: '/partnerships' },
-    { label: 'My Requests', path: '/my-requests' }
+    { label: 'My Requests', path: '/my-requests' },
+    { label: 'Profile', path: '/profile' }
   ];
 
   return (
@@ -53,7 +53,8 @@ export const MemberHeader: React.FC = () => {
         </Link>
 
         {/* ========================================================
-            CENTER: 7 NAVIGATION LINKS (13.5px, single row, no wrap)
+            CENTER: 8 NAVIGATION LINKS (13.5px, single row, no wrap)
+            Dashboard | Marketplace | Ideas | Scaling | Investment | Partnerships | My Requests | Profile
            ======================================================== */}
         <nav className="hidden lg:flex items-center gap-1 xl:gap-2 whitespace-nowrap">
           {navLinks.map((item) => {
@@ -64,7 +65,7 @@ export const MemberHeader: React.FC = () => {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`px-3 xl:px-3.5 py-1.5 rounded-lg text-[13.5px] transition-colors duration-150 ${
+                className={`px-2.5 xl:px-3 py-1.5 rounded-lg text-[13.5px] transition-colors duration-150 ${
                   isActive
                     ? 'bg-[#29302D] text-[#FCFAF6] font-bold shadow-xs'
                     : 'text-[#29302D]/80 hover:text-[#29302D] hover:bg-[#FFF9F0] font-medium'
@@ -77,23 +78,13 @@ export const MemberHeader: React.FC = () => {
         </nav>
 
         {/* ========================================================
-            RIGHT: MEMBER NAME (13px) + BADGE (12px) + LOGOUT (13px)
+            RIGHT: ONLY LOGOUT BUTTON (Name & ₹99 Pass removed)
            ======================================================== */}
-        <div className="hidden md:flex items-center gap-3 shrink-0">
-          <div className="flex items-center gap-2 bg-[#FFF9F0] px-3 py-1.5 rounded-xl border border-[#E8DBC8] shadow-2xs">
-            <span className="w-2 h-2 rounded-full bg-[#D99B43] animate-pulse shrink-0"></span>
-            <span className="font-bold text-[13px] text-[#29302D] truncate max-w-[130px] xl:max-w-[160px]">
-              {user?.fullName || user?.categoryName || 'Member'}
-            </span>
-            <span className="text-[12px] text-[#B87A28] font-black bg-[#D99B43]/20 border border-[#D99B43]/40 px-2 py-0.5 rounded-md shrink-0">
-              ₹99 Pass
-            </span>
-          </div>
-
+        <div className="hidden lg:flex items-center shrink-0">
           <button
             onClick={handleLogout}
             type="button"
-            className="text-[13px] text-[#77786E] hover:text-[#C66B52] font-semibold px-3 py-1.5 rounded-lg border border-[#E8DBC8] hover:border-[#C66B52]/40 transition-colors shrink-0"
+            className="text-[13px] text-[#77786E] hover:text-[#C66B52] font-semibold px-3.5 py-1.5 rounded-lg border border-[#E8DBC8] hover:border-[#C66B52]/40 transition-colors shrink-0"
             title="Sign out of FIC Business Hub"
           >
             Logout
@@ -142,18 +133,6 @@ export const MemberHeader: React.FC = () => {
          ======================================================== */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-b border-[#E8DBC8] bg-[#F5EBDD] px-4 pt-3 pb-5 space-y-2 shadow-lg">
-          <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#E8DBC8]">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#D99B43] animate-pulse"></span>
-              <span className="text-[13px] font-bold text-[#29302D]">
-                {user?.fullName || user?.categoryName || 'Member'}
-              </span>
-            </div>
-            <span className="text-[12px] font-bold bg-[#D99B43]/20 text-[#B87A28] border border-[#D99B43]/40 px-2.5 py-0.5 rounded-md">
-              ₹99 Pass
-            </span>
-          </div>
-
           <div className="space-y-1">
             {navLinks.map((item) => {
               const isActive =
@@ -191,4 +170,3 @@ export const MemberHeader: React.FC = () => {
 };
 
 export default MemberHeader;
-

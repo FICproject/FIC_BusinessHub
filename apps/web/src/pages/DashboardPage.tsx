@@ -51,10 +51,25 @@ export const DashboardPage: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-600">
-                  {user.categoryName || user.primaryCategory || 'Business & Entrepreneurship'} Member Workspace
-                </span>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                {user.subcategories && user.subcategories.length > 0 ? (
+                  user.subcategories.map((sub, idx) => (
+                    <span
+                      key={idx}
+                      className="text-xs font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-md"
+                    >
+                      {sub}
+                    </span>
+                  ))
+                ) : user.subCategory ? (
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-md">
+                    {user.subCategory}
+                  </span>
+                ) : (
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 border border-blue-200/80 px-2.5 py-0.5 rounded-md">
+                    VERIFIED MEMBER
+                  </span>
+                )}
                 <Badge variant={user.accountStatus === 'ACTIVE' ? 'success' : 'warning'}>
                   {user.accountStatus || 'Active'} Account
                 </Badge>
@@ -63,7 +78,7 @@ export const DashboardPage: React.FC = () => {
                 Welcome back, {user.fullName || 'Member'}!
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Your FIC Business Hub ecosystem dashboard is fully active and verified for {user.email}.
+                Your FIC Business Hub ecosystem dashboard is fully active and verified.
               </p>
             </div>
 
