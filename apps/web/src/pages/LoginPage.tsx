@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button, Input, Card } from '@fic/ui';
 import { apiRequest, setAuthToken, setStoredUser } from '../services/api';
-import { ShieldCheckIcon, ArrowRightIcon } from '../components/Icons';
+import { ShieldCheckIcon, ArrowRightIcon, EyeIcon, EyeOffIcon } from '../components/Icons';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -12,6 +12,7 @@ export const LoginPage: React.FC = () => {
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -98,14 +99,30 @@ export const LoginPage: React.FC = () => {
               required
             />
 
-            <Input
-              label="Password"
-              type="password"
-              placeholder="Enter your account password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-[#29302D] block">
+                Password *
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your account password"
+                  className="w-full text-xs px-3.5 py-2.5 pr-10 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white transition-colors"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#77786E] hover:text-[#29302D] p-1 transition-colors"
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+                </button>
+              </div>
+            </div>
 
             <Button
               type="submit"

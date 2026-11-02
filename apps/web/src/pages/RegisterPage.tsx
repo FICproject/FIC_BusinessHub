@@ -24,7 +24,9 @@ import {
   MailIcon,
   PhoneIcon,
   SparklesIcon,
-  PlusIcon
+  PlusIcon,
+  EyeIcon,
+  EyeOffIcon
 } from '../components/Icons';
 
 interface CustomDoc {
@@ -52,6 +54,7 @@ export const RegisterPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
 
@@ -472,14 +475,30 @@ export const RegisterPage: React.FC = () => {
                   />
                 </div>
 
-                <Input
-                  label="Create Secure Password"
-                  type="password"
-                  placeholder="Minimum 6 characters"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-[#29302D] block">
+                    Create Secure Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Minimum 6 characters"
+                      className="w-full text-xs px-3.5 py-2.5 pr-10 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white transition-colors"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#77786E] hover:text-[#29302D] p-1 transition-colors"
+                      title={showPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+                    </button>
+                  </div>
+                </div>
 
                 {/* 18+ Adult Eligibility Confirmation */}
                 <div className="p-4 rounded-xl bg-[#FFF9F0] border border-[#D99B43]/30 space-y-2">
@@ -742,15 +761,26 @@ export const RegisterPage: React.FC = () => {
                     📌 <strong>Basic Required Documents:</strong> Enter the registration / document number and attach valid PDF or clear image files (Aadhaar, PAN, GSTIN, Udyam, Factory License, Patta, Bar License or Student ID).
                   </p>
                   <p className="text-xs text-[#77786E] leading-relaxed">
-                    💡 <strong>Additional Documents:</strong> Based on your business category, if you want to upload any additional supporting proofs (e.g. GST Certificate, Trade License, FSSAI, MSME, Partnership Deed, Bank Statement, Portfolio), click the <strong>"+ Add Additional Document"</strong> button below!
+                    💡 <strong>Additional Documents:</strong> Based on your business category, if you want to upload any additional supporting proofs (e.g. GST Certificate, Trade License, FSSAI, MSME, Partnership Deed, Bank Statement, Portfolio), click the <strong>"+ Add Document"</strong> button on the right!
                   </p>
                 </div>
 
-                {/* 1. Default Category Documents */}
+                {/* 1. Default Category Documents with Opposite Add Document Button */}
                 <div className="space-y-4">
-                  <span className="text-xs font-bold text-[#29302D] uppercase tracking-wider block">
-                    Core Category Documents:
-                  </span>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs font-bold text-[#29302D] uppercase tracking-wider block">
+                      Core Category Documents:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAddCustomDoc}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#D99B43] text-[#B87A28] hover:bg-[#D99B43] hover:text-white font-bold text-xs shadow-xs transition-all shrink-0"
+                      title="Add document"
+                    >
+                      <PlusIcon size={14} />
+                      <span>+ Add Document</span>
+                    </button>
+                  </div>
 
                   {selectedCategory.kycDocuments.map((doc, i) => {
                     const isAttached = !!attachedFiles[doc.type];
@@ -1011,26 +1041,6 @@ export const RegisterPage: React.FC = () => {
                     })}
                   </div>
                 )}
-
-                {/* 3. Add Additional Document Button */}
-                <div className="p-4 rounded-xl border border-dashed border-[#D99B43] bg-[#FFF9F0]/60 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="text-center sm:text-left">
-                    <span className="text-xs font-bold text-[#29302D] block">
-                      Want to attach more verification documents?
-                    </span>
-                    <span className="text-[11px] text-[#77786E]">
-                      Upload GST, Trade License, FSSAI, MSME, or any supporting proof for your business category.
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddCustomDoc}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#D99B43] text-[#B87A28] hover:bg-[#D99B43] hover:text-white font-bold text-xs shadow-xs transition-all shrink-0"
-                  >
-                    <PlusIcon size={16} />
-                    <span>+ Add Additional Document</span>
-                  </button>
-                </div>
 
                 {/* Footer Buttons */}
                 <div className="pt-2 flex justify-between items-center border-t border-[#E8DBC8]">
