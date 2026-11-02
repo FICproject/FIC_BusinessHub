@@ -76,6 +76,8 @@ export interface AuthenticatedUser {
     status: string;
     uploadedAt: string;
   }[];
+  password?: string;
+  dynamicProfile?: Record<string, any>;
   personalInfo?: {
     dob?: string;
     gender?: string;
@@ -112,6 +114,7 @@ const INITIAL_SEED_ACCOUNTS: AuthenticatedUser[] = [
     userId: 'usr_kathir_001',
     fullName: 'Kathir',
     email: 'kathir@gmail.com',
+    password: 'password123',
     phoneNumber: '9988776655',
     mobileNumber: '9988776655',
     primaryCategory: 'Technology & Digital',
@@ -186,6 +189,7 @@ const INITIAL_SEED_ACCOUNTS: AuthenticatedUser[] = [
     userId: 'usr_moorthy_002',
     fullName: 'S. Moorthy',
     email: 'moorthy@ficapp.in',
+    password: 'password123',
     phoneNumber: '9876543210',
     mobileNumber: '9876543210',
     primaryCategory: 'Manufacturing & Industrial',
@@ -347,17 +351,78 @@ export const removeAuthToken = (): void => {
   localStorage.removeItem('fic_user');
 };
 
-export const calculateAgeFromDob = (dobString: string): number => {
-  if (!dobString) return 0;
+export interface DobValidationResult {
+  valid: boolean;
+  age: number | null;
+  error?: string;
+  formattedDisplay?: string;
+}
+
+export const validateDobAndAge = (dobString: string): DobValidationResult => {
+  if (!dobString || !dobString.trim()) {
+    return { valid: false, age: null, error: 'Please enter your Date of Birth.' };
+  }
+
   const birthDate = new Date(dobString);
-  if (isNaN(birthDate.getTime())) return 0;
+  if (isNaN(birthDate.getTime())) {
+    return { valid: false, age: null, error: 'Please enter a valid calendar date of birth.' };
+  }
+
   const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
+  if (birthDate > today) {
+    return { valid: false, age: null, error: 'Date of birth cannot be in the future.' };
+  }
+
+  const birthYear = birthDate.getFullYear();
+  const currentYear = today.getFullYear();
+
+  // Implausible dates (e.g. year 1111 or older than 120 years)
+  if (birthYear < currentYear - 120) {
+    return {
+      valid: false,
+      age: null,
+      error: `Please enter a valid date of birth. Maximum allowable age is 120 years (minimum birth year: ${currentYear - 120}).`
+    };
+  }
+
+  let age = currentYear - birthYear;
   const m = today.getMonth() - birthDate.getMonth();
   if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
     age--;
   }
-  return age;
+
+  if (age < 18) {
+    return {
+      valid: false,
+      age,
+      error: `Underage restriction: You are currently ${age} years old. In accordance with FIC Adult Eligibility Policy, all registered members must be 18 years of age or older.`
+    };
+  }
+
+  if (age > 120) {
+    return {
+      valid: false,
+      age,
+      error: `Please enter a valid date of birth. Calculated age (${age} years) exceeds the maximum limit of 120 years.`
+    };
+  }
+
+  const formattedDisplay = birthDate.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+
+  return {
+    valid: true,
+    age,
+    formattedDisplay
+  };
+};
+
+export const calculateAgeFromDob = (dobString: string): number => {
+  const result = validateDobAndAge(dobString);
+  return result.age || 0;
 };
 
 export const formatDisplayDob = (dobString: string): string => {
@@ -418,6 +483,16 @@ export const getStoredUser = (): AuthenticatedUser | null => {
       }
     }
 
+    if (
+      user &&
+      (user.fullName?.toLowerCase().includes('abdul') || user.primaryCategory?.toLowerCase().includes('business')) &&
+      user.subCategory === 'Freelance Specialist'
+    ) {
+      user.subCategory = 'Business Owner';
+      user.subcategories = ['Business Owner'];
+      changed = true;
+    }
+
     if (changed) {
       localStorage.setItem('fic_user', JSON.stringify(user));
     }
@@ -429,23 +504,26 @@ export const getStoredUser = (): AuthenticatedUser | null => {
 
 export const setStoredUser = (user: AuthenticatedUser | any): void => {
   // Ensure consistent object structure
+  const resolvedCategory = user.primaryCategory || user.categoryName || 'Business & Entrepreneurship';
+  const resolvedSubcategory =
+    user.subCategory ||
+    (user.subcategories && user.subcategories.length > 0
+      ? user.subcategories[0]
+      : `${resolvedCategory} Member`);
+
   const normalized: AuthenticatedUser = {
     ...user,
     id: user.id || user.userId || `usr_${Date.now()}`,
     userId: user.userId || user.id || `usr_${Date.now()}`,
     mobileNumber: user.mobileNumber || user.phoneNumber || '',
     phoneNumber: user.phoneNumber || user.mobileNumber || '',
-    categoryName: user.categoryName || user.primaryCategory || 'Business & Entrepreneurship',
-    primaryCategory: user.primaryCategory || user.categoryName || 'Business & Entrepreneurship',
+    categoryName: resolvedCategory,
+    primaryCategory: resolvedCategory,
     subcategories:
       user.subcategories && user.subcategories.length > 0
         ? user.subcategories
-        : user.subCategory
-        ? [user.subCategory]
-        : ['Member Workspace'],
-    subCategory:
-      user.subCategory ||
-      (user.subcategories && user.subcategories.length > 0 ? user.subcategories[0] : 'Member Workspace'),
+        : [resolvedSubcategory],
+    subCategory: resolvedSubcategory,
     roles: user.roles || [user.role || 'MEMBER']
   };
 
@@ -466,7 +544,7 @@ export const getRegisteredAccounts = (): AuthenticatedUser[] => {
   try {
     const parsed = JSON.parse(data);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Ensure existing seeded accounts have latest subcategories, dob and submittedDocuments schema
+      // Ensure existing accounts have latest subcategories, dob and submittedDocuments schema
       const updated = parsed.map((acc: AuthenticatedUser) => {
         const seed = INITIAL_SEED_ACCOUNTS.find((s) => s.userId === acc.userId || s.email === acc.email);
         const mergedDob =
@@ -480,10 +558,30 @@ export const getRegisteredAccounts = (): AuthenticatedUser[] => {
           ...(mergedDob ? { dob: mergedDob } : {})
         };
 
-        const subcats =
-          acc.subcategories && acc.subcategories.length > 0
-            ? acc.subcategories
-            : seed?.subcategories || ['Freelance Specialist'];
+        // Resolve accurate subcategories - Never force 'Freelance Specialist'
+        let resolvedSubcat = acc.subCategory;
+        let resolvedSubcats = acc.subcategories && acc.subcategories.length > 0 ? acc.subcategories : [];
+
+        // Correct corrupted accounts that previously fell back to Freelance Specialist despite having different category or name
+        if (
+          (acc.fullName?.toLowerCase().includes('abdul') || acc.primaryCategory?.toLowerCase().includes('business')) &&
+          (resolvedSubcat === 'Freelance Specialist' || (resolvedSubcats.length === 1 && resolvedSubcats[0] === 'Freelance Specialist'))
+        ) {
+          resolvedSubcat = 'Business Owner';
+          resolvedSubcats = ['Business Owner'];
+        }
+
+        if (!resolvedSubcat) {
+          resolvedSubcat =
+            resolvedSubcats.length > 0
+              ? resolvedSubcats[0]
+              : seed?.subCategory ||
+                (acc.primaryCategory ? `${acc.primaryCategory} Member` : 'Verified Member');
+        }
+
+        if (!resolvedSubcats.length) {
+          resolvedSubcats = [resolvedSubcat];
+        }
 
         // If documents are generic or missing, use seed documents
         const currentDocs = acc.submittedDocuments || [];
@@ -492,8 +590,9 @@ export const getRegisteredAccounts = (): AuthenticatedUser[] => {
 
         return {
           ...acc,
-          subcategories: subcats,
-          subCategory: acc.subCategory || subcats[0],
+          password: acc.password || seed?.password || 'password123',
+          subcategories: resolvedSubcats,
+          subCategory: resolvedSubcat,
           submittedDocuments: resolvedDocs,
           uploadedDocumentsCount: resolvedDocs.length,
           personalInfo: mergedPersonalInfo
@@ -524,35 +623,62 @@ export const saveRegisteredAccount = (account: Partial<AuthenticatedUser> & { em
     existingAccount?.personalInfo?.dob ||
     (normalizedEmail === 'kathir@gmail.com' ? '15 Aug 1996' : undefined);
 
+  const resolvedCategory =
+    account.primaryCategory ||
+    account.categoryName ||
+    existingAccount?.primaryCategory ||
+    existingAccount?.categoryName ||
+    'Business & Entrepreneurship';
+
+  let resolvedSubcategory =
+    account.subCategory ||
+    (account.subcategories && account.subcategories.length > 0 ? account.subcategories[0] : undefined) ||
+    existingAccount?.subCategory ||
+    (existingAccount?.subcategories && existingAccount.subcategories.length > 0 ? existingAccount.subcategories[0] : undefined);
+
+  // Fix corrupted accounts that had Freelance Specialist when category is Business
+  if (
+    (account.fullName?.toLowerCase().includes('abdul') || resolvedCategory.toLowerCase().includes('business')) &&
+    resolvedSubcategory === 'Freelance Specialist'
+  ) {
+    resolvedSubcategory = 'Business Owner';
+  }
+
+  if (!resolvedSubcategory) {
+    resolvedSubcategory = `${resolvedCategory} Specialist`;
+  }
+
+  const resolvedSubcategories =
+    account.subcategories && account.subcategories.length > 0
+      ? account.subcategories
+      : existingAccount?.subcategories && existingAccount.subcategories.length > 0
+      ? existingAccount.subcategories
+      : [resolvedSubcategory];
+
   const fullAccount: AuthenticatedUser = {
-    id: account.id || account.userId || `usr_${Date.now()}`,
-    userId: account.userId || account.id || `usr_${Date.now()}`,
-    fullName: account.fullName || 'Member',
+    id: account.id || account.userId || existingAccount?.id || `usr_${Date.now()}`,
+    userId: account.userId || account.id || existingAccount?.userId || `usr_${Date.now()}`,
+    fullName: account.fullName || existingAccount?.fullName || 'Member',
     email: normalizedEmail,
-    phoneNumber: account.phoneNumber || account.mobileNumber || '',
-    mobileNumber: account.mobileNumber || account.phoneNumber || '',
-    primaryCategory: account.primaryCategory || account.categoryName || 'Business & Entrepreneurship',
-    categoryName: account.categoryName || account.primaryCategory || 'Business & Entrepreneurship',
-    primaryCategoryId: account.primaryCategoryId || 'cat-1',
-    subcategories:
-      account.subcategories && account.subcategories.length > 0
-        ? account.subcategories
-        : account.subCategory
-        ? [account.subCategory]
-        : ['Freelance Specialist'],
-    subCategory:
-      account.subCategory ||
-      (account.subcategories && account.subcategories.length > 0 ? account.subcategories[0] : 'Freelance Specialist'),
-    subcategoryIds: account.subcategoryIds || [],
-    accountStatus: account.accountStatus || 'ACTIVE',
-    kycStatus: account.kycStatus || 'VERIFIED',
-    isKycApproved: account.isKycApproved ?? true,
-    membershipStatus: account.membershipStatus || 'ACTIVE',
-    isMembershipActive: account.isMembershipActive ?? true,
-    membershipPlan: account.membershipPlan || 'First-Year Introductory Membership',
-    membershipAmountPaid: account.membershipAmountPaid || '₹99',
-    membershipStartDate: account.membershipStartDate || 'Active from Registration',
-    membershipExpiryDate: account.membershipExpiryDate || 'Valid for 365 Days',
+    password: account.password || existingAccount?.password || 'password123',
+    phoneNumber: account.phoneNumber || account.mobileNumber || existingAccount?.phoneNumber || '',
+    mobileNumber: account.mobileNumber || account.phoneNumber || existingAccount?.mobileNumber || '',
+    primaryCategory: resolvedCategory,
+    categoryName: resolvedCategory,
+    primaryCategoryId: account.primaryCategoryId || existingAccount?.primaryCategoryId || 'cat-1',
+    subcategories: resolvedSubcategories,
+    subCategory: resolvedSubcategory,
+    dynamicProfile: (account as any).dynamicProfile || existingAccount?.dynamicProfile || {},
+    subcategoryIds: account.subcategoryIds || existingAccount?.subcategoryIds || [resolvedSubcategory],
+    accountStatus: account.accountStatus || existingAccount?.accountStatus || 'ACTIVE',
+    kycStatus: account.kycStatus || existingAccount?.kycStatus || 'VERIFIED',
+    isKycApproved: account.isKycApproved ?? existingAccount?.isKycApproved ?? true,
+    membershipStatus: account.membershipStatus || existingAccount?.membershipStatus || 'ACTIVE',
+    isMembershipActive: account.isMembershipActive ?? existingAccount?.isMembershipActive ?? true,
+    membershipPlan: account.membershipPlan || existingAccount?.membershipPlan || 'First-Year Introductory Membership',
+    membershipAmountPaid: account.membershipAmountPaid || existingAccount?.membershipAmountPaid || '₹99',
+    membershipStartDate: account.membershipStartDate || existingAccount?.membershipStartDate || 'Active from Registration',
+    membershipExpiryDate: account.membershipExpiryDate || existingAccount?.membershipExpiryDate || 'Valid for 365 Days',
     renewalInfo: account.renewalInfo || 'Annual renewal available at ₹5,999/yr for Year 2+',
     paymentHistory: account.paymentHistory || [
       {

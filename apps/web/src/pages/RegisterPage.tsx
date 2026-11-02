@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button, Input, Card, Badge } from '@fic/ui';
 import { INITIAL_CATEGORIES_DATA } from '../services/mockData';
+import { getSubcategoryFormConfig } from '../services/subcategoryForms';
 import {
   apiRequest,
   setAuthToken,
   setStoredUser,
   getStoredUser,
+  validateDobAndAge,
   calculateAgeFromDob,
   formatDisplayDob,
   validateReferralCode,
@@ -102,6 +104,13 @@ export const RegisterPage: React.FC = () => {
     .toISOString()
     .split('T')[0];
 
+  // Minimum allowed Date of Birth is 120 years ago (plausible birth year)
+  const minDobAllowed = new Date(
+    new Date().setFullYear(new Date().getFullYear() - 120)
+  )
+    .toISOString()
+    .split('T')[0];
+
   const handleDobChange = (val: string) => {
     setDob(val);
     if (!val) {
@@ -109,22 +118,23 @@ export const RegisterPage: React.FC = () => {
       setDobValidationError('');
       return;
     }
-    const age = calculateAgeFromDob(val);
-    setDobAge(age);
-    if (age < 18) {
-      setDobValidationError(
-        `Underage restriction: You are currently ${age} years old. In accordance with FIC Adult Eligibility Policy, all registered members must be 18 years of age or older.`
-      );
+    const res = validateDobAndAge(val);
+    setDobAge(res.age);
+    if (!res.valid) {
+      setDobValidationError(res.error || 'Please enter a valid date of birth.');
     } else {
       setDobValidationError('');
     }
   };
 
-  // Step 2: Category & Roles
+  // Step 2: Category & Strictly Single Subcategory Role
   const [selectedCategory, setSelectedCategory] = useState(INITIAL_CATEGORIES_DATA[0]);
-  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>(
     INITIAL_CATEGORIES_DATA[0].subcategories[0]
-  ]);
+  );
+
+  // Resolved dynamic configuration for the active subcategory
+  const subcategoryConfig = getSubcategoryFormConfig(selectedCategory.name, selectedSubcategory);
 
   // Step 3: Dynamic details
   const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, any>>({});
@@ -262,11 +272,9 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
-    const age = calculateAgeFromDob(dob);
-    if (age < 18) {
-      setErrorMessage(
-        `Underage registration restriction: You must be at least 18 years old to register (Calculated age: ${age} years). Under FIC Adult Eligibility Policy, only verified adults can register.`
-      );
+    const dobResult = validateDobAndAge(dob);
+    if (!dobResult.valid) {
+      setErrorMessage(dobResult.error || 'Please enter a valid date of birth.');
       return;
     }
 
@@ -283,36 +291,32 @@ export const RegisterPage: React.FC = () => {
     setStep(2);
   };
 
-  // Step 2 Category Selection
+  // Step 2 Category Selection & Single Subcategory Role
   const handleCategorySelect = (cat: typeof INITIAL_CATEGORIES_DATA[0]) => {
     setSelectedCategory(cat);
-    setSelectedSubcategories([cat.subcategories[0]]);
+    setSelectedSubcategory(cat.subcategories[0]);
+    setDynamicAnswers({});
   };
 
-  const toggleSubcategory = (sub: string) => {
-    if (selectedSubcategories.includes(sub)) {
-      if (selectedSubcategories.length > 1) {
-        setSelectedSubcategories(selectedSubcategories.filter((s) => s !== sub));
-      }
-    } else {
-      setSelectedSubcategories([...selectedSubcategories, sub]);
-    }
+  const handleSubcategorySelect = (sub: string) => {
+    setSelectedSubcategory(sub);
+    setDynamicAnswers({});
   };
 
-  // Step 3 Dynamic Form Submit -> Now leads directly to Step 4 (KYC Documents)
+  // Step 3 Dynamic Form Submit -> Tailored to Single Subcategory
   const handleDynamicFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    // Check mandatory dynamic fields
-    for (const field of selectedCategory.fields) {
+    // Check mandatory dynamic fields for the selected subcategory
+    for (const field of subcategoryConfig.fields) {
       if (field.required && !dynamicAnswers[field.key]) {
         setErrorMessage(`Please fill in "${field.label}".`);
         return;
       }
     }
 
-    // Advance to Step 4: Category KYC Document Upload
+    // Advance to Step 4: Role-specific KYC Document Upload
     setStep(4);
   };
 
@@ -321,8 +325,8 @@ export const RegisterPage: React.FC = () => {
     e.preventDefault();
     setErrorMessage('');
 
-    // Check required default documents
-    for (const doc of selectedCategory.kycDocuments) {
+    // Check required subcategory documents
+    for (const doc of subcategoryConfig.kycDocuments) {
       if (doc.required) {
         if (!docNumbers[doc.type]?.trim()) {
           setErrorMessage(`Please enter the document / registration number for "${doc.label}".`);
@@ -373,7 +377,11 @@ export const RegisterPage: React.FC = () => {
           dob: formattedDob || dob,
           password,
           primaryCategoryId: selectedCategory.id,
-          subcategoryIds: selectedSubcategories,
+          primaryCategoryName: selectedCategory.name,
+          subCategory: selectedSubcategory,
+          primarySubcategoryName: selectedSubcategory,
+          subcategoryIds: [selectedSubcategory],
+          dynamicProfile: dynamicAnswers,
           ageConfirmed,
           termsAccepted
         })
@@ -390,16 +398,37 @@ export const RegisterPage: React.FC = () => {
         phoneNumber,
         primaryCategoryId: selectedCategory.id,
         categoryName: selectedCategory.name,
+        primaryCategory: selectedCategory.name,
+        subCategory: selectedSubcategory,
+        primarySubcategoryName: selectedSubcategory,
+        subcategories: [selectedSubcategory],
+        subcategoryIds: [selectedSubcategory],
+        dynamicProfile: dynamicAnswers,
         isMembershipActive: true,
         isKycApproved: false,
         personalInfo: {
-          dob: formattedDob
+          dob: formattedDob || dob
+        },
+        professionalInfo: {
+          roleTitle: selectedSubcategory
         }
       };
 
+      user.password = password;
+      user.primaryCategory = selectedCategory.name;
+      user.categoryName = selectedCategory.name;
+      user.subCategory = selectedSubcategory;
+      user.primarySubcategoryName = selectedSubcategory;
+      user.subcategories = [selectedSubcategory];
+      user.subcategoryIds = [selectedSubcategory];
+      user.dynamicProfile = dynamicAnswers;
       user.personalInfo = {
         ...(user.personalInfo || {}),
-        dob: formattedDob
+        dob: formattedDob || dob
+      };
+      user.professionalInfo = {
+        ...(user.professionalInfo || {}),
+        roleTitle: selectedSubcategory
       };
       user.referralCode = newRefCode;
       user.referralSource = isReferred ? 'REFERRED' : 'ORGANIC';
@@ -419,8 +448,8 @@ export const RegisterPage: React.FC = () => {
         })
       });
 
-      // 3. Compile all documents (Default + Custom)
-      const defaultDocItems = selectedCategory.kycDocuments.map((doc) => ({
+      // 3. Compile all documents (Default Role Docs + Custom Docs)
+      const defaultDocItems = subcategoryConfig.kycDocuments.map((doc) => ({
         documentType: doc.type,
         documentName: doc.label,
         documentNumber: docNumbers[doc.type] || '',
@@ -610,6 +639,7 @@ export const RegisterPage: React.FC = () => {
                   <div className="relative">
                     <input
                       type="date"
+                      min={minDobAllowed}
                       max={maxDobAllowed}
                       value={dob}
                       onChange={(e) => handleDobChange(e.target.value)}
@@ -798,31 +828,39 @@ export const RegisterPage: React.FC = () => {
                   })}
                 </div>
 
-                {/* Subcategory Roles Selector */}
+                {/* Subcategory Roles Selector - Strictly Single Selection */}
                 <div className="pt-4 border-t border-[#E8DBC8] space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-[#29302D] uppercase tracking-wider">
-                      Select Subcategory Roles in {selectedCategory.name}:
+                      Select Primary Subcategory Role in {selectedCategory.name}:
                     </span>
-                    <span className="text-[10px] text-[#77786E]">Multi-select allowed</span>
+                    <span className="text-[11px] text-[#C66B52] font-black">
+                      Select exactly one primary role (Strictly 1)
+                    </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                     {selectedCategory.subcategories.map((sub) => {
-                      const isSubSelected = selectedSubcategories.includes(sub);
+                      const isSubSelected = selectedSubcategory === sub;
                       return (
                         <button
                           key={sub}
                           type="button"
-                          onClick={() => toggleSubcategory(sub)}
-                          className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-all ${
+                          onClick={() => handleSubcategorySelect(sub)}
+                          className={`text-xs px-3.5 py-3 rounded-xl border font-bold transition-all flex items-center justify-between text-left cursor-pointer ${
                             isSubSelected
-                              ? 'bg-[#8064A9] text-white border-[#8064A9] shadow-xs'
-                              : 'bg-white text-[#29302D] border-[#E8DBC8] hover:bg-[#FFF9F0]'
+                              ? 'bg-[#8064A9] text-white border-[#8064A9] shadow-md scale-[1.01]'
+                              : 'bg-white text-[#29302D] border-[#E8DBC8] hover:border-[#8064A9]/40 hover:bg-[#F9F5FD]'
                           }`}
                         >
-                          {isSubSelected ? '✓ ' : '+ '}
-                          {sub}
+                          <span className="truncate pr-2">{sub}</span>
+                          <span
+                            className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                              isSubSelected ? 'border-white bg-white' : 'border-[#B8AABF] bg-white'
+                            }`}
+                          >
+                            {isSubSelected && <span className="w-2 h-2 rounded-full bg-[#8064A9]" />}
+                          </span>
                         </button>
                       );
                     })}
@@ -844,38 +882,48 @@ export const RegisterPage: React.FC = () => {
         )}
 
         {/* ========================================================
-            STEP 3: CONFIGURATION-DRIVEN DYNAMIC FORM
+            STEP 3: CONFIGURATION-DRIVEN DYNAMIC FORM (TAILORED TO SUBCATEGORY)
            ======================================================== */}
         {step === 3 && (
           <div className="animate-step-in">
             <Card
-              title={`${selectedCategory.name} Details`}
-              subtitle="Step 3 of 6: Dynamic configuration-driven questions for your sector"
+              title={`${subcategoryConfig.roleTitle}`}
+              subtitle={`Step 3 of 6: Dynamic profile questions for ${selectedSubcategory}`}
               className="shadow-sm border border-[#E8DBC8] bg-white rounded-2xl"
             >
               <form onSubmit={handleDynamicFormSubmit} className="space-y-5">
-                {/* Sector Header Pill */}
+                {/* Sector & Role Header Pill */}
                 <div className="p-4 rounded-xl bg-[#FFF9F0] border border-[#D99B43]/30 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#8064A9] text-white flex items-center justify-center shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#8064A9] text-white flex items-center justify-center shrink-0 shadow-xs">
                     {renderCategoryIcon(selectedCategory.iconName, 20)}
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-[#29302D] block">
-                      Sector Profile: {selectedCategory.name}
-                    </span>
-                    <span className="text-[11px] text-[#77786E]">
-                      Roles selected: {selectedSubcategories.join(', ')}
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-[#C66B52] bg-white px-2 py-0.5 rounded border border-[#E58C72]/30">
+                        {subcategoryConfig.roleBadge}
+                      </span>
+                      <span className="text-xs font-bold text-[#29302D]">
+                        {selectedCategory.name}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-[#77786E] block mt-0.5">
+                      Selected Primary Role: <strong>{selectedSubcategory}</strong>
                     </span>
                   </div>
                 </div>
 
-                {/* Dynamic Fields */}
+                {/* Role-Specific Dynamic Fields */}
                 <div className="space-y-4">
-                  {selectedCategory.fields.map((field) => (
+                  {subcategoryConfig.fields.map((field) => (
                     <div key={field.key} className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[#29302D] block">
-                        {field.label} {field.required && <span className="text-red-500">*</span>}
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-[#29302D] block">
+                          {field.label} {field.required && <span className="text-red-500">*</span>}
+                        </label>
+                        {field.helperText && (
+                          <span className="text-[10px] text-[#77786E]">{field.helperText}</span>
+                        )}
+                      </div>
 
                       {field.type === 'select' ? (
                         <select
@@ -893,6 +941,17 @@ export const RegisterPage: React.FC = () => {
                             </option>
                           ))}
                         </select>
+                      ) : field.type === 'textarea' ? (
+                        <textarea
+                          placeholder={field.placeholder}
+                          rows={3}
+                          className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
+                          value={dynamicAnswers[field.key] || ''}
+                          onChange={(e) =>
+                            setDynamicAnswers({ ...dynamicAnswers, [field.key]: e.target.value })
+                          }
+                          required={field.required}
+                        />
                       ) : (
                         <input
                           type={field.type}
@@ -929,8 +988,8 @@ export const RegisterPage: React.FC = () => {
         {step === 4 && (
           <div className="animate-step-in">
             <Card
-              title="Category KYC Document Upload"
-              subtitle="Step 4 of 6: Upload verification documents to activate your account"
+              title={`KYC Documents for ${selectedSubcategory}`}
+              subtitle={`Step 4 of 6: Upload verification documents to activate your ${selectedSubcategory} workspace`}
               className="shadow-sm border border-[#E8DBC8] bg-white rounded-2xl"
             >
               <form onSubmit={handleKycSubmit} className="space-y-6">
@@ -942,27 +1001,27 @@ export const RegisterPage: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-[#29302D] uppercase tracking-wide">
-                        Verification Guidelines for {selectedCategory.name}
+                        Verification Guidelines for {selectedSubcategory} ({selectedCategory.name})
                       </h4>
                       <p className="text-[11px] text-[#77786E]">
-                        Basic mandatory and recommended documents for your sector are listed below.
+                        Basic mandatory and recommended documents for your role are listed below.
                       </p>
                     </div>
                   </div>
 
                   <p className="text-xs text-[#29302D] leading-relaxed pt-1 border-t border-[#E8DBC8]">
-                    📌 <strong>Basic Required Documents:</strong> Enter the registration / document number and attach valid PDF or clear image files (Aadhaar, PAN, GSTIN, Udyam, Factory License, Patta, Bar License or Student ID).
+                    📌 <strong>Basic Required Documents:</strong> Enter the registration / document number and attach valid PDF or clear image files (Aadhaar, PAN, GSTIN, Udyam, Factory License, Patta, Bar License, College ID or Bonafide).
                   </p>
                   <p className="text-xs text-[#77786E] leading-relaxed">
-                    💡 <strong>Additional Documents:</strong> Based on your business category, if you want to upload any additional supporting proofs (e.g. GST Certificate, Trade License, FSSAI, MSME, Partnership Deed, Bank Statement, Portfolio), click the <strong>"+ Add Document"</strong> button on the right!
+                    💡 <strong>Additional Documents:</strong> If you want to upload any additional supporting proofs (e.g. GST Certificate, Trade License, FSSAI, MSME, Partnership Deed, Bank Statement, Portfolio), click the <strong>"+ Add Document"</strong> button on the right!
                   </p>
                 </div>
 
-                {/* 1. Default Category Documents with Opposite Add Document Button */}
+                {/* 1. Default Role Documents with Opposite Add Document Button */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs font-bold text-[#29302D] uppercase tracking-wider block">
-                      Core Category Documents:
+                      Core KYC Verification Documents for {selectedSubcategory}:
                     </span>
                     <button
                       type="button"
@@ -975,7 +1034,7 @@ export const RegisterPage: React.FC = () => {
                     </button>
                   </div>
 
-                  {selectedCategory.kycDocuments.map((doc, i) => {
+                  {subcategoryConfig.kycDocuments.map((doc, i) => {
                     const isAttached = !!attachedFiles[doc.type];
                     const fileInfo = attachedFiles[doc.type];
 
@@ -1303,7 +1362,7 @@ export const RegisterPage: React.FC = () => {
                       <span className="font-semibold text-[#29302D]">Primary Sector:</span> {selectedCategory.name}
                     </div>
                     <div>
-                      <span className="font-semibold text-[#29302D]">Selected Roles:</span> {selectedSubcategories.join(', ')}
+                      <span className="font-semibold text-[#29302D]">Primary Role:</span> {selectedSubcategory}
                     </div>
                   </div>
 
@@ -1312,7 +1371,7 @@ export const RegisterPage: React.FC = () => {
                       Uploaded Documents for FIC Review:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {selectedCategory.kycDocuments.map((doc, i) => (
+                      {subcategoryConfig.kycDocuments.map((doc, i) => (
                         <span
                           key={i}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-[#E8DBC8] text-[11px] text-[#29302D]"

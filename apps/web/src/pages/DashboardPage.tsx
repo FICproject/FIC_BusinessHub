@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { getStoredUser, apiRequest, getUserRequests, AuthenticatedUser } from '../services/api';
+import { getSubcategoryDashboardConfig } from '../services/dashboardConfig';
 import {
   WorkspaceShell,
   WorkspaceHero,
@@ -53,106 +54,49 @@ export const DashboardPage: React.FC = () => {
 
   if (!user) return null;
 
-  const quickActions = [
-    {
-      title: 'Browse Marketplace',
-      subtitle: 'Universal verified services',
-      icon: <BriefcaseIcon size={20} />,
-      path: '/marketplace',
-      gradient: 'from-[#C66B52] to-[#E58C72]',
-      borderHover: 'hover:border-[#E58C72]',
-      bgHover: 'hover:bg-[#FFF4F0]/60'
-    },
-    {
-      title: 'My Services',
-      subtitle: 'Add & manage capabilities',
-      icon: <ShieldCheckIcon size={20} />,
-      path: '/my-services',
-      gradient: 'from-[#8064A9] to-[#9B7CC6]',
-      borderHover: 'hover:border-[#8064A9]',
-      bgHover: 'hover:bg-[#F3EEFA]/60'
-    },
-    {
-      title: 'Submit Business Idea',
-      subtitle: 'Incubation & validation',
-      icon: <LightbulbIcon size={20} />,
-      path: '/business-ideas',
-      gradient: 'from-[#D99B43] to-[#F5B453]',
-      borderHover: 'hover:border-[#D99B43]',
-      bgHover: 'hover:bg-[#FDF6E9]/60'
-    },
-    {
-      title: 'Business Scaling',
-      subtitle: 'Technology & expansion',
-      icon: <RocketIcon size={20} />,
-      path: '/business-development',
-      gradient: 'from-[#8064A9] to-[#D78E9A]',
-      borderHover: 'hover:border-[#8064A9]',
-      bgHover: 'hover:bg-[#F9F5FD]/60'
-    },
-    {
-      title: 'Investment & Funding',
-      subtitle: 'Private syndicates',
-      icon: <TrendingUpIcon size={20} />,
-      path: '/investment',
-      gradient: 'from-[#D99B43] to-[#C66B52]',
-      borderHover: 'hover:border-[#D99B43]',
-      bgHover: 'hover:bg-[#FCFAF5]/60'
-    },
-    {
-      title: 'B2B Partnerships',
-      subtitle: 'Tie-ups & distributors',
-      icon: <HandshakeIcon size={20} />,
-      path: '/partnerships',
-      gradient: 'from-[#C66B52] to-[#D78E9A]',
-      borderHover: 'hover:border-[#C66B52]',
-      bgHover: 'hover:bg-[#FFF6F7]/60'
-    },
-    {
-      title: 'Meetings',
-      subtitle: 'Facilitated consultations',
-      icon: <CalendarIcon size={20} />,
-      path: '/meetings',
-      gradient: 'from-[#29302D] to-[#8064A9]',
-      borderHover: 'hover:border-[#29302D]',
-      bgHover: 'hover:bg-[#F5EBDD]/60'
+  // Generate dynamic, subcategory-tailored workspace configuration
+  const dashboardConfig = getSubcategoryDashboardConfig(user, activeRequests.length);
+
+  const renderDashboardIcon = (name: string, size = 18) => {
+    switch (name) {
+      case 'briefcase':
+        return <BriefcaseIcon size={size} />;
+      case 'lightbulb':
+        return <LightbulbIcon size={size} />;
+      case 'rocket':
+        return <RocketIcon size={size} />;
+      case 'trending':
+        return <TrendingUpIcon size={size} />;
+      case 'shield':
+        return <ShieldCheckIcon size={size} />;
+      case 'calendar':
+        return <CalendarIcon size={size} />;
+      case 'handshake':
+        return <HandshakeIcon size={size} />;
+      default:
+        return <BriefcaseIcon size={size} />;
     }
-  ];
+  };
 
   return (
     <WorkspaceShell maxWidth="7xl">
       {/* ========================================================
-          1. WELCOME & STATUS HERO
+          1. WELCOME & STATUS HERO (DYNAMIC BADGE & ROLE)
          ======================================================== */}
       <WorkspaceHero
         accent="coral"
         badge={
           <div className="flex flex-wrap items-center gap-2">
-            {user.subcategories && user.subcategories.length > 0 ? (
-              user.subcategories.map((sub, idx) => (
-                <span
-                  key={idx}
-                  className="text-[11px] font-black uppercase tracking-wider text-[#C66B52] bg-white/80 border border-[#E58C72]/40 px-2.5 py-0.5 rounded-lg shadow-2xs"
-                >
-                  {sub}
-                </span>
-              ))
-            ) : user.subCategory ? (
-              <span className="text-[11px] font-black uppercase tracking-wider text-[#C66B52] bg-white/80 border border-[#E58C72]/40 px-2.5 py-0.5 rounded-lg shadow-2xs">
-                {user.subCategory}
-              </span>
-            ) : (
-              <span className="text-[11px] font-black uppercase tracking-wider text-[#C66B52] bg-white/80 border border-[#E58C72]/40 px-2.5 py-0.5 rounded-lg shadow-2xs">
-                VERIFIED MEMBER
-              </span>
-            )}
+            <span className="text-[11px] font-black uppercase tracking-wider text-[#C66B52] bg-white/90 border border-[#E58C72]/40 px-2.5 py-0.5 rounded-lg shadow-2xs">
+              {dashboardConfig.roleBadge}
+            </span>
             <WorkspaceBadge variant={user.accountStatus === 'ACTIVE' ? 'active' : 'pending'}>
               {user.accountStatus || 'Active'} Account
             </WorkspaceBadge>
           </div>
         }
         title={`Welcome back, ${user.fullName || 'Member'}!`}
-        subtitle="Your FIC Business Hub ecosystem workspace is fully active and verified. Access universal capabilities, confidential opportunities, and track ongoing coordination."
+        subtitle={dashboardConfig.heroSubtitle}
         rightActions={
           <div className="flex flex-wrap items-center gap-3">
             {/* Membership Validity Pill */}
@@ -184,56 +128,32 @@ export const DashboardPage: React.FC = () => {
       />
 
       {/* ========================================================
-          2. 4 EXECUTIVE KPI STAT CARDS
+          2. DYNAMIC SUBCATEGORY-TAILORED KPI STAT CARDS
          ======================================================== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-        <WorkspaceKpi
-          title="Active Requests"
-          value={activeRequests.length}
-          subtitle="In FIC Coordination"
-          icon={<BriefcaseIcon size={18} />}
-          accent="coral"
-          trend="Live Tracker"
-          onClick={() => navigate('/my-requests')}
-        />
-        <WorkspaceKpi
-          title="Submitted Ideas"
-          value="1"
-          subtitle="Review Scheduled"
-          icon={<LightbulbIcon size={18} />}
-          accent="amber"
-          trend="Incubation"
-          onClick={() => navigate('/business-ideas')}
-        />
-        <WorkspaceKpi
-          title="Scaling Support"
-          value="Available"
-          subtitle="Specialists Ready"
-          icon={<RocketIcon size={18} />}
-          accent="violet"
-          trend="Advisory"
-          onClick={() => navigate('/business-development')}
-        />
-        <WorkspaceKpi
-          title="Confidential Channel"
-          value="Active"
-          subtitle="Private Deal Flow"
-          icon={<TrendingUpIcon size={18} />}
-          accent="emerald"
-          trend="Private Access"
-          onClick={() => navigate('/investment')}
-        />
+        {dashboardConfig.kpiCards.map((kpi, idx) => (
+          <WorkspaceKpi
+            key={idx}
+            title={kpi.title}
+            value={kpi.value}
+            subtitle={kpi.subtitle}
+            icon={renderDashboardIcon(kpi.iconName, 18)}
+            accent={kpi.accent}
+            trend={kpi.trend}
+            onClick={() => navigate(kpi.path)}
+          />
+        ))}
       </div>
 
       {/* ========================================================
-          3. OPPORTUNITY ACTIONS & SERVICES (7 MODULES)
+          3. TAILORED OPPORTUNITY ACTIONS & SERVICES (7 MODULES)
          ======================================================== */}
       <WorkspaceCard variant="glass" padded={false} className="overflow-hidden">
         <div className="px-6 py-4 border-b border-[#EADFCF] bg-white/60 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#C66B52]" />
             <h2 className="text-base font-black text-[#29302D]">
-              Opportunity Actions & Services
+              Opportunity Actions & Services ({dashboardConfig.roleBadge})
             </h2>
           </div>
           <span className="text-xs font-semibold text-[#77786E] hidden sm:inline">
@@ -243,9 +163,9 @@ export const DashboardPage: React.FC = () => {
 
         <div className="p-6">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
-            {quickActions.map((action, idx) => (
+            {dashboardConfig.quickActions.map((action) => (
               <motion.div
-                key={action.path}
+                key={action.path + action.title}
                 whileHover={{ y: -3, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ duration: 0.2 }}
@@ -257,7 +177,7 @@ export const DashboardPage: React.FC = () => {
                   <div
                     className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${action.gradient} text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform`}
                   >
-                    {action.icon}
+                    {renderDashboardIcon(action.iconName, 20)}
                   </div>
                   <strong className="text-xs text-[#29302D] block font-extrabold group-hover:text-[#C66B52] transition-colors">
                     {action.title}
@@ -271,6 +191,44 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       </WorkspaceCard>
+
+      {/* ========================================================
+          ROLE-SPECIFIC HIGHLIGHT TRACK
+         ======================================================== */}
+      {dashboardConfig.specializedTrack && (
+        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-[#FFF9F0] via-white to-[#F5EBDD] border border-[#D99B43]/40 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-md bg-[#8064A9] text-white text-[10px] font-black tracking-wider uppercase">
+                {dashboardConfig.specializedTrack.badge}
+              </span>
+              <h3 className="text-sm sm:text-base font-black text-[#29302D]">
+                {dashboardConfig.specializedTrack.title}
+              </h3>
+            </div>
+            <p className="text-xs text-[#77786E] leading-relaxed">
+              {dashboardConfig.specializedTrack.description}
+            </p>
+            <div className="flex flex-wrap items-center gap-4 pt-1">
+              {dashboardConfig.specializedTrack.metrics.map((m, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 text-xs">
+                  <span className="text-[#C66B52] font-black">{m.value}</span>
+                  <span className="text-[#77786E]">{m.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="shrink-0">
+            <Link
+              to={dashboardConfig.specializedTrack.buttonPath}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#29302D] text-white text-xs font-bold hover:bg-[#C66B52] transition-colors shadow-sm"
+            >
+              <span>{dashboardConfig.specializedTrack.buttonLabel}</span>
+              <ArrowRightIcon size={14} />
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================
           4. ACTIVE REQUESTS TRACKER & FIC BULLETIN

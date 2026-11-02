@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -9,25 +10,52 @@ import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { fullName, email, phoneNumber, dob, password, primaryCategoryId, subcategoryIds, ageConfirmed, termsAccepted } = req.body;
+    const {
+      fullName,
+      email,
+      phoneNumber,
+      dob,
+      password,
+      primaryCategoryId,
+      primaryCategoryName,
+      subCategory,
+      subcategoryIds,
+      primarySubcategoryName,
+      dynamicProfile,
+      ageConfirmed,
+      termsAccepted
+    } = req.body;
 
     if (!ageConfirmed) {
       throw new AppError('You must be at least 18 years of age to register for FIC Business Hub.', 400, 'UNDERAGE_NOT_PERMITTED');
     }
 
-    if (dob) {
-      const birthDate = new Date(dob);
-      if (!isNaN(birthDate.getTime())) {
-        const today = new Date();
-        let age = today.getFullYear() - birthDate.getFullYear();
-        const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          age--;
-        }
-        if (age < 18) {
-          throw new AppError(`You must be at least 18 years of age to register (calculated age: ${age} years).`, 400, 'UNDERAGE_NOT_PERMITTED');
-        }
-      }
+    if (!dob) {
+      throw new AppError('Date of birth is required.', 400, 'DOB_REQUIRED');
+    }
+
+    const birthDate = new Date(dob);
+    if (isNaN(birthDate.getTime())) {
+      throw new AppError('Please enter a valid date of birth.', 400, 'INVALID_DOB');
+    }
+
+    const today = new Date();
+    if (birthDate > today) {
+      throw new AppError('Date of birth cannot be in the future.', 400, 'INVALID_DOB');
+    }
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+
+    if (age < 18) {
+      throw new AppError(`You must be at least 18 years of age to register (calculated age: ${age} years). Under FIC Adult Eligibility Policy, only verified adults can register.`, 400, 'UNDERAGE_NOT_PERMITTED');
+    }
+
+    if (age > 120 || birthDate.getFullYear() < 1900) {
+      throw new AppError(`Please enter a valid date of birth. Calculated age (${age} years) exceeds the maximum limit of 120 years.`, 400, 'INVALID_DOB');
     }
 
     if (!termsAccepted) {
@@ -45,6 +73,11 @@ export const register = async (req: Request, res: Response, next: NextFunction):
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
+    const resolvedSubcategory =
+      primarySubcategoryName ||
+      subCategory ||
+      (Array.isArray(subcategoryIds) && subcategoryIds.length > 0 ? subcategoryIds[0] : 'Member');
+
     const newUser = await UserModel.create({
       fullName,
       email: email.toLowerCase(),
@@ -53,8 +86,12 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       passwordHash,
       role: UserRole.MEMBER,
       status: AccountStatus.ACTIVE,
-      primaryCategoryId,
-      subcategoryIds: subcategoryIds || [],
+      primaryCategoryId: mongoose.isValidObjectId(primaryCategoryId) ? primaryCategoryId : undefined,
+      primaryCategoryName: primaryCategoryName || undefined,
+      subCategory: resolvedSubcategory,
+      primarySubcategoryName: resolvedSubcategory,
+      subcategoryIds: Array.isArray(subcategoryIds) ? subcategoryIds.filter(id => mongoose.isValidObjectId(id)) : [],
+      dynamicProfile: dynamicProfile || {},
       isEmailVerified: true, // simplified for onboarding
       isPhoneVerified: true,
       isKycApproved: false,
@@ -83,8 +120,13 @@ export const register = async (req: Request, res: Response, next: NextFunction):
           fullName: newUser.fullName,
           email: newUser.email,
           phoneNumber: newUser.phoneNumber,
+          dob: newUser.dob,
           role: newUser.role,
           primaryCategoryId: newUser.primaryCategoryId,
+          primaryCategoryName: newUser.primaryCategoryName,
+          subCategory: newUser.subCategory,
+          primarySubcategoryName: newUser.primarySubcategoryName,
+          subcategories: [newUser.subCategory].filter(Boolean),
           isKycApproved: newUser.isKycApproved,
           isMembershipActive: newUser.isMembershipActive
         }
@@ -138,8 +180,13 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
           fullName: user.fullName,
           email: user.email,
           phoneNumber: user.phoneNumber,
+          dob: user.dob,
           role: user.role,
           primaryCategoryId: user.primaryCategoryId,
+          primaryCategoryName: user.primaryCategoryName,
+          subCategory: user.subCategory,
+          primarySubcategoryName: user.primarySubcategoryName,
+          subcategories: user.subCategory ? [user.subCategory] : [],
           subcategoryIds: user.subcategoryIds,
           isKycApproved: user.isKycApproved,
           isMembershipActive: user.isMembershipActive

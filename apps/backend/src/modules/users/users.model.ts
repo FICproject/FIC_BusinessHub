@@ -10,7 +10,11 @@ export interface IUserDocument extends Document {
   role: UserRole;
   status: AccountStatus;
   primaryCategoryId?: mongoose.Types.ObjectId;
+  primaryCategoryName?: string;
+  subCategory?: string;
+  primarySubcategoryName?: string;
   subcategoryIds: mongoose.Types.ObjectId[];
+  dynamicProfile?: Record<string, any>;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   isKycApproved: boolean;
@@ -39,7 +43,11 @@ const UserSchema = new Schema<IUserDocument>(
       default: AccountStatus.ACTIVE
     },
     primaryCategoryId: { type: Schema.Types.ObjectId, ref: 'Category' },
+    primaryCategoryName: { type: String, trim: true },
+    subCategory: { type: String, trim: true },
+    primarySubcategoryName: { type: String, trim: true },
     subcategoryIds: [{ type: Schema.Types.ObjectId, ref: 'Subcategory' }],
+    dynamicProfile: { type: Schema.Types.Mixed },
     isEmailVerified: { type: Boolean, default: false },
     isPhoneVerified: { type: Boolean, default: false },
     isKycApproved: { type: Boolean, default: false },

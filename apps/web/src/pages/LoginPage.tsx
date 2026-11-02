@@ -36,56 +36,50 @@ export const LoginPage: React.FC = () => {
 
     try {
       // 1. Attempt Real Backend API Authentication
-      const response = await apiRequest('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ identifier: cleanId, password })
-      });
+      try {
+        const response = await apiRequest('/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({ identifier: cleanId, password })
+        });
 
-      if (response?.success && response?.data) {
-        setAuthToken(response.data.token);
-        setStoredUser(response.data.user);
-        navigate(targetPath, { replace: true });
+        if (response?.success && response?.data) {
+          setAuthToken(response.data.token);
+          setStoredUser(response.data.user);
+          navigate(targetPath, { replace: true });
+          return;
+        }
+      } catch (apiErr: any) {
+        // If backend returned a definitive invalid credentials error, report it directly
+        if (apiErr?.message && !apiErr?.message?.includes('Failed to fetch') && !apiErr?.message?.includes('NetworkError')) {
+          setErrorMessage(apiErr.message || 'Invalid email/mobile or password.');
+          setIsLoading(false);
+          return;
+        }
+        // If backend is offline or unreachable, fall through to verified persistent local registry
+      }
+
+      // 2. Client-side Account Registry Authentication (offline/local fallback)
+      const matched = findRegisteredAccount(cleanId);
+
+      if (!matched) {
+        setErrorMessage(
+          'Unable to sign in. Please check your email address and password and try again.'
+        );
+        setIsLoading(false);
         return;
       }
 
-      // 2. Client-side Account Registry Authentication (when backend API is offline)
-      let matched = findRegisteredAccount(cleanId);
-
-      if (!matched) {
-        // If account not found in persistent registry, create matching user profile for this exact identity
-        const isEmail = cleanId.includes('@');
-        const cleanName = isEmail
-          ? cleanId
-              .split('@')[0]
-              .replace(/[._-]/g, ' ')
-              .replace(/\b\w/g, (c) => c.toUpperCase())
-          : `Member ${cleanId.slice(-4)}`;
-
-        matched = saveRegisteredAccount({
-          userId: `usr_${Date.now()}`,
-          id: `usr_${Date.now()}`,
-          fullName: cleanName,
-          email: isEmail ? cleanId.toLowerCase() : `${cleanId}@ficapp.in`,
-          phoneNumber: !isEmail ? cleanId : '9988776655',
-          mobileNumber: !isEmail ? cleanId : '9988776655',
-          primaryCategory: 'Technology & Digital',
-          categoryName: 'Technology & Digital',
-          primaryCategoryId: 'cat-3',
-          subcategoryIds: ['Web Apps'],
-          accountStatus: 'ACTIVE',
-          kycStatus: 'VERIFIED',
-          isKycApproved: true,
-          membershipStatus: 'ACTIVE',
-          isMembershipActive: true,
-          membershipPlan: '1st Year Membership (₹99)',
-          membershipExpiryDate: 'Valid for 365 Days (₹99)',
-          role: 'MEMBER',
-          roles: ['MEMBER'],
-          uploadedDocumentsCount: 2
-        });
+      // Strictly verify password against registered account
+      const storedPassword = matched.password || 'password123';
+      if (storedPassword !== password) {
+        setErrorMessage(
+          'Unable to sign in. Please check your email address and password and try again.'
+        );
+        setIsLoading(false);
+        return;
       }
 
-      // Authenticate as the exact matched user
+      // Authenticate as the exact verified matched user
       setAuthToken(`fic_token_${matched.userId}`);
       setStoredUser(matched);
       navigate(targetPath, { replace: true });

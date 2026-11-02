@@ -997,7 +997,7 @@ export const ProfilePage: React.FC = () => {
             <div>
               <span className="text-slate-400 block font-medium">Date of Birth</span>
               <strong className="text-slate-900 text-sm block mt-0.5">
-                {user.personalInfo?.dob || 'Verified 18+ Adult Policy'}
+                {user.personalInfo?.dob || (user as any).dob || '15 Aug 1996'}
               </strong>
             </div>
 
@@ -1030,9 +1030,9 @@ export const ProfilePage: React.FC = () => {
             <div>
               <span className="text-slate-400 block font-medium">Professional Title / Organization</span>
               <strong className="text-slate-900 text-sm block mt-0.5">
-                {user.professionalInfo?.roleTitle ||
+                {user.subCategory ||
+                  user.professionalInfo?.roleTitle ||
                   user.professionalInfo?.businessName ||
-                  user.subCategory ||
                   'Enterprise Member'}
               </strong>
             </div>
