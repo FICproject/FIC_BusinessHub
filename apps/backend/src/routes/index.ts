@@ -15,6 +15,8 @@ import { businessDevRouter } from '../modules/business-development/business-deve
 import { investmentRouter } from '../modules/investment/investment.routes';
 import { partnershipsRouter } from '../modules/partnerships/partnerships.routes';
 import { dashboardRouter } from '../modules/dashboard/dashboard.routes';
+import { walletRouter } from '../modules/wallet/wallet.routes';
+import { referralsRouter } from '../modules/referrals/referral.routes';
 
 export const apiRouter = Router();
 
@@ -37,3 +39,5 @@ apiRouter.use('/business-development-requests', businessDevRouter);
 apiRouter.use('/investment-profiles', investmentRouter);
 apiRouter.use('/partnership-requests', partnershipsRouter);
 apiRouter.use('/dashboard', dashboardRouter);
+apiRouter.use('/wallet', walletRouter);
+apiRouter.use('/referrals', referralsRouter);

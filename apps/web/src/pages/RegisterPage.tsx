@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button, Input, Card, Badge } from '@fic/ui';
 import { INITIAL_CATEGORIES_DATA } from '../services/mockData';
 import {
@@ -8,7 +8,9 @@ import {
   setStoredUser,
   getStoredUser,
   calculateAgeFromDob,
-  formatDisplayDob
+  formatDisplayDob,
+  validateReferralCode,
+  saveRegisteredAccount
 } from '../services/api';
 import {
   ShieldCheckIcon,
@@ -57,6 +59,31 @@ export const RegisterPage: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Step 1: Basic
+  const [searchParams] = useSearchParams();
+  const refParam = searchParams.get('ref') || '';
+  const [referralCode, setReferralCode] = useState(refParam);
+  const [referrerInfo, setReferrerInfo] = useState<{ valid: boolean; referrerName?: string; referrerUserId?: string } | null>(null);
+
+  useEffect(() => {
+    if (refParam) {
+      const res = validateReferralCode(refParam);
+      setReferrerInfo(res);
+      if (res.valid) {
+        setReferralCode(refParam.toUpperCase());
+      }
+    }
+  }, [refParam]);
+
+  const handleManualReferralCheck = (code: string) => {
+    setReferralCode(code);
+    if (code.trim()) {
+      const res = validateReferralCode(code.trim());
+      setReferrerInfo(res);
+    } else {
+      setReferrerInfo(null);
+    }
+  };
+
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -353,6 +380,9 @@ export const RegisterPage: React.FC = () => {
       });
 
       const token = regResponse?.data?.token || `mock_jwt_token_${Date.now()}`;
+      const isReferred = referrerInfo?.valid;
+      const newRefCode = `FIC-${fullName.toUpperCase().replace(/\s+/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
       const user = regResponse?.data?.user || {
         id: `usr_${Date.now()}`,
         fullName,
@@ -371,9 +401,14 @@ export const RegisterPage: React.FC = () => {
         ...(user.personalInfo || {}),
         dob: formattedDob
       };
+      user.referralCode = newRefCode;
+      user.referralSource = isReferred ? 'REFERRED' : 'ORGANIC';
+      user.referredByCode = isReferred ? referralCode : undefined;
+      user.referrerUserId = isReferred ? referrerInfo.referrerUserId : undefined;
 
       setAuthToken(token);
       setStoredUser(user);
+      saveRegisteredAccount(user);
 
       // 2. Confirm ₹99 Payment
       await apiRequest('/payments/membership/confirm', {
@@ -516,6 +551,24 @@ export const RegisterPage: React.FC = () => {
               className="shadow-sm border border-[#E8DBC8] bg-white rounded-2xl"
             >
               <form onSubmit={handleStep1Submit} className="space-y-4">
+                {/* Verified Referral Banner */}
+                {referrerInfo?.valid && (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-900 animate-fade-in">
+                    <div className="flex items-center gap-2.5">
+                      <CheckCircleIcon size={18} className="text-emerald-600 shrink-0" />
+                      <div>
+                        <span className="font-bold block">Referred by FIC Member</span>
+                        <span className="text-[11px] text-emerald-700">
+                          {referrerInfo.referrerName} (Referral Code: {referralCode})
+                        </span>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-md bg-emerald-200 text-emerald-800 font-bold text-[10.5px]">
+                      Attribution Active
+                    </span>
+                  </div>
+                )}
+
                 <Input
                   label="Full Legal Name"
                   placeholder="e.g. S. Moorthy"
@@ -609,6 +662,35 @@ export const RegisterPage: React.FC = () => {
                       {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
                     </button>
                   </div>
+                </div>
+
+                {/* Referral Code input */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-[#29302D] block">
+                      Referral Code {refParam ? '(Bound from Referral Link)' : '(Optional)'}
+                    </label>
+                    {referrerInfo?.valid && (
+                      <span className="text-[11px] text-emerald-600 font-bold">✓ Active Referral</span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="e.g. FIC-KATHIR-7782"
+                    value={referralCode}
+                    disabled={!!refParam}
+                    onChange={(e) => handleManualReferralCheck(e.target.value)}
+                    className={`w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none transition-colors uppercase ${
+                      referrerInfo?.valid
+                        ? 'border-emerald-500 bg-emerald-50/30 text-emerald-900 font-bold'
+                        : 'border-[#E8DBC8] bg-white text-[#29302D]'
+                    }`}
+                  />
+                  {referralCode && !referrerInfo?.valid && (
+                    <span className="text-[11px] text-[#77786E] block">
+                      No matching referrer found. Will be processed as organic registration.
+                    </span>
+                  )}
                 </div>
 
                 {/* 18+ Adult Eligibility Confirmation */}

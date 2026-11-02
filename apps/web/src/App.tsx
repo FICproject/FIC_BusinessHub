@@ -34,6 +34,7 @@ import { MeetingsPage } from './pages/MeetingsPage';
 import { MyRequestsPage } from './pages/MyRequestsPage';
 import { MyServicesPage } from './pages/MyServicesPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
 export const App: React.FC = () => {
   return (
@@ -89,7 +90,10 @@ export const App: React.FC = () => {
         {/* ========================================================
             4. ADMIN LAYOUT: Dedicated executive portal shell
            ======================================================== */}
-        <Route path="/admin/*" element={<AdminLayout />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminDashboardPage />} />
+          <Route path="*" element={<AdminDashboardPage />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

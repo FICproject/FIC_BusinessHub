@@ -1,0 +1,165 @@
+import { Router, Request, Response, NextFunction } from 'express';
+import { ReferralModel, ReferralProgrammeConfigModel } from './referral.model';
+import { UserModel } from '../users/users.model';
+import { getOrCreateWallet } from '../wallet/wallet.routes';
+import { WalletTransactionModel } from '../wallet/wallet.model';
+import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { AppError } from '../../common/errors/app-error';
+import { WalletTransactionType, WalletTransactionStatus } from '@fic/shared-types';
+
+export const referralsRouter = Router();
+
+// 1. GET /api/v1/referrals/validate-code/:code - Validate referral code during registration
+referralsRouter.get('/validate-code/:code', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { code } = req.params;
+    if (!code) throw new AppError('Referral code required.', 400);
+
+    const cleanCode = code.trim().toUpperCase();
+    const referrer = await UserModel.findOne({
+      $or: [
+        { referralCode: cleanCode },
+        // Fallback matching
+        { email: cleanCode.toLowerCase() }
+      ]
+    });
+
+    if (!referrer) {
+      return res.status(200).json({
+        success: false,
+        valid: false,
+        message: 'Invalid referral code.'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      valid: true,
+      data: {
+        referralCode: cleanCode,
+        referrerUserId: referrer._id,
+        referrerName: referrer.fullName
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 2. GET /api/v1/referrals/my-referrals - Current user's referral summary and history
+referralsRouter.get('/my-referrals', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Unauthorized', 401);
+
+    const user = await UserModel.findById(req.user.userId);
+    if (!user) throw new AppError('User not found', 404);
+
+    // Generate referral code if user doesn't have one yet
+    const referralCode = `FIC-${user.fullName.toUpperCase().replace(/\s+/g, '')}-${user._id.toString().slice(-4).toUpperCase()}`;
+
+    const referrals = await ReferralModel.find({ referrerUserId: req.user.userId })
+      .populate('referredUserId', 'fullName email createdAt')
+      .sort({ createdAt: -1 });
+
+    const totalReferrals = referrals.length;
+    const pendingReferrals = referrals.filter((r) => r.rewardStatus === 'PENDING_ELIGIBILITY' || r.rewardStatus === 'PENDING_APPROVAL').length;
+    const kycApprovedReferrals = referrals.filter((r) => r.kycStatus === 'VERIFIED').length;
+    const rewardPending = referrals
+      .filter((r) => r.rewardStatus === 'PENDING_APPROVAL')
+      .reduce((sum, r) => sum + (r.rewardAmount || 500), 0);
+    const rewardCredited = referrals
+      .filter((r) => r.rewardStatus === 'CREDITED')
+      .reduce((sum, r) => sum + (r.rewardAmount || 500), 0);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        referralCode,
+        referralLink: `https://www.ficapp.in/register?ref=${referralCode}`,
+        summary: {
+          totalReferrals,
+          pendingReferrals,
+          kycApprovedReferrals,
+          rewardPending,
+          rewardCredited,
+          totalEarnings: rewardCredited
+        },
+        referrals
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 3. Admin: GET /api/v1/referrals/admin/all - View all referrals with attribution
+referralsRouter.get('/admin/all', authenticate, async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const referrals = await ReferralModel.find()
+      .populate('referrerUserId', 'fullName email')
+      .populate('referredUserId', 'fullName email')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: referrals.length,
+      data: referrals
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 4. Admin: PATCH /api/v1/referrals/admin/:id/approve-reward - Approve reward & credit referrer wallet
+referralsRouter.patch('/admin/:id/approve-reward', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const referral = await ReferralModel.findById(id);
+    if (!referral) throw new AppError('Referral record not found', 404);
+
+    if (referral.rewardStatus === 'CREDITED') {
+      throw new AppError('Reward has already been credited to member wallet.', 400);
+    }
+
+    const rewardAmount = referral.rewardAmount || 500;
+    const referrerWallet = await getOrCreateWallet(referral.referrerUserId);
+
+    // Credit wallet atomically
+    const balanceAfter = referrerWallet.availableBalance + rewardAmount;
+    referrerWallet.availableBalance += rewardAmount;
+    referrerWallet.totalBalance += rewardAmount;
+    referrerWallet.totalReferralEarnings += rewardAmount;
+    referrerWallet.withdrawalEligibleBalance += rewardAmount;
+    referrerWallet.membershipEligibleBalance += rewardAmount;
+    await referrerWallet.save();
+
+    // Create ledger transaction
+    await WalletTransactionModel.create({
+      transactionId: `TXN_REF_${Date.now()}`,
+      walletId: referrerWallet._id,
+      userId: referral.referrerUserId,
+      transactionType: WalletTransactionType.REFERRAL_REWARD,
+      direction: 'CREDIT',
+      amount: rewardAmount,
+      currency: 'INR',
+      description: `Referral reward credited for verified member (Ref: ${referral.referralCode})`,
+      status: WalletTransactionStatus.COMPLETED,
+      balanceAfter,
+      sourceReferenceId: referral.referralId
+    });
+
+    referral.rewardStatus = 'CREDITED';
+    referral.creditedAt = new Date();
+    referral.approvedBy = req.user?.userId || 'ADMIN_OPERATIONS';
+    referral.approvedAt = new Date();
+    await referral.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Referral reward of ₹${rewardAmount} approved and credited to referrer wallet.`,
+      data: referral
+    });
+  } catch (error) {
+    next(error);
+  }
+});
