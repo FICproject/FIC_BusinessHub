@@ -1266,11 +1266,13 @@ export const RegisterPage: React.FC = () => {
                     size="sm"
                     className="w-full bg-[#C66B52] hover:bg-[#D99B43] text-white font-bold"
                     onClick={() => {
-                      const u = getStoredUser() || {};
-                      u.isKycApproved = true;
-                      u.isMembershipActive = true;
-                      u.kycStatus = 'APPROVED';
-                      setStoredUser(u);
+                      const u = getStoredUser();
+                      if (u) {
+                        u.isKycApproved = true;
+                        u.isMembershipActive = true;
+                        u.kycStatus = 'VERIFIED';
+                        setStoredUser(u);
+                      }
                       navigate('/dashboard');
                     }}
                   >

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Badge, Modal } from '@fic/ui';
 import { INITIAL_CATEGORIES_DATA, INITIAL_SERVICES_DATA } from '../services/mockData';
-import { apiRequest } from '../services/api';
+import { apiRequest, getStoredUser, saveUserRequest } from '../services/api';
 import {
   ShieldCheckIcon,
   SearchIcon,
@@ -59,10 +59,28 @@ export const MarketplacePage: React.FC = () => {
         })
       });
 
+      // Save user-isolated request to persistent client state
+      const user = getStoredUser();
+      if (user) {
+        saveUserRequest(user.id || user.userId, {
+          serviceTitle: selectedService.title,
+          category: selectedService.category,
+          requirementNotes
+        });
+      }
+
       setSuccessMessage(
         'Your service request has been received by FIC. Our coordinator will review your requirement and reach out shortly.'
       );
     } catch {
+      const user = getStoredUser();
+      if (user) {
+        saveUserRequest(user.id || user.userId, {
+          serviceTitle: selectedService.title,
+          category: selectedService.category,
+          requirementNotes
+        });
+      }
       setSuccessMessage('Your request has been routed to the FIC team.');
     } finally {
       setIsSubmitting(false);

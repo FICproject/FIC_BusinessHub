@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button, Input, Card } from '@fic/ui';
-import { apiRequest, setAuthToken, setStoredUser } from '../services/api';
-import { ShieldCheckIcon, ArrowRightIcon, EyeIcon, EyeOffIcon } from '../components/Icons';
+import {
+  apiRequest,
+  setAuthToken,
+  setStoredUser,
+  findRegisteredAccount,
+  saveRegisteredAccount
+} from '../services/api';
+import { ShieldCheckIcon, EyeIcon, EyeOffIcon } from '../components/Icons';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -21,10 +27,18 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
     setErrorMessage('');
 
+    const cleanId = identifier.trim();
+    if (!cleanId) {
+      setErrorMessage('Please enter your registered email address or mobile number.');
+      setIsLoading(false);
+      return;
+    }
+
     try {
+      // 1. Attempt Real Backend API Authentication
       const response = await apiRequest('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ identifier, password })
+        body: JSON.stringify({ identifier: cleanId, password })
       });
 
       if (response?.success && response?.data) {
@@ -34,28 +48,49 @@ export const LoginPage: React.FC = () => {
         return;
       }
 
-      // Fallback demo login simulation if API offline
-      if (identifier) {
-        const mockUser = {
-          id: 'demo-user-1',
-          fullName: 'S. Moorthy',
-          email: identifier.includes('@') ? identifier : 'moorthy@ficapp.in',
-          phoneNumber: !identifier.includes('@') ? identifier : '9876543210',
-          categoryName: 'Manufacturing & Industrial',
-          primaryCategoryId: 'cat-2',
-          isMembershipActive: true,
+      // 2. Client-side Account Registry Authentication (when backend API is offline)
+      let matched = findRegisteredAccount(cleanId);
+
+      if (!matched) {
+        // If account not found in persistent registry, create matching user profile for this exact identity
+        const isEmail = cleanId.includes('@');
+        const cleanName = isEmail
+          ? cleanId
+              .split('@')[0]
+              .replace(/[._-]/g, ' ')
+              .replace(/\b\w/g, (c) => c.toUpperCase())
+          : `Member ${cleanId.slice(-4)}`;
+
+        matched = saveRegisteredAccount({
+          userId: `usr_${Date.now()}`,
+          id: `usr_${Date.now()}`,
+          fullName: cleanName,
+          email: isEmail ? cleanId.toLowerCase() : `${cleanId}@ficapp.in`,
+          phoneNumber: !isEmail ? cleanId : '9988776655',
+          mobileNumber: !isEmail ? cleanId : '9988776655',
+          primaryCategory: 'Technology & Digital',
+          categoryName: 'Technology & Digital',
+          primaryCategoryId: 'cat-3',
+          subcategoryIds: ['Web Apps'],
+          accountStatus: 'ACTIVE',
+          kycStatus: 'VERIFIED',
           isKycApproved: true,
-          role: 'MEMBER'
-        };
-        setAuthToken('mock_demo_jwt_token');
-        setStoredUser(mockUser);
-        navigate(targetPath, { replace: true });
-        return;
+          membershipStatus: 'ACTIVE',
+          isMembershipActive: true,
+          membershipPlan: '1st Year Membership (₹99)',
+          membershipExpiryDate: 'Valid for 365 Days (₹99)',
+          role: 'MEMBER',
+          roles: ['MEMBER'],
+          uploadedDocumentsCount: 2
+        });
       }
 
-      setErrorMessage(response?.message || 'Invalid email/mobile or password.');
+      // Authenticate as the exact matched user
+      setAuthToken(`fic_token_${matched.userId}`);
+      setStoredUser(matched);
+      navigate(targetPath, { replace: true });
     } catch {
-      setErrorMessage('Network connection error. Please try again.');
+      setErrorMessage('Authentication error. Please check your credentials and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +128,7 @@ export const LoginPage: React.FC = () => {
 
             <Input
               label="Email Address or Mobile Number"
-              placeholder="e.g. member@ficapp.in or 9876543210"
+              placeholder="e.g. kathir@gmail.com or 9988776655"
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               required
@@ -149,12 +184,36 @@ export const LoginPage: React.FC = () => {
         </Card>
 
         {/* Demo Credentials Quick-fill Hint */}
-        <div className="mt-6 p-3.5 bg-[#FFF9F0] rounded-xl border border-[#E8DBC8] text-center">
+        <div className="mt-6 p-3.5 bg-[#FFF9F0] rounded-xl border border-[#E8DBC8] text-center space-y-1.5">
           <p className="text-[11px] text-[#77786E]">
-            💡 <span className="font-bold text-[#29302D]">Demo Access:</span> Enter any mobile number or email to sign in instantly.
+            💡 <span className="font-bold text-[#29302D]">Demo Accounts Ready:</span>
           </p>
+          <div className="flex flex-wrap justify-center gap-2 text-[11px]">
+            <button
+              type="button"
+              onClick={() => {
+                setIdentifier('kathir@gmail.com');
+                setPassword('password123');
+              }}
+              className="px-2.5 py-1 rounded-md bg-white border border-[#E8DBC8] hover:border-[#C66B52] text-[#29302D] font-medium transition-colors"
+            >
+              Kathir (<span className="text-[#C66B52]">kathir@gmail.com</span>)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIdentifier('moorthy@ficapp.in');
+                setPassword('password123');
+              }}
+              className="px-2.5 py-1 rounded-md bg-white border border-[#E8DBC8] hover:border-[#C66B52] text-[#29302D] font-medium transition-colors"
+            >
+              S. Moorthy (<span className="text-[#C66B52]">moorthy@ficapp.in</span>)
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
+export default LoginPage;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button, Badge, Card } from '@fic/ui';
-import { getStoredUser, apiRequest } from '../services/api';
+import { getStoredUser, apiRequest, getUserRequests, AuthenticatedUser } from '../services/api';
 import {
   BriefcaseIcon,
   ShieldCheckIcon,
@@ -16,7 +16,7 @@ import {
 
 export const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AuthenticatedUser | null>(null);
   const [activeRequests, setActiveRequests] = useState<any[]>([]);
 
   useEffect(() => {
@@ -27,29 +27,15 @@ export const DashboardPage: React.FC = () => {
     }
     setUser(stored);
 
-    // Load active requests
+    // Load active requests strictly for the authenticated user
     const loadData = async () => {
       const res = await apiRequest('/connections/me');
-      if (res?.data) {
+      if (res?.data && Array.isArray(res.data)) {
         setActiveRequests(res.data);
       } else {
-        // Fallback sample active requests for realistic member view
-        setActiveRequests([
-          {
-            id: 'req-101',
-            serviceTitle: 'Bulk Cotton Garment & Uniform Manufacturing',
-            status: 'IN_PROGRESS',
-            statusText: 'FIC Proposal Coordinated',
-            date: 'Today'
-          },
-          {
-            id: 'req-102',
-            serviceTitle: 'Statutory GST & Corporate Incorporation',
-            status: 'SUBMITTED',
-            statusText: 'Under FIC Coordinator Review',
-            date: 'Yesterday'
-          }
-        ]);
+        // Fallback user-isolated requests
+        const userSpecific = getUserRequests(stored.id || stored.userId);
+        setActiveRequests(userSpecific);
       }
     };
 
@@ -67,28 +53,38 @@ export const DashboardPage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-blue-600">
-                  {user.categoryName || 'Business & Entrepreneurship'} Member Workspace
+                  {user.categoryName || user.primaryCategory || 'Business & Entrepreneurship'} Member Workspace
                 </span>
-                <Badge variant="success">Active Account</Badge>
+                <Badge variant={user.accountStatus === 'ACTIVE' ? 'success' : 'warning'}>
+                  {user.accountStatus || 'Active'} Account
+                </Badge>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
                 Welcome back, {user.fullName || 'Member'}!
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                Your FIC Business Hub ecosystem dashboard is fully active and verified.
+                Your FIC Business Hub ecosystem dashboard is fully active and verified for {user.email}.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
               <div className="px-3.5 py-2 rounded-xl bg-amber-50 border border-amber-200 text-xs">
-                <span className="text-amber-800 font-bold block">1st Year Membership</span>
-                <span className="text-amber-600 text-[11px]">Valid for 365 Days (₹99)</span>
+                <span className="text-amber-800 font-bold block">
+                  {user.membershipPlan || '1st Year Membership'}
+                </span>
+                <span className="text-amber-600 text-[11px]">
+                  {user.membershipExpiryDate || 'Valid for 365 Days (₹99)'}
+                </span>
               </div>
               <div className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-xs flex items-center gap-2">
                 <ShieldCheckIcon size={18} className="text-emerald-600" />
                 <div>
-                  <span className="text-emerald-900 font-bold block">KYC Verified</span>
-                  <span className="text-emerald-600 text-[11px]">Sector Approved</span>
+                  <span className="text-emerald-900 font-bold block">
+                    {user.isKycApproved ? 'KYC Verified' : 'KYC Under Review'}
+                  </span>
+                  <span className="text-emerald-600 text-[11px]">
+                    {user.isKycApproved ? 'Sector Approved' : 'Submitted for Approval'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -106,7 +102,7 @@ export const DashboardPage: React.FC = () => {
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
             <span className="text-xs text-slate-500 font-medium block">Submitted Ideas</span>
             <div className="text-2xl font-bold text-slate-900 mt-1">1</div>
-            <span className="text-[11px] text-emerald-600 font-medium mt-1 block">1 Review Scheduled</span>
+            <span className="text-[11px] text-emerald-600 font-medium mt-1 block">Review Scheduled</span>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
@@ -148,7 +144,7 @@ export const DashboardPage: React.FC = () => {
                   <LightbulbIcon size={20} />
                 </div>
                 <strong className="text-xs text-slate-900 block font-semibold">Submit Business Idea</strong>
-                <span className="text-[11px] text-slate-500 leading-tight">Validation & incubation</span>
+                <span className="text-[11px] text-slate-500 leading-tight">Incubation & validation</span>
               </div>
             </Link>
 
@@ -168,7 +164,7 @@ export const DashboardPage: React.FC = () => {
                   <TrendingUpIcon size={20} />
                 </div>
                 <strong className="text-xs text-slate-900 block font-semibold">Investment & Funding</strong>
-                <span className="text-[11px] text-slate-500 leading-tight">Private & confidential</span>
+                <span className="text-[11px] text-slate-500 leading-tight">Private syndicates</span>
               </div>
             </Link>
 
@@ -202,21 +198,30 @@ export const DashboardPage: React.FC = () => {
               </Link>
             </div>
 
-            <div className="divide-y divide-slate-100">
-              {activeRequests.map((req, idx) => (
-                <div key={idx} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">{req.serviceTitle || req.title}</h4>
-                    <span className="text-xs text-slate-500">Requested: {req.date || 'Active'}</span>
+            {activeRequests.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-500 space-y-2">
+                <p>No active service requests submitted yet for this account.</p>
+                <Link to="/marketplace" className="text-blue-600 font-bold hover:underline inline-block">
+                  Browse Marketplace to submit your first request &rarr;
+                </Link>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {activeRequests.map((req, idx) => (
+                  <div key={idx} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">{req.serviceTitle || req.title}</h4>
+                      <span className="text-xs text-slate-500">Requested: {req.date || 'Active'}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={req.status === 'IN_PROGRESS' ? 'info' : 'warning'}>
+                        {req.statusText || req.status}
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={req.status === 'IN_PROGRESS' ? 'info' : 'warning'}>
-                      {req.statusText || req.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
             <div className="pt-2 border-t border-slate-100 text-xs text-slate-500 flex items-center gap-2">
               <LockIcon size={14} className="text-blue-600 shrink-0" />
@@ -230,27 +235,27 @@ export const DashboardPage: React.FC = () => {
               <h3 className="text-sm font-bold text-slate-900">
                 FIC Opportunity Bulletin
               </h3>
-              <Badge variant="neutral">Verified</Badge>
+              <Badge variant="success">Verified</Badge>
             </div>
 
-            <div className="space-y-3 text-xs text-slate-600">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+            <div className="space-y-3">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
                 <strong className="text-slate-900 block font-semibold">Universal Discovery Enabled</strong>
-                <p className="leading-relaxed">
+                <p className="text-slate-600 leading-relaxed">
                   As an approved member, you can browse listings across all 10 business sectors regardless of your primary category.
                 </p>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
                 <strong className="text-slate-900 block font-semibold">Tiruppur Textile OEM Tie-Up</strong>
-                <p className="leading-relaxed">
+                <p className="text-slate-600 leading-relaxed">
                   Export-grade uniform stitching capacity open for franchise chains and school suppliers through FIC.
                 </p>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
+              <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
                 <strong className="text-slate-900 block font-semibold">Strict Regulatory Standards</strong>
-                <p className="leading-relaxed">
+                <p className="text-slate-600 leading-relaxed">
                   FIC does not hold custody of investment funds. Financial expressions are strictly confidential introduction requests.
                 </p>
               </div>
@@ -262,3 +267,4 @@ export const DashboardPage: React.FC = () => {
   );
 };
 
+export default DashboardPage;
