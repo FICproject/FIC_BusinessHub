@@ -6,9 +6,7 @@ import {
   CheckCircleIcon,
   ArrowRightIcon,
   LockIcon,
-  BriefcaseIcon,
-  SparklesIcon,
-  UserIcon
+  BriefcaseIcon
 } from '../components/Icons';
 
 export const GetStartedPage: React.FC = () => {
@@ -16,54 +14,66 @@ export const GetStartedPage: React.FC = () => {
   const [scrollProgress, setScrollProgress] = useState<number>(0);
   const treeContainerRef = useRef<HTMLDivElement>(null);
 
-  // Simple 4 Steps definition
+  // Simple 4 Steps definition with their matching tree colors
   const STEPS = [
     {
       num: 1,
       title: 'Basic Account & Age 18+ Verification',
-      duration: '~45 seconds',
-      desc: 'Enter your full name, email, 10-digit mobile number, and legally confirm you are 18+ years of age for verified enterprise access.',
-      keyTakeaway: 'Identity verified with legal adult (18+) eligibility guarantee',
-      icon: UserIcon,
-      threshold: 0.12
+      oneLiner: 'Enter your name, mobile, and confirm 18+ legal adult status.',
+      colorHex: '#2563eb', // Blue
+      textActiveColor: 'text-blue-600',
+      titleActiveColor: 'text-blue-950',
+      bgActiveColor: 'bg-blue-600',
+      ringActiveColor: 'ring-blue-100',
+      shadowActiveColor: 'shadow-blue-500/25',
+      threshold: 0.1
     },
     {
       num: 2,
-      title: 'Primary Sector & Dynamic Profile',
-      duration: '~60 seconds',
-      desc: 'Choose 1 of the 10 business categories (e.g. Technology, Manufacturing, Agriculture) and select your specialized subcategory roles.',
-      keyTakeaway: 'Tailored dynamic form customized to your specific industry',
-      icon: BriefcaseIcon,
-      threshold: 0.38
+      title: 'Primary Sector & Role Selection',
+      oneLiner: 'Choose 1 of 10 business categories and select your specialized roles.',
+      colorHex: '#6366f1', // Indigo
+      textActiveColor: 'text-indigo-600',
+      titleActiveColor: 'text-indigo-950',
+      bgActiveColor: 'bg-indigo-600',
+      ringActiveColor: 'ring-indigo-100',
+      shadowActiveColor: 'shadow-indigo-500/25',
+      threshold: 0.35
     },
     {
       num: 3,
       title: 'First-Year Membership Pass (₹99)',
-      duration: '~30 seconds',
-      desc: 'Pay the transparent ₹99 introductory fee for 365 full days of universal ecosystem access. Standard renewal of ₹5,999/yr from year 2.',
-      keyTakeaway: 'Flat ₹99 with GST & platform processing completely included',
-      icon: SparklesIcon,
-      threshold: 0.64
+      oneLiner: 'Complete the transparent ₹99 annual onboarding pass with GST included.',
+      colorHex: '#d97706', // Amber
+      textActiveColor: 'text-amber-500',
+      titleActiveColor: 'text-amber-950',
+      bgActiveColor: 'bg-amber-500',
+      ringActiveColor: 'ring-amber-100',
+      shadowActiveColor: 'shadow-amber-500/25',
+      threshold: 0.62
     },
     {
       num: 4,
       title: 'Category KYC & Dashboard Activation',
-      duration: '~2 minutes',
-      desc: 'Attach your sector verification document (PDF, JPG, or PNG). Verified by FIC executives within 24 hours to unlock your full dashboard.',
-      keyTakeaway: 'Reviewed within 24 hours with instant developer testing shortcut',
-      icon: ShieldCheckIcon,
-      threshold: 0.88
+      oneLiner: 'Attach verification document to unlock your active member dashboard.',
+      colorHex: '#059669', // Emerald
+      textActiveColor: 'text-emerald-600',
+      titleActiveColor: 'text-emerald-950',
+      bgActiveColor: 'bg-emerald-600',
+      ringActiveColor: 'ring-emerald-100',
+      shadowActiveColor: 'shadow-emerald-500/25',
+      threshold: 0.85
     }
   ];
 
-  // Scroll listener to update scroll progress and animate steps one by one
+  // Scroll listener to update scroll progress
   useEffect(() => {
     const handleScroll = () => {
       if (!treeContainerRef.current) return;
       const rect = treeContainerRef.current.getBoundingClientRect();
       const windowHeight = window.innerHeight;
 
-      // Start calculating when container enters upper half of viewport
+      // Start calculating when container enters viewport
       const startPoint = windowHeight * 0.75;
       const totalScrollableDistance = rect.height;
       const currentScroll = startPoint - rect.top;
@@ -143,256 +153,226 @@ export const GetStartedPage: React.FC = () => {
         </div>
 
         {/* ========================================================
-            SCROLL-DRIVEN TREE ANIMATION (SIMPLE & CLEAN)
-            Reveals Step One by One as the user scrolls down!
+            CLEAN SCROLL-DRIVEN TREE ROADMAP (NO BOXES)
+            Color of tree branch lights up each step as user scrolls!
            ======================================================== */}
         <div
           ref={treeContainerRef}
-          className="bg-white rounded-3xl border border-slate-200 shadow-md p-6 sm:p-10 space-y-8 relative overflow-hidden"
+          className="bg-white rounded-3xl border border-slate-200 shadow-md p-6 sm:p-12 space-y-10 relative overflow-hidden"
         >
-          {/* Section Header */}
-          <div className="text-center max-w-xl mx-auto space-y-2 pb-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-semibold border border-blue-200/60">
-              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
-              Scroll Down to Reveal Steps
-            </div>
-
+          {/* Simple Clean Header (No verbose badges or redundant subtitles) */}
+          <div className="text-center max-w-xl mx-auto">
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
               Simple 4-Step Onboarding Journey
             </h2>
-
-            <p className="text-xs sm:text-sm text-slate-500">
-              Scroll down to watch each step activate one by one along the ecosystem path.
-            </p>
           </div>
 
           {/* TREE CANVAS */}
-          <div className="relative py-4">
+          <div className="relative py-6">
             {/* 
-              DESKTOP WINDING SVG STEM (Visible on md and up)
-              Curves to Node 1 (Left), then Node 2 (Right), then Node 3 (Left), then Node 4 (Right)
-              Draws down in real-time as user scrolls!
+              DESKTOP S-CURVE TREE STEM (Centered at x = 300)
+              Passes through Node 1 (Blue) -> sways right -> Node 2 (Indigo) 
+              -> sways left -> Node 3 (Amber) -> sways right -> Node 4 (Emerald).
+              Fills in real-time as user scrolls!
             */}
             <div className="absolute inset-0 pointer-events-none hidden md:block">
               <svg
                 className="w-full h-full"
-                viewBox="0 0 600 760"
+                viewBox="0 0 600 640"
                 fill="none"
                 preserveAspectRatio="none"
               >
                 <defs>
-                  <linearGradient id="scrollTreeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  {/* Multi-color gradient matching each step's exact color */}
+                  <linearGradient id="treeScrollGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" stopColor="#2563eb" />
-                    <stop offset="35%" stopColor="#4f46e5" />
-                    <stop offset="68%" stopColor="#d97706" />
+                    <stop offset="25%" stopColor="#2563eb" />
+                    <stop offset="45%" stopColor="#6366f1" />
+                    <stop offset="70%" stopColor="#f59e0b" />
                     <stop offset="100%" stopColor="#059669" />
                   </linearGradient>
                 </defs>
 
-                {/* Base subtle guide path */}
+                {/* Base subtle guide track */}
                 <path
-                  d="M 300 10 C 300 50, 200 50, 200 95 C 200 170, 400 200, 400 275 C 400 350, 200 380, 200 455 C 200 530, 400 560, 400 635 C 400 690, 300 710, 300 750"
+                  d="M 300 0 C 300 40, 300 50, 300 70 C 370 120, 370 190, 300 240 C 230 290, 230 360, 300 410 C 370 460, 370 530, 300 580 C 300 600, 300 620, 300 640"
                   stroke="#e2e8f0"
-                  strokeWidth="5"
+                  strokeWidth="4"
                   strokeLinecap="round"
                 />
 
-                {/* Real-time scroll-driven path fill */}
+                {/* Scroll-driven colored fill path */}
                 <path
-                  d="M 300 10 C 300 50, 200 50, 200 95 C 200 170, 400 200, 400 275 C 400 350, 200 380, 200 455 C 200 530, 400 560, 400 635 C 400 690, 300 710, 300 750"
-                  stroke="url(#scrollTreeGrad)"
-                  strokeWidth="5"
+                  d="M 300 0 C 300 40, 300 50, 300 70 C 370 120, 370 190, 300 240 C 230 290, 230 360, 300 410 C 370 460, 370 530, 300 580 C 300 600, 300 620, 300 640"
+                  stroke="url(#treeScrollGrad)"
+                  strokeWidth="4"
                   strokeLinecap="round"
                   style={{
-                    strokeDasharray: 1200,
-                    strokeDashoffset: 1200 * (1 - scrollProgress),
+                    strokeDasharray: 900,
+                    strokeDashoffset: 900 * (1 - scrollProgress),
                     transition: 'stroke-dashoffset 0.15s ease-out'
                   }}
-                />
-
-                {/* Horizontal branch offshoots */}
-                <path
-                  d="M 200 95 L 140 95"
-                  stroke={scrollProgress >= 0.12 ? '#2563eb' : '#cbd5e1'}
-                  strokeWidth="3"
-                  strokeDasharray="4 3"
-                />
-                <path
-                  d="M 400 275 L 460 275"
-                  stroke={scrollProgress >= 0.38 ? '#4f46e5' : '#cbd5e1'}
-                  strokeWidth="3"
-                  strokeDasharray="4 3"
-                />
-                <path
-                  d="M 200 455 L 140 455"
-                  stroke={scrollProgress >= 0.64 ? '#d97706' : '#cbd5e1'}
-                  strokeWidth="3"
-                  strokeDasharray="4 3"
-                />
-                <path
-                  d="M 400 635 L 460 635"
-                  stroke={scrollProgress >= 0.88 ? '#059669' : '#cbd5e1'}
-                  strokeWidth="3"
-                  strokeDasharray="4 3"
                 />
               </svg>
             </div>
 
             {/* MOBILE GUIDE STEM */}
-            <div className="absolute top-4 bottom-4 left-6 w-1 bg-slate-200 rounded-full md:hidden">
+            <div className="absolute top-2 bottom-2 left-5 w-1 bg-slate-200 rounded-full md:hidden">
               <div
                 className="w-full bg-gradient-to-b from-blue-600 via-indigo-600 via-amber-500 to-emerald-600 rounded-full transition-all duration-150"
                 style={{ height: `${scrollProgress * 100}%` }}
               ></div>
             </div>
 
-            {/* 4 SIMPLE STEPS (Alternating along the tree path) */}
-            <div className="space-y-12 sm:space-y-14 relative z-10">
+            {/* 4 SIMPLE STEPS (NO BOXES, SIMPLE 1-LINERS WITH SCROLL COLOR SYNC) */}
+            <div className="space-y-16 sm:space-y-24 relative z-10">
               {STEPS.map((step, idx) => {
                 const isReached = scrollProgress >= step.threshold;
                 const isLeft = idx % 2 === 0; // Steps 1 and 3 on Left, Steps 2 and 4 on Right
-                const IconComponent = step.icon;
 
                 return (
                   <div key={step.num} className="transition-all duration-300">
-                    {/* DESKTOP LAYOUT (Alternating) */}
+                    {/* DESKTOP LAYOUT (Clean typography with NO BOXES) */}
                     <div className="hidden md:grid md:grid-cols-12 items-center gap-6">
                       {/* Left Column */}
                       <div className="col-span-5">
                         {isLeft ? (
-                          /* Card on Left (Step 1 or 3) */
+                          /* Step 1 or Step 3 Text (Right-aligned, NO BOX) */
                           <div
-                            className={`p-5 sm:p-6 rounded-2xl border transition-all duration-500 ${
+                            className={`text-right transition-all duration-500 ${
                               isReached
-                                ? 'bg-white border-blue-500 shadow-lg shadow-blue-500/10 translate-y-0 opacity-100 scale-100'
-                                : 'bg-white/40 border-slate-200/60 translate-y-3 opacity-35 scale-98'
+                                ? 'opacity-100 translate-x-0'
+                                : 'opacity-30 -translate-x-3'
                             }`}
                           >
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200/60">
-                                Phase 0{step.num}
-                              </span>
-                              <span className="text-xs text-slate-400 font-medium">
-                                {step.duration}
-                              </span>
-                            </div>
+                            <span
+                              className={`text-xs font-black uppercase tracking-wider block mb-1 transition-colors duration-300 ${
+                                isReached ? step.textActiveColor : 'text-slate-400'
+                              }`}
+                            >
+                              Step 0{step.num}
+                            </span>
 
-                            <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                            <h3
+                              className={`text-lg sm:text-xl font-bold leading-snug transition-colors duration-300 ${
+                                isReached ? step.titleActiveColor : 'text-slate-400'
+                              }`}
+                            >
                               {step.title}
                             </h3>
 
-                            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                              {step.desc}
+                            <p
+                              className={`text-xs sm:text-sm mt-1 transition-colors duration-300 ${
+                                isReached ? 'text-slate-600 font-normal' : 'text-slate-400'
+                              }`}
+                            >
+                              {step.oneLiner}
                             </p>
-
-                            <div className="mt-3.5 pt-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-600">
-                              <CheckCircleIcon
-                                size={15}
-                                className={isReached ? 'text-emerald-500' : 'text-slate-300'}
-                              />
-                              <span className="font-medium">{step.keyTakeaway}</span>
-                            </div>
                           </div>
                         ) : (
-                          /* Clean empty spacer on Left for Steps 2 & 4 */
-                          <div className="hidden md:block"></div>
+                          /* Empty spacer for Steps 2 & 4 */
+                          <div></div>
                         )}
                       </div>
 
-                      {/* Center Column: Tree Node (1, 2, 3, 4) */}
+                      {/* Center Column: Node Circle (Directly on S-curve) */}
                       <div className="col-span-2 flex items-center justify-center">
                         <div
-                          className={`w-13 h-13 rounded-2xl flex items-center justify-center font-extrabold text-sm transition-all duration-500 relative select-none ${
+                          className={`w-12 h-12 rounded-full flex items-center justify-center font-extrabold text-sm transition-all duration-500 select-none ${
                             isReached
-                              ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30 scale-110 ring-4 ring-blue-200'
+                              ? `${step.bgActiveColor} text-white ring-4 ${step.ringActiveColor} ${step.shadowActiveColor} shadow-lg scale-110`
                               : 'bg-white text-slate-400 border-2 border-slate-300 scale-90'
                           }`}
                         >
-                          <div className="flex flex-col items-center">
-                            <IconComponent size={18} />
-                            <span className="text-[11px] leading-tight mt-0.5 font-black">
-                              {step.num}
-                            </span>
-                          </div>
-
-                          {/* Pulsing indicator when just reached */}
-                          {isReached && (
-                            <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white animate-ping"></span>
-                          )}
+                          <span className="text-xs font-black">
+                            {isReached && scrollProgress >= step.threshold + 0.15
+                              ? '✓'
+                              : step.num}
+                          </span>
                         </div>
                       </div>
 
                       {/* Right Column */}
                       <div className="col-span-5">
                         {!isLeft ? (
-                          /* Card on Right (Step 2 or 4) */
+                          /* Step 2 or Step 4 Text (Left-aligned, NO BOX) */
                           <div
-                            className={`p-5 sm:p-6 rounded-2xl border transition-all duration-500 ${
+                            className={`text-left transition-all duration-500 ${
                               isReached
-                                ? 'bg-white border-blue-500 shadow-lg shadow-blue-500/10 translate-y-0 opacity-100 scale-100'
-                                : 'bg-white/40 border-slate-200/60 translate-y-3 opacity-35 scale-98'
+                                ? 'opacity-100 translate-x-0'
+                                : 'opacity-30 translate-x-3'
                             }`}
                           >
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200/60">
-                                Phase 0{step.num}
-                              </span>
-                              <span className="text-xs text-slate-400 font-medium">
-                                {step.duration}
-                              </span>
-                            </div>
+                            <span
+                              className={`text-xs font-black uppercase tracking-wider block mb-1 transition-colors duration-300 ${
+                                isReached ? step.textActiveColor : 'text-slate-400'
+                              }`}
+                            >
+                              Step 0{step.num}
+                            </span>
 
-                            <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                            <h3
+                              className={`text-lg sm:text-xl font-bold leading-snug transition-colors duration-300 ${
+                                isReached ? step.titleActiveColor : 'text-slate-400'
+                              }`}
+                            >
                               {step.title}
                             </h3>
 
-                            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                              {step.desc}
+                            <p
+                              className={`text-xs sm:text-sm mt-1 transition-colors duration-300 ${
+                                isReached ? 'text-slate-600 font-normal' : 'text-slate-400'
+                              }`}
+                            >
+                              {step.oneLiner}
                             </p>
-
-                            <div className="mt-3.5 pt-2.5 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-600">
-                              <CheckCircleIcon
-                                size={15}
-                                className={isReached ? 'text-emerald-500' : 'text-slate-300'}
-                              />
-                              <span className="font-medium">{step.keyTakeaway}</span>
-                            </div>
                           </div>
                         ) : (
-                          /* Clean empty spacer on Right for Steps 1 & 3 */
-                          <div className="hidden md:block"></div>
+                          /* Empty spacer for Steps 1 & 3 */
+                          <div></div>
                         )}
                       </div>
                     </div>
 
-                    {/* MOBILE LAYOUT (< md screens) */}
-                    <div className="md:hidden flex items-start gap-4 pl-2">
+                    {/* MOBILE LAYOUT (< md screens: Simple clean text, NO BOX) */}
+                    <div className="md:hidden flex items-start gap-4 pl-1">
                       <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 transition-all ${
+                        className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 transition-all duration-300 ${
                           isReached
-                            ? 'bg-blue-600 text-white shadow-md ring-4 ring-blue-100 scale-105'
-                            : 'bg-white text-slate-400 border-2 border-slate-200'
+                            ? `${step.bgActiveColor} text-white shadow-md ring-4 ${step.ringActiveColor} scale-105`
+                            : 'bg-white text-slate-400 border border-slate-300'
                         }`}
                       >
                         {step.num}
                       </div>
 
                       <div
-                        className={`flex-1 p-4 rounded-2xl border transition-all duration-300 ${
-                          isReached
-                            ? 'bg-white border-blue-400 shadow-sm opacity-100'
-                            : 'bg-white/50 border-slate-200 opacity-40'
+                        className={`flex-1 transition-all duration-300 ${
+                          isReached ? 'opacity-100' : 'opacity-35'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-bold text-blue-600 uppercase">
-                            Phase 0{step.num}
-                          </span>
-                          <span className="text-[10px] text-slate-400">{step.duration}</span>
-                        </div>
-                        <h3 className="text-sm font-bold text-slate-900">{step.title}</h3>
-                        <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                          {step.desc}
+                        <span
+                          className={`text-[10px] font-black uppercase block ${
+                            isReached ? step.textActiveColor : 'text-slate-400'
+                          }`}
+                        >
+                          Step 0{step.num}
+                        </span>
+
+                        <h3
+                          className={`text-sm font-bold leading-tight ${
+                            isReached ? 'text-slate-900' : 'text-slate-400'
+                          }`}
+                        >
+                          {step.title}
+                        </h3>
+
+                        <p
+                          className={`text-xs mt-0.5 ${
+                            isReached ? 'text-slate-600' : 'text-slate-400'
+                          }`}
+                        >
+                          {step.oneLiner}
                         </p>
                       </div>
                     </div>
@@ -402,17 +382,12 @@ export const GetStartedPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Simple Bottom Road Action Bar */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-slate-600">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <span>Ready to start? Registration takes approximately 3-5 minutes.</span>
-            </div>
-
-            <Link to="/register" className="w-full sm:w-auto">
-              <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold px-6">
-                Start Step 1 Now
-                <ArrowRightIcon className="ml-1.5" size={14} />
+          {/* Simple Bottom Action Button */}
+          <div className="text-center pt-4">
+            <Link to="/register">
+              <Button size="lg" className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/20">
+                Continue to Registration
+                <ArrowRightIcon className="ml-2" size={16} />
               </Button>
             </Link>
           </div>
