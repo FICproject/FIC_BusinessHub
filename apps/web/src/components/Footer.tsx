@@ -1,91 +1,134 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheckIcon } from './Icons';
+import { ShieldCheckIcon, LockIcon } from './Icons';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-slate-900 text-slate-300 pt-16 pb-12 border-t border-slate-800">
+    <footer className="bg-[#0B1020] text-slate-300 pt-16 pb-12 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
-          {/* Col 1: Brand Info */}
+          {/* Col 1: About FIC */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
+            <Link to="/" className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-extrabold text-sm shadow-md">
                 FIC
               </div>
-              <span className="text-lg font-bold text-white">FIC Business Hub</span>
-            </div>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              One Platform. Unlimited Business Opportunities. An elite membership ecosystem bringing eligible individuals, businesses, manufacturers, and professionals together through FIC-mediated trust.
+              <span className="text-base font-extrabold text-white tracking-tight">
+                FIC Business Hub
+              </span>
+            </Link>
+            <p className="text-xs text-[#AAB4C8] leading-relaxed">
+              Connect. Collaborate. Build Your Business Future. An enterprise-grade ecosystem uniting individuals, entrepreneurs, manufacturers, and professionals across India.
             </p>
-            <div className="flex items-center gap-2 text-xs text-emerald-400 bg-slate-800/80 p-2.5 rounded border border-slate-700">
-              <ShieldCheckIcon size={16} />
-              <span>FIC-Mediated Intermediary Coordination</span>
+            <div className="flex items-center gap-2 text-xs text-emerald-400 bg-slate-900/90 p-2.5 rounded-xl border border-slate-800">
+              <ShieldCheckIcon size={16} className="shrink-0" />
+              <span>FIC Intermediary Coordination & Privacy Safeguard</span>
             </div>
           </div>
 
-          {/* Col 2: Core Sectors */}
+          {/* Col 2: Business Hub */}
           <div>
-            <h4 className="text-white text-sm font-semibold uppercase tracking-wider mb-4">
-              Key Sectors
+            <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4">
+              Business Hub Capabilities
             </h4>
-            <ul className="space-y-2 text-xs text-slate-400">
-              <li>Business & Entrepreneurship</li>
-              <li>Manufacturing & Industrial</li>
-              <li>Technology & Digital</li>
-              <li>Education & Knowledge</li>
-              <li>Professional & CA Services</li>
-              <li>Agriculture & Natural Resources</li>
-              <li>Investment & Private Funding</li>
-            </ul>
-          </div>
-
-          {/* Col 3: Membership & Features */}
-          <div>
-            <h4 className="text-white text-sm font-semibold uppercase tracking-wider mb-4">
-              Membership & Services
-            </h4>
-            <ul className="space-y-2 text-xs text-slate-400">
+            <ul className="space-y-2 text-xs text-[#AAB4C8]">
               <li>
-                <span className="text-amber-400 font-medium">First-Year Offer: ₹99</span>
+                <Link to="/marketplace" className="hover:text-blue-400 transition-colors">
+                  Universal Services Marketplace
+                </Link>
               </li>
-              <li>Annual Renewal: ₹5,999/yr</li>
-              <li>Universal Privacy Marketplace</li>
-              <li>Business Ideas & Scaling</li>
-              <li>Confidential Funding Connections</li>
-              <li>B2B Tie-ups & Partnerships</li>
-              <li>Category-Tailored KYC Verification</li>
+              <li>
+                <Link to="/business-ideas" className="hover:text-blue-400 transition-colors">
+                  Business Ideas & Incubation
+                </Link>
+              </li>
+              <li>
+                <Link to="/business-development" className="hover:text-blue-400 transition-colors">
+                  Business Development & Scaling
+                </Link>
+              </li>
+              <li>
+                <Link to="/investment" className="hover:text-blue-400 transition-colors">
+                  Private Investment & Funding
+                </Link>
+              </li>
+              <li>
+                <Link to="/partnerships" className="hover:text-blue-400 transition-colors">
+                  Strategic B2B Partnerships
+                </Link>
+              </li>
             </ul>
           </div>
 
-          {/* Col 4: Legal & Operations */}
+          {/* Col 3: Membership */}
           <div>
-            <h4 className="text-white text-sm font-semibold uppercase tracking-wider mb-4">
-              Trust & Governance
+            <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4">
+              Membership Structure
             </h4>
-            <p className="text-xs text-slate-400 leading-relaxed mb-4">
-              FIC acts as the central coordinator for introductions and service requests. Public listings do not reveal provider contact details. 18+ membership verification applies.
+            <ul className="space-y-2 text-xs text-[#AAB4C8]">
+              <li>
+                <Link to="/get-started" className="hover:text-[#D6AE55] transition-colors flex items-center gap-2">
+                  <span className="text-[#D6AE55] font-bold">First-Year Access: ₹99</span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-semibold">
+                    Introductory
+                  </span>
+                </Link>
+              </li>
+              <li className="text-slate-400">Annual Renewal: ₹5,999/yr</li>
+              <li>
+                <Link to="/get-started" className="hover:text-blue-400 transition-colors">
+                  KYC Verification Guidelines
+                </Link>
+              </li>
+              <li>
+                <Link to="/get-started" className="hover:text-blue-400 transition-colors">
+                  18+ Adult Eligibility Policy
+                </Link>
+              </li>
+              <li>
+                <Link to="/register" className="hover:text-blue-400 transition-colors">
+                  Register as a Member
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 4: Contact Us & Operations */}
+          <div>
+            <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4">
+              Contact Us & Support
+            </h4>
+            <p className="text-xs text-[#AAB4C8] leading-relaxed mb-3">
+              FIC acts as the central coordinator for all introductions and business proposals. Provider contact numbers are protected from public exposure.
             </p>
-            <div className="text-xs text-slate-400 space-y-1">
-              <div>Email: <a href="mailto:support@ficapp.in" className="text-blue-400 hover:underline">support@ficapp.in</a></div>
-              <div>Web: <span className="text-slate-300">www.ficapp.in</span></div>
+            <div className="text-xs text-[#AAB4C8] space-y-1.5">
+              <div>
+                Coordination Desk:{' '}
+                <a href="mailto:support@ficapp.in" className="text-blue-400 hover:underline">
+                  support@ficapp.in
+                </a>
+              </div>
+              <div>Domain: <span className="text-white font-mono">www.ficapp.in</span></div>
+              <div className="text-slate-500 pt-1">
+                Hours: Monday – Saturday, 9:00 AM – 6:00 PM IST
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="pt-8 mt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+        {/* Bottom Bar: Legal Information */}
+        <div className="pt-8 mt-8 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
           <div>
-            &copy; {new Date().getFullYear()} FIC Business Hub. All rights reserved.
+            &copy; {new Date().getFullYear()} FIC Business Hub (www.ficapp.in). All rights reserved.
           </div>
-          <div className="flex gap-6">
-            <a href="#terms" className="hover:text-slate-400">Terms of Service</a>
-            <a href="#privacy" className="hover:text-slate-400">Privacy Policy</a>
-            <a href="#compliance" className="hover:text-slate-400">Compliance & KYC Guidelines</a>
+          <div className="flex flex-wrap gap-6">
+            <a href="#about" className="hover:text-slate-300 transition-colors">About FIC</a>
+            <a href="#privacy" className="hover:text-slate-300 transition-colors">Privacy Policy</a>
+            <a href="#terms" className="hover:text-slate-300 transition-colors">Terms & Conditions</a>
+            <a href="#legal" className="hover:text-slate-300 transition-colors">Legal Information</a>
           </div>
         </div>
       </div>
     </footer>
   );
 };
-
