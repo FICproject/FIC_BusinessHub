@@ -9,7 +9,7 @@ export const Navbar: React.FC = () => {
   const user = getStoredUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // If on any authenticated member page, delegate strictly to the shared global MemberHeader
+  // If on any authenticated member workspace page, delegate strictly to the shared global MemberHeader
   const memberRoutes = [
     '/dashboard',
     '/marketplace',
@@ -27,12 +27,18 @@ export const Navbar: React.FC = () => {
     return <MemberHeader />;
   }
 
+  const handleLogout = () => {
+    removeAuthToken();
+    setMobileMenuOpen(false);
+    navigate('/login');
+  };
+
   const closeMenu = () => setMobileMenuOpen(false);
 
   return (
     <header className="sticky top-0 z-50 w-full h-[72px] min-h-[72px] max-h-[72px] bg-[#F5EBDD]/95 backdrop-blur-md border-b border-[#E8DBC8] text-[#29302D] shadow-xs select-none">
       <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
-        {/* Brand Logo - Charcoal & Amber Gold / Violet Accent */}
+        {/* Brand Logo - Charcoal & Amber Gold Accent */}
         <Link
           to={user ? "/dashboard" : "/"}
           className="flex items-center gap-3 shrink-0 group focus:outline-none"
@@ -51,11 +57,11 @@ export const Navbar: React.FC = () => {
           </div>
         </Link>
 
-        {/* Public Landing Navigation Links */}
+        {/* Public Navigation Links */}
         <nav className="hidden lg:flex items-center gap-5 xl:gap-6 text-[13.5px] font-semibold text-[#29302D]">
-          <a href="/#about" className="hover:text-[#C66B52] transition-colors">
+          <Link to="/about" className="hover:text-[#C66B52] transition-colors">
             About FIC
-          </a>
+          </Link>
           <a href="/#who-can-join" className="hover:text-[#8064A9] transition-colors">
             Who Can Join
           </a>
@@ -68,28 +74,37 @@ export const Navbar: React.FC = () => {
           <a href="/#ecosystem" className="hover:text-[#8064A9] transition-colors">
             Ecosystem
           </a>
-          <a href="/#membership" className="hover:text-[#D99B43] transition-colors flex items-center gap-1.5">
+          <Link to="/membership" className="hover:text-[#D99B43] transition-colors flex items-center gap-1.5">
             <span>Membership</span>
             <span className="text-[11px] font-black bg-[#D99B43]/20 text-[#B87A28] px-2 py-0.5 rounded-full border border-[#D99B43]/30">
               ₹99
             </span>
-          </a>
+          </Link>
           <a href="/#why-fic" className="hover:text-[#C66B52] transition-colors">
             Why FIC
           </a>
         </nav>
 
-        {/* Public Visitor Action Buttons */}
+        {/* Action Buttons: Visitor vs Authenticated Member */}
         <div className="hidden sm:flex items-center gap-3 shrink-0">
           {user ? (
-            <Link to="/dashboard">
+            <div className="flex items-center gap-3">
+              <Link to="/dashboard">
+                <button
+                  type="button"
+                  className="px-4 py-2 rounded-xl text-[13px] font-bold bg-[#29302D] text-[#FCFAF6] hover:bg-[#8064A9] transition-colors shadow-xs"
+                >
+                  Go to Member Dashboard &rarr;
+                </button>
+              </Link>
               <button
+                onClick={handleLogout}
                 type="button"
-                className="px-4 py-2 rounded-xl text-[13px] font-bold bg-[#29302D] text-[#FCFAF6] hover:bg-[#8064A9] transition-colors shadow-xs"
+                className="text-[13px] text-[#77786E] hover:text-[#C66B52] font-semibold px-3 py-1.5 rounded-lg border border-[#E8DBC8] hover:border-[#C66B52]/40 transition-colors"
               >
-                Go to Dashboard
+                Logout
               </button>
-            </Link>
+            </div>
           ) : (
             <div className="flex items-center gap-3">
               <Link to="/login">
@@ -158,9 +173,9 @@ export const Navbar: React.FC = () => {
       {mobileMenuOpen && (
         <div className="lg:hidden border-b border-[#E8DBC8] bg-[#F5EBDD] px-4 pt-3 pb-5 space-y-3 shadow-lg">
           <nav className="flex flex-col space-y-2 text-sm font-semibold text-[#29302D]">
-            <a href="/#about" onClick={closeMenu} className="px-3 py-2 rounded-lg hover:bg-[#FFF9F0]">
+            <Link to="/about" onClick={closeMenu} className="px-3 py-2 rounded-lg hover:bg-[#FFF9F0]">
               About FIC
-            </a>
+            </Link>
             <a href="/#who-can-join" onClick={closeMenu} className="px-3 py-2 rounded-lg hover:bg-[#FFF9F0]">
               Who Can Join
             </a>
@@ -173,8 +188,8 @@ export const Navbar: React.FC = () => {
             <a href="/#ecosystem" onClick={closeMenu} className="px-3 py-2 rounded-lg hover:bg-[#FFF9F0]">
               Ecosystem
             </a>
-            <a
-              href="/#membership"
+            <Link
+              to="/membership"
               onClick={closeMenu}
               className="px-3 py-2 rounded-lg hover:bg-[#FFF9F0] flex items-center justify-between"
             >
@@ -182,7 +197,7 @@ export const Navbar: React.FC = () => {
               <span className="text-[11px] font-black bg-[#D99B43]/20 text-[#B87A28] px-2 py-0.5 rounded-full border border-[#D99B43]/30">
                 ₹99
               </span>
-            </a>
+            </Link>
             <a href="/#why-fic" onClick={closeMenu} className="px-3 py-2 rounded-lg hover:bg-[#FFF9F0]">
               Why FIC
             </a>
@@ -190,14 +205,23 @@ export const Navbar: React.FC = () => {
 
           <div className="pt-3 border-t border-[#E8DBC8] flex flex-col gap-2">
             {user ? (
-              <Link to="/dashboard" onClick={closeMenu}>
+              <>
+                <Link to="/dashboard" onClick={closeMenu}>
+                  <button
+                    type="button"
+                    className="w-full py-2.5 rounded-xl text-sm font-bold bg-[#29302D] text-[#FCFAF6] hover:bg-[#8064A9] transition-colors"
+                  >
+                    Go to Member Dashboard
+                  </button>
+                </Link>
                 <button
+                  onClick={handleLogout}
                   type="button"
-                  className="w-full py-2.5 rounded-xl text-sm font-bold bg-[#29302D] text-[#FCFAF6] hover:bg-[#8064A9] transition-colors"
+                  className="w-full py-2 text-center text-xs font-semibold text-[#77786E] hover:text-[#C66B52]"
                 >
-                  Go to Member Dashboard
+                  Logout
                 </button>
-              </Link>
+              </>
             ) : (
               <>
                 <Link to="/login" onClick={closeMenu}>

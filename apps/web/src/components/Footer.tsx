@@ -4,7 +4,7 @@ import { ShieldCheckIcon } from './Icons';
 
 export const Footer: React.FC = () => {
   return (
-    <footer className="bg-[#29302D] text-[#FCFAF6] pt-16 pb-12 border-t border-[#D99B43]/20 selection:bg-[#C66B52] selection:text-white">
+    <footer className="bg-[#29302D] text-[#FCFAF6] pt-16 pb-12 border-t border-[#D99B43]/20 selection:bg-[#C66B52] selection:text-white select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
           {/* Col 1: About FIC */}
@@ -72,7 +72,7 @@ export const Footer: React.FC = () => {
             </h4>
             <ul className="space-y-2.5 text-xs text-[#E8DBC8]">
               <li>
-                <Link to="/get-started" className="hover:text-[#D99B43] transition-colors flex items-center gap-2">
+                <Link to="/membership" className="hover:text-[#D99B43] transition-colors flex items-center gap-2">
                   <span className="text-[#D99B43] font-bold">First-Year Access: ₹99</span>
                   <span className="text-[10px] bg-[#D99B43]/20 text-[#D99B43] px-2 py-0.5 rounded-full font-semibold border border-[#D99B43]/30">
                     Introductory
@@ -81,12 +81,12 @@ export const Footer: React.FC = () => {
               </li>
               <li className="text-[#A7AAA0]">Annual Renewal: ₹5,999/yr (Year 2+)</li>
               <li>
-                <Link to="/get-started" className="hover:text-[#FCFAF6] transition-colors">
+                <Link to="/membership" className="hover:text-[#FCFAF6] transition-colors">
                   Category KYC Guidelines
                 </Link>
               </li>
               <li>
-                <Link to="/get-started" className="hover:text-[#FCFAF6] transition-colors">
+                <Link to="/terms-and-conditions" className="hover:text-[#FCFAF6] transition-colors">
                   18+ Legal Adult Eligibility Policy
                 </Link>
               </li>
@@ -122,22 +122,23 @@ export const Footer: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom Bar: Legal Information */}
+        {/* Bottom Bar: Legal & Informational Navigation */}
         <div className="pt-8 mt-8 border-t border-[#D99B43]/20 flex flex-col sm:flex-row items-center justify-between text-xs text-[#A7AAA0] gap-4">
           <div>
             &copy; {new Date().getFullYear()} FIC Business Hub (www.ficapp.in). All rights reserved.
           </div>
-          <div className="flex flex-wrap gap-6 text-[#E8DBC8]">
-            <a href="/#about" className="hover:text-[#D99B43] transition-colors">About FIC</a>
-            <a href="/#capabilities" className="hover:text-[#D99B43] transition-colors">Business Hub</a>
-            <a href="/#membership" className="hover:text-[#D99B43] transition-colors">Membership</a>
-            <a href="mailto:support@ficapp.in" className="hover:text-[#D99B43] transition-colors">Contact Us</a>
-            <a href="/#privacy" className="hover:text-[#D99B43] transition-colors">Privacy Policy</a>
-            <a href="/#terms" className="hover:text-[#D99B43] transition-colors">Terms & Conditions</a>
-            <a href="/#legal" className="hover:text-[#D99B43] transition-colors">Legal Information</a>
+          <div className="flex flex-wrap gap-5 sm:gap-6 text-[#E8DBC8]">
+            <Link to="/about" className="hover:text-[#D99B43] transition-colors">About FIC</Link>
+            <Link to="/marketplace" className="hover:text-[#D99B43] transition-colors">Business Hub</Link>
+            <Link to="/membership" className="hover:text-[#D99B43] transition-colors">Membership</Link>
+            <Link to="/contact" className="hover:text-[#D99B43] transition-colors">Contact Us</Link>
+            <Link to="/privacy-policy" className="hover:text-[#D99B43] transition-colors">Privacy Policy</Link>
+            <Link to="/terms-and-conditions" className="hover:text-[#D99B43] transition-colors">Terms & Conditions</Link>
           </div>
         </div>
       </div>
     </footer>
   );
 };
+
+export default Footer;
