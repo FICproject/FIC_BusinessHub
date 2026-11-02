@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -6,9 +6,7 @@ import {
   FactoryIcon,
   CodeIcon,
   GraduationCapIcon,
-  SproutIcon,
   TrendingUpIcon,
-  HeartPulseIcon,
   UsersIcon,
   ShieldCheckIcon,
   ArrowRightIcon,
@@ -16,33 +14,58 @@ import {
   RocketIcon,
   HandshakeIcon,
   CheckCircleIcon,
-  LockIcon,
   SparklesIcon,
-  UserIcon,
-  SearchIcon
+  UserIcon
 } from '../components/Icons';
 
+// Spring animation configuration for card settling
+const springTransition = {
+  type: 'spring' as const,
+  stiffness: 80,
+  damping: 14,
+  mass: 0.9
+};
+
+// Rotating phrases for Hero Section
+const ROTATING_PHRASES = [
+  'Build Businesses',
+  'Discover Opportunities',
+  'Create Connections',
+  'Grow Together'
+];
+
 export const LandingPage: React.FC = () => {
-  // Interactive state for Section 4 Bento capability preview
+  // Hero rotating text index
+  const [rotatingIndex, setRotatingIndex] = useState(0);
+  // Interactive capability in Section 4 Bento
   const [activeCapability, setActiveCapability] = useState<number>(0);
-  // Interactive state for Section 6 Ecosystem node selection
+  // Interactive node in Section 6 Ecosystem
   const [selectedEcosystemNode, setSelectedEcosystemNode] = useState<number>(0);
-  // Interactive state for Section 8 FAQ accordion
+  // Interactive FAQ in Section 8
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  // 8 Target Audiences (Section 3) - Varied visual compositions
-  const WHO_CAN_JOIN = [
+  // Rotate text every 2.8 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRotatingIndex((prev) => (prev + 1) % ROTATING_PHRASES.length);
+    }, 2800);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 8 Target Audiences (Section 3) - Split into 2 groups of 4 with Multicolor Accents
+  const AUDIENCE_GROUP_1 = [
     {
       id: 'entrepreneurs',
       title: 'Entrepreneurs & Startup Founders',
-      category: 'Startups & Early Ventures',
-      desc: 'Validate business ideas with structured incubation feedback, connect with early-stage business infrastructure, and access private angel deal flows.',
+      category: 'Startups & Ventures',
+      desc: 'Validate innovative concepts with structured incubation feedback, connect with early-stage business infrastructure, and access private angel deal flows.',
       icon: RocketIcon,
-      accentBorder: 'border-[#397B55]',
-      accentBg: 'bg-[#397B55]/10',
-      badgeColor: 'text-[#183B2D] bg-[#397B55]/15',
+      accentColor: '#E58C72', // Coral
+      bgGradient: 'from-white via-[#FCFAF6] to-[#FFF9F0]',
+      borderColor: 'border-[#E58C72]/40 hover:border-[#E58C72]',
+      tagBg: 'bg-[#E58C72]/15 text-[#C66B52]',
       features: ['Idea Validation Desk', 'Incubation Roadmaps', 'Founder Matchmaking'],
-      layout: 'large' // Featured large card
+      badge: 'Early Stage'
     },
     {
       id: 'business-owners',
@@ -50,11 +73,12 @@ export const LandingPage: React.FC = () => {
       category: 'Commercial Enterprises',
       desc: 'Discover verified B2B vendors, scale operations, expand regional supply chains, and build distribution channels without sales spam.',
       icon: BriefcaseIcon,
-      accentBorder: 'border-[#C6A66A]',
-      accentBg: 'bg-[#C6A66A]/10',
-      badgeColor: 'text-[#C6A66A] bg-[#C6A66A]/15',
+      accentColor: '#D99B43', // Amber Gold
+      bgGradient: 'from-white via-[#FCFAF6] to-[#FFF9F0]',
+      borderColor: 'border-[#D99B43]/40 hover:border-[#D99B43]',
+      tagBg: 'bg-[#D99B43]/15 text-[#B87A28]',
       features: ['Vendor Discovery', 'Supply Chain Expansion', 'Wholesale Tie-ups'],
-      layout: 'horizontal'
+      badge: 'Commercial'
     },
     {
       id: 'manufacturers',
@@ -62,11 +86,12 @@ export const LandingPage: React.FC = () => {
       category: 'Production & Industrial Scale',
       desc: 'Connect with bulk purchasers, raw material suppliers, factory co-packers, and production scaling partners across Indian industrial corridors.',
       icon: FactoryIcon,
-      accentBorder: 'border-[#8D9874]',
-      accentBg: 'bg-[#8D9874]/10',
-      badgeColor: 'text-[#183B2D] bg-[#8D9874]/20',
+      accentColor: '#D78E9A', // Dusty Rose
+      bgGradient: 'from-white via-[#FCFAF6] to-[#FFF9F0]',
+      borderColor: 'border-[#D78E9A]/40 hover:border-[#D78E9A]',
+      tagBg: 'bg-[#D78E9A]/15 text-[#C66B52]',
       features: ['OEM Contract Match', 'Industrial Raw Materials', 'Bulk Logistics'],
-      layout: 'standard'
+      badge: 'Industrial'
     },
     {
       id: 'investors',
@@ -74,23 +99,28 @@ export const LandingPage: React.FC = () => {
       category: 'Private Capital & Syndicates',
       desc: 'Confidential deal-flow channels for angel investors, syndicates, and capital seekers with zero public exposure of contact details.',
       icon: TrendingUpIcon,
-      accentBorder: 'border-[#C6A66A]',
-      accentBg: 'bg-[#C6A66A]/10',
-      badgeColor: 'text-[#C6A66A] bg-[#20251F]',
+      accentColor: '#8064A9', // Royal Violet
+      bgGradient: 'from-white via-[#FCFAF6] to-[#FFF9F0]',
+      borderColor: 'border-[#8064A9]/40 hover:border-[#8064A9]',
+      tagBg: 'bg-[#8064A9]/15 text-[#8064A9]',
       features: ['Confidential Deal Flow', 'Vetted Growth Startups', 'Zero Public Exposure'],
-      layout: 'luxury'
-    },
+      badge: 'Private Capital'
+    }
+  ];
+
+  const AUDIENCE_GROUP_2 = [
     {
       id: 'professionals',
       title: 'Professionals & Freelancers',
       category: 'Specialized Domain Experts',
       desc: 'Chartered Accountants, legal advocates, software engineers, and domain consultants seeking verified corporate contracts and advisory retainers.',
       icon: CodeIcon,
-      accentBorder: 'border-[#397B55]',
-      accentBg: 'bg-[#397B55]/10',
-      badgeColor: 'text-[#397B55] bg-[#397B55]/15',
+      accentColor: '#B7A5D1', // Muted Lavender
+      bgGradient: 'from-white via-[#FCFAF6] to-[#FFF9F0]',
+      borderColor: 'border-[#B7A5D1]/40 hover:border-[#8064A9]',
+      tagBg: 'bg-[#B7A5D1]/20 text-[#8064A9]',
       features: ['Corporate Retainers', 'CA & Legal Consults', 'High-Trust Contracts'],
-      layout: 'standard'
+      badge: 'Specialized'
     },
     {
       id: 'students',
@@ -98,11 +128,12 @@ export const LandingPage: React.FC = () => {
       category: 'Academic & Future Talent',
       desc: 'Direct career incubation, university startup support, verified credentials, and high-trust networking with enterprise decision-makers.',
       icon: GraduationCapIcon,
-      accentBorder: 'border-[#BC7556]',
-      accentBg: 'bg-[#BC7556]/10',
-      badgeColor: 'text-[#BC7556] bg-[#BC7556]/15',
+      accentColor: '#C66B52', // Terracotta
+      bgGradient: 'from-white via-[#FCFAF6] to-[#FFF9F0]',
+      borderColor: 'border-[#C66B52]/40 hover:border-[#C66B52]',
+      tagBg: 'bg-[#C66B52]/15 text-[#C66B52]',
       features: ['Career Incubation', '18+ Adult Certification', 'Founder Mentorship'],
-      layout: 'standard'
+      badge: 'Talent Incubator'
     },
     {
       id: 'mentors',
@@ -110,11 +141,12 @@ export const LandingPage: React.FC = () => {
       category: 'Executive Guidance & Advisory',
       desc: 'Academic leaders, senior domain veterans, and industry directors guiding the next generation of Indian enterprises through structured consultations.',
       icon: UsersIcon,
-      accentBorder: 'border-[#8D9874]',
-      accentBg: 'bg-[#8D9874]/10',
-      badgeColor: 'text-[#183B2D] bg-[#8D9874]/20',
+      accentColor: '#D99B43', // Amber Gold
+      bgGradient: 'from-white via-[#FCFAF6] to-[#FFF9F0]',
+      borderColor: 'border-[#D99B43]/40 hover:border-[#D99B43]',
+      tagBg: 'bg-[#D99B43]/15 text-[#B87A28]',
       features: ['Executive Advisory', 'Structured Sessions', 'Knowledge Transfer'],
-      layout: 'horizontal'
+      badge: 'Strategic'
     },
     {
       id: 'consultants',
@@ -122,106 +154,107 @@ export const LandingPage: React.FC = () => {
       category: 'Institutional Advisory',
       desc: 'Turn specialized domain expertise into high-value institutional consulting assignments, factory audits, and technology modernizations.',
       icon: LightbulbIcon,
-      accentBorder: 'border-[#397B55]',
-      accentBg: 'bg-[#397B55]/10',
-      badgeColor: 'text-[#397B55] bg-[#397B55]/15',
+      accentColor: '#E58C72', // Coral
+      bgGradient: 'from-white via-[#FCFAF6] to-[#FFF9F0]',
+      borderColor: 'border-[#E58C72]/40 hover:border-[#E58C72]',
+      tagBg: 'bg-[#E58C72]/15 text-[#C66B52]',
       features: ['Technology Audits', 'Institutional Advisory', 'Turnaround Strategy'],
-      layout: 'standard'
+      badge: 'Advisory'
     }
   ];
 
-  // 7 Capabilities for Bento Grid (Section 4)
+  // 7 Capabilities for Bento Grid (Section 4) on Charcoal Background
   const CAPABILITIES = [
     {
       id: 0,
       title: 'Business Ideas & Opportunities',
       badge: 'Incubation & Validation',
-      tagline: 'From napkin sketch to structured enterprise roadmap.',
+      accent: '#D99B43',
       shortDesc: 'Pitch ideas, receive structured viability feedback, and access the FIC incubation desk.',
       detail:
         'Members can submit innovative business concepts or browse FIC-curated commercial opportunities. Dedicated coordinators evaluate viability, structure business models, and connect you with incubation partners.',
       icon: LightbulbIcon,
       actionText: 'Explore Idea Incubation Desk',
       link: '/business-ideas',
-      stats: '100% Confidential Review'
+      highlightBadge: 'Confidential Desk'
     },
     {
       id: 1,
       title: 'Business Development & Scaling',
       badge: 'Operational Growth',
-      tagline: 'Transform an operational business into a market leader.',
+      accent: '#C66B52',
       shortDesc: 'Market expansion, technology modernizations, factory scaling, and institutional matchmaking.',
       detail:
         'Access structured consulting for plant expansion, supply chain upgrades, brand positioning, and B2B matchmaking coordinated by FIC business development executives.',
       icon: RocketIcon,
       actionText: 'Request Scaling Support',
       link: '/business-development',
-      stats: 'Dedicated Coordination Desk'
+      highlightBadge: 'Growth Framework'
     },
     {
       id: 2,
       title: 'Universal Services Marketplace',
       badge: 'Privacy-First Directory',
-      tagline: 'Discover verified corporate services with complete contact privacy.',
-      shortDesc: 'Browse verified providers across all 10 sectors with 100% provider number protection.',
+      accent: '#E58C72',
+      shortDesc: 'Browse verified providers across all 10 sectors with 100% provider contact privacy.',
       detail:
         'Every verified member can browse listings across manufacturing, legal, IT, logistics, and agriculture. FIC coordinates all quotes and proposals, protecting provider phone numbers from public spam.',
       icon: BriefcaseIcon,
       actionText: 'Browse Universal Marketplace',
       link: '/marketplace',
-      stats: '10 Interconnected Sectors'
+      highlightBadge: '10 Sectors'
     },
     {
       id: 3,
       title: 'Investment & Funding Connections',
       badge: 'Confidential Syndicates',
-      tagline: 'Private capital matchmaking without public investor directories.',
+      accent: '#8064A9',
       shortDesc: 'Private capital matching for growth-stage ventures, angel syndicates, and seed seekers.',
       detail:
         'Privately submit funding requirements or investment criteria. FIC Verification Executives facilitate confidential introductions between vetted investors and promising enterprises with zero public exposure.',
       icon: TrendingUpIcon,
       actionText: 'Explore Private Funding',
       link: '/investment',
-      stats: 'Vetted Deal Flows'
+      highlightBadge: 'Vetted Deal Flow'
     },
     {
       id: 4,
       title: 'Business Partnerships & Tie-ups',
-      badge: 'B2B Strategic Alliances',
-      tagline: 'Joint ventures, distribution networks, and regional agency tie-ups.',
+      badge: 'B2B Alliances',
+      accent: '#D78E9A',
       shortDesc: 'Strategic joint ventures, distribution tie-ups, manufacturing agreements, and B2B introductions.',
       detail:
         'Find regional distributors, factory co-packers, wholesale partners, and authorized franchisees through FIC-verified corporate matchmaking.',
       icon: HandshakeIcon,
       actionText: 'Explore Strategic Tie-ups',
       link: '/partnerships',
-      stats: 'Verified Commercial Counterparts'
+      highlightBadge: 'Verified Alliances'
     },
     {
       id: 5,
       title: 'Professional Networking',
       badge: 'High-Trust Directory',
-      tagline: 'Connect with verified decision-makers without unsolicited marketing spam.',
+      accent: '#B7A5D1',
       shortDesc: 'Authenticated ecosystem access connecting genuine decision-makers with KYC verification.',
       detail:
         'Every participating member is authenticated with verified identity and legal 18+ eligibility. Network with verified founders, CAs, engineers, and executives with confidence.',
       icon: UsersIcon,
       actionText: 'Connect with Members',
       link: '/get-started',
-      stats: '100% Verified Members'
+      highlightBadge: '18+ Verified'
     },
     {
       id: 6,
       title: 'Mentoring & Knowledge Sharing',
       badge: 'Executive Advisory',
-      tagline: 'Gain strategic insights from seasoned corporate veterans.',
+      accent: '#D99B43',
       shortDesc: 'Connect with experienced business leaders for strategic guidance and industry mentorship.',
       detail:
         'Bridge knowledge gaps with industry veterans, senior researchers, and corporate advisors who provide structured consultations to scale your operations.',
       icon: GraduationCapIcon,
       actionText: 'Find Industry Mentors',
       link: '/get-started',
-      stats: 'Direct Executive Guidance'
+      highlightBadge: 'Direct Mentorship'
     }
   ];
 
@@ -231,9 +264,9 @@ export const LandingPage: React.FC = () => {
       step: '01',
       title: 'Join FIC Business Hub',
       time: '~45 seconds',
-      desc: 'Create your account in seconds, verify 18+ legal adult eligibility, and configure your credentials.',
+      desc: 'Create your account in seconds, verify 18+ legal adult eligibility, and configure your basic profile.',
       icon: UserIcon,
-      accent: '#397B55'
+      accent: '#E58C72'
     },
     {
       step: '02',
@@ -241,23 +274,23 @@ export const LandingPage: React.FC = () => {
       time: '~2 minutes',
       desc: 'Activate 365 days of full ecosystem access with the transparent ₹99 pass and upload category proof.',
       icon: ShieldCheckIcon,
-      accent: '#C6A66A'
+      accent: '#D99B43'
     },
     {
       step: '03',
-      title: 'Discover Opportunities & Submit Requests',
+      title: 'Explore Opportunities & Submit Requests',
       time: 'Instant Access',
       desc: 'Browse privacy-safe services, pitch business concepts, or indicate funding requirements across 10 sectors.',
       icon: SparklesIcon,
-      accent: '#8D9874'
+      accent: '#8064A9'
     },
     {
       step: '04',
       title: 'FIC Coordinates Relevant Connections',
-      time: '24h Coordination SLA',
+      time: '24h SLA',
       desc: 'Dedicated FIC officers review specifications, coordinate with providers, and track proposal execution.',
       icon: HandshakeIcon,
-      accent: '#BC7556'
+      accent: '#C66B52'
     }
   ];
 
@@ -266,6 +299,7 @@ export const LandingPage: React.FC = () => {
     {
       name: 'Entrepreneurs',
       role: 'Idea & Venture Creators',
+      accent: '#E58C72',
       desc: 'Brings high-potential concepts, agile teams, and innovative technologies into the ecosystem.',
       delivers: 'Validated pitches & commercial expansion appetite',
       receives: 'Growth capital, incubation guidance & factory tie-ups',
@@ -274,6 +308,7 @@ export const LandingPage: React.FC = () => {
     {
       name: 'Business Owners',
       role: 'Commercial & Retail Engines',
+      accent: '#D99B43',
       desc: 'Drives operational trade, regional distribution networks, and wholesale commerce.',
       delivers: 'Bulk purchasing demand & regional sales reach',
       receives: 'Verified B2B suppliers, scaling advice & financing',
@@ -282,6 +317,7 @@ export const LandingPage: React.FC = () => {
     {
       name: 'Manufacturers',
       role: 'Industrial & Production Backbone',
+      accent: '#D78E9A',
       desc: 'Operates factory production lines, machinery, and raw material conversion.',
       delivers: 'Production capacity, OEM packaging & industrial supply',
       receives: 'Long-term corporate contracts & supply chain partners',
@@ -290,6 +326,7 @@ export const LandingPage: React.FC = () => {
     {
       name: 'Investors',
       role: 'Private Capital Syndicates',
+      accent: '#8064A9',
       desc: 'Provides seed capital, angel funding, and growth financing to verified enterprises.',
       delivers: 'Equity capital, strategic guidance & corporate governance',
       receives: 'Confidential deal flow with pre-vetted founder dossiers',
@@ -298,6 +335,7 @@ export const LandingPage: React.FC = () => {
     {
       name: 'Professionals',
       role: 'Specialized Domain Experts',
+      accent: '#B7A5D1',
       desc: 'Delivers corporate accounting, legal compliance, AI engineering, and technical audits.',
       delivers: 'Verified services, statutory audits & implementation',
       receives: 'High-value institutional retainers without sales spam',
@@ -306,6 +344,7 @@ export const LandingPage: React.FC = () => {
     {
       name: 'Mentors',
       role: 'Strategic Guidance & Advisory',
+      accent: '#C66B52',
       desc: 'Senior industry veterans and academic leaders coaching emerging leadership.',
       delivers: 'Executive wisdom, board advisory & operational frameworks',
       receives: 'Direct access to dynamic founders and co-incubation equity',
@@ -318,32 +357,38 @@ export const LandingPage: React.FC = () => {
     {
       title: 'One Unified Business Ecosystem',
       desc: 'All 10 core industry sectors — from IT and manufacturing to agriculture and healthcare — interconnected in a single, coordinated national hub.',
-      icon: BriefcaseIcon
+      icon: BriefcaseIcon,
+      accent: '#D99B43'
     },
     {
       title: 'Cross-Category Discovery',
       desc: 'Every verified member can freely discover services and suppliers across all 10 sectors, regardless of their own primary domain.',
-      icon: SparklesIcon
+      icon: SparklesIcon,
+      accent: '#E58C72'
     },
     {
       title: 'Coordinated Business Connections',
       desc: 'Dedicated FIC officers mediate communications and proposals, ensuring serious requirements and zero unsolicited marketing spam.',
-      icon: HandshakeIcon
+      icon: HandshakeIcon,
+      accent: '#8064A9'
     },
     {
       title: 'Multiple Business Opportunities',
       desc: 'Cross-pollination of B2B tie-ups, commercial contracts, private investments, and strategic mentorship all under one roof.',
-      icon: RocketIcon
+      icon: RocketIcon,
+      accent: '#C66B52'
     },
     {
       title: 'Professional Networking',
       desc: 'An authenticated, high-trust directory where every participant is legally verified and identity-confirmed with 18+ eligibility.',
-      icon: UsersIcon
+      icon: UsersIcon,
+      accent: '#D78E9A'
     },
     {
       title: 'Verified Member Participation',
       desc: 'Strict category-specific KYC verification safeguards legitimate business enterprises and ensures complete peace of mind.',
-      icon: ShieldCheckIcon
+      icon: ShieldCheckIcon,
+      accent: '#B7A5D1'
     }
   ];
 
@@ -372,167 +417,185 @@ export const LandingPage: React.FC = () => {
   ];
 
   return (
-    <div className="bg-[#F6F2E9] text-[#242820] min-h-screen selection:bg-[#397B55] selection:text-[#FFFDF8] font-sans overflow-x-hidden">
+    <div className="bg-[#F5EBDD] text-[#29302D] min-h-screen selection:bg-[#C66B52] selection:text-white font-sans overflow-x-hidden">
       {/* ========================================================
-          SECTION 1 – HERO (EDITORIAL SPLIT WITH ANIMATED VISUAL)
+          SECTION 1 – HERO (ULTIMATE ASYMMETRIC SPLIT & 3D ECOSYSTEM)
          ======================================================== */}
-      <section className="relative min-h-[92vh] flex items-center bg-[#F6F2E9] pt-8 pb-16 lg:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden border-b border-[#EDE5D6]">
-        {/* Soft organic ambient shapes */}
-        <div className="absolute top-0 right-0 w-[550px] h-[550px] bg-[#EDE5D6]/70 rounded-full blur-[90px] pointer-events-none -translate-y-1/3 translate-x-1/4"></div>
-        <div className="absolute bottom-0 left-0 w-[450px] h-[450px] bg-[#C6A66A]/10 rounded-full blur-[100px] pointer-events-none translate-y-1/4 -translate-x-1/4"></div>
+      <section className="relative min-h-[94vh] flex items-center bg-[#F5EBDD] pt-8 pb-16 lg:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden border-b border-[#E8DBC8]">
+        {/* Multicolor Soft Floating Ambient Lights */}
+        <div className="absolute top-0 right-10 w-[550px] h-[550px] bg-[#E58C72]/20 rounded-full blur-[120px] pointer-events-none -translate-y-1/4"></div>
+        <div className="absolute bottom-10 left-10 w-[500px] h-[500px] bg-[#8064A9]/15 rounded-full blur-[130px] pointer-events-none translate-y-1/4"></div>
+        <div className="absolute top-1/2 left-1/3 w-[400px] h-[400px] bg-[#D99B43]/15 rounded-full blur-[100px] pointer-events-none"></div>
 
         <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center relative z-10">
-          {/* LEFT SIDE: Editorial Typography & Actions (7 Cols) */}
+          {/* LEFT CONTENT: Word-by-Word Animated Typography (7 Cols) */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
+            initial={{ opacity: 0, x: -35 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
             className="lg:col-span-7 space-y-6 lg:pr-6"
           >
-            {/* Editorial Category Pill */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#183B2D]/5 border border-[#183B2D]/15 text-[#183B2D] text-xs font-bold tracking-wider uppercase shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-[#397B55] animate-ping"></span>
+            {/* Small Label with Pulsing Amber Indicator */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#29302D]/5 border border-[#29302D]/15 text-[#29302D] text-xs font-bold tracking-wider uppercase shadow-xs">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#D99B43] animate-ping"></span>
               <span className="tracking-widest">FIC BUSINESS ECOSYSTEM</span>
             </div>
 
-            {/* Main Headline */}
-            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold text-[#242820] tracking-tight leading-[1.08]">
-              Where{' '}
-              <span className="text-[#C6A66A] underline decoration-[#C6A66A]/30 underline-offset-8">
+            {/* Word-by-Word Animated Headline */}
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black text-[#29302D] tracking-tight leading-[1.06]">
+              <span className="inline-block mr-3">Where</span>
+              <span className="inline-block mr-3 text-[#D99B43] underline decoration-[#D99B43]/30 underline-offset-8">
                 Ideas
-              </span>{' '}
-              Meet{' '}
-              <span className="text-[#397B55]">
+              </span>
+              <span className="inline-block mr-3">Meet</span>
+              <span className="inline-block text-[#C66B52]">
                 Opportunities.
               </span>
             </h1>
+
+            {/* Rotating Dynamic Text Box */}
+            <div className="flex items-center gap-3 py-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#77786E]">
+                Designed To:
+              </span>
+              <div className="h-8 overflow-hidden relative min-w-[220px]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={rotatingIndex}
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: -20, opacity: 0 }}
+                    transition={{ duration: 0.35, ease: 'easeOut' }}
+                    className="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white border border-[#E8DBC8] text-xs sm:text-sm font-extrabold text-[#8064A9] shadow-xs"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#8064A9]"></span>
+                    <span>{ROTATING_PHRASES[rotatingIndex]}</span>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </div>
 
             {/* Supporting Copy */}
             <p className="text-base sm:text-lg text-[#77786E] leading-relaxed max-w-2xl font-normal">
               One connected ecosystem for entrepreneurs, businesses, investors, professionals and visionaries to discover opportunities, build relationships and grow together.
             </p>
 
-            {/* CTAs */}
+            {/* Staggered CTA Buttons */}
             <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
               <Link
                 to="/marketplace"
-                className="inline-flex items-center justify-center gap-3 px-7 py-3.5 rounded-xl bg-[#183B2D] text-[#F8F5ED] font-bold text-sm shadow-md hover:bg-[#397B55] hover:shadow-lg transition-all duration-200 group"
+                className="inline-flex items-center justify-center gap-3 px-7 py-4 rounded-xl bg-[#C66B52] text-white font-bold text-sm shadow-lg shadow-[#C66B52]/25 hover:bg-[#D99B43] hover:shadow-xl transition-all duration-200 group"
               >
                 <span>Explore Business Hub</span>
                 <ArrowRightIcon size={16} className="group-hover:translate-x-1 transition-transform" />
               </Link>
               <Link
                 to="/get-started"
-                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-white border border-[#183B2D]/20 text-[#242820] font-bold text-sm hover:bg-[#EDE5D6] hover:border-[#183B2D]/40 transition-all duration-200 shadow-xs"
+                className="inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl bg-white border border-[#29302D]/20 text-[#29302D] font-bold text-sm hover:bg-[#FFF9F0] hover:border-[#29302D] transition-all duration-200 shadow-xs"
               >
                 <span>Become a Member</span>
               </Link>
             </div>
 
-            {/* Editorial Trust Elements */}
-            <div className="pt-6 border-t border-[#EDE5D6] grid grid-cols-3 gap-4 text-xs">
+            {/* Trust Metrics Bar */}
+            <div className="pt-6 border-t border-[#E8DBC8] grid grid-cols-3 gap-4 text-xs">
               <div>
-                <span className="block font-black text-lg text-[#183B2D]">₹99</span>
-                <span className="text-[#77786E] font-medium">First-Year Pass</span>
+                <span className="block font-black text-xl text-[#29302D]">₹99</span>
+                <span className="text-[#77786E] font-medium">First-Year Access</span>
               </div>
               <div>
-                <span className="block font-black text-lg text-[#183B2D]">10 Sectors</span>
+                <span className="block font-black text-xl text-[#8064A9]">10 Sectors</span>
                 <span className="text-[#77786E] font-medium">National Network</span>
               </div>
               <div>
-                <span className="block font-black text-lg text-[#183B2D]">100% Privacy</span>
+                <span className="block font-black text-xl text-[#C66B52]">100% Privacy</span>
                 <span className="text-[#77786E] font-medium">FIC Coordination</span>
               </div>
             </div>
           </motion.div>
 
-          {/* RIGHT SIDE: Animated Business Ecosystem Visual (5 Cols) */}
+          {/* RIGHT VISUAL: Rich Animated 3D-Style Business Ecosystem (5 Cols) */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.94 }}
+            initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-5 relative flex items-center justify-center min-h-[420px] sm:min-h-[480px]"
+            transition={{ duration: 0.95, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:col-span-5 relative flex items-center justify-center min-h-[460px] sm:min-h-[520px]"
           >
-            {/* Central Orbital Globe / Graphic */}
-            <div className="relative w-80 h-80 sm:w-96 sm:h-96 rounded-full flex items-center justify-center">
-              {/* Outer Slow Rotating Ring */}
-              <div className="absolute inset-0 rounded-full border border-dashed border-[#C6A66A]/40 animate-orbital pointer-events-none"></div>
+            {/* Multi-ring Orbital System */}
+            <div className="relative w-84 h-84 sm:w-96 sm:h-96 rounded-full flex items-center justify-center">
+              {/* Outer Slow Amber Orbit */}
+              <div className="absolute inset-0 rounded-full border border-dashed border-[#D99B43]/50 animate-orbital pointer-events-none"></div>
 
-              {/* Reverse Inner Ring */}
-              <div className="absolute inset-6 rounded-full border border-dotted border-[#397B55]/40 animate-orbital-reverse pointer-events-none"></div>
+              {/* Middle Reverse Violet Orbit */}
+              <div className="absolute inset-6 rounded-full border border-dotted border-[#8064A9]/45 animate-orbital-reverse pointer-events-none"></div>
 
-              {/* Ambient Center Glow */}
-              <div className="w-48 h-48 rounded-full bg-gradient-to-tr from-[#183B2D]/10 via-[#C6A66A]/15 to-[#397B55]/10 blur-xl"></div>
+              {/* Inner Coral Orbit */}
+              <div className="absolute inset-12 rounded-full border border-dashed border-[#E58C72]/40 animate-orbital-fast pointer-events-none"></div>
 
-              {/* Central Core Emblem */}
-              <div className="relative z-10 w-28 h-28 rounded-2xl bg-[#183B2D] text-[#F8F5ED] flex flex-col items-center justify-center shadow-xl border border-[#C6A66A]/40">
-                <span className="text-2xl font-black tracking-tight">FIC</span>
-                <span className="text-[9px] font-bold tracking-widest text-[#C6A66A] uppercase mt-0.5">
-                  ECOSYSTEM
+              {/* Ambient Radial Core Light */}
+              <div className="w-52 h-52 rounded-full bg-gradient-to-tr from-[#8064A9]/20 via-[#D99B43]/20 to-[#E58C72]/20 blur-2xl"></div>
+
+              {/* Central FIC Core Prism */}
+              <div className="relative z-10 w-28 h-28 rounded-2xl bg-[#29302D] text-[#FCFAF6] flex flex-col items-center justify-center shadow-2xl border border-[#D99B43]/50">
+                <span className="text-2xl font-black tracking-tight text-white">FIC</span>
+                <span className="text-[9px] font-bold tracking-widest text-[#D99B43] uppercase mt-0.5">
+                  CORE HUB
                 </span>
-                <div className="mt-1.5 flex gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#397B55]"></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#C6A66A]"></span>
+                <div className="mt-2 flex gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#E58C72]"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#D99B43]"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#8064A9]"></span>
                 </div>
               </div>
 
-              {/* Floating Node 1: AI Venture Founder (Top Left) */}
-              <div className="absolute -top-3 -left-4 sm:top-2 sm:-left-6 z-20 animate-float-gentle bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-[#EDE5D6] shadow-lg max-w-[190px]">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#397B55]/15 text-[#397B55] flex items-center justify-center shrink-0">
-                    <RocketIcon size={14} />
+              {/* Floating Glass Card 1: Entrepreneur (Top Left) */}
+              <div className="absolute -top-4 -left-6 sm:top-0 sm:-left-8 z-20 animate-float-1 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-[#E58C72]/40 shadow-xl max-w-[200px]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#E58C72]/20 text-[#C66B52] flex items-center justify-center shrink-0">
+                    <RocketIcon size={16} />
                   </div>
                   <div className="overflow-hidden">
-                    <p className="text-[11px] font-bold text-[#242820] truncate">AI Venture Founder</p>
-                    <span className="text-[9px] font-semibold text-[#397B55] block">Idea Validated ✓</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Floating Node 2: Precision Manufacturer (Top Right) */}
-              <div
-                className="absolute -top-4 -right-4 sm:top-4 sm:-right-8 z-20 animate-float-gentle bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-[#EDE5D6] shadow-lg max-w-[200px]"
-                style={{ animationDelay: '1.2s' }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#183B2D]/10 text-[#183B2D] flex items-center justify-center shrink-0">
-                    <FactoryIcon size={14} />
-                  </div>
-                  <div className="overflow-hidden">
-                    <p className="text-[11px] font-bold text-[#242820] truncate">Precision OEM Plant</p>
-                    <span className="text-[9px] font-semibold text-[#8D9874] block">Industrial Capacity</span>
+                    <p className="text-[11px] font-bold text-[#29302D] truncate">Startup Founder</p>
+                    <span className="text-[9px] font-semibold text-[#C66B52] block">Pitch Validated ✓</span>
                   </div>
                 </div>
               </div>
 
-              {/* Floating Node 3: Private Angel Syndicate (Bottom Right) */}
-              <div
-                className="absolute -bottom-3 -right-2 sm:bottom-4 sm:-right-6 z-20 animate-float-gentle bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-[#C6A66A]/50 shadow-lg max-w-[195px]"
-                style={{ animationDelay: '2.4s' }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#C6A66A]/20 text-[#C6A66A] flex items-center justify-center shrink-0">
-                    <TrendingUpIcon size={14} />
+              {/* Floating Glass Card 2: Industrial OEM Plant (Top Right) */}
+              <div className="absolute -top-5 -right-5 sm:top-2 sm:-right-8 z-20 animate-float-2 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-[#D99B43]/40 shadow-xl max-w-[205px]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#D99B43]/20 text-[#D99B43] flex items-center justify-center shrink-0">
+                    <FactoryIcon size={16} />
                   </div>
                   <div className="overflow-hidden">
-                    <p className="text-[11px] font-bold text-[#242820] truncate">Angel Syndicate</p>
-                    <span className="text-[9px] font-semibold text-[#C6A66A] block">Confidential Match</span>
+                    <p className="text-[11px] font-bold text-[#29302D] truncate">Precision OEM Plant</p>
+                    <span className="text-[9px] font-semibold text-[#B87A28] block">Bulk Supply Capable</span>
                   </div>
                 </div>
               </div>
 
-              {/* Floating Node 4: CA / Legal Advisor (Bottom Left) */}
-              <div
-                className="absolute -bottom-4 -left-4 sm:bottom-6 sm:-left-8 z-20 animate-float-gentle bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-[#EDE5D6] shadow-lg max-w-[190px]"
-                style={{ animationDelay: '1.8s' }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-[#BC7556]/15 text-[#BC7556] flex items-center justify-center shrink-0">
-                    <ShieldCheckIcon size={14} />
+              {/* Floating Glass Card 3: Angel Syndicate (Bottom Right) */}
+              <div className="absolute -bottom-4 -right-4 sm:bottom-4 sm:-right-6 z-20 animate-float-3 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-[#8064A9]/40 shadow-xl max-w-[200px]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#8064A9]/20 text-[#8064A9] flex items-center justify-center shrink-0">
+                    <TrendingUpIcon size={16} />
                   </div>
                   <div className="overflow-hidden">
-                    <p className="text-[11px] font-bold text-[#242820] truncate">Chartered CA Partner</p>
-                    <span className="text-[9px] font-semibold text-[#BC7556] block">Verified Retainer</span>
+                    <p className="text-[11px] font-bold text-[#29302D] truncate">Angel Syndicate</p>
+                    <span className="text-[9px] font-semibold text-[#8064A9] block">Confidential Deal Flow</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Floating Glass Card 4: CA / Legal Advisor (Bottom Left) */}
+              <div className="absolute -bottom-5 -left-6 sm:bottom-4 sm:-left-8 z-20 animate-float-2 bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-[#D78E9A]/40 shadow-xl max-w-[195px]">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-[#D78E9A]/20 text-[#C66B52] flex items-center justify-center shrink-0">
+                    <ShieldCheckIcon size={16} />
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-[11px] font-bold text-[#29302D] truncate">Corporate CA</p>
+                    <span className="text-[9px] font-semibold text-[#C66B52] block">Verified Retainer</span>
                   </div>
                 </div>
               </div>
@@ -542,96 +605,96 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ========================================================
-          SECTION 2 – ABOUT FIC (ASYMMETRIC EDITORIAL LAYOUT)
+          SECTION 2 – ABOUT FIC (CONNECTED BUSINESS UNIVERSE)
          ======================================================== */}
-      <section id="about" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#FFFDF8] border-b border-[#EDE5D6]">
+      <section id="about" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#FCFAF6] border-b border-[#E8DBC8]">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left Column: Heading & Vision Statement */}
+            {/* Left Narrative Column (6 Cols) */}
             <motion.div
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.7 }}
+              transition={{ duration: 0.75, ease: [0.16, 1, 0.3, 1] }}
               className="lg:col-span-6 space-y-6"
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C6A66A]/15 text-[#C6A66A] text-xs font-bold uppercase tracking-wider">
-                <span>The Ecosystem Paradigm</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C66B52]/15 text-[#C66B52] text-xs font-bold uppercase tracking-wider">
+                <span>The National Coordination Universe</span>
               </div>
-              <h2 className="text-3xl sm:text-5xl font-extrabold text-[#242820] tracking-tight leading-tight">
-                An Ecosystem Built to Move Businesses Forward.
+              <h2 className="text-3xl sm:text-5xl font-extrabold text-[#29302D] tracking-tight leading-tight">
+                More Than a Platform. A Connected Business Universe.
               </h2>
               <p className="text-base text-[#77786E] leading-relaxed">
-                FIC Business Hub is not another passive business directory. It is an active national infrastructure engineered to connect Indian entrepreneurs, industrial manufacturers, investors, and licensed professionals into a high-trust commercial network.
+                FIC Business Hub bridges traditional silos between Indian manufacturing plants, innovative tech ventures, institutional capital, and licensed professionals. We replace fragmented directories with an orchestrated, high-trust commercial infrastructure.
               </p>
               <p className="text-sm text-[#77786E] leading-relaxed">
-                We operate as a central coordinator. All commercial introductions, RFQs, service quotes, and investment interests are managed with strict provider privacy — eliminating cold-call harassment and spam while ensuring serious, qualified business partnerships.
+                Our central coordination architecture ensures complete provider contact privacy. Quotes, commercial introductions, and partnership proposals are vetted by FIC officers before presentation — guaranteeing serious buyers and zero sales harassment.
               </p>
-              <div className="pt-2">
+              <div className="pt-2 flex items-center gap-6">
                 <Link
                   to="/get-started"
-                  className="inline-flex items-center gap-2 text-sm font-bold text-[#183B2D] hover:text-[#397B55] transition-colors"
+                  className="inline-flex items-center gap-2 text-sm font-bold text-[#C66B52] hover:text-[#D99B43] transition-colors"
                 >
-                  <span>Learn how FIC coordinates connections</span>
+                  <span>Discover our coordination guarantee</span>
                   <ArrowRightIcon size={16} />
                 </Link>
               </div>
             </motion.div>
 
-            {/* Right Column: 3 Asymmetric Value Tiles */}
+            {/* Right Asymmetrical Visual Showcase (6 Cols) */}
             <motion.div
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.7, delay: 0.15 }}
+              transition={{ duration: 0.75, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
               className="lg:col-span-6 space-y-4"
             >
-              {/* Tile 1: Intermediary Protection */}
-              <div className="p-6 rounded-2xl bg-[#F6F2E9] border border-[#EDE5D6] hover:border-[#397B55]/40 transition-all duration-200 shadow-xs">
+              {/* Feature Tile 1: Privacy Safeguard */}
+              <div className="p-6 rounded-2xl bg-white border border-[#E58C72]/30 hover:border-[#E58C72] transition-all duration-200 shadow-sm">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-[#397B55]/15 text-[#397B55] flex items-center justify-center shrink-0">
-                    <ShieldCheckIcon size={20} />
+                  <div className="w-11 h-11 rounded-xl bg-[#E58C72]/15 text-[#C66B52] flex items-center justify-center shrink-0">
+                    <ShieldCheckIcon size={22} />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-[#242820] mb-1">
+                    <h3 className="text-base font-bold text-[#29302D] mb-1">
                       100% Provider Contact Privacy
                     </h3>
                     <p className="text-xs text-[#77786E] leading-relaxed">
-                      Provider contact numbers are never broadcast publicly. FIC acts as the coordinating intermediary so you receive verified proposals without spam.
+                      Provider phone numbers are never publicly scraped or shared. FIC acts as the mediating coordinator so commercial inquiries are serious and verified.
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Tile 2: Cross-Sector Matchmaking */}
-              <div className="p-6 rounded-2xl bg-[#F6F2E9] border border-[#EDE5D6] hover:border-[#C6A66A]/40 transition-all duration-200 shadow-xs">
+              {/* Feature Tile 2: 10 Core Interconnected Sectors */}
+              <div className="p-6 rounded-2xl bg-white border border-[#8064A9]/30 hover:border-[#8064A9] transition-all duration-200 shadow-sm">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-[#C6A66A]/20 text-[#C6A66A] flex items-center justify-center shrink-0">
-                    <HandshakeIcon size={20} />
+                  <div className="w-11 h-11 rounded-xl bg-[#8064A9]/15 text-[#8064A9] flex items-center justify-center shrink-0">
+                    <HandshakeIcon size={22} />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-[#242820] mb-1">
-                      Cross-Sector Synergy Across 10 Domains
+                    <h3 className="text-base font-bold text-[#29302D] mb-1">
+                      Cross-Sector Commercial Synergy
                     </h3>
                     <p className="text-xs text-[#77786E] leading-relaxed">
-                      IT ventures meet factories, farmers connect with cold chains, and inventors link with capital — breaking the boundaries of isolated business sectors.
+                      Factories meet software developers, agrarian suppliers link with cold-storage logistics, and new ventures pitch directly to active syndicates.
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Tile 3: Verified Authenticity */}
-              <div className="p-6 rounded-2xl bg-[#F6F2E9] border border-[#EDE5D6] hover:border-[#8D9874]/40 transition-all duration-200 shadow-xs">
+              {/* Feature Tile 3: Rigorous Verification */}
+              <div className="p-6 rounded-2xl bg-white border border-[#D99B43]/30 hover:border-[#D99B43] transition-all duration-200 shadow-sm">
                 <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-[#8D9874]/20 text-[#183B2D] flex items-center justify-center shrink-0">
-                    <CheckCircleIcon size={20} />
+                  <div className="w-11 h-11 rounded-xl bg-[#D99B43]/15 text-[#D99B43] flex items-center justify-center shrink-0">
+                    <CheckCircleIcon size={22} />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-[#242820] mb-1">
+                    <h3 className="text-base font-bold text-[#29302D] mb-1">
                       Category-Specific KYC Verification
                     </h3>
                     <p className="text-xs text-[#77786E] leading-relaxed">
-                      Every participant verifies legal 18+ adult age and attaches domain-specific credentials (GSTIN, Udyam, Patta, Bar council, or Student ID).
+                      Adult eligibility (18+) is confirmed and sector credentials (Aadhaar, GSTIN, Udyam, Patta, or Student ID) are verified within 24 business hours.
                     </p>
                   </div>
                 </div>
@@ -642,141 +705,226 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ========================================================
-          SECTION 3 – WHO CAN BE PART OF FIC? (8 UNIQUE CARDS)
+          SECTION 3 – WHO CAN JOIN FIC? (STAGGERED BOTTOM-TO-TOP SCROLL CARDS)
          ======================================================== */}
-      <section id="who-can-join" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#F6F2E9] border-b border-[#EDE5D6]">
-        <div className="max-w-7xl mx-auto space-y-12">
+      <section id="who-can-join" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#F5EBDD] border-b border-[#E8DBC8]">
+        <div className="max-w-7xl mx-auto space-y-14">
           {/* Section Header */}
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="text-xs font-bold text-[#397B55] uppercase tracking-wider">
-              A Diverse Business Collective
+            <span className="text-xs font-bold text-[#C66B52] uppercase tracking-wider">
+              A Dedicated Place For High-Intent Achievers
             </span>
-            <h2 className="text-3xl sm:text-5xl font-extrabold text-[#242820] tracking-tight">
-              Who Can Be Part of FIC?
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-[#29302D] tracking-tight">
+              Every Ambition Has a Place Here.
             </h2>
             <p className="text-sm sm:text-base text-[#77786E] leading-relaxed">
-              Designed for high-intent business contributors across 8 specialized domain categories. Explore where you fit in our interconnected national network.
+              FIC unites 8 specialized commercial profiles into one frictionless national network. Select where you create impact.
             </p>
           </div>
 
-          {/* Cards Grid with varied compositions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {WHO_CAN_JOIN.map((item, idx) => {
-              const Icon = item.icon;
-              return (
-                <motion.div
-                  key={item.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: idx * 0.08 }}
-                  whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                  className={`p-6 rounded-2xl bg-white border border-[#EDE5D6] hover:shadow-md transition-all duration-200 flex flex-col justify-between ${
-                    item.layout === 'large' ? 'md:col-span-2 lg:col-span-2 bg-gradient-to-br from-white to-[#EDE5D6]/40' : ''
-                  }`}
-                >
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className={`w-11 h-11 rounded-xl ${item.accentBg} flex items-center justify-center shrink-0`}>
-                        <Icon size={22} className="text-[#183B2D]" />
-                      </div>
-                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${item.badgeColor}`}>
-                        {item.category}
-                      </span>
-                    </div>
-
-                    <div>
-                      <h3 className="text-lg font-bold text-[#242820] tracking-tight">
-                        {item.title}
-                      </h3>
-                      <p className="text-xs text-[#77786E] leading-relaxed mt-1.5">
-                        {item.desc}
-                      </p>
-                    </div>
-
-                    {/* Features list */}
-                    <div className="pt-2 flex flex-wrap gap-1.5">
-                      {item.features.map((feat, fIdx) => (
-                        <span
-                          key={fIdx}
-                          className="inline-flex items-center gap-1 text-[11px] font-medium text-[#183B2D] bg-[#F6F2E9] px-2.5 py-1 rounded-lg border border-[#EDE5D6]"
+          {/* Group 1: 4 Cards Rising from Below Sequentially (Spring-based settling) */}
+          <div className="space-y-4">
+            <span className="text-xs font-bold text-[#8064A9] uppercase tracking-wider block">
+              Core Enterprise Pillars
+            </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {AUDIENCE_GROUP_1.map((item, idx) => {
+                const Icon = item.icon;
+                return (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 60, scale: 0.95 }}
+                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                    viewport={{ once: true, margin: '-40px' }}
+                    transition={{
+                      ...springTransition,
+                      delay: idx * 0.14
+                    }}
+                    whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                    className={`p-6 rounded-2xl bg-white border ${item.borderColor} shadow-xs flex flex-col justify-between`}
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: `${item.accentColor}20`, color: item.accentColor }}
                         >
-                          <span className="w-1 h-1 rounded-full bg-[#397B55]"></span>
-                          {feat}
+                          <Icon size={22} />
+                        </div>
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${item.tagBg}`}>
+                          {item.badge}
                         </span>
-                      ))}
-                    </div>
-                  </div>
+                      </div>
 
-                  <div className="pt-6 border-t border-[#EDE5D6]/80 mt-6 flex items-center justify-between">
-                    <Link
-                      to="/register"
-                      className="text-xs font-bold text-[#183B2D] hover:text-[#397B55] inline-flex items-center gap-1.5 transition-colors"
-                    >
-                      <span>Join as {item.title.split('&')[0].trim()}</span>
-                      <ArrowRightIcon size={14} />
-                    </Link>
-                  </div>
-                </motion.div>
-              );
-            })}
+                      <div>
+                        <h3 className="text-base font-bold text-[#29302D] tracking-tight">
+                          {item.title}
+                        </h3>
+                        <p className="text-xs text-[#77786E] leading-relaxed mt-1.5">
+                          {item.desc}
+                        </p>
+                      </div>
+
+                      {/* Micro Features */}
+                      <div className="pt-2 flex flex-wrap gap-1.5">
+                        {item.features.map((feat, fIdx) => (
+                          <span
+                            key={fIdx}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-[#29302D] bg-[#FFF9F0] px-2 py-0.5 rounded-md border border-[#E8DBC8]"
+                          >
+                            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: item.accentColor }}></span>
+                            {feat}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-5 border-t border-[#E8DBC8]/70 mt-6 flex items-center justify-between">
+                      <Link
+                        to="/register"
+                        className="text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+                        style={{ color: item.accentColor }}
+                      >
+                        <span>Join as {item.title.split('&')[0].trim()}</span>
+                        <ArrowRightIcon size={14} />
+                      </Link>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Group 2: 4 Cards Rising Sequentially (Spring-based settling) */}
+          <div className="space-y-4 pt-4">
+            <span className="text-xs font-bold text-[#D99B43] uppercase tracking-wider block">
+              Knowledge, Advisory & Growth Gateways
+            </span>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {AUDIENCE_GROUP_2.map((item, idx) => {
+                const Icon = item.icon;
+                return (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 60, scale: 0.95 }}
+                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                    viewport={{ once: true, margin: '-40px' }}
+                    transition={{
+                      ...springTransition,
+                      delay: idx * 0.14
+                    }}
+                    whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                    className={`p-6 rounded-2xl bg-white border ${item.borderColor} shadow-xs flex flex-col justify-between`}
+                  >
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: `${item.accentColor}20`, color: item.accentColor }}
+                        >
+                          <Icon size={22} />
+                        </div>
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${item.tagBg}`}>
+                          {item.badge}
+                        </span>
+                      </div>
+
+                      <div>
+                        <h3 className="text-base font-bold text-[#29302D] tracking-tight">
+                          {item.title}
+                        </h3>
+                        <p className="text-xs text-[#77786E] leading-relaxed mt-1.5">
+                          {item.desc}
+                        </p>
+                      </div>
+
+                      {/* Micro Features */}
+                      <div className="pt-2 flex flex-wrap gap-1.5">
+                        {item.features.map((feat, fIdx) => (
+                          <span
+                            key={fIdx}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-[#29302D] bg-[#FFF9F0] px-2 py-0.5 rounded-md border border-[#E8DBC8]"
+                          >
+                            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: item.accentColor }}></span>
+                            {feat}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-5 border-t border-[#E8DBC8]/70 mt-6 flex items-center justify-between">
+                      <Link
+                        to="/register"
+                        className="text-xs font-bold inline-flex items-center gap-1.5 transition-colors"
+                        style={{ color: item.accentColor }}
+                      >
+                        <span>Join as {item.title.split('&')[0].trim()}</span>
+                        <ArrowRightIcon size={14} />
+                      </Link>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
 
       {/* ========================================================
-          SECTION 4 – WHAT CAN YOU EXPLORE? (BENTO-GRID SHOWCASE)
+          SECTION 4 – WHAT YOU CAN DO (ADVANCED BENTO GRID ON CHARCOAL)
          ======================================================== */}
-      <section id="what-you-can-do" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#FFFDF8] border-b border-[#EDE5D6]">
-        <div className="max-w-7xl mx-auto space-y-12">
+      <section id="capabilities" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#29302D] text-[#FCFAF6] border-b border-[#D99B43]/20 relative overflow-hidden">
+        {/* Ambient Dark Charcoal Multi-light Flares */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#8064A9]/20 rounded-full blur-[140px] pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-[450px] h-[450px] bg-[#C66B52]/20 rounded-full blur-[130px] pointer-events-none"></div>
+
+        <div className="max-w-7xl mx-auto space-y-12 relative z-10">
           {/* Section Header */}
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
             <div className="max-w-2xl space-y-3">
-              <span className="text-xs font-bold text-[#C6A66A] uppercase tracking-wider">
-                Capabilities & Workspaces
+              <span className="text-xs font-bold text-[#D99B43] uppercase tracking-wider">
+                Full-Spectrum Operations
               </span>
-              <h2 className="text-3xl sm:text-5xl font-extrabold text-[#242820] tracking-tight">
-                What Can You Explore?
+              <h2 className="text-3xl sm:text-5xl font-extrabold text-[#FCFAF6] tracking-tight">
+                One Ecosystem. Endless Possibilities.
               </h2>
-              <p className="text-sm sm:text-base text-[#77786E]">
-                A unified bento showcase of all 7 core operational avenues available once your membership and category verification are active.
+              <p className="text-sm sm:text-base text-[#E8DBC8]">
+                An advanced editorial bento grid showcasing the 7 major avenues unlocked with your verified member dashboard.
               </p>
             </div>
             <Link
               to="/marketplace"
-              className="inline-flex items-center gap-2 text-sm font-bold text-[#183B2D] hover:text-[#397B55] transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-bold text-[#D99B43] hover:text-[#E58C72] transition-colors"
             >
-              <span>View Universal Marketplace</span>
+              <span>Explore Universal Marketplace</span>
               <ArrowRightIcon size={16} />
             </Link>
           </div>
 
           {/* Bento Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {/* Tile 1: Business Ideas (Span 2) */}
+            {/* Tile 1: Business Ideas & Opportunities (Span 2) */}
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(0)}
-              className={`p-7 rounded-2xl border cursor-pointer transition-all duration-200 md:col-span-2 ${
+              className={`p-7 rounded-3xl border cursor-pointer transition-all duration-200 md:col-span-2 ${
                 activeCapability === 0
-                  ? 'bg-[#183B2D] text-[#F8F5ED] border-[#C6A66A]'
-                  : 'bg-[#F6F2E9] text-[#242820] border-[#EDE5D6] hover:border-[#183B2D]/40'
+                  ? 'bg-[#29302D] text-[#FCFAF6] border-[#D99B43] shadow-lg shadow-[#D99B43]/15'
+                  : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#D99B43]/50'
               }`}
             >
               <div className="flex items-center justify-between mb-4">
-                <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                  activeCapability === 0 ? 'bg-[#C6A66A]/20 text-[#C6A66A]' : 'bg-[#183B2D]/10 text-[#183B2D]'
-                }`}>
-                  Idea Validation
+                <span className="text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-[#D99B43]/20 text-[#D99B43] border border-[#D99B43]/30">
+                  Idea Validation Desk
                 </span>
-                <LightbulbIcon size={22} className={activeCapability === 0 ? 'text-[#C6A66A]' : 'text-[#183B2D]'} />
+                <LightbulbIcon size={24} className="text-[#D99B43]" />
               </div>
-              <h3 className="text-xl font-bold mb-2">Business Ideas & Opportunities</h3>
-              <p className={`text-xs leading-relaxed mb-4 ${activeCapability === 0 ? 'text-[#EDE5D6]' : 'text-[#77786E]'}`}>
+              <h3 className="text-xl font-bold mb-2 text-white">Business Ideas & Opportunities</h3>
+              <p className="text-xs text-[#E8DBC8] leading-relaxed mb-4">
                 Submit concepts for confidential validation. Access our incubation desk to connect with co-founders, market experts, and operational infrastructure.
               </p>
-              <div className="text-xs font-bold inline-flex items-center gap-1.5 underline decoration-[#C6A66A]">
-                <span>Explore Idea Incubation</span>
+              <div className="text-xs font-bold inline-flex items-center gap-1.5 text-[#D99B43] underline underline-offset-4">
+                <span>Explore Idea Incubation Desk</span>
                 <ArrowRightIcon size={14} />
               </div>
             </motion.div>
@@ -785,112 +933,110 @@ export const LandingPage: React.FC = () => {
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(2)}
-              className={`p-7 rounded-2xl border cursor-pointer transition-all duration-200 md:col-span-2 ${
+              className={`p-7 rounded-3xl border cursor-pointer transition-all duration-200 md:col-span-2 ${
                 activeCapability === 2
-                  ? 'bg-[#183B2D] text-[#F8F5ED] border-[#C6A66A]'
-                  : 'bg-[#F6F2E9] text-[#242820] border-[#EDE5D6] hover:border-[#183B2D]/40'
+                  ? 'bg-[#29302D] text-[#FCFAF6] border-[#E58C72] shadow-lg shadow-[#E58C72]/15'
+                  : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#E58C72]/50'
               }`}
             >
               <div className="flex items-center justify-between mb-4">
-                <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${
-                  activeCapability === 2 ? 'bg-[#C6A66A]/20 text-[#C6A66A]' : 'bg-[#183B2D]/10 text-[#183B2D]'
-                }`}>
+                <span className="text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-[#E58C72]/20 text-[#E58C72] border border-[#E58C72]/30">
                   Privacy-First Directory
                 </span>
-                <BriefcaseIcon size={22} className={activeCapability === 2 ? 'text-[#C6A66A]' : 'text-[#183B2D]'} />
+                <BriefcaseIcon size={24} className="text-[#E58C72]" />
               </div>
-              <h3 className="text-xl font-bold mb-2">Universal Services Marketplace</h3>
-              <p className={`text-xs leading-relaxed mb-4 ${activeCapability === 2 ? 'text-[#EDE5D6]' : 'text-[#77786E]'}`}>
-                Discover verified vendors across manufacturing, IT, logistics, and legal services. Contact numbers remain confidential while FIC mediates all requests.
+              <h3 className="text-xl font-bold mb-2 text-white">Universal Services Marketplace</h3>
+              <p className="text-xs text-[#E8DBC8] leading-relaxed mb-4">
+                Discover verified vendors across manufacturing, IT, logistics, and legal services. Contact numbers remain confidential while FIC mediates all quotes.
               </p>
-              <div className="text-xs font-bold inline-flex items-center gap-1.5 underline decoration-[#C6A66A]">
+              <div className="text-xs font-bold inline-flex items-center gap-1.5 text-[#E58C72] underline underline-offset-4">
                 <span>Browse Verified Services</span>
                 <ArrowRightIcon size={14} />
               </div>
             </motion.div>
 
-            {/* Tile 3: Business Development & Scaling (Col 1-2) */}
+            {/* Tile 3: Development & Scaling (Col 1) */}
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(1)}
-              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 md:col-span-1 lg:col-span-1 ${
+              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${
                 activeCapability === 1
-                  ? 'bg-[#183B2D] text-[#F8F5ED] border-[#C6A66A]'
-                  : 'bg-[#F6F2E9] text-[#242820] border-[#EDE5D6] hover:border-[#183B2D]/40'
+                  ? 'bg-[#29302D] text-[#FCFAF6] border-[#C66B52]'
+                  : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#C66B52]/50'
               }`}
             >
-              <RocketIcon size={20} className={activeCapability === 1 ? 'text-[#C6A66A]' : 'text-[#183B2D]'} />
-              <h3 className="text-base font-bold mt-3 mb-1">Development & Scaling</h3>
-              <p className={`text-xs leading-relaxed ${activeCapability === 1 ? 'text-[#EDE5D6]' : 'text-[#77786E]'}`}>
-                Factory modernizations, market entry strategies, and operational scaling.
+              <RocketIcon size={22} className="text-[#C66B52]" />
+              <h3 className="text-base font-bold mt-3 mb-1 text-white">Scaling & Growth</h3>
+              <p className="text-xs text-[#A7AAA0] leading-relaxed">
+                Factory expansion, market entry, and institutional matchmaking.
               </p>
             </motion.div>
 
-            {/* Tile 4: Investment & Funding Connections (Col 2-3) */}
+            {/* Tile 4: Investment & Funding (Col 2) */}
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(3)}
-              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 md:col-span-1 lg:col-span-1 ${
+              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${
                 activeCapability === 3
-                  ? 'bg-[#183B2D] text-[#F8F5ED] border-[#C6A66A]'
-                  : 'bg-[#F6F2E9] text-[#242820] border-[#EDE5D6] hover:border-[#183B2D]/40'
+                  ? 'bg-[#29302D] text-[#FCFAF6] border-[#8064A9]'
+                  : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#8064A9]/50'
               }`}
             >
-              <TrendingUpIcon size={20} className={activeCapability === 3 ? 'text-[#C6A66A]' : 'text-[#183B2D]'} />
-              <h3 className="text-base font-bold mt-3 mb-1">Investment & Funding</h3>
-              <p className={`text-xs leading-relaxed ${activeCapability === 3 ? 'text-[#EDE5D6]' : 'text-[#77786E]'}`}>
-                Private deal flows between angel syndicates and vetted growth-stage enterprises.
+              <TrendingUpIcon size={22} className="text-[#8064A9]" />
+              <h3 className="text-base font-bold mt-3 mb-1 text-white">Private Funding</h3>
+              <p className="text-xs text-[#A7AAA0] leading-relaxed">
+                Confidential deal flow between angel syndicates and vetted ventures.
               </p>
             </motion.div>
 
-            {/* Tile 5: Business Partnerships & Tie-ups (Col 3-4) */}
+            {/* Tile 5: Strategic Partnerships (Col 3) */}
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(4)}
-              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 md:col-span-1 lg:col-span-1 ${
+              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${
                 activeCapability === 4
-                  ? 'bg-[#183B2D] text-[#F8F5ED] border-[#C6A66A]'
-                  : 'bg-[#F6F2E9] text-[#242820] border-[#EDE5D6] hover:border-[#183B2D]/40'
+                  ? 'bg-[#29302D] text-[#FCFAF6] border-[#D78E9A]'
+                  : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#D78E9A]/50'
               }`}
             >
-              <HandshakeIcon size={20} className={activeCapability === 4 ? 'text-[#C6A66A]' : 'text-[#183B2D]'} />
-              <h3 className="text-base font-bold mt-3 mb-1">Strategic Partnerships</h3>
-              <p className={`text-xs leading-relaxed ${activeCapability === 4 ? 'text-[#EDE5D6]' : 'text-[#77786E]'}`}>
-                Joint ventures, regional distribution channels, and factory co-packaging.
+              <HandshakeIcon size={22} className="text-[#D78E9A]" />
+              <h3 className="text-base font-bold mt-3 mb-1 text-white">B2B Partnerships</h3>
+              <p className="text-xs text-[#A7AAA0] leading-relaxed">
+                Joint ventures, regional distribution, and factory packaging.
               </p>
             </motion.div>
 
-            {/* Tile 6: Professional Networking & Mentoring (Col 4) */}
+            {/* Tile 6: Professional Networking (Col 4) */}
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(5)}
-              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 md:col-span-1 lg:col-span-1 ${
+              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${
                 activeCapability === 5
-                  ? 'bg-[#183B2D] text-[#F8F5ED] border-[#C6A66A]'
-                  : 'bg-[#F6F2E9] text-[#242820] border-[#EDE5D6] hover:border-[#183B2D]/40'
+                  ? 'bg-[#29302D] text-[#FCFAF6] border-[#B7A5D1]'
+                  : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#B7A5D1]/50'
               }`}
             >
-              <UsersIcon size={20} className={activeCapability === 5 ? 'text-[#C6A66A]' : 'text-[#183B2D]'} />
-              <h3 className="text-base font-bold mt-3 mb-1">High-Trust Networking</h3>
-              <p className={`text-xs leading-relaxed ${activeCapability === 5 ? 'text-[#EDE5D6]' : 'text-[#77786E]'}`}>
-                Network with authenticated 18+ decision-makers without marketing spam.
+              <UsersIcon size={22} className="text-[#B7A5D1]" />
+              <h3 className="text-base font-bold mt-3 mb-1 text-white">Verified Network</h3>
+              <p className="text-xs text-[#A7AAA0] leading-relaxed">
+                Connect with authenticated 18+ decision-makers without spam.
               </p>
             </motion.div>
           </div>
 
           {/* Interactive Capability Detail Drawer */}
-          <div className="p-6 rounded-2xl bg-[#EDE5D6]/60 border border-[#C6A66A]/30 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="p-6 rounded-2xl bg-[#29302D]/90 border border-[#D99B43]/30 flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-[#183B2D] uppercase tracking-wider">
-                Currently Selected: {CAPABILITIES[activeCapability].title}
+              <span className="text-[10px] font-bold text-[#D99B43] uppercase tracking-wider">
+                Active Selection: {CAPABILITIES[activeCapability].title}
               </span>
-              <p className="text-xs text-[#242820]">
+              <p className="text-xs text-[#E8DBC8]">
                 {CAPABILITIES[activeCapability].detail}
               </p>
             </div>
             <Link
               to={CAPABILITIES[activeCapability].link}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#183B2D] text-[#F8F5ED] text-xs font-bold shrink-0 hover:bg-[#397B55] transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C66B52] text-white text-xs font-bold shrink-0 hover:bg-[#D99B43] transition-colors"
             >
               <span>{CAPABILITIES[activeCapability].actionText}</span>
               <ArrowRightIcon size={14} />
@@ -900,53 +1046,59 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ========================================================
-          SECTION 5 – HOW FIC WORKS (ANIMATED PROCESS TIMELINE)
+          SECTION 5 – HOW FIC WORKS (LARGE HORIZONTAL TIMELINE)
          ======================================================== */}
-      <section id="how-it-works" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#F6F2E9] border-b border-[#EDE5D6]">
+      <section id="how-it-works" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#FCFAF6] border-b border-[#E8DBC8]">
         <div className="max-w-7xl mx-auto space-y-16">
           {/* Section Header */}
           <div className="text-center max-w-2xl mx-auto space-y-3">
-            <span className="text-xs font-bold text-[#397B55] uppercase tracking-wider">
-              Streamlined 4-Step Journey
+            <span className="text-xs font-bold text-[#8064A9] uppercase tracking-wider">
+              From Registration to Proposal Execution
             </span>
-            <h2 className="text-3xl sm:text-5xl font-extrabold text-[#242820] tracking-tight">
-              How FIC Works
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-[#29302D] tracking-tight">
+              Your Journey From Connection to Opportunity.
             </h2>
             <p className="text-sm sm:text-base text-[#77786E]">
-              From initial registration to coordinated business proposals — a transparent journey built for speed and trust.
+              A 4-step progressive timeline engineered for rapid onboarding and verifiable commercial trust.
             </p>
           </div>
 
-          {/* Process Timeline Grid */}
+          {/* Progressive Timeline Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 relative">
             {HOW_IT_WORKS_STEPS.map((step, idx) => {
               const Icon = step.icon;
               return (
                 <motion.div
                   key={step.step}
-                  initial={{ opacity: 0, y: 24 }}
+                  initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.6, delay: idx * 0.12 }}
-                  className="relative p-6 rounded-2xl bg-white border border-[#EDE5D6] shadow-xs flex flex-col justify-between"
+                  className="relative p-6 rounded-2xl bg-white border border-[#E8DBC8] shadow-xs flex flex-col justify-between"
                 >
                   <div className="space-y-4">
                     {/* Step Number + Time Badge */}
                     <div className="flex items-center justify-between">
-                      <span className="text-2xl font-black text-[#183B2D] font-mono">
+                      <span className="text-2xl font-black font-mono" style={{ color: step.accent }}>
                         {step.step}
                       </span>
-                      <span className="text-[10px] font-bold text-[#C6A66A] bg-[#C6A66A]/15 px-2 py-0.5 rounded-full">
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: `${step.accent}15`, color: step.accent }}
+                      >
                         {step.time}
                       </span>
                     </div>
 
-                    <div className="w-10 h-10 rounded-xl bg-[#183B2D]/5 text-[#183B2D] flex items-center justify-center">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center"
+                      style={{ backgroundColor: `${step.accent}15`, color: step.accent }}
+                    >
                       <Icon size={20} />
                     </div>
 
                     <div>
-                      <h3 className="text-base font-bold text-[#242820] mb-1">
+                      <h3 className="text-base font-bold text-[#29302D] mb-1">
                         {step.title}
                       </h3>
                       <p className="text-xs text-[#77786E] leading-relaxed">
@@ -955,9 +1107,9 @@ export const LandingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-[#EDE5D6]/80 mt-6 flex items-center gap-1.5 text-[11px] font-bold text-[#397B55]">
-                    <CheckCircleIcon size={14} />
-                    <span>Verified Milestone</span>
+                  <div className="pt-4 border-t border-[#E8DBC8]/70 mt-6 flex items-center gap-1.5 text-[11px] font-bold text-[#29302D]">
+                    <CheckCircleIcon size={14} className="text-[#D99B43]" />
+                    <span>Verified Step</span>
                   </div>
                 </motion.div>
               );
@@ -967,23 +1119,23 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ========================================================
-          SECTION 6 – ONE CONNECTED ECOSYSTEM (INTERACTIVE VISUALIZATION)
+          SECTION 6 – THE FIC ECOSYSTEM (RICH MULTICOLOR CONNECTIONS)
          ======================================================== */}
-      <section id="ecosystem" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#20251F] text-[#F8F5ED] border-b border-[#183B2D]/60 relative overflow-hidden">
-        {/* Ambient Dark Forest Lighting */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-[#183B2D]/40 rounded-full blur-[140px] pointer-events-none"></div>
+      <section id="ecosystem" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#29302D] text-[#FCFAF6] border-b border-[#D99B43]/20 relative overflow-hidden">
+        {/* Ambient Glows */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-[#8064A9]/20 rounded-full blur-[140px] pointer-events-none"></div>
 
         <div className="max-w-7xl mx-auto space-y-16 relative z-10">
           {/* Section Header */}
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="text-xs font-bold text-[#C6A66A] uppercase tracking-wider">
+            <span className="text-xs font-bold text-[#D99B43] uppercase tracking-wider">
               Network Architecture
             </span>
-            <h2 className="text-3xl sm:text-5xl font-extrabold text-[#F8F5ED] tracking-tight">
-              One Connected Ecosystem
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-[#FCFAF6] tracking-tight">
+              Everything Connected. One Ecosystem.
             </h2>
-            <p className="text-sm sm:text-base text-[#A7AAA0] leading-relaxed">
-              Experience how diverse market participants interact through the central FIC coordination infrastructure. Click any entity to inspect value flow.
+            <p className="text-sm sm:text-base text-[#E8DBC8] leading-relaxed">
+              Explore the two-way commercial value exchanges between diverse Indian market participants, coordinated centrally with 100% provider data protection.
             </p>
           </div>
 
@@ -991,8 +1143,8 @@ export const LandingPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             {/* Entity Selectors (5 Cols) */}
             <div className="lg:col-span-5 space-y-2.5">
-              <span className="text-[11px] font-bold text-[#C6A66A] tracking-wider uppercase block mb-3">
-                Select Active Entity:
+              <span className="text-[11px] font-bold text-[#D99B43] tracking-wider uppercase block mb-3">
+                Select Active Participant:
               </span>
               {ECOSYSTEM_ENTITIES.map((entity, idx) => {
                 const Icon = entity.icon;
@@ -1003,14 +1155,18 @@ export const LandingPage: React.FC = () => {
                     onClick={() => setSelectedEcosystemNode(idx)}
                     className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${
                       isSelected
-                        ? 'bg-[#183B2D] border-[#C6A66A] text-[#F8F5ED] shadow-md shadow-[#183B2D]/40'
-                        : 'bg-[#20251F]/80 border-[#183B2D]/60 text-[#A7AAA0] hover:bg-[#183B2D]/30 hover:text-[#F8F5ED]'
+                        ? 'bg-[#29302D] border-[#D99B43] text-white shadow-md'
+                        : 'bg-[#29302D]/60 border-[#E8DBC8]/20 text-[#A7AAA0] hover:bg-[#29302D]/90 hover:text-white'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        isSelected ? 'bg-[#C6A66A] text-[#20251F]' : 'bg-[#183B2D] text-[#C6A66A]'
-                      }`}>
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style={{
+                          backgroundColor: isSelected ? entity.accent : `${entity.accent}25`,
+                          color: isSelected ? '#FFFFFF' : entity.accent
+                        }}
+                      >
                         <Icon size={16} />
                       </div>
                       <div>
@@ -1019,8 +1175,8 @@ export const LandingPage: React.FC = () => {
                       </div>
                     </div>
                     {isSelected && (
-                      <span className="text-[10px] font-bold text-[#C6A66A] bg-[#C6A66A]/10 px-2 py-0.5 rounded-md">
-                        Active Node
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#D99B43]/20 text-[#D99B43]">
+                        Inspecting Node
                       </span>
                     )}
                   </button>
@@ -1029,45 +1185,45 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Central Node Visual & Value Flow Card (7 Cols) */}
-            <div className="lg:col-span-7 p-8 rounded-3xl bg-[#183B2D]/50 border border-[#397B55]/40 backdrop-blur-md space-y-6">
-              <div className="flex items-center justify-between border-b border-[#397B55]/30 pb-4">
+            <div className="lg:col-span-7 p-8 rounded-3xl bg-[#29302D]/90 border border-[#D99B43]/40 backdrop-blur-md space-y-6">
+              <div className="flex items-center justify-between border-b border-[#D99B43]/20 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[#C6A66A] text-[#20251F] flex items-center justify-center font-black text-xl shadow-lg">
+                  <div className="w-12 h-12 rounded-2xl bg-[#D99B43] text-[#29302D] flex items-center justify-center font-black text-xl shadow-lg">
                     FIC
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-[#F8F5ED]">
+                    <h3 className="text-lg font-bold text-white">
                       {ECOSYSTEM_ENTITIES[selectedEcosystemNode].name} Connection Vector
                     </h3>
-                    <p className="text-xs text-[#C6A66A]">
+                    <p className="text-xs text-[#D99B43]">
                       FIC Mediated Intermediary Flow
                     </p>
                   </div>
                 </div>
-                <span className="text-xs font-mono text-[#8D9874] border border-[#8D9874]/40 px-2 py-0.5 rounded-full">
+                <span className="text-xs font-mono text-[#D78E9A] border border-[#D78E9A]/40 px-2 py-0.5 rounded-full">
                   Node 0{selectedEcosystemNode + 1}
                 </span>
               </div>
 
-              <p className="text-xs text-[#F8F5ED] leading-relaxed">
+              <p className="text-xs text-[#E8DBC8] leading-relaxed">
                 {ECOSYSTEM_ENTITIES[selectedEcosystemNode].desc}
               </p>
 
               {/* Two-Way Value Flow */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div className="p-4 rounded-xl bg-[#20251F]/90 border border-[#183B2D] space-y-1.5">
-                  <span className="text-[10px] font-bold text-[#397B55] uppercase tracking-wider block">
+                <div className="p-4 rounded-xl bg-[#29302D]/95 border border-[#E8DBC8]/20 space-y-1.5">
+                  <span className="text-[10px] font-bold text-[#E58C72] uppercase tracking-wider block">
                     &uarr; Delivers to Ecosystem:
                   </span>
-                  <p className="text-xs font-semibold text-[#F8F5ED]">
+                  <p className="text-xs font-semibold text-white">
                     {ECOSYSTEM_ENTITIES[selectedEcosystemNode].delivers}
                   </p>
                 </div>
-                <div className="p-4 rounded-xl bg-[#20251F]/90 border border-[#183B2D] space-y-1.5">
-                  <span className="text-[10px] font-bold text-[#C6A66A] uppercase tracking-wider block">
+                <div className="p-4 rounded-xl bg-[#29302D]/95 border border-[#E8DBC8]/20 space-y-1.5">
+                  <span className="text-[10px] font-bold text-[#8064A9] uppercase tracking-wider block">
                     &darr; Receives via FIC Coordination:
                   </span>
-                  <p className="text-xs font-semibold text-[#F8F5ED]">
+                  <p className="text-xs font-semibold text-white">
                     {ECOSYSTEM_ENTITIES[selectedEcosystemNode].receives}
                   </p>
                 </div>
@@ -1079,7 +1235,7 @@ export const LandingPage: React.FC = () => {
                 </span>
                 <Link
                   to="/get-started"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#C6A66A] hover:underline"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#D99B43] hover:underline"
                 >
                   <span>Connect with this sector</span>
                   <ArrowRightIcon size={14} />
@@ -1091,17 +1247,17 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ========================================================
-          SECTION 7 – MEMBERSHIP (LUXURY ₹99 PRESENTATION)
+          SECTION 7 – MEMBERSHIP (START YOUR JOURNEY WITH FIC - ₹99)
          ======================================================== */}
-      <section id="membership" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#F6F2E9] border-b border-[#EDE5D6]">
+      <section id="membership" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#F5EBDD] border-b border-[#E8DBC8]">
         <div className="max-w-4xl mx-auto space-y-12">
           {/* Section Header */}
           <div className="text-center space-y-3">
-            <span className="text-xs font-bold text-[#C6A66A] uppercase tracking-wider">
+            <span className="text-xs font-bold text-[#D99B43] uppercase tracking-wider">
               Transparent Membership Terms
             </span>
-            <h2 className="text-3xl sm:text-5xl font-extrabold text-[#242820] tracking-tight">
-              Fair & Predictable Membership
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-[#29302D] tracking-tight">
+              Start Your Journey With FIC.
             </h2>
             <p className="text-sm sm:text-base text-[#77786E]">
               Zero artificial countdown discounts. Zero hidden transaction levies. Identical pricing across all 10 core industry categories.
@@ -1114,27 +1270,27 @@ export const LandingPage: React.FC = () => {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="p-8 sm:p-10 rounded-3xl bg-[#183B2D] text-[#F8F5ED] border border-[#C6A66A]/50 shadow-2xl relative overflow-hidden animate-zoom-in-out"
+            className="p-8 sm:p-10 rounded-3xl bg-[#29302D] text-[#FCFAF6] border border-[#D99B43]/50 shadow-2xl relative overflow-hidden animate-zoom-in-out"
           >
-            {/* Ambient Gold Radial Flare */}
-            <div className="absolute top-0 right-0 w-80 h-80 bg-[#C6A66A]/15 rounded-full blur-3xl pointer-events-none"></div>
+            {/* Ambient Multi-glow Flare */}
+            <div className="absolute top-0 right-0 w-80 h-80 bg-[#D99B43]/20 rounded-full blur-3xl pointer-events-none"></div>
 
             <div className="relative z-10 space-y-8">
               {/* Top Banner: First Year vs Year 2 */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#397B55]/40">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#D99B43]/25">
                 <div>
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C6A66A]/20 text-[#C6A66A] text-xs font-bold tracking-wider uppercase mb-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D99B43]/20 text-[#D99B43] text-xs font-bold tracking-wider uppercase mb-2">
                     <SparklesIcon size={14} />
                     <span>Introductory Access Pass</span>
                   </span>
-                  <h3 className="text-xl sm:text-2xl font-black text-[#F8F5ED]">
+                  <h3 className="text-xl sm:text-2xl font-black text-white">
                     First-Year Onboarding Membership
                   </h3>
                 </div>
                 <div className="text-left sm:text-right">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl sm:text-5xl font-black text-[#C6A66A]">₹99</span>
-                    <span className="text-xs text-[#EDE5D6] font-medium">/ first 365 days</span>
+                    <span className="text-4xl sm:text-5xl font-black text-[#D99B43]">₹99</span>
+                    <span className="text-xs text-[#E8DBC8] font-medium">/ first 365 days</span>
                   </div>
                   <span className="text-[11px] text-[#A7AAA0] block mt-0.5">
                     GST & payment fees included
@@ -1143,47 +1299,47 @@ export const LandingPage: React.FC = () => {
               </div>
 
               {/* Renewal note */}
-              <div className="p-3.5 rounded-xl bg-[#20251F]/60 border border-[#397B55]/30 text-xs text-[#EDE5D6] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="p-3.5 rounded-xl bg-[#29302D]/90 border border-[#D99B43]/30 text-xs text-[#E8DBC8] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span>Standard annual renewal from Year 2 onwards:</span>
-                <span className="font-bold text-[#C6A66A]">₹5,999 / year</span>
+                <span className="font-bold text-[#D99B43]">₹5,999 / year</span>
               </div>
 
               {/* 6 Included Core Features */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs text-[#F8F5ED]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs text-white">
                 <div className="flex items-center gap-2">
-                  <CheckCircleIcon size={16} className="text-[#397B55] shrink-0" />
+                  <CheckCircleIcon size={16} className="text-[#D99B43] shrink-0" />
                   <span>Full access to Universal Services Marketplace</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircleIcon size={16} className="text-[#397B55] shrink-0" />
+                  <CheckCircleIcon size={16} className="text-[#E58C72] shrink-0" />
                   <span>Sector-tailored dynamic dashboard & tools</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircleIcon size={16} className="text-[#397B55] shrink-0" />
+                  <CheckCircleIcon size={16} className="text-[#8064A9] shrink-0" />
                   <span>Business idea validation & incubation desk</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircleIcon size={16} className="text-[#397B55] shrink-0" />
+                  <CheckCircleIcon size={16} className="text-[#D78E9A] shrink-0" />
                   <span>Confidential investment & funding deal flows</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircleIcon size={16} className="text-[#397B55] shrink-0" />
+                  <CheckCircleIcon size={16} className="text-[#B7A5D1] shrink-0" />
                   <span>FIC-mediated commercial introductions & B2B tie-ups</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircleIcon size={16} className="text-[#397B55] shrink-0" />
+                  <CheckCircleIcon size={16} className="text-[#D99B43] shrink-0" />
                   <span>Strict privacy safeguard for provider contact data</span>
                 </div>
               </div>
 
               {/* Legal Note & Button */}
-              <div className="pt-4 border-t border-[#397B55]/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="pt-4 border-t border-[#D99B43]/25 flex flex-col sm:flex-row items-center justify-between gap-4">
                 <span className="text-[11px] text-[#A7AAA0]">
                   * Membership access requires KYC verification and legal 18+ adult age.
                 </span>
                 <Link
                   to="/get-started"
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-[#C6A66A] text-[#20251F] font-bold text-sm shadow-lg hover:brightness-110 transition-all duration-200"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-[#C66B52] text-white font-bold text-sm shadow-lg hover:bg-[#D99B43] transition-all duration-200"
                 >
                   <span>Activate ₹99 Membership</span>
                   <ArrowRightIcon size={16} />
@@ -1195,36 +1351,39 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ========================================================
-          SECTION 8 – WHY FIC? (6 PILLARS & FAQS ACCORDION)
+          SECTION 8 – WHY FIC? (BUILT AROUND CONNECTIONS THAT MATTER)
          ======================================================== */}
-      <section id="why-fic" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#FFFDF8] border-b border-[#EDE5D6]">
+      <section id="why-fic" className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#FCFAF6] border-b border-[#E8DBC8]">
         <div className="max-w-7xl mx-auto space-y-16">
           {/* Section Header */}
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="text-xs font-bold text-[#397B55] uppercase tracking-wider">
+            <span className="text-xs font-bold text-[#8064A9] uppercase tracking-wider">
               The Strategic Advantage
             </span>
-            <h2 className="text-3xl sm:text-5xl font-extrabold text-[#242820] tracking-tight">
-              Why FIC Business Hub?
+            <h2 className="text-3xl sm:text-5xl font-extrabold text-[#29302D] tracking-tight">
+              Built Around Connections That Matter.
             </h2>
             <p className="text-sm sm:text-base text-[#77786E]">
-              Built ground-up to solve the core failures of traditional business directories: spam, unqualified leads, and lack of accountability.
+              Engineered to eliminate unsolicited cold spam while creating authenticated commercial matchmaking across India.
             </p>
           </div>
 
           {/* 6 Value Pillars Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {WHY_FIC_PILLARS.map((pillar, idx) => {
+            {WHY_FIC_PILLARS.map((pillar) => {
               const Icon = pillar.icon;
               return (
                 <div
                   key={pillar.title}
-                  className="p-6 rounded-2xl bg-[#F6F2E9] border border-[#EDE5D6] hover:border-[#397B55]/40 transition-all duration-200"
+                  className="p-6 rounded-2xl bg-white border border-[#E8DBC8] hover:shadow-md transition-all duration-200"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-[#183B2D]/10 text-[#183B2D] flex items-center justify-center mb-4">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-4"
+                    style={{ backgroundColor: `${pillar.accent}20`, color: pillar.accent }}
+                  >
                     <Icon size={20} />
                   </div>
-                  <h3 className="text-base font-bold text-[#242820] mb-2">
+                  <h3 className="text-base font-bold text-[#29302D] mb-2">
                     {pillar.title}
                   </h3>
                   <p className="text-xs text-[#77786E] leading-relaxed">
@@ -1238,7 +1397,7 @@ export const LandingPage: React.FC = () => {
           {/* FAQs Accordion */}
           <div className="max-w-3xl mx-auto pt-8 space-y-4">
             <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold text-[#242820]">Frequently Asked Questions</h3>
+              <h3 className="text-2xl font-bold text-[#29302D]">Frequently Asked Questions</h3>
               <p className="text-xs text-[#77786E] mt-1">
                 Everything you need to know about membership, privacy, and ecosystem access.
               </p>
@@ -1249,11 +1408,11 @@ export const LandingPage: React.FC = () => {
               return (
                 <div
                   key={fIdx}
-                  className="rounded-2xl border border-[#EDE5D6] bg-white overflow-hidden transition-all duration-200"
+                  className="rounded-2xl border border-[#E8DBC8] bg-white overflow-hidden transition-all duration-200"
                 >
                   <button
                     onClick={() => setOpenFaq(isOpen ? null : fIdx)}
-                    className="w-full text-left p-5 flex items-center justify-between gap-4 font-bold text-sm text-[#242820] hover:text-[#183B2D]"
+                    className="w-full text-left p-5 flex items-center justify-between gap-4 font-bold text-sm text-[#29302D] hover:text-[#C66B52]"
                   >
                     <span>{faq.q}</span>
                     <span className={`text-base font-mono transition-transform duration-200 ${isOpen ? 'rotate-45' : ''}`}>
@@ -1268,7 +1427,7 @@ export const LandingPage: React.FC = () => {
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.3 }}
                       >
-                        <div className="px-5 pb-5 pt-0 text-xs text-[#77786E] leading-relaxed border-t border-[#EDE5D6]/60 pt-3">
+                        <div className="px-5 pb-5 pt-0 text-xs text-[#77786E] leading-relaxed border-t border-[#E8DBC8]/60 pt-3">
                           {faq.a}
                         </div>
                       </motion.div>
@@ -1282,16 +1441,16 @@ export const LandingPage: React.FC = () => {
       </section>
 
       {/* ========================================================
-          SECTION 9 – FINAL CALL TO ACTION (FULL-WIDTH FOREST GREEN)
+          SECTION 9 – FINAL CALL TO ACTION (RICH TERRACOTTA / VIOLET)
          ======================================================== */}
-      <section className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#183B2D] text-[#F8F5ED] relative overflow-hidden">
-        {/* Soft Gold Ambient Glow Elements */}
-        <div className="absolute top-0 right-10 w-96 h-96 bg-[#C6A66A]/20 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="absolute bottom-0 left-10 w-96 h-96 bg-[#397B55]/30 rounded-full blur-[100px] pointer-events-none"></div>
+      <section className="py-20 lg:py-28 px-4 sm:px-6 lg:px-8 bg-[#C66B52] text-white relative overflow-hidden">
+        {/* Soft Gold / Violet Ambient Glow Elements */}
+        <div className="absolute top-0 right-10 w-96 h-96 bg-[#D99B43]/30 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute bottom-0 left-10 w-96 h-96 bg-[#8064A9]/30 rounded-full blur-[100px] pointer-events-none"></div>
 
         <div className="max-w-4xl mx-auto text-center space-y-8 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#C6A66A]/20 border border-[#C6A66A]/40 text-[#C6A66A] text-xs font-bold tracking-wider uppercase">
-            <SparklesIcon size={14} />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 border border-white/30 text-white text-xs font-bold tracking-wider uppercase">
+            <SparklesIcon size={14} className="text-[#D99B43]" />
             <span>Join the Indian Enterprise Network</span>
           </div>
 
@@ -1299,27 +1458,27 @@ export const LandingPage: React.FC = () => {
             Your Next Opportunity Begins With a Connection.
           </h2>
 
-          <p className="text-base sm:text-lg text-[#EDE5D6] max-w-2xl mx-auto font-normal leading-relaxed">
+          <p className="text-base sm:text-lg text-white/90 max-w-2xl mx-auto font-normal leading-relaxed">
             Bring your ideas, experience and ambitions into one connected business ecosystem.
           </p>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               to="/get-started"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#C6A66A] text-[#20251F] font-bold text-sm shadow-xl hover:brightness-110 transition-all duration-200"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#29302D] text-white font-bold text-sm shadow-2xl hover:bg-[#D99B43] hover:text-[#29302D] transition-all duration-200"
             >
               <span>Become a Member</span>
               <ArrowRightIcon size={16} />
             </Link>
             <Link
               to="/marketplace"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-transparent border border-[#C6A66A]/40 text-[#F8F5ED] font-bold text-sm hover:bg-[#397B55] transition-all duration-200"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-transparent border border-white/50 text-white font-bold text-sm hover:bg-white/10 transition-all duration-200"
             >
               <span>Explore FIC</span>
             </Link>
           </div>
 
-          <p className="text-xs text-[#A7AAA0] pt-4">
+          <p className="text-xs text-white/70 pt-4">
             First-year introductory access at flat ₹99 • Verification required • 18+ Adult Policy
           </p>
         </div>

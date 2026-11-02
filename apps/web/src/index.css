@@ -11,11 +11,24 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom smooth animations */
+/* ========================================================
+   MULTICOLOR PREMIUM MOTION DESIGN SYSTEM
+   Palette:
+   - Amber Gold: #D99B43
+   - Terracotta: #C66B52
+   - Royal Violet: #8064A9
+   - Coral: #E58C72
+   - Dusty Rose: #D78E9A
+   - Charcoal: #29302D
+   - Warm Ivory: #F5EBDD
+   - Soft Cream: #FFF9F0
+   - Pearl White: #FCFAF6
+   ======================================================== */
+
 @keyframes fadeInScale {
   0% {
     opacity: 0;
-    transform: scale(0.98) translateY(6px);
+    transform: scale(0.96) translateY(12px);
   }
   100% {
     opacity: 1;
@@ -26,7 +39,7 @@ body {
 @keyframes slideDownSubtle {
   0% {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-10px);
   }
   100% {
     opacity: 1;
@@ -34,70 +47,72 @@ body {
   }
 }
 
-@keyframes pulseGlow {
+@keyframes pulseGlowAmber {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(57, 123, 85, 0.35);
+    box-shadow: 0 0 0 0 rgba(217, 155, 67, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 8px rgba(57, 123, 85, 0);
+    box-shadow: 0 0 0 10px rgba(217, 155, 67, 0);
+  }
+}
+
+@keyframes pulseGlowViolet {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(128, 100, 169, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(128, 100, 169, 0);
+  }
+}
+
+@keyframes pulseGlowCoral {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(229, 140, 114, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(229, 140, 114, 0);
   }
 }
 
 .animate-step-in {
-  animation: fadeInScale 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeInScale 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-slide-down {
-  animation: slideDownSubtle 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideDownSubtle 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.pulse-glow-ring {
-  animation: pulseGlow 2.4s infinite;
+.pulse-glow-amber {
+  animation: pulseGlowAmber 2.8s infinite;
 }
 
-/* Light zoom-in zoom-out breathing animation for the ₹99 pricing card */
-@keyframes gentleZoomInOut {
+.pulse-glow-violet {
+  animation: pulseGlowViolet 3s infinite;
+}
+
+/* Light zoom-in zoom-out breathing animation for luxury pricing card */
+@keyframes luxuryCardBreath {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-    border-color: rgba(198, 166, 106, 0.4);
+    box-shadow: 0 10px 25px -5px rgba(41, 48, 45, 0.25), 0 8px 10px -6px rgba(41, 48, 45, 0.2);
+    border-color: rgba(217, 155, 67, 0.4);
   }
   50% {
-    transform: scale(1.03);
-    box-shadow: 0 16px 32px -8px rgba(24, 59, 45, 0.25), 0 0 20px 2px rgba(198, 166, 106, 0.35);
-    border-color: rgba(198, 166, 106, 0.85);
+    transform: scale(1.02);
+    box-shadow: 0 20px 40px -10px rgba(217, 155, 67, 0.3), 0 0 30px 4px rgba(128, 100, 169, 0.25);
+    border-color: rgba(217, 155, 67, 0.85);
   }
 }
 
 .animate-zoom-in-out {
-  animation: gentleZoomInOut 3.2s ease-in-out infinite;
+  animation: luxuryCardBreath 3.6s ease-in-out infinite;
   transform-origin: center center;
   transition: all 0.3s ease;
 }
 
 .animate-zoom-in-out:hover {
   animation-play-state: paused;
-  transform: scale(1.04);
-}
-
-/* Animated laser scan beam for KYC preview */
-@keyframes laserScan {
-  0% {
-    top: 5%;
-    opacity: 0.6;
-  }
-  50% {
-    top: 85%;
-    opacity: 1;
-  }
-  100% {
-    top: 5%;
-    opacity: 0.6;
-  }
-}
-
-.animate-laser-scan {
-  animation: laserScan 2.2s ease-in-out infinite;
+  transform: scale(1.03);
 }
 
 /* Moving shimmer beam */
@@ -114,60 +129,7 @@ body {
   animation: shimmerBeam 2.8s infinite linear;
 }
 
-/* Animated tree trunk flowing dash line */
-@keyframes treeFlow {
-  from {
-    stroke-dashoffset: 48;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-.animate-tree-flow {
-  stroke-dasharray: 8 6;
-  animation: treeFlow 1.6s linear infinite;
-}
-
-/* Tree node active energy pulse */
-@keyframes treeNodePulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(57, 123, 85, 0.5);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(57, 123, 85, 0);
-    transform: scale(1.08);
-  }
-}
-
-.animate-tree-node-active {
-  animation: treeNodePulse 2s infinite ease-in-out;
-}
-
-/* Branch horizontal grow */
-@keyframes branchGrow {
-  0% {
-    transform: scaleX(0);
-    opacity: 0;
-  }
-  100% {
-    transform: scaleX(1);
-    opacity: 1;
-  }
-}
-
-.animate-branch-grow-left {
-  transform-origin: right center;
-  animation: branchGrow 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.animate-branch-grow-right {
-  transform-origin: left center;
-  animation: branchGrow 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-/* Luxury Organic Palette Keyframes & Classes (Warm Ivory, Forest Green, Champagne Gold) */
+/* Multicolor Orbital Rotations */
 @keyframes orbitalSlow {
   from {
     transform: rotate(0deg);
@@ -186,36 +148,96 @@ body {
   }
 }
 
-@keyframes floatGentle {
-  0%, 100% {
-    transform: translateY(0px);
+@keyframes orbitalFast {
+  from {
+    transform: rotate(0deg);
   }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes goldPulseGlow {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(198, 166, 106, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 12px rgba(198, 166, 106, 0);
+  to {
+    transform: rotate(360deg);
   }
 }
 
 .animate-orbital {
-  animation: orbitalSlow 35s linear infinite;
+  animation: orbitalSlow 32s linear infinite;
 }
 
 .animate-orbital-reverse {
-  animation: orbitalReverse 45s linear infinite;
+  animation: orbitalReverse 40s linear infinite;
 }
 
-.animate-float-gentle {
-  animation: floatGentle 5s ease-in-out infinite;
+.animate-orbital-fast {
+  animation: orbitalFast 18s linear infinite;
 }
 
-.animate-gold-pulse {
-  animation: goldPulseGlow 3s infinite ease-in-out;
+/* Layered Parallax Floating Elements */
+@keyframes floatGentle1 {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(1deg);
+  }
+}
+
+@keyframes floatGentle2 {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(-1.5deg);
+  }
+}
+
+@keyframes floatGentle3 {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-8px) scale(1.02);
+  }
+}
+
+.animate-float-1 {
+  animation: floatGentle1 4.5s ease-in-out infinite;
+}
+
+.animate-float-2 {
+  animation: floatGentle2 6s ease-in-out infinite;
+}
+
+.animate-float-3 {
+  animation: floatGentle3 5.2s ease-in-out infinite;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.glass-panel-dark {
+  background: rgba(41, 48, 45, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(217, 155, 67, 0.25);
+}
+
+/* Animated gradient background sweep */
+@keyframes gradientSweep {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.animate-gradient-sweep {
+  background-size: 200% 200%;
+  animation: gradientSweep 12s ease infinite;
 }
