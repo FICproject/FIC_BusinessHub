@@ -493,8 +493,8 @@ export const MeetingsPage: React.FC = () => {
           5. SCHEDULE CONSULTATION MODAL
          ======================================================== */}
       {isScheduleModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#FAF7F2] border border-[#EADFCF] rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative my-8">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-[#FAF7F2] border border-[#EADFCF] rounded-3xl max-w-xl w-full p-5 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between border-b border-[#EADFCF] pb-4 mb-5">
               <div>
                 <span className="text-xs font-black uppercase tracking-wider text-[#8064A9]">FIC Facilitated Session</span>
@@ -636,8 +636,8 @@ export const MeetingsPage: React.FC = () => {
           6. RESCHEDULE MODAL
          ======================================================== */}
       {rescheduleTarget && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#FAF7F2] border border-[#EADFCF] rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-[#FAF7F2] border border-[#EADFCF] rounded-3xl max-w-md w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto">
             <h3 className="text-lg font-black text-[#29302D] mb-1">Reschedule Consultation</h3>
             <p className="text-xs text-[#77786E] mb-4">Request a new date or time slot for this session.</p>
 
@@ -686,8 +686,8 @@ export const MeetingsPage: React.FC = () => {
           7. CANCEL CONFIRMATION MODAL
          ======================================================== */}
       {cancelTarget && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#FAF7F2] border border-[#EADFCF] rounded-3xl max-w-sm w-full p-6 shadow-2xl relative text-center space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-[#FAF7F2] border border-[#EADFCF] rounded-3xl max-w-sm w-full p-5 sm:p-6 shadow-2xl relative text-center space-y-4 max-h-[90vh] overflow-y-auto my-auto">
             <div className="w-12 h-12 rounded-2xl bg-[#C66B52]/10 text-[#C66B52] flex items-center justify-center mx-auto">
               <AlertCircleIcon size={24} />
             </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { apiRequest, getStoredUser, getUserRequests } from '../services/api';
 import {
@@ -17,19 +18,25 @@ import {
   RocketIcon,
   HandshakeIcon,
   SparklesIcon,
-  CheckCircleIcon
+  CheckCircleIcon,
+  ArrowRightIcon
 } from '../components/Icons';
 
 export const MyRequestsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'services' | 'ideas' | 'scaling' | 'partnerships'>('services');
   const user = getStoredUser();
+  const userId = user?.id || user?.userId || 'usr_default';
 
   // Load user-isolated service requests
   const [services, setServices] = useState<any[]>([]);
+  const [ideas, setIdeas] = useState<any[]>([]);
+  const [scaling, setScaling] = useState<any[]>([]);
+  const [partnerships, setPartnerships] = useState<any[]>([]);
 
   useEffect(() => {
     if (user) {
-      const userRequests = getUserRequests(user.id || user.userId);
+      // 1. Services
+      const userRequests = getUserRequests(userId);
       setServices(
         userRequests.map((r, i) => ({
           id: r.id || `REQ-0${i + 1}`,
@@ -43,79 +50,113 @@ export const MyRequestsPage: React.FC = () => {
           date: r.date || 'Today'
         }))
       );
+
+      // 2. Ideas from localStorage or seed
+      try {
+        const storedIdeas = localStorage.getItem(`fic_user_ideas_${userId}`);
+        if (storedIdeas) {
+          const parsed = JSON.parse(storedIdeas);
+          setIdeas(
+            parsed.map((item: any) => ({
+              id: item.id,
+              title: item.title,
+              stage: item.stage,
+              status: item.status,
+              statusLabel: item.statusLabel,
+              date: item.submittedDate || 'Recent',
+              notes: item.description,
+              ficRemark: item.reviewNotes || 'Under preliminary evaluation by FIC incubation desk.'
+            }))
+          );
+        } else {
+          setIdeas([
+            {
+              id: 'IDEA-2026-881',
+              title: 'AI Automated Quality Inspection for Knitted Fabrics',
+              stage: 'PROTOTYPE',
+              status: 'ADVISORY_SCHEDULED',
+              statusLabel: 'Advisory Scheduled',
+              date: '28 Oct 2026',
+              notes: 'Edge-computing computer vision camera rig mounted over weaving looms.',
+              ficRemark: 'FIC Incubation desk prepared patent review and scheduled advisory session.'
+            }
+          ]);
+        }
+      } catch {
+        setIdeas([]);
+      }
+
+      // 3. Scaling from localStorage or seed
+      try {
+        const storedScaling = localStorage.getItem(`fic_user_scaling_${userId}`);
+        if (storedScaling) {
+          const parsed = JSON.parse(storedScaling);
+          setScaling(
+            parsed.map((item: any) => ({
+              id: item.id,
+              businessName: item.businessName,
+              supportType: item.supportTypeLabel || item.supportType,
+              status: item.status,
+              statusLabel: item.statusLabel,
+              date: item.submittedDate || 'Recent',
+              notes: item.currentChallenges,
+              ficRemark: item.diagnosticNotes || 'Diagnostic assessment under evaluation by domain specialist.'
+            }))
+          );
+        } else {
+          setScaling([
+            {
+              id: 'SCALE-2026-402',
+              businessName: user?.fullName ? `${user.fullName} Enterprises` : 'Apex Industrial Unit',
+              supportType: 'Technology Modernization & Cloud Systems',
+              status: 'ROADMAP_PREPARED',
+              statusLabel: 'Roadmap Prepared',
+              date: '26 Oct 2026',
+              notes: 'Legacy inventory sync causing 12% stock discrepancies across southern regional depots.',
+              ficRemark: 'Turnaround roadmap prepared. Specialist allocated for Phase 1 migration.'
+            }
+          ]);
+        }
+      } catch {
+        setScaling([]);
+      }
+
+      // 4. Partnerships from localStorage or seed
+      try {
+        const storedPartnerships = localStorage.getItem(`fic_user_partnerships_${userId}`);
+        if (storedPartnerships) {
+          const parsed = JSON.parse(storedPartnerships);
+          setPartnerships(
+            parsed.map((item: any) => ({
+              id: item.id,
+              organizationName: item.organizationName,
+              type: item.partnershipTypeLabel || item.partnershipType,
+              status: item.status,
+              statusLabel: item.statusLabel,
+              date: item.submittedDate || 'Recent',
+              notes: item.proposalSummary,
+              ficRemark: item.intermediaryRemarks || 'Screening verified companies for optimal business synergy.'
+            }))
+          );
+        } else {
+          setPartnerships([
+            {
+              id: 'PTNR-2026-612',
+              organizationName: user?.fullName ? `${user.fullName} Solutions` : 'Apex Industrial Alliances',
+              type: 'State-wide Distributor & Dealer Onboarding',
+              status: 'EXPLORATORY_SESSION',
+              statusLabel: 'Exploratory Session',
+              date: '27 Oct 2026',
+              notes: 'Seeking verified FMCG distributors across Coimbatore, Madurai, and Tiruchirappalli.',
+              ficRemark: 'Bilateral NDA executed. Exploratory virtual session scheduled with lead distributor.'
+            }
+          ]);
+        }
+      } catch {
+        setPartnerships([]);
+      }
     }
-  }, [user?.id, user?.userId]);
-
-  // User-isolated ideas
-  const sampleIdeas =
-    user?.id === 'usr_kathir_001'
-      ? [
-          {
-            id: 'idea-k01',
-            title: 'Cloud Native Microservices Architecture for B2B Supply Chains',
-            stage: 'PROTOTYPE',
-            status: 'UNDER_REVIEW',
-            statusLabel: 'Feasibility Assessment',
-            date: '28 Oct 2026'
-          }
-        ]
-      : [
-          {
-            id: 'idea-m01',
-            title: 'AI Automated Quality Inspection for Knitted Fabrics',
-            stage: 'PROTOTYPE',
-            status: 'UNDER_REVIEW',
-            statusLabel: 'Feasibility Assessment',
-            date: '28 Oct 2026'
-          }
-        ];
-
-  // User-isolated scaling requests
-  const sampleScaling =
-    user?.id === 'usr_kathir_001'
-      ? [
-          {
-            id: 'scale-k01',
-            businessName: 'Kathir Tech Innovations',
-            supportType: 'Technology Development & Cloud Scaling',
-            status: 'SPECIALIST_ASSIGNED',
-            statusLabel: 'Specialist Assigned',
-            date: '26 Oct 2026'
-          }
-        ]
-      : [
-          {
-            id: 'scale-m01',
-            businessName: 'Apex Textiles Unit',
-            supportType: 'Industrial Restructuring & ERP Integration',
-            status: 'SPECIALIST_ASSIGNED',
-            statusLabel: 'Specialist Assigned',
-            date: '26 Oct 2026'
-          }
-        ];
-
-  const samplePartnerships =
-    user?.id === 'usr_kathir_001'
-      ? [
-          {
-            id: 'part-k01',
-            organizationName: 'HyperScale Cloud Network',
-            type: 'API & Software Integration Alliance',
-            status: 'MATCHING_IN_PROGRESS',
-            statusLabel: 'Matching in Progress',
-            date: '24 Oct 2026'
-          }
-        ]
-      : [
-          {
-            id: 'part-m01',
-            organizationName: 'South Star Agro Traders',
-            type: 'Distribution Network Expansion',
-            status: 'MATCHING_IN_PROGRESS',
-            statusLabel: 'Matching in Progress',
-            date: '24 Oct 2026'
-          }
-        ];
+  }, [user?.id, user?.userId, userId]);
 
   return (
     <WorkspaceShell maxWidth="6xl">
@@ -139,47 +180,36 @@ export const MyRequestsPage: React.FC = () => {
         subtitle={`Track all service requirements, incubation concepts, scaling tickets, and partnership discussions for ${
           user?.fullName || 'your account'
         }.`}
-        rightActions={
-          <div className="p-3.5 bg-white/90 border border-[#E58C72]/30 rounded-2xl shadow-xs text-xs flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#2E7D32]/10 text-[#2E7D32] flex items-center justify-center shrink-0">
-              <ShieldCheckIcon size={18} />
-            </div>
-            <div>
-              <span className="font-black text-[#29302D] block">Confidential Routing</span>
-              <span className="text-[11px] text-[#77786E]">Assigned FIC Officers Only</span>
-            </div>
-          </div>
-        }
       />
 
       {/* ========================================================
-          2. LUXURY PILL TABS
+          2. UNIFIED TAB NAVIGATION (OVERFLOW-X AUTO)
          ======================================================== */}
-      <WorkspaceCard variant="glass" padded={false} className="p-2 sm:p-2.5">
-        <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 text-xs no-scrollbar">
+      <WorkspaceCard variant="glass" padded={false} className="p-1.5 overflow-x-auto">
+        <div className="flex items-center gap-1.5 min-w-max">
           {[
             {
               id: 'services',
-              label: 'Service Requests',
+              label: 'Marketplace Requests',
               count: services.length,
               icon: <BriefcaseIcon size={14} />
             },
             {
               id: 'ideas',
-              label: 'Business Ideas',
-              count: sampleIdeas.length,
+              label: 'Incubation Ideas',
+              count: ideas.length,
               icon: <LightbulbIcon size={14} />
             },
             {
               id: 'scaling',
               label: 'Scaling Support',
-              count: sampleScaling.length,
+              count: scaling.length,
               icon: <RocketIcon size={14} />
             },
             {
               id: 'partnerships',
               label: 'B2B Partnerships',
-              count: samplePartnerships.length,
+              count: partnerships.length,
               icon: <HandshakeIcon size={14} />
             }
           ].map((tab) => {
@@ -275,78 +305,169 @@ export const MyRequestsPage: React.FC = () => {
         {/* Business Ideas Tab */}
         {activeTab === 'ideas' && (
           <div className="space-y-4">
-            {sampleIdeas.map((idea) => (
-              <WorkspaceCard key={idea.id} variant="amber">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-[#D99B43] font-mono font-bold">
-                      IDEA ID: {idea.id}
-                    </span>
-                    <h3 className="text-base sm:text-lg font-black text-[#29302D]">
-                      {idea.title}
-                    </h3>
-                    <div className="flex items-center gap-2 text-xs text-[#77786E]">
-                      <span className="font-bold text-[#D99B43]">Stage: {idea.stage}</span>
-                      <span>•</span>
-                      <span>Submitted: {idea.date}</span>
+            {ideas.length === 0 ? (
+              <WorkspaceEmptyState
+                icon={<LightbulbIcon size={26} />}
+                title="No incubation ideas logged"
+                description="You haven't submitted any ideas for FIC incubation review."
+                actionText="Submit Business Idea"
+                onAction={() => (window.location.href = '/business-ideas')}
+                accent="amber"
+              />
+            ) : (
+              ideas.map((idea) => (
+                <WorkspaceCard key={idea.id} variant="amber" className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-[#D99B43] font-mono font-bold">
+                          {idea.id}
+                        </span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                          {idea.stage}
+                        </span>
+                      </div>
+                      <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                        {idea.title}
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[#77786E] font-semibold">{idea.date}</span>
+                      <WorkspaceBadge variant="luxury">{idea.statusLabel}</WorkspaceBadge>
                     </div>
                   </div>
-                  <WorkspaceBadge variant="pending">{idea.statusLabel}</WorkspaceBadge>
-                </div>
-              </WorkspaceCard>
-            ))}
+
+                  <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
+                    {idea.notes}
+                  </p>
+
+                  <div className="p-3.5 rounded-2xl bg-white border border-[#EADFCF] space-y-1 text-xs">
+                    <div className="font-bold text-[#9C6818]">FIC Advisory Progress:</div>
+                    <p className="text-[#77786E]">{idea.ficRemark}</p>
+                  </div>
+
+                  <div className="pt-1 flex justify-end">
+                    <Link to="/business-ideas">
+                      <WorkspaceButton variant="outline" size="sm" icon={<ArrowRightIcon size={12} />}>
+                        Manage in Business Ideas Desk
+                      </WorkspaceButton>
+                    </Link>
+                  </div>
+                </WorkspaceCard>
+              ))
+            )}
           </div>
         )}
 
         {/* Scaling Support Tab */}
         {activeTab === 'scaling' && (
           <div className="space-y-4">
-            {sampleScaling.map((scale) => (
-              <WorkspaceCard key={scale.id} variant="violet">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-[#8064A9] font-mono font-bold">
-                      SCALE ID: {scale.id}
-                    </span>
-                    <h3 className="text-base sm:text-lg font-black text-[#29302D]">
-                      {scale.businessName}
-                    </h3>
-                    <div className="flex items-center gap-2 text-xs text-[#77786E]">
-                      <span className="font-bold text-[#8064A9]">Focus: {scale.supportType}</span>
-                      <span>•</span>
-                      <span>Date: {scale.date}</span>
+            {scaling.length === 0 ? (
+              <WorkspaceEmptyState
+                icon={<RocketIcon size={26} />}
+                title="No active scaling tickets"
+                description="You haven't requested any enterprise development or scaling consultations."
+                actionText="Request Scaling Support"
+                onAction={() => (window.location.href = '/scaling')}
+                accent="violet"
+              />
+            ) : (
+              scaling.map((scale) => (
+                <WorkspaceCard key={scale.id} variant="violet" className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-[#8064A9] font-mono font-bold">
+                        {scale.id}
+                      </span>
+                      <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                        {scale.businessName}
+                      </h3>
+                      <div className="text-xs text-[#8064A9] font-bold">
+                        Focus: {scale.supportType}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[#77786E] font-semibold">{scale.date}</span>
+                      <WorkspaceBadge variant="proposal">{scale.statusLabel}</WorkspaceBadge>
                     </div>
                   </div>
-                  <WorkspaceBadge variant="proposal">{scale.statusLabel}</WorkspaceBadge>
-                </div>
-              </WorkspaceCard>
-            ))}
+
+                  <div className="space-y-2 text-xs sm:text-sm">
+                    <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
+                      <strong className="text-[#29302D] block mb-1">Operational Challenge:</strong>
+                      <p className="text-[#77786E] leading-relaxed">{scale.notes}</p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-[#F7F2FB] border border-[#8064A9]/30 space-y-1 text-xs">
+                      <div className="font-bold text-[#8064A9]">Specialist Diagnostic Memo:</div>
+                      <p className="text-[#77786E]">{scale.ficRemark}</p>
+                    </div>
+                  </div>
+
+                  <div className="pt-1 flex justify-end">
+                    <Link to="/scaling">
+                      <WorkspaceButton variant="outline" size="sm" icon={<ArrowRightIcon size={12} />}>
+                        View Scaling Roadmap
+                      </WorkspaceButton>
+                    </Link>
+                  </div>
+                </WorkspaceCard>
+              ))
+            )}
           </div>
         )}
 
         {/* B2B Partnerships Tab */}
         {activeTab === 'partnerships' && (
           <div className="space-y-4">
-            {samplePartnerships.map((part) => (
-              <WorkspaceCard key={part.id} variant="rose">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <span className="text-[10px] text-[#D78E9A] font-mono font-bold">
-                      PART ID: {part.id}
-                    </span>
-                    <h3 className="text-base sm:text-lg font-black text-[#29302D]">
-                      {part.organizationName}
-                    </h3>
-                    <div className="flex items-center gap-2 text-xs text-[#77786E]">
-                      <span className="font-bold text-[#D78E9A]">Type: {part.type}</span>
-                      <span>•</span>
-                      <span>Date: {part.date}</span>
+            {partnerships.length === 0 ? (
+              <WorkspaceEmptyState
+                icon={<HandshakeIcon size={26} />}
+                title="No partnership proposals"
+                description="You haven't initiated any B2B tie-ups or joint venture proposals."
+                actionText="Explore B2B Partnerships"
+                onAction={() => (window.location.href = '/partnerships')}
+                accent="rose"
+              />
+            ) : (
+              partnerships.map((part) => (
+                <WorkspaceCard key={part.id} variant="rose" className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] text-[#D78E9A] font-mono font-bold">
+                        {part.id}
+                      </span>
+                      <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                        {part.organizationName}
+                      </h3>
+                      <div className="text-xs text-[#C66B52] font-bold">
+                        Model: {part.type}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[#77786E] font-semibold">{part.date}</span>
+                      <WorkspaceBadge variant="luxury">{part.statusLabel}</WorkspaceBadge>
                     </div>
                   </div>
-                  <WorkspaceBadge variant="urgent">{part.statusLabel}</WorkspaceBadge>
-                </div>
-              </WorkspaceCard>
-            ))}
+
+                  <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
+                    {part.notes}
+                  </p>
+
+                  <div className="p-3.5 rounded-2xl bg-white border border-[#EADFCF] space-y-1 text-xs">
+                    <div className="font-bold text-[#C66B52]">Intermediary Status:</div>
+                    <p className="text-[#77786E]">{part.ficRemark}</p>
+                  </div>
+
+                  <div className="pt-1 flex justify-end">
+                    <Link to="/partnerships">
+                      <WorkspaceButton variant="outline" size="sm" icon={<ArrowRightIcon size={12} />}>
+                        View Alliance Details
+                      </WorkspaceButton>
+                    </Link>
+                  </div>
+                </WorkspaceCard>
+              ))
+            )}
           </div>
         )}
 

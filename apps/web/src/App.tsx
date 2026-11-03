@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
 // 4 Distinct Layouts
 import { PublicLayout } from './layouts/PublicLayout';
@@ -79,6 +79,7 @@ export const App: React.FC = () => {
           <Route path="/marketplace" element={<MarketplacePage />} />
           <Route path="/business-ideas" element={<BusinessIdeasPage />} />
           <Route path="/business-development" element={<BusinessDevPage />} />
+          <Route path="/scaling" element={<Navigate to="/business-development" replace />} />
           <Route path="/investment" element={<InvestmentPage />} />
           <Route path="/partnerships" element={<PartnershipsPage />} />
           <Route path="/meetings" element={<MeetingsPage />} />

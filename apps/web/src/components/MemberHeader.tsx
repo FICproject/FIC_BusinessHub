@@ -153,7 +153,7 @@ export const MemberHeader: React.FC = () => {
             RIGHT: NOTIFICATION BELL | PROFILE | LOGOUT
             (The Notification Bell appears immediately to LEFT of Profile)
            ======================================================== */}
-        <div className="hidden lg:flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="hidden xl:flex items-center gap-1.5 sm:gap-2 shrink-0">
           
           {/* NOTIFICATION BELL WITH DROPDOWN */}
           <div className="relative" ref={notifRef}>
@@ -178,7 +178,7 @@ export const MemberHeader: React.FC = () => {
 
             {/* Notification Dropdown Menu */}
             {notificationOpen && (
-              <div className="absolute right-0 mt-2 w-[340px] sm:w-[380px] bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in text-[#29302D]">
+              <div className="absolute right-0 mt-2 w-[calc(100vw-24px)] sm:w-[380px] max-w-[380px] bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in text-[#29302D]">
                 <div className="px-4 py-3 bg-[#F5EBDD] border-b border-[#E8DBC8] flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-black text-sm text-[#29302D]">Notifications</span>
@@ -275,7 +275,7 @@ export const MemberHeader: React.FC = () => {
           <button
             onClick={handleLogout}
             type="button"
-            className="text-[13px] text-[#77786E] hover:text-[#C66B52] font-semibold px-3 py-1.5 rounded-lg border border-[#E8DBC8] hover:border-[#C66B52]/40 transition-colors shrink-0"
+            className="text-[13px] text-[#77786E] hover:text-[#C66B52] font-semibold px-3 py-1.5 rounded-lg border border-[#E8DBC8] hover:border-[#C66B52]/40 transition-colors shrink-0 cursor-pointer"
             title="Sign out of FIC Business Hub"
           >
             Logout
@@ -285,11 +285,11 @@ export const MemberHeader: React.FC = () => {
         {/* ========================================================
             MOBILE / TABLET HAMBURGER BUTTON
            ======================================================== */}
-        <div className="lg:hidden flex items-center gap-2">
+        <div className="xl:hidden flex items-center gap-2">
           {/* Mobile Bell */}
           <button
             onClick={() => setNotificationOpen(!notificationOpen)}
-            className="relative p-2 text-[#29302D] rounded-lg border border-[#E8DBC8] bg-white"
+            className="relative p-2 text-[#29302D] rounded-lg border border-[#E8DBC8] bg-white cursor-pointer"
           >
             <BellIcon size={18} />
             {unreadCount > 0 && (
@@ -301,7 +301,7 @@ export const MemberHeader: React.FC = () => {
 
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-[#29302D] hover:text-[#C66B52] rounded-lg border border-[#E8DBC8] transition-colors bg-white"
+            className="p-2 text-[#29302D] hover:text-[#C66B52] rounded-lg border border-[#E8DBC8] transition-colors bg-white cursor-pointer"
             aria-label="Toggle navigation menu"
           >
             <svg
@@ -336,7 +336,27 @@ export const MemberHeader: React.FC = () => {
           MOBILE MENU COLLAPSIBLE DRAWER
          ======================================================== */}
       {mobileMenuOpen && (
-        <div className="lg:hidden border-b border-[#E8DBC8] bg-[#F5EBDD] px-4 pt-3 pb-5 space-y-2 shadow-lg">
+        <div className="xl:hidden border-b border-[#E8DBC8] bg-[#F5EBDD] px-4 pt-3 pb-5 space-y-3 shadow-xl max-h-[85vh] overflow-y-auto">
+          {/* Authenticated Member Info Banner in Drawer */}
+          <div className="p-3 bg-white/80 border border-[#E8DBC8] rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#29302D] text-white flex items-center justify-center font-bold text-xs">
+                {user?.fullName?.charAt(0) || 'M'}
+              </div>
+              <div className="min-w-0">
+                <span className="font-bold text-xs text-[#29302D] block truncate max-w-[180px]">
+                  {user?.fullName || 'Member'}
+                </span>
+                <span className="text-[10px] text-[#8064A9] font-bold block truncate max-w-[180px]">
+                  {user?.subCategory || 'Enterprise Member'}
+                </span>
+              </div>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#2E7D32] bg-[#2E7D32]/10 px-2 py-0.5 rounded border border-[#2E7D32]/20">
+              Active
+            </span>
+          </div>
+
           <div className="space-y-1">
             {navLinks.map((item) => {
               const isActive =
@@ -347,33 +367,35 @@ export const MemberHeader: React.FC = () => {
                   key={item.path}
                   to={item.path}
                   onClick={closeMenu}
-                  className={`block px-3 py-2 rounded-lg text-[13.5px] transition-colors ${
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13.5px] transition-colors min-h-[44px] ${
                     isActive
-                      ? 'bg-[#29302D] text-[#FCFAF6] font-bold'
+                      ? 'bg-[#29302D] text-[#FCFAF6] font-bold shadow-2xs'
                       : 'text-[#29302D] hover:bg-[#FFF9F0] font-medium'
                   }`}
                 >
-                  {item.label}
+                  <span>{item.label}</span>
+                  {isActive && <span className="text-xs text-[#E58C72]">●</span>}
                 </Link>
               );
             })}
             <Link
               to="/profile"
               onClick={closeMenu}
-              className={`block px-3 py-2 rounded-lg text-[13.5px] font-bold transition-colors ${
+              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13.5px] font-bold transition-colors min-h-[44px] ${
                 location.pathname.startsWith('/profile')
-                  ? 'bg-[#29302D] text-[#FCFAF6]'
+                  ? 'bg-[#29302D] text-[#FCFAF6] shadow-2xs'
                   : 'text-[#29302D] hover:bg-[#FFF9F0]'
               }`}
             >
-              Profile & Wallet
+              <span>Profile & Wallet</span>
+              {location.pathname.startsWith('/profile') && <span className="text-xs text-[#E58C72]">●</span>}
             </Link>
           </div>
 
-          <div className="pt-3 border-t border-[#E8DBC8]">
+          <div className="pt-2 border-t border-[#E8DBC8]">
             <button
               onClick={handleLogout}
-              className="w-full py-2 text-center text-[13px] font-bold text-[#C66B52] bg-[#FFF9F0] rounded-lg border border-[#E8DBC8] hover:bg-[#C66B52] hover:text-white transition-colors"
+              className="w-full py-2.5 min-h-[44px] text-center text-[13px] font-bold text-[#C66B52] bg-white rounded-xl border border-[#E8DBC8] hover:bg-[#C66B52] hover:text-white transition-colors cursor-pointer shadow-2xs"
             >
               Logout
             </button>

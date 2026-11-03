@@ -1813,8 +1813,8 @@ export const ProfilePage: React.FC = () => {
           MODAL 1: ADD FUNDS TO WALLET (SECTION 4)
          ======================================================== */}
       {isAddFundsModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
               <h3 className="text-lg font-black text-[#29302D]">Add Funds to FIC Wallet</h3>
               <button
@@ -1929,8 +1929,8 @@ export const ProfilePage: React.FC = () => {
           MODAL 2: WITHDRAW FUNDS (SECTION 5)
          ======================================================== */}
       {isWithdrawModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
               <h3 className="text-lg font-black text-[#29302D]">Request Bank Withdrawal</h3>
               <button
@@ -2045,8 +2045,8 @@ export const ProfilePage: React.FC = () => {
           MODAL 3: MEMBERSHIP RENEWAL CONFIRMATION (SECTION 6)
          ======================================================== */}
       {isRenewModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
               <div>
                 <span className="text-[11px] font-bold uppercase text-[#8064A9]">FIC Ecosystem Access</span>
@@ -2128,8 +2128,8 @@ export const ProfilePage: React.FC = () => {
           MODAL 4: LINK / EDIT BANK ACCOUNT
          ======================================================== */}
       {isBankModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto">
             <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
               <h3 className="text-lg font-black text-[#29302D]">Link Verified Bank Account</h3>
               <button
@@ -2245,8 +2245,8 @@ export const ProfilePage: React.FC = () => {
           MODAL 5: EDIT PROFILE DETAILS
          ======================================================== */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl relative my-8 border border-slate-200">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto border border-slate-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
               <h3 className="text-lg font-bold text-slate-900">Edit Member Profile Details</h3>
               <button
@@ -2509,8 +2509,8 @@ export const ProfilePage: React.FC = () => {
           MODAL 6: CHANGE PASSWORD
          ======================================================== */}
       {isPasswordModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl relative border border-slate-200">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl relative border border-slate-200 max-h-[90vh] overflow-y-auto my-auto">
             <h3 className="text-base font-bold text-slate-900 mb-3">Change Account Password</h3>
             {passwordError && (
               <div className="mb-3 p-2 bg-red-50 text-red-700 text-xs rounded-lg">

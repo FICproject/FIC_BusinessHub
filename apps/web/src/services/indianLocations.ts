@@ -199,3 +199,4 @@ export const validateIndianPinCode = (pinCode: string): boolean => {
   // Valid 6-digit Indian PIN code starting with digits 1-9
   return /^[1-9][0-9]{5}$/.test(clean);
 };
+

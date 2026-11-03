@@ -333,7 +333,7 @@ export interface WorkspaceEmptyStateProps {
   description: string;
   actionText?: string;
   onAction?: () => void;
-  accent?: 'coral' | 'violet' | 'amber';
+  accent?: 'coral' | 'violet' | 'amber' | 'charcoal' | 'rose';
 }
 
 export const WorkspaceEmptyState: React.FC<WorkspaceEmptyStateProps> = ({
@@ -347,7 +347,9 @@ export const WorkspaceEmptyState: React.FC<WorkspaceEmptyStateProps> = ({
   const iconGradients = {
     coral: 'from-[#FFF4F0] to-[#FFE8E2] text-[#C66B52] border-[#E58C72]/30',
     violet: 'from-[#F3EEFA] to-[#E9DFF5] text-[#8064A9] border-[#8064A9]/30',
-    amber: 'from-[#FDF6E9] to-[#FAEDD1] text-[#D99B43] border-[#D99B43]/30'
+    amber: 'from-[#FDF6E9] to-[#FAEDD1] text-[#D99B43] border-[#D99B43]/30',
+    charcoal: 'from-[#FAF7F2] to-[#EADFCF] text-[#29302D] border-[#29302D]/30',
+    rose: 'from-[#FCF3F5] to-[#FADBE2] text-[#D78E9A] border-[#D78E9A]/30'
   }[accent];
 
   return (
