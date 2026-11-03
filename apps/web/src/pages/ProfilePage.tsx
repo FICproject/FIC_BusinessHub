@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Card, Badge, Button, Input } from '@fic/ui';
+import { AnimatedCounter, motionSprings, modalBackdrop, modalEntrance } from '../motion';
 import {
   WorkspaceShell,
   WorkspaceHero,
@@ -653,56 +654,68 @@ export const ProfilePage: React.FC = () => {
         {/* 4 Primary Balance Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {/* 1. Available Balance */}
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-[#29302D] via-[#222725] to-[#1E2421] text-white shadow-lg border border-[#D99B43]/30">
+          <motion.div
+            whileHover={{ y: -3, transition: motionSprings.cardHover }}
+            className="p-6 rounded-3xl bg-gradient-to-br from-[#29302D] via-[#222725] to-[#1E2421] text-white shadow-lg border border-[#D99B43]/30"
+          >
             <span className="text-[11px] font-black uppercase tracking-wider text-[#D99B43] block mb-1">
               Available Balance
             </span>
             <div className="text-2xl sm:text-3xl font-black text-[#FCFAF6]">
-              ₹{(wallet?.availableBalance || 0).toLocaleString('en-IN')}
+              <AnimatedCounter value={wallet?.availableBalance || 0} prefix="₹" />
             </div>
             <span className="text-[11px] text-white/70 block mt-1.5">
               Ready for renewal & services
             </span>
-          </div>
+          </motion.div>
 
           {/* 2. Pending Referral Rewards */}
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#FCFAF6] to-[#FDF6E9] border border-[#D99B43]/30 shadow-xs">
+          <motion.div
+            whileHover={{ y: -3, transition: motionSprings.cardHover }}
+            className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#FCFAF6] to-[#FDF6E9] border border-[#D99B43]/30 shadow-xs"
+          >
             <span className="text-[11px] font-black uppercase tracking-wider text-[#9C6818] block mb-1">
               Pending Rewards
             </span>
             <div className="text-2xl sm:text-3xl font-black text-[#9C6818]">
-              ₹{(wallet?.pendingBalance || 0).toLocaleString('en-IN')}
+              <AnimatedCounter value={wallet?.pendingBalance || 0} prefix="₹" />
             </div>
             <span className="text-[11px] text-[#B87A28] block mt-1.5 font-medium">
               Under verification review
             </span>
-          </div>
+          </motion.div>
 
           {/* 3. Total Referral Earnings */}
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#FAF8FD] to-[#F4EEFB] border border-[#8064A9]/30 shadow-xs">
+          <motion.div
+            whileHover={{ y: -3, transition: motionSprings.cardHover }}
+            className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#FAF8FD] to-[#F4EEFB] border border-[#8064A9]/30 shadow-xs"
+          >
             <span className="text-[11px] font-black uppercase tracking-wider text-[#8064A9] block mb-1">
               Referral Earnings
             </span>
             <div className="text-2xl sm:text-3xl font-black text-[#8064A9]">
-              ₹{(wallet?.totalReferralEarnings || 0).toLocaleString('en-IN')}
+              <AnimatedCounter value={wallet?.totalReferralEarnings || 0} prefix="₹" />
             </div>
             <span className="text-[11px] text-[#8064A9]/80 block mt-1.5 font-medium">
               Approved rewards to date
             </span>
-          </div>
+          </motion.div>
 
           {/* 4. Total Wallet Credits */}
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#F6FBF7] to-[#E8F5E9] border border-[#2E7D32]/30 shadow-xs">
+          <motion.div
+            whileHover={{ y: -3, transition: motionSprings.cardHover }}
+            className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#F6FBF7] to-[#E8F5E9] border border-[#2E7D32]/30 shadow-xs"
+          >
             <span className="text-[11px] font-black uppercase tracking-wider text-[#1B5E20] block mb-1">
               Total Credits
             </span>
             <div className="text-2xl sm:text-3xl font-black text-[#1B5E20]">
-              ₹{((wallet?.totalAdded || 0) + (wallet?.totalReferralEarnings || 0)).toLocaleString('en-IN')}
+              <AnimatedCounter value={(wallet?.totalAdded || 0) + (wallet?.totalReferralEarnings || 0)} prefix="₹" />
             </div>
             <span className="text-[11px] text-[#2E7D32] block mt-1.5 font-medium">
               Lifetime inflows & top-ups
             </span>
-          </div>
+          </motion.div>
         </div>
 
         {/* Secondary Ledger Breakdown */}
@@ -843,36 +856,36 @@ export const ProfilePage: React.FC = () => {
 
         {/* 5 Referral Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
             <span className="text-slate-500 block">Total Referrals</span>
             <span className="text-xl font-black text-slate-900 block mt-1">
-              {referralData?.summary?.totalReferrals || 0}
+              <AnimatedCounter value={referralData?.summary?.totalReferrals || 0} />
             </span>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+          </motion.div>
+          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
             <span className="text-slate-500 block">Pending Verification</span>
             <span className="text-xl font-black text-amber-700 block mt-1">
-              {referralData?.summary?.pendingReferrals || 0}
+              <AnimatedCounter value={referralData?.summary?.pendingReferrals || 0} />
             </span>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+          </motion.div>
+          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
             <span className="text-slate-500 block">KYC Approved</span>
             <span className="text-xl font-black text-emerald-700 block mt-1">
-              {referralData?.summary?.kycApprovedReferrals || 0}
+              <AnimatedCounter value={referralData?.summary?.kycApprovedReferrals || 0} />
             </span>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
+          </motion.div>
+          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
             <span className="text-slate-500 block">Pending Reward</span>
             <span className="text-xl font-black text-amber-700 block mt-1">
-              ₹{(referralData?.summary?.rewardPending || 0).toLocaleString('en-IN')}
+              <AnimatedCounter value={referralData?.summary?.rewardPending || 0} prefix="₹" />
             </span>
-          </div>
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center col-span-2 sm:col-span-1">
+          </motion.div>
+          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center col-span-2 sm:col-span-1">
             <span className="text-slate-500 block">Total Earned</span>
             <span className="text-xl font-black text-[#8064A9] block mt-1">
-              ₹{(referralData?.summary?.rewardCredited || 0).toLocaleString('en-IN')}
+              <AnimatedCounter value={referralData?.summary?.rewardCredited || 0} prefix="₹" />
             </span>
-          </div>
+          </motion.div>
         </div>
       </div>
 
@@ -1171,50 +1184,57 @@ export const ProfilePage: React.FC = () => {
       {/* ========================================================
           MODAL 0: WALLET TRANSACTION HISTORY & AUDIT LEDGER POPUP
          ======================================================== */}
-      {isTransactionModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in"
-          onClick={() => setIsTransactionModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative my-auto border border-[#EADFCF] space-y-6 max-h-[92vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {isTransactionModalOpen && (
+          <motion.div
+            key="tx-modal"
+            variants={modalBackdrop}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+            onClick={() => setIsTransactionModalOpen(false)}
           >
-            {/* Modal Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EADFCF] gap-3 shrink-0">
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-[11px] font-black uppercase tracking-wider mb-1">
-                  <SparklesIcon size={12} />
-                  <span>Real-Time Ledger Audit</span>
+            <motion.div
+              variants={modalEntrance}
+              className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative my-auto border border-[#EADFCF] space-y-6 max-h-[92vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EADFCF] gap-3 shrink-0">
+                <div>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-[11px] font-black uppercase tracking-wider mb-1">
+                    <SparklesIcon size={12} />
+                    <span>Real-Time Ledger Audit</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
+                    Wallet Transaction History & Audit Ledger
+                  </h3>
+                  <p className="text-xs text-[#77786E]">
+                    Immutable double-entry record of all credits, top-ups, referral bonuses, renewals and withdrawals.
+                  </p>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
-                  Wallet Transaction History & Audit Ledger
-                </h3>
-                <p className="text-xs text-[#77786E]">
-                  Immutable double-entry record of all credits, top-ups, referral bonuses, renewals and withdrawals.
-                </p>
-              </div>
 
-              <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
-                <button
-                  type="button"
-                  onClick={handleDownloadStatement}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-[#EADFCF] hover:border-[#8064A9] text-[#29302D] hover:text-[#8064A9] transition-all cursor-pointer shadow-2xs"
-                >
-                  <FileTextIcon size={14} />
-                  <span>Download Statement</span>
-                </button>
+                <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={handleDownloadStatement}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-[#EADFCF] hover:border-[#8064A9] text-[#29302D] hover:text-[#8064A9] transition-all cursor-pointer shadow-2xs"
+                  >
+                    <FileTextIcon size={14} />
+                    <span>Download Statement</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setIsTransactionModalOpen(false)}
-                  className="w-9 h-9 rounded-xl bg-[#FAF7F2] hover:bg-[#EADFCF] text-[#77786E] hover:text-[#29302D] flex items-center justify-center font-bold text-base transition-all cursor-pointer border border-[#EADFCF]"
-                  title="Close modal"
-                >
-                  ✕
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsTransactionModalOpen(false)}
+                    className="w-9 h-9 rounded-xl bg-[#FAF7F2] hover:bg-[#EADFCF] text-[#77786E] hover:text-[#29302D] flex items-center justify-center font-bold text-base transition-all cursor-pointer border border-[#EADFCF]"
+                    title="Close modal"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
-            </div>
 
             {/* Scrollable Body */}
             <div className="overflow-y-auto space-y-6 pr-1 flex-1">
@@ -1596,37 +1616,45 @@ export const ProfilePage: React.FC = () => {
                 Close
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* ========================================================
           MODAL: REFERRED MEMBERS & REGISTRATION STATUS POPUP
          ======================================================== */}
-      {isReferralModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in"
-          onClick={() => setIsReferralModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative my-auto border border-[#EADFCF] space-y-6 max-h-[92vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {isReferralModalOpen && (
+          <motion.div
+            key="referral-modal"
+            variants={modalBackdrop}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+            onClick={() => setIsReferralModalOpen(false)}
           >
-            {/* Modal Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EADFCF] gap-3 shrink-0">
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-xs font-black uppercase tracking-wider mb-1">
-                  <span>Referral Programme Network</span>
+            <motion.div
+              variants={modalEntrance}
+              className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative my-auto border border-[#EADFCF] space-y-6 max-h-[92vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EADFCF] gap-3 shrink-0">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-xs font-black uppercase tracking-wider mb-1">
+                    <span>Referral Programme Network</span>
+                  </div>
+                  <h3 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
+                    Referred Members & Registration Status
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#77786E] mt-0.5">
+                    Track members who joined FIC Business Hub through your referral link.
+                  </p>
                 </div>
-                <h3 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
-                  Referred Members & Registration Status
-                </h3>
-                <p className="text-xs sm:text-sm text-[#77786E] mt-0.5">
-                  Track members who joined FIC Business Hub through your referral link.
-                </p>
-              </div>
 
-              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3">
                 <span className="px-3.5 py-1.5 rounded-xl bg-[#FAF7F2] text-[#29302D] text-xs font-bold border border-[#EADFCF]">
                   {totalReferralCount} Members Attributed
                 </span>
@@ -1805,25 +1833,39 @@ export const ProfilePage: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* ========================================================
           MODAL 1: ADD FUNDS TO WALLET (SECTION 4)
          ======================================================== */}
-      {isAddFundsModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto">
-            <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
-              <h3 className="text-lg font-black text-[#29302D]">Add Funds to FIC Wallet</h3>
-              <button
-                onClick={() => setIsAddFundsModalOpen(false)}
-                className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
+      <AnimatePresence>
+        {isAddFundsModalOpen && (
+          <motion.div
+            key="add-funds-modal"
+            variants={modalBackdrop}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            onClick={() => setIsAddFundsModalOpen(false)}
+          >
+            <motion.div
+              variants={modalEntrance}
+              className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
+                <h3 className="text-lg font-black text-[#29302D]">Add Funds to FIC Wallet</h3>
+                <button
+                  onClick={() => setIsAddFundsModalOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
 
             <form onSubmit={handleAddFundsSubmit} className="space-y-4 text-xs sm:text-sm">
               <div>
@@ -1915,31 +1957,45 @@ export const ProfilePage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isProcessingPayment}
-                  className="px-5 py-2.5 bg-[#27AE60] hover:bg-[#219653] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors"
+                  className="px-5 py-2.5 bg-[#27AE60] hover:bg-[#219653] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                 >
                   {isProcessingPayment ? 'Connecting Payment Gateway...' : 'Proceed to Secure Payment'}
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* ========================================================
           MODAL 2: WITHDRAW FUNDS (SECTION 5)
          ======================================================== */}
-      {isWithdrawModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto">
-            <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
-              <h3 className="text-lg font-black text-[#29302D]">Request Bank Withdrawal</h3>
-              <button
-                onClick={() => setIsWithdrawModalOpen(false)}
-                className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
+      <AnimatePresence>
+        {isWithdrawModalOpen && (
+          <motion.div
+            key="withdraw-modal"
+            variants={modalBackdrop}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            onClick={() => setIsWithdrawModalOpen(false)}
+          >
+            <motion.div
+              variants={modalEntrance}
+              className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
+                <h3 className="text-lg font-black text-[#29302D]">Request Bank Withdrawal</h3>
+                <button
+                  onClick={() => setIsWithdrawModalOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
 
             {withdrawError && (
               <div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
@@ -2031,34 +2087,48 @@ export const ProfilePage: React.FC = () => {
                 <button
                   type="submit"
                   disabled={!bankAccount}
-                  className="px-5 py-2.5 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors"
+                  className="px-5 py-2.5 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                 >
                   Confirm Withdrawal Request
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* ========================================================
           MODAL 3: MEMBERSHIP RENEWAL CONFIRMATION (SECTION 6)
          ======================================================== */}
-      {isRenewModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto">
-            <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
-              <div>
-                <span className="text-[11px] font-bold uppercase text-[#8064A9]">FIC Ecosystem Access</span>
-                <h3 className="text-lg font-black text-[#29302D]">Annual Membership Renewal</h3>
+      <AnimatePresence>
+        {isRenewModalOpen && (
+          <motion.div
+            key="renew-modal"
+            variants={modalBackdrop}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            onClick={() => setIsRenewModalOpen(false)}
+          >
+            <motion.div
+              variants={modalEntrance}
+              className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
+                <div>
+                  <span className="text-[11px] font-bold uppercase text-[#8064A9]">FIC Ecosystem Access</span>
+                  <h3 className="text-lg font-black text-[#29302D]">Annual Membership Renewal</h3>
+                </div>
+                <button
+                  onClick={() => setIsRenewModalOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                onClick={() => setIsRenewModalOpen(false)}
-                className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
 
             <div className="space-y-4 text-xs sm:text-sm">
               <div className="p-3.5 bg-white rounded-xl border border-[#E8DBC8] space-y-2">
@@ -2113,32 +2183,46 @@ export const ProfilePage: React.FC = () => {
                       setCustomTopUp(String(renewalShortfall));
                       setIsAddFundsModalOpen(true);
                     }}
-                    className="px-5 py-2.5 bg-[#C66B52] hover:bg-[#B55A41] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors"
+                    className="px-5 py-2.5 bg-[#C66B52] hover:bg-[#B55A41] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                   >
                     Top Up Shortfall (₹{renewalShortfall.toLocaleString('en-IN')})
                   </button>
                 )}
               </div>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* ========================================================
           MODAL 4: LINK / EDIT BANK ACCOUNT
          ======================================================== */}
-      {isBankModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto">
-            <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
-              <h3 className="text-lg font-black text-[#29302D]">Link Verified Bank Account</h3>
-              <button
-                onClick={() => setIsBankModalOpen(false)}
-                className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
+      <AnimatePresence>
+        {isBankModalOpen && (
+          <motion.div
+            key="bank-modal"
+            variants={modalBackdrop}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            onClick={() => setIsBankModalOpen(false)}
+          >
+            <motion.div
+              variants={modalEntrance}
+              className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
+                <h3 className="text-lg font-black text-[#29302D]">Link Verified Bank Account</h3>
+                <button
+                  onClick={() => setIsBankModalOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
 
             {bankFormError && (
               <div className="mb-3 p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
@@ -2231,31 +2315,45 @@ export const ProfilePage: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors"
+                  className="px-5 py-2.5 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                 >
                   Save & Verify Bank Account
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* ========================================================
           MODAL 5: EDIT PROFILE DETAILS
          ======================================================== */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto border border-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
-              <h3 className="text-lg font-bold text-slate-900">Edit Member Profile Details</h3>
-              <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold"
-              >
-                ✕
-              </button>
-            </div>
+      <AnimatePresence>
+        {isEditModalOpen && (
+          <motion.div
+            key="edit-profile-modal"
+            variants={modalBackdrop}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            onClick={() => setIsEditModalOpen(false)}
+          >
+            <motion.div
+              variants={modalEntrance}
+              className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto border border-slate-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                <h3 className="text-lg font-bold text-slate-900">Edit Member Profile Details</h3>
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
 
             <form
               onSubmit={(e) => {
@@ -2501,91 +2599,114 @@ export const ProfilePage: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+    </AnimatePresence>
 
       {/* ========================================================
           MODAL 6: CHANGE PASSWORD
          ======================================================== */}
-      {isPasswordModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl relative border border-slate-200 max-h-[90vh] overflow-y-auto my-auto">
-            <h3 className="text-base font-bold text-slate-900 mb-3">Change Account Password</h3>
-            {passwordError && (
-              <div className="mb-3 p-2 bg-red-50 text-red-700 text-xs rounded-lg">
-                {passwordError}
-              </div>
-            )}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (newPassword.length < 6) {
-                  setPasswordError('New password must be at least 6 characters.');
-                  return;
-                }
-                if (newPassword !== confirmPassword) {
-                  setPasswordError('Passwords do not match.');
-                  return;
-                }
-                setIsPasswordModalOpen(false);
-                setCurrentPassword('');
-                setNewPassword('');
-                setConfirmPassword('');
-                setPasswordError('');
-                showToast('Password changed successfully.');
-              }}
-              className="space-y-3 text-xs"
+      <AnimatePresence>
+        {isPasswordModalOpen && (
+          <motion.div
+            key="password-modal"
+            variants={modalBackdrop}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            onClick={() => setIsPasswordModalOpen(false)}
+          >
+            <motion.div
+              variants={modalEntrance}
+              className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl relative border border-slate-200 max-h-[90vh] overflow-y-auto my-auto"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Current Password</label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">New Password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Confirm New Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl"
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-bold text-slate-900">Change Account Password</h3>
                 <button
-                  type="button"
                   onClick={() => setIsPasswordModalOpen(false)}
-                  className="px-3 py-1.5 font-bold text-slate-500"
+                  className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl"
-                >
-                  Update Password
+                  ✕
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+              {passwordError && (
+                <div className="mb-3 p-2 bg-red-50 text-red-700 text-xs rounded-lg">
+                  {passwordError}
+                </div>
+              )}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (newPassword.length < 6) {
+                    setPasswordError('New password must be at least 6 characters.');
+                    return;
+                  }
+                  if (newPassword !== confirmPassword) {
+                    setPasswordError('Passwords do not match.');
+                    return;
+                  }
+                  setIsPasswordModalOpen(false);
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                  setPasswordError('');
+                  showToast('Password changed successfully.');
+                }}
+                className="space-y-3 text-xs"
+              >
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Current Password</label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">New Password</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Confirm New Password</label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl"
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPasswordModalOpen(false)}
+                    className="px-3 py-1.5 font-bold text-slate-500 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl transition-colors cursor-pointer"
+                  >
+                    Update Password
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </WorkspaceShell>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   WorkspaceShell,
   WorkspaceHero,
@@ -8,6 +8,7 @@ import {
   WorkspaceBadge,
   WorkspaceEmptyState
 } from '../components/workspace/WorkspaceComponents';
+import { AnimatedModal, ScrollReveal, AnimatedProgress } from '../motion';
 import {
   RocketIcon,
   CheckCircleIcon,
@@ -289,39 +290,53 @@ export const BusinessDevPage: React.FC = () => {
       />
 
       {/* ========================================================
-          2. TWO-TAB WORKSPACE SWITCHER
+          2. TWO-TAB WORKSPACE SWITCHER WITH SHARED LAYOUT INDICATOR
          ======================================================== */}
       <div className="flex items-center gap-2 border-b border-[#EADFCF] pb-3 mb-6">
         <button
           type="button"
           onClick={() => setActiveTab('submit')}
-          className={`px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'submit'
-              ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
-              : 'text-[#77786E] hover:text-[#29302D] hover:bg-white/80'
+          className={`relative px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'submit' ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
           }`}
         >
-          <RocketIcon size={16} />
-          <span>Submit Scaling Request</span>
+          {activeTab === 'submit' && (
+            <motion.div
+              layoutId="scalingTabIndicator"
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              className="absolute inset-0 bg-[#29302D] rounded-xl shadow-sm -z-0"
+            />
+          )}
+          <span className="relative z-10 flex items-center gap-2">
+            <RocketIcon size={16} />
+            <span>Submit Scaling Request</span>
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('active_requests')}
-          className={`px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'active_requests'
-              ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
-              : 'text-[#77786E] hover:text-[#29302D] hover:bg-white/80'
+          className={`relative px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'active_requests' ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
           }`}
         >
-          <FileTextIcon size={16} />
-          <span>Active Requests & Roadmaps</span>
-          <span
-            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-              activeTab === 'active_requests' ? 'bg-white/20 text-white' : 'bg-[#EADFCF] text-[#29302D]'
-            }`}
-          >
-            {scalingList.length}
+          {activeTab === 'active_requests' && (
+            <motion.div
+              layoutId="scalingTabIndicator"
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              className="absolute inset-0 bg-[#29302D] rounded-xl shadow-sm -z-0"
+            />
+          )}
+          <span className="relative z-10 flex items-center gap-2">
+            <FileTextIcon size={16} />
+            <span>Active Requests & Roadmaps</span>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                activeTab === 'active_requests' ? 'bg-white/20 text-white' : 'bg-[#EADFCF] text-[#29302D]'
+              }`}
+            >
+              {scalingList.length}
+            </span>
           </span>
         </button>
       </div>
@@ -335,12 +350,17 @@ export const BusinessDevPage: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             >
               <WorkspaceCard variant="violet" className="text-center py-12 px-6 space-y-4">
-                <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#8064A9] to-[#9B7CC6] text-white flex items-center justify-center mx-auto shadow-lg">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                  className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#8064A9] to-[#9B7CC6] text-white flex items-center justify-center mx-auto shadow-lg"
+                >
                   <CheckCircleIcon size={32} />
-                </div>
+                </motion.div>
                 <div className="space-y-1.5 max-w-lg mx-auto">
                   <h3 className="text-xl font-black text-[#29302D]">Scaling Request Registered!</h3>
                   <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
@@ -517,108 +537,124 @@ export const BusinessDevPage: React.FC = () => {
             </div>
           </WorkspaceCard>
 
-          {/* List of Requests */}
-          {filteredRequests.length === 0 ? (
-            <WorkspaceEmptyState
-              icon={<RocketIcon size={28} />}
-              title="No scaling requests found"
-              description="No active business development requests match the selected filters."
-              actionText="Submit Scaling Requirement"
-              onAction={() => setActiveTab('submit')}
-              accent="violet"
-            />
-          ) : (
-            <div className="space-y-4">
-              {filteredRequests.map((req) => (
-                <WorkspaceCard key={req.id} variant="default" className="space-y-4 hover:border-[#8064A9]/50 transition-colors">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] text-[#77786E] font-mono font-bold tracking-wider">
-                          REQ: {req.id}
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-[#8064A9]/10 text-[#8064A9] border border-[#8064A9]/20">
-                          {req.supportTypeLabel}
-                        </span>
+          {/* List of Requests (Animated Layout & PopLayout) */}
+          <motion.div layout className="space-y-4">
+            <AnimatePresence mode="popLayout">
+              {filteredRequests.length === 0 ? (
+                <motion.div
+                  key="empty-scaling"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                >
+                  <WorkspaceEmptyState
+                    icon={<RocketIcon size={28} />}
+                    title="No scaling requests found"
+                    description="No active business development requests match the selected filters."
+                    actionText="Submit Scaling Requirement"
+                    onAction={() => setActiveTab('submit')}
+                    accent="violet"
+                  />
+                </motion.div>
+              ) : (
+                filteredRequests.map((req) => (
+                  <motion.div
+                    key={req.id}
+                    layout
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    whileHover={{ y: -3 }}
+                    transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                  >
+                    <WorkspaceCard variant="default" className="space-y-4 hover:border-[#8064A9]/50 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] text-[#77786E] font-mono font-bold tracking-wider">
+                              REQ: {req.id}
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-[#8064A9]/10 text-[#8064A9] border border-[#8064A9]/20">
+                              {req.supportTypeLabel}
+                            </span>
+                          </div>
+                          <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                            {req.businessName}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#77786E] font-medium">{req.submittedDate}</span>
+                          {getStatusBadge(req.status, req.statusLabel)}
+                        </div>
                       </div>
-                      <h3 className="text-base sm:text-lg font-black text-[#29302D]">
-                        {req.businessName}
-                      </h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#77786E] font-medium">{req.submittedDate}</span>
-                      {getStatusBadge(req.status, req.statusLabel)}
-                    </div>
-                  </div>
 
-                  <div className="space-y-2 text-xs sm:text-sm">
-                    <div>
-                      <strong className="text-[#29302D] font-bold block mb-0.5">Stated Bottleneck:</strong>
-                      <p className="text-[#77786E] leading-relaxed line-clamp-2">
-                        {req.currentChallenges}
-                      </p>
-                    </div>
-                  </div>
+                      <div className="space-y-2 text-xs sm:text-sm">
+                        <div>
+                          <strong className="text-[#29302D] font-bold block mb-0.5">Stated Bottleneck:</strong>
+                          <p className="text-[#77786E] leading-relaxed line-clamp-2">
+                            {req.currentChallenges}
+                          </p>
+                        </div>
+                      </div>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#EADFCF]/50">
-                    <div className="text-xs text-[#77786E]">
-                      {req.assignedSpecialist ? (
-                        <span>
-                          <strong className="text-[#29302D]">Specialist: </strong>
-                          {req.assignedSpecialist.name} • {req.assignedSpecialist.desk}
-                        </span>
-                      ) : (
-                        <span>Specialist assignment in progress</span>
-                      )}
-                    </div>
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#EADFCF]/50">
+                        <div className="text-xs text-[#77786E]">
+                          {req.assignedSpecialist ? (
+                            <span>
+                              <strong className="text-[#29302D]">Specialist: </strong>
+                              {req.assignedSpecialist.name} • {req.assignedSpecialist.desk}
+                            </span>
+                          ) : (
+                            <span>Specialist assignment in progress</span>
+                          )}
+                        </div>
 
-                    <WorkspaceButton
-                      variant="violet"
-                      size="sm"
-                      onClick={() => setSelectedRequest(req)}
-                      icon={<ArrowRightIcon size={13} />}
-                    >
-                      View Diagnostic Roadmap & Milestones
-                    </WorkspaceButton>
-                  </div>
-                </WorkspaceCard>
-              ))}
-            </div>
-          )}
+                        <WorkspaceButton
+                          variant="violet"
+                          size="sm"
+                          onClick={() => setSelectedRequest(req)}
+                          icon={<ArrowRightIcon size={13} />}
+                        >
+                          View Diagnostic Roadmap & Milestones
+                        </WorkspaceButton>
+                      </div>
+                    </WorkspaceCard>
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
       )}
 
       {/* ========================================================
-          3. SCALING DETAILS & ROADMAP MODAL
+          3. SCALING DETAILS & ROADMAP ANIMATED MODAL
          ======================================================== */}
-      {selectedRequest && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#FAF7F2] border border-[#EADFCF] rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto space-y-5 my-auto">
-            {/* Header */}
-            <div className="flex items-start justify-between border-b border-[#EADFCF] pb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[11px] text-[#77786E] font-mono font-bold">
-                    {selectedRequest.id}
-                  </span>
-                  {getStatusBadge(selectedRequest.status, selectedRequest.statusLabel)}
-                </div>
-                <h3 className="text-lg sm:text-xl font-black text-[#29302D]">
-                  {selectedRequest.businessName}
-                </h3>
-                <span className="text-xs text-[#8064A9] font-bold">
-                  {selectedRequest.supportTypeLabel}
+      <AnimatedModal
+        isOpen={!!selectedRequest}
+        onClose={() => setSelectedRequest(null)}
+        maxWidth="max-w-2xl"
+        title={
+          selectedRequest && (
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[11px] text-[#77786E] font-mono font-bold">
+                  {selectedRequest.id}
                 </span>
+                {getStatusBadge(selectedRequest.status, selectedRequest.statusLabel)}
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedRequest(null)}
-                className="w-8 h-8 rounded-xl bg-white border border-[#EADFCF] text-[#77786E] hover:text-[#29302D] flex items-center justify-center font-bold cursor-pointer"
-              >
-                ✕
-              </button>
+              <h3 className="text-lg sm:text-xl font-black text-[#29302D]">
+                {selectedRequest.businessName}
+              </h3>
+              <span className="text-xs text-[#8064A9] font-bold">
+                {selectedRequest.supportTypeLabel}
+              </span>
             </div>
-
+          )
+        }
+      >
+        {selectedRequest && (
+          <div className="space-y-5">
             {/* Diagnostic Report Notes */}
             <div className="p-4 rounded-2xl bg-white border border-[#EADFCF] space-y-2">
               <div className="flex items-center justify-between">
@@ -636,7 +672,7 @@ export const BusinessDevPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Milestones / Roadmaps */}
+            {/* Milestones / Roadmaps with Animated Status Progress */}
             {selectedRequest.milestones && selectedRequest.milestones.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -650,8 +686,10 @@ export const BusinessDevPage: React.FC = () => {
 
                 <div className="space-y-2.5">
                   {selectedRequest.milestones.map((m, idx) => (
-                    <div
+                    <motion.div
                       key={idx}
+                      whileHover={{ scale: 1.01 }}
+                      transition={{ duration: 0.15 }}
                       className="p-3.5 rounded-2xl bg-white border border-[#EADFCF] space-y-1.5"
                     >
                       <div className="flex items-center justify-between">
@@ -679,7 +717,7 @@ export const BusinessDevPage: React.FC = () => {
                       <p className="text-xs text-[#77786E] pl-7 leading-relaxed">
                         {m.goal}
                       </p>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>
@@ -696,8 +734,8 @@ export const BusinessDevPage: React.FC = () => {
               </WorkspaceButton>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedModal>
     </WorkspaceShell>
   );
 };

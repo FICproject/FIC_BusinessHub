@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 // ========================================================
 // 1. WORKSPACE CONTAINER / SHELL
@@ -25,9 +25,10 @@ export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: 'easeOut' }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
       className={`min-h-[calc(100vh-72px)] py-8 sm:py-10 px-4 sm:px-6 lg:px-8 relative z-10 ${className}`}
     >
       <div className={`mx-auto ${maxClass} space-y-8`}>
@@ -66,11 +67,25 @@ export const WorkspaceHero: React.FC<WorkspaceHeroProps> = ({
   const isDark = accent === 'charcoal';
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className={`relative overflow-hidden rounded-3xl border bg-gradient-to-br ${accentGradients} p-6 sm:p-8 backdrop-blur-sm transition-all`}
     >
-      {/* Subtle decorative mesh blur */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/40 to-transparent rounded-full blur-2xl pointer-events-none" />
+      {/* Subtle floating mesh decorative element */}
+      <motion.div
+        animate={{
+          scale: [1, 1.08, 1],
+          opacity: [0.35, 0.5, 0.35]
+        }}
+        transition={{
+          duration: 6,
+          repeat: Infinity,
+          ease: 'easeInOut'
+        }}
+        className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/40 to-transparent rounded-full blur-2xl pointer-events-none"
+      />
 
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
         <div className="space-y-2 max-w-3xl">
@@ -99,7 +114,7 @@ export const WorkspaceHero: React.FC<WorkspaceHeroProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -151,7 +166,7 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({
 // ========================================================
 export interface WorkspaceKpiProps {
   title: string;
-  value: string | number;
+  value: string | number | React.ReactNode;
   subtitle?: string;
   icon?: React.ReactNode;
   accent?: 'coral' | 'violet' | 'amber' | 'rose' | 'emerald';
@@ -186,8 +201,9 @@ export const WorkspaceKpi: React.FC<WorkspaceKpiProps> = ({
 
   return (
     <motion.div
-      whileHover={{ y: -3 }}
-      transition={{ duration: 0.2 }}
+      whileHover={{ y: -4, scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 350, damping: 25 }}
       onClick={onClick}
       className={`bg-white/95 rounded-2xl border border-[#EADFCF] p-5 shadow-[0_4px_20px_-4px_rgba(41,48,45,0.04)] ${borderAccents} transition-all duration-300 ${
         onClick ? 'cursor-pointer' : ''

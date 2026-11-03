@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   WorkspaceShell,
   WorkspaceHero,
@@ -8,6 +8,7 @@ import {
   WorkspaceBadge,
   WorkspaceEmptyState
 } from '../components/workspace/WorkspaceComponents';
+import { AnimatedModal, AnimatedProgress, StaggerContainer, StaggerItem } from '../motion';
 import {
   LightbulbIcon,
   CheckCircleIcon,
@@ -278,39 +279,53 @@ export const BusinessIdeasPage: React.FC = () => {
       />
 
       {/* ========================================================
-          2. TWO-TAB WORKSPACE SWITCHER
+          2. TWO-TAB WORKSPACE SWITCHER WITH SHARED LAYOUT INDICATOR
          ======================================================== */}
       <div className="flex items-center gap-2 border-b border-[#EADFCF] pb-3 mb-6">
         <button
           type="button"
           onClick={() => setActiveTab('submit')}
-          className={`px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'submit'
-              ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
-              : 'text-[#77786E] hover:text-[#29302D] hover:bg-white/80'
+          className={`relative px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'submit' ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
           }`}
         >
-          <LightbulbIcon size={16} />
-          <span>Submit New Idea</span>
+          {activeTab === 'submit' && (
+            <motion.div
+              layoutId="ideasTabIndicator"
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              className="absolute inset-0 bg-[#29302D] rounded-xl shadow-sm -z-0"
+            />
+          )}
+          <span className="relative z-10 flex items-center gap-2">
+            <LightbulbIcon size={16} />
+            <span>Submit New Idea</span>
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('my_ideas')}
-          className={`px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'my_ideas'
-              ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
-              : 'text-[#77786E] hover:text-[#29302D] hover:bg-white/80'
+          className={`relative px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'my_ideas' ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
           }`}
         >
-          <FileTextIcon size={16} />
-          <span>Track Submitted Ideas</span>
-          <span
-            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-              activeTab === 'my_ideas' ? 'bg-white/20 text-white' : 'bg-[#EADFCF] text-[#29302D]'
-            }`}
-          >
-            {ideasList.length}
+          {activeTab === 'my_ideas' && (
+            <motion.div
+              layoutId="ideasTabIndicator"
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              className="absolute inset-0 bg-[#29302D] rounded-xl shadow-sm -z-0"
+            />
+          )}
+          <span className="relative z-10 flex items-center gap-2">
+            <FileTextIcon size={16} />
+            <span>Track Submitted Ideas</span>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                activeTab === 'my_ideas' ? 'bg-white/20 text-white' : 'bg-[#EADFCF] text-[#29302D]'
+              }`}
+            >
+              {ideasList.length}
+            </span>
           </span>
         </button>
       </div>
@@ -324,12 +339,17 @@ export const BusinessIdeasPage: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             >
               <WorkspaceCard variant="amber" className="text-center py-12 px-6 space-y-4">
-                <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#2E7D32] to-[#4CAF50] text-white flex items-center justify-center mx-auto shadow-lg">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                  className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#2E7D32] to-[#4CAF50] text-white flex items-center justify-center mx-auto shadow-lg"
+                >
                   <CheckCircleIcon size={32} />
-                </div>
+                </motion.div>
                 <div className="space-y-1.5 max-w-lg mx-auto">
                   <h3 className="text-xl font-black text-[#29302D]">Idea Submitted Successfully!</h3>
                   <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
@@ -435,9 +455,10 @@ export const BusinessIdeasPage: React.FC = () => {
                     {supportOptions.map((opt, i) => {
                       const isSelected = supportNeeded.includes(opt);
                       return (
-                        <button
+                        <motion.button
                           type="button"
                           key={i}
+                          whileTap={{ scale: 0.94 }}
                           onClick={() => toggleSupport(opt)}
                           className={`text-xs px-3.5 py-2 rounded-xl border transition-all duration-200 cursor-pointer ${
                             isSelected
@@ -447,7 +468,7 @@ export const BusinessIdeasPage: React.FC = () => {
                         >
                           {isSelected ? '✓ ' : '+ '}
                           {opt}
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -530,105 +551,121 @@ export const BusinessIdeasPage: React.FC = () => {
             </div>
           </WorkspaceCard>
 
-          {/* Idea Cards List */}
-          {filteredIdeas.length === 0 ? (
-            <WorkspaceEmptyState
-              icon={<LightbulbIcon size={28} />}
-              title="No ideas match your filters"
-              description="You have not submitted any ideas matching this criteria, or your search query yielded no results."
-              actionText="Submit New Business Idea"
-              onAction={() => setActiveTab('submit')}
-              accent="amber"
-            />
-          ) : (
-            <div className="space-y-4">
-              {filteredIdeas.map((idea) => (
-                <WorkspaceCard key={idea.id} variant="default" className="space-y-4 hover:border-[#D99B43]/50 transition-colors">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] text-[#77786E] font-mono font-bold tracking-wider">
-                          REF: {idea.id}
-                        </span>
-                        {getStageBadge(idea.stage)}
+          {/* Idea Cards List (Animated Layout & Stagger) */}
+          <motion.div layout className="space-y-4">
+            <AnimatePresence mode="popLayout">
+              {filteredIdeas.length === 0 ? (
+                <motion.div
+                  key="empty-ideas"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                >
+                  <WorkspaceEmptyState
+                    icon={<LightbulbIcon size={28} />}
+                    title="No ideas match your filters"
+                    description="You have not submitted any ideas matching this criteria, or your search query yielded no results."
+                    actionText="Submit New Business Idea"
+                    onAction={() => setActiveTab('submit')}
+                    accent="amber"
+                  />
+                </motion.div>
+              ) : (
+                filteredIdeas.map((idea) => (
+                  <motion.div
+                    key={idea.id}
+                    layout
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    whileHover={{ y: -3 }}
+                    transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                  >
+                    <WorkspaceCard variant="default" className="space-y-4 hover:border-[#D99B43]/50 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] text-[#77786E] font-mono font-bold tracking-wider">
+                              REF: {idea.id}
+                            </span>
+                            {getStageBadge(idea.stage)}
+                          </div>
+                          <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                            {idea.title}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#77786E] font-medium">{idea.submittedDate}</span>
+                          {getStatusBadge(idea.status, idea.statusLabel)}
+                        </div>
                       </div>
-                      <h3 className="text-base sm:text-lg font-black text-[#29302D]">
-                        {idea.title}
-                      </h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#77786E] font-medium">{idea.submittedDate}</span>
-                      {getStatusBadge(idea.status, idea.statusLabel)}
-                    </div>
-                  </div>
 
-                  <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed line-clamp-2">
-                    {idea.description}
-                  </p>
+                      <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed line-clamp-2">
+                        {idea.description}
+                      </p>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-[#EADFCF]/50">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[11px] font-bold text-[#77786E]">Support Requested:</span>
-                      {idea.supportNeeded.slice(0, 3).map((item, idx) => (
-                        <span
-                          key={idx}
-                          className="text-[10px] bg-[#FAF7F2] border border-[#EADFCF] text-[#29302D] font-bold px-2 py-0.5 rounded-md"
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-[#EADFCF]/50">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[11px] font-bold text-[#77786E]">Support Requested:</span>
+                          {idea.supportNeeded.slice(0, 3).map((item, idx) => (
+                            <span
+                              key={idx}
+                              className="text-[10px] bg-[#FAF7F2] border border-[#EADFCF] text-[#29302D] font-bold px-2 py-0.5 rounded-md"
+                            >
+                              {item}
+                            </span>
+                          ))}
+                          {idea.supportNeeded.length > 3 && (
+                            <span className="text-[10px] text-[#77786E] font-bold">
+                              +{idea.supportNeeded.length - 3} more
+                            </span>
+                          )}
+                        </div>
+
+                        <WorkspaceButton
+                          variant="amber"
+                          size="sm"
+                          onClick={() => setSelectedIdea(idea)}
+                          icon={<ArrowRightIcon size={13} />}
                         >
-                          {item}
-                        </span>
-                      ))}
-                      {idea.supportNeeded.length > 3 && (
-                        <span className="text-[10px] text-[#77786E] font-bold">
-                          +{idea.supportNeeded.length - 3} more
-                        </span>
-                      )}
-                    </div>
-
-                    <WorkspaceButton
-                      variant="amber"
-                      size="sm"
-                      onClick={() => setSelectedIdea(idea)}
-                      icon={<ArrowRightIcon size={13} />}
-                    >
-                      View Advisory Assessment & Details
-                    </WorkspaceButton>
-                  </div>
-                </WorkspaceCard>
-              ))}
-            </div>
-          )}
+                          View Advisory Assessment & Details
+                        </WorkspaceButton>
+                      </div>
+                    </WorkspaceCard>
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
       )}
 
       {/* ========================================================
-          3. IDEA DETAILS & FEASIBILITY ASSESSMENT MODAL
+          3. IDEA DETAILS & FEASIBILITY ASSESSMENT ANIMATED MODAL
          ======================================================== */}
-      {selectedIdea && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#FAF7F2] border border-[#EADFCF] rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto space-y-5 my-auto">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-[#EADFCF] pb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[11px] text-[#77786E] font-mono font-bold">
-                    {selectedIdea.id}
-                  </span>
-                  {getStageBadge(selectedIdea.stage)}
-                  {getStatusBadge(selectedIdea.status, selectedIdea.statusLabel)}
-                </div>
-                <h3 className="text-lg sm:text-xl font-black text-[#29302D]">
-                  {selectedIdea.title}
-                </h3>
+      <AnimatedModal
+        isOpen={!!selectedIdea}
+        onClose={() => setSelectedIdea(null)}
+        maxWidth="max-w-2xl"
+        title={
+          selectedIdea && (
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[11px] text-[#77786E] font-mono font-bold">
+                  {selectedIdea.id}
+                </span>
+                {getStageBadge(selectedIdea.stage)}
+                {getStatusBadge(selectedIdea.status, selectedIdea.statusLabel)}
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedIdea(null)}
-                className="w-8 h-8 rounded-xl bg-white border border-[#EADFCF] text-[#77786E] hover:text-[#29302D] flex items-center justify-center font-bold cursor-pointer"
-              >
-                ✕
-              </button>
+              <h3 className="text-lg sm:text-xl font-black text-[#29302D]">
+                {selectedIdea.title}
+              </h3>
             </div>
-
+          )
+        }
+      >
+        {selectedIdea && (
+          <div className="space-y-5">
             {/* Core Description */}
             <div className="space-y-1.5">
               <span className="text-xs font-black text-[#29302D] uppercase tracking-wider block">
@@ -643,7 +680,7 @@ export const BusinessIdeasPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Feasibility Ratings */}
+            {/* Feasibility Ratings with Animated Progress Movement */}
             {selectedIdea.feasibilityScore && (
               <div className="p-4 rounded-2xl bg-gradient-to-br from-[#FFF9F0] to-[#F5EBDD] border border-[#D99B43]/30 space-y-3">
                 <div className="flex items-center justify-between">
@@ -657,7 +694,7 @@ export const BusinessIdeasPage: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="bg-white p-3 rounded-xl border border-[#EADFCF] space-y-1">
+                  <div className="bg-white p-3 rounded-xl border border-[#EADFCF] space-y-1.5">
                     <span className="text-[10px] text-[#77786E] font-bold block">Market Viability</span>
                     <div className="flex items-baseline gap-1">
                       <span className="text-lg font-black text-[#29302D]">
@@ -665,15 +702,13 @@ export const BusinessIdeasPage: React.FC = () => {
                       </span>
                       <span className="text-[10px] text-emerald-600 font-bold">Strong</span>
                     </div>
-                    <div className="w-full bg-[#FAF7F2] h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-emerald-500 h-full rounded-full"
-                        style={{ width: `${selectedIdea.feasibilityScore.marketViability}%` }}
-                      ></div>
-                    </div>
+                    <AnimatedProgress
+                      value={selectedIdea.feasibilityScore.marketViability}
+                      barColor="bg-emerald-500"
+                    />
                   </div>
 
-                  <div className="bg-white p-3 rounded-xl border border-[#EADFCF] space-y-1">
+                  <div className="bg-white p-3 rounded-xl border border-[#EADFCF] space-y-1.5">
                     <span className="text-[10px] text-[#77786E] font-bold block">Tech Feasibility</span>
                     <div className="flex items-baseline gap-1">
                       <span className="text-lg font-black text-[#29302D]">
@@ -681,15 +716,13 @@ export const BusinessIdeasPage: React.FC = () => {
                       </span>
                       <span className="text-[10px] text-[#D99B43] font-bold">Viable</span>
                     </div>
-                    <div className="w-full bg-[#FAF7F2] h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-[#D99B43] h-full rounded-full"
-                        style={{ width: `${selectedIdea.feasibilityScore.techFeasibility}%` }}
-                      ></div>
-                    </div>
+                    <AnimatedProgress
+                      value={selectedIdea.feasibilityScore.techFeasibility}
+                      barColor="bg-[#D99B43]"
+                    />
                   </div>
 
-                  <div className="bg-white p-3 rounded-xl border border-[#EADFCF] space-y-1">
+                  <div className="bg-white p-3 rounded-xl border border-[#EADFCF] space-y-1.5">
                     <span className="text-[10px] text-[#77786E] font-bold block">Commercial Scale</span>
                     <div className="flex items-baseline gap-1">
                       <span className="text-lg font-black text-[#29302D]">
@@ -697,12 +730,10 @@ export const BusinessIdeasPage: React.FC = () => {
                       </span>
                       <span className="text-[10px] text-purple-600 font-bold">High Potential</span>
                     </div>
-                    <div className="w-full bg-[#FAF7F2] h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-purple-600 h-full rounded-full"
-                        style={{ width: `${selectedIdea.feasibilityScore.commercialScalability}%` }}
-                      ></div>
-                    </div>
+                    <AnimatedProgress
+                      value={selectedIdea.feasibilityScore.commercialScalability}
+                      barColor="bg-purple-600"
+                    />
                   </div>
                 </div>
               </div>
@@ -758,8 +789,8 @@ export const BusinessIdeasPage: React.FC = () => {
               </WorkspaceButton>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedModal>
     </WorkspaceShell>
   );
 };

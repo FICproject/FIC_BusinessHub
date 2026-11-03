@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { apiRequest, getStoredUser, getUserRequests } from '../services/api';
 import {
   WorkspaceShell,
@@ -21,6 +21,7 @@ import {
   CheckCircleIcon,
   ArrowRightIcon
 } from '../components/Icons';
+import { motionSprings, fadeIn, staggerContainer, staggerItem } from '../motion';
 
 export const MyRequestsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'services' | 'ideas' | 'scaling' | 'partnerships'>('services');
@@ -218,20 +219,29 @@ export const MyRequestsPage: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 shrink-0 cursor-pointer ${
-                  isActive
-                    ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
-                    : 'text-[#77786E] hover:text-[#29302D] hover:bg-[#F5EBDD]/60'
-                }`}
+                className="relative px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm flex items-center gap-2 shrink-0 cursor-pointer transition-colors duration-200"
               >
-                <span>{tab.icon}</span>
-                <span>{tab.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="activeRequestsTabIndicator"
+                    className="absolute inset-0 bg-[#29302D] rounded-2xl shadow-sm z-0"
+                    transition={motionSprings.snappy}
+                  />
+                )}
                 <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-[#EADFCF]/70 text-[#29302D]'
+                  className={`relative z-10 flex items-center gap-2 ${
+                    isActive ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
                   }`}
                 >
-                  {tab.count}
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-[#EADFCF]/70 text-[#29302D]'
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
                 </span>
               </button>
             );
@@ -242,236 +252,287 @@ export const MyRequestsPage: React.FC = () => {
       {/* ========================================================
           3. TAB CONTENT
          ======================================================== */}
-      <div className="space-y-5">
-        
-        {/* Service Requests Tab */}
-        {activeTab === 'services' && (
-          <div className="space-y-4">
-            {services.length === 0 ? (
-              <WorkspaceEmptyState
-                icon={<BriefcaseIcon size={26} />}
-                title="No active service requests"
-                description="You haven't requested any marketplace services yet. Browse the universal catalog across all 10 business sectors."
-                actionText="Browse Marketplace"
-                onAction={() => (window.location.href = '/marketplace')}
-                accent="coral"
-              />
-            ) : (
-              services.map((req) => (
-                <WorkspaceCard key={req.id} variant="default" className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3.5 gap-2.5">
-                    <div>
-                      <span className="text-[10px] text-[#77786E] block font-mono font-bold tracking-wider">
-                        REQ ID: {req.id}
-                      </span>
-                      <h3 className="text-base sm:text-lg font-black text-[#29302D] mt-0.5">
-                        {req.title}
-                      </h3>
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-xs text-[#77786E] font-semibold">{req.date}</span>
-                      <WorkspaceBadge
-                        variant={req.status === 'IN_PROGRESS' ? 'proposal' : 'pending'}
-                      >
-                        {req.statusLabel}
-                      </WorkspaceBadge>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 text-xs sm:text-sm">
-                    <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]/60">
-                      <strong className="text-[#29302D] font-black block mb-1">
-                        Your Stated Requirements:
-                      </strong>
-                      <p className="text-[#77786E] leading-relaxed">{req.notes}</p>
-                    </div>
-
-                    <div className="p-4 rounded-2xl bg-[#F4EEFB] border border-[#8064A9]/30 space-y-1">
-                      <div className="flex items-center gap-1.5 font-black text-[#8064A9]">
-                        <LockIcon size={14} />
-                        FIC Coordinator Progress & Notes:
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={motionSprings.gentle}
+          className="space-y-5"
+        >
+          {/* Service Requests Tab */}
+          {activeTab === 'services' && (
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="space-y-4"
+            >
+              {services.length === 0 ? (
+                <WorkspaceEmptyState
+                  icon={<BriefcaseIcon size={26} />}
+                  title="No active service requests"
+                  description="You haven't requested any marketplace services yet. Browse the universal catalog across all 10 business sectors."
+                  actionText="Browse Marketplace"
+                  onAction={() => (window.location.href = '/marketplace')}
+                  accent="coral"
+                />
+              ) : (
+                services.map((req) => (
+                  <motion.div
+                    key={req.id}
+                    variants={staggerItem}
+                    whileHover={{ y: -2, transition: motionSprings.cardHover }}
+                  >
+                    <WorkspaceCard variant="default" className="space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3.5 gap-2.5">
+                        <div>
+                          <span className="text-[10px] text-[#77786E] block font-mono font-bold tracking-wider">
+                            REQ ID: {req.id}
+                          </span>
+                          <h3 className="text-base sm:text-lg font-black text-[#29302D] mt-0.5">
+                            {req.title}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-xs text-[#77786E] font-semibold">{req.date}</span>
+                          <WorkspaceBadge
+                            variant={req.status === 'IN_PROGRESS' ? 'proposal' : 'pending'}
+                          >
+                            {req.statusLabel}
+                          </WorkspaceBadge>
+                        </div>
                       </div>
-                      <p className="text-xs text-[#29302D]/85 leading-relaxed font-medium">
-                        {req.ficRemark}
+
+                      <div className="space-y-3 text-xs sm:text-sm">
+                        <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]/60">
+                          <strong className="text-[#29302D] font-black block mb-1">
+                            Your Stated Requirements:
+                          </strong>
+                          <p className="text-[#77786E] leading-relaxed">{req.notes}</p>
+                        </div>
+
+                        <div className="p-4 rounded-2xl bg-[#F4EEFB] border border-[#8064A9]/30 space-y-1">
+                          <div className="flex items-center gap-1.5 font-black text-[#8064A9]">
+                            <LockIcon size={14} />
+                            FIC Coordinator Progress & Notes:
+                          </div>
+                          <p className="text-xs text-[#29302D]/85 leading-relaxed font-medium">
+                            {req.ficRemark}
+                          </p>
+                        </div>
+                      </div>
+                    </WorkspaceCard>
+                  </motion.div>
+                ))
+              )}
+            </motion.div>
+          )}
+
+          {/* Business Ideas Tab */}
+          {activeTab === 'ideas' && (
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="space-y-4"
+            >
+              {ideas.length === 0 ? (
+                <WorkspaceEmptyState
+                  icon={<LightbulbIcon size={26} />}
+                  title="No incubation ideas logged"
+                  description="You haven't submitted any ideas for FIC incubation review."
+                  actionText="Submit Business Idea"
+                  onAction={() => (window.location.href = '/business-ideas')}
+                  accent="amber"
+                />
+              ) : (
+                ideas.map((idea) => (
+                  <motion.div
+                    key={idea.id}
+                    variants={staggerItem}
+                    whileHover={{ y: -2, transition: motionSprings.cardHover }}
+                  >
+                    <WorkspaceCard variant="amber" className="space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-[#D99B43] font-mono font-bold">
+                              {idea.id}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
+                              {idea.stage}
+                            </span>
+                          </div>
+                          <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                            {idea.title}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#77786E] font-semibold">{idea.date}</span>
+                          <WorkspaceBadge variant="luxury">{idea.statusLabel}</WorkspaceBadge>
+                        </div>
+                      </div>
+
+                      <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
+                        {idea.notes}
                       </p>
-                    </div>
-                  </div>
-                </WorkspaceCard>
-              ))
-            )}
-          </div>
-        )}
 
-        {/* Business Ideas Tab */}
-        {activeTab === 'ideas' && (
-          <div className="space-y-4">
-            {ideas.length === 0 ? (
-              <WorkspaceEmptyState
-                icon={<LightbulbIcon size={26} />}
-                title="No incubation ideas logged"
-                description="You haven't submitted any ideas for FIC incubation review."
-                actionText="Submit Business Idea"
-                onAction={() => (window.location.href = '/business-ideas')}
-                accent="amber"
-              />
-            ) : (
-              ideas.map((idea) => (
-                <WorkspaceCard key={idea.id} variant="amber" className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-[#D99B43] font-mono font-bold">
-                          {idea.id}
-                        </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">
-                          {idea.stage}
-                        </span>
+                      <div className="p-3.5 rounded-2xl bg-white border border-[#EADFCF] space-y-1 text-xs">
+                        <div className="font-bold text-[#9C6818]">FIC Advisory Progress:</div>
+                        <p className="text-[#77786E]">{idea.ficRemark}</p>
                       </div>
-                      <h3 className="text-base sm:text-lg font-black text-[#29302D]">
-                        {idea.title}
-                      </h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#77786E] font-semibold">{idea.date}</span>
-                      <WorkspaceBadge variant="luxury">{idea.statusLabel}</WorkspaceBadge>
-                    </div>
-                  </div>
 
-                  <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
-                    {idea.notes}
-                  </p>
-
-                  <div className="p-3.5 rounded-2xl bg-white border border-[#EADFCF] space-y-1 text-xs">
-                    <div className="font-bold text-[#9C6818]">FIC Advisory Progress:</div>
-                    <p className="text-[#77786E]">{idea.ficRemark}</p>
-                  </div>
-
-                  <div className="pt-1 flex justify-end">
-                    <Link to="/business-ideas">
-                      <WorkspaceButton variant="outline" size="sm" icon={<ArrowRightIcon size={12} />}>
-                        Manage in Business Ideas Desk
-                      </WorkspaceButton>
-                    </Link>
-                  </div>
-                </WorkspaceCard>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* Scaling Support Tab */}
-        {activeTab === 'scaling' && (
-          <div className="space-y-4">
-            {scaling.length === 0 ? (
-              <WorkspaceEmptyState
-                icon={<RocketIcon size={26} />}
-                title="No active scaling tickets"
-                description="You haven't requested any enterprise development or scaling consultations."
-                actionText="Request Scaling Support"
-                onAction={() => (window.location.href = '/scaling')}
-                accent="violet"
-              />
-            ) : (
-              scaling.map((scale) => (
-                <WorkspaceCard key={scale.id} variant="violet" className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] text-[#8064A9] font-mono font-bold">
-                        {scale.id}
-                      </span>
-                      <h3 className="text-base sm:text-lg font-black text-[#29302D]">
-                        {scale.businessName}
-                      </h3>
-                      <div className="text-xs text-[#8064A9] font-bold">
-                        Focus: {scale.supportType}
+                      <div className="pt-1 flex justify-end">
+                        <Link to="/business-ideas">
+                          <WorkspaceButton variant="outline" size="sm" icon={<ArrowRightIcon size={12} />}>
+                            Manage in Business Ideas Desk
+                          </WorkspaceButton>
+                        </Link>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#77786E] font-semibold">{scale.date}</span>
-                      <WorkspaceBadge variant="proposal">{scale.statusLabel}</WorkspaceBadge>
-                    </div>
-                  </div>
+                    </WorkspaceCard>
+                  </motion.div>
+                ))
+              )}
+            </motion.div>
+          )}
 
-                  <div className="space-y-2 text-xs sm:text-sm">
-                    <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
-                      <strong className="text-[#29302D] block mb-1">Operational Challenge:</strong>
-                      <p className="text-[#77786E] leading-relaxed">{scale.notes}</p>
-                    </div>
-                    <div className="p-3.5 rounded-2xl bg-[#F7F2FB] border border-[#8064A9]/30 space-y-1 text-xs">
-                      <div className="font-bold text-[#8064A9]">Specialist Diagnostic Memo:</div>
-                      <p className="text-[#77786E]">{scale.ficRemark}</p>
-                    </div>
-                  </div>
-
-                  <div className="pt-1 flex justify-end">
-                    <Link to="/scaling">
-                      <WorkspaceButton variant="outline" size="sm" icon={<ArrowRightIcon size={12} />}>
-                        View Scaling Roadmap
-                      </WorkspaceButton>
-                    </Link>
-                  </div>
-                </WorkspaceCard>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* B2B Partnerships Tab */}
-        {activeTab === 'partnerships' && (
-          <div className="space-y-4">
-            {partnerships.length === 0 ? (
-              <WorkspaceEmptyState
-                icon={<HandshakeIcon size={26} />}
-                title="No partnership proposals"
-                description="You haven't initiated any B2B tie-ups or joint venture proposals."
-                actionText="Explore B2B Partnerships"
-                onAction={() => (window.location.href = '/partnerships')}
-                accent="rose"
-              />
-            ) : (
-              partnerships.map((part) => (
-                <WorkspaceCard key={part.id} variant="rose" className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
-                    <div className="space-y-0.5">
-                      <span className="text-[10px] text-[#D78E9A] font-mono font-bold">
-                        {part.id}
-                      </span>
-                      <h3 className="text-base sm:text-lg font-black text-[#29302D]">
-                        {part.organizationName}
-                      </h3>
-                      <div className="text-xs text-[#C66B52] font-bold">
-                        Model: {part.type}
+          {/* Scaling Support Tab */}
+          {activeTab === 'scaling' && (
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="space-y-4"
+            >
+              {scaling.length === 0 ? (
+                <WorkspaceEmptyState
+                  icon={<RocketIcon size={26} />}
+                  title="No active scaling tickets"
+                  description="You haven't requested any enterprise development or scaling consultations."
+                  actionText="Request Scaling Support"
+                  onAction={() => (window.location.href = '/scaling')}
+                  accent="violet"
+                />
+              ) : (
+                scaling.map((scale) => (
+                  <motion.div
+                    key={scale.id}
+                    variants={staggerItem}
+                    whileHover={{ y: -2, transition: motionSprings.cardHover }}
+                  >
+                    <WorkspaceCard variant="violet" className="space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-[#8064A9] font-mono font-bold">
+                            {scale.id}
+                          </span>
+                          <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                            {scale.businessName}
+                          </h3>
+                          <div className="text-xs text-[#8064A9] font-bold">
+                            Focus: {scale.supportType}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#77786E] font-semibold">{scale.date}</span>
+                          <WorkspaceBadge variant="proposal">{scale.statusLabel}</WorkspaceBadge>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#77786E] font-semibold">{part.date}</span>
-                      <WorkspaceBadge variant="luxury">{part.statusLabel}</WorkspaceBadge>
-                    </div>
-                  </div>
 
-                  <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
-                    {part.notes}
-                  </p>
+                      <div className="space-y-2 text-xs sm:text-sm">
+                        <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
+                          <strong className="text-[#29302D] block mb-1">Operational Challenge:</strong>
+                          <p className="text-[#77786E] leading-relaxed">{scale.notes}</p>
+                        </div>
+                        <div className="p-3.5 rounded-2xl bg-[#F7F2FB] border border-[#8064A9]/30 space-y-1 text-xs">
+                          <div className="font-bold text-[#8064A9]">Specialist Diagnostic Memo:</div>
+                          <p className="text-[#77786E]">{scale.ficRemark}</p>
+                        </div>
+                      </div>
 
-                  <div className="p-3.5 rounded-2xl bg-white border border-[#EADFCF] space-y-1 text-xs">
-                    <div className="font-bold text-[#C66B52]">Intermediary Status:</div>
-                    <p className="text-[#77786E]">{part.ficRemark}</p>
-                  </div>
+                      <div className="pt-1 flex justify-end">
+                        <Link to="/scaling">
+                          <WorkspaceButton variant="outline" size="sm" icon={<ArrowRightIcon size={12} />}>
+                            View Scaling Roadmap
+                          </WorkspaceButton>
+                        </Link>
+                      </div>
+                    </WorkspaceCard>
+                  </motion.div>
+                ))
+              )}
+            </motion.div>
+          )}
 
-                  <div className="pt-1 flex justify-end">
-                    <Link to="/partnerships">
-                      <WorkspaceButton variant="outline" size="sm" icon={<ArrowRightIcon size={12} />}>
-                        View Alliance Details
-                      </WorkspaceButton>
-                    </Link>
-                  </div>
-                </WorkspaceCard>
-              ))
-            )}
-          </div>
-        )}
+          {/* B2B Partnerships Tab */}
+          {activeTab === 'partnerships' && (
+            <motion.div
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+              className="space-y-4"
+            >
+              {partnerships.length === 0 ? (
+                <WorkspaceEmptyState
+                  icon={<HandshakeIcon size={26} />}
+                  title="No partnership proposals"
+                  description="You haven't initiated any B2B tie-ups or joint venture proposals."
+                  actionText="Explore B2B Partnerships"
+                  onAction={() => (window.location.href = '/partnerships')}
+                  accent="rose"
+                />
+              ) : (
+                partnerships.map((part) => (
+                  <motion.div
+                    key={part.id}
+                    variants={staggerItem}
+                    whileHover={{ y: -2, transition: motionSprings.cardHover }}
+                  >
+                    <WorkspaceCard variant="rose" className="space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] text-[#D78E9A] font-mono font-bold">
+                            {part.id}
+                          </span>
+                          <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                            {part.organizationName}
+                          </h3>
+                          <div className="text-xs text-[#C66B52] font-bold">
+                            Model: {part.type}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#77786E] font-semibold">{part.date}</span>
+                          <WorkspaceBadge variant="luxury">{part.statusLabel}</WorkspaceBadge>
+                        </div>
+                      </div>
 
-      </div>
+                      <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
+                        {part.notes}
+                      </p>
+
+                      <div className="p-3.5 rounded-2xl bg-white border border-[#EADFCF] space-y-1 text-xs">
+                        <div className="font-bold text-[#C66B52]">Intermediary Status:</div>
+                        <p className="text-[#77786E]">{part.ficRemark}</p>
+                      </div>
+
+                      <div className="pt-1 flex justify-end">
+                        <Link to="/partnerships">
+                          <WorkspaceButton variant="outline" size="sm" icon={<ArrowRightIcon size={12} />}>
+                            View Alliance Details
+                          </WorkspaceButton>
+                        </Link>
+                      </div>
+                    </WorkspaceCard>
+                  </motion.div>
+                ))
+              )}
+            </motion.div>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </WorkspaceShell>
   );
 };

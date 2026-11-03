@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Modal } from '@fic/ui';
+import { motion, AnimatePresence } from 'motion/react';
 import { INITIAL_CATEGORIES_DATA } from '../services/mockData';
 import {
   getStoredUser,
@@ -37,6 +36,7 @@ import {
   FileTextIcon,
   SparklesIcon
 } from '../components/Icons';
+import { motionSprings, staggerContainer, staggerItem, AnimatedCounter, AnimatedModal } from '../motion';
 
 export const MyServicesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -257,20 +257,28 @@ export const MyServicesPage: React.FC = () => {
   return (
     <WorkspaceShell maxWidth="7xl">
       {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#29302D] text-[#FCFAF6] px-5 py-3.5 rounded-2xl shadow-2xl border border-[#D99B43]/40 flex items-center justify-between gap-3 animate-fade-in max-w-md">
-          <div className="flex items-center gap-3">
-            <CheckCircleIcon size={20} className="text-[#2E7D32]" />
-            <span className="text-xs sm:text-sm font-semibold">{toastMessage.text}</span>
-          </div>
-          <button
-            onClick={() => setToastMessage(null)}
-            className="text-white/60 hover:text-white text-xs font-bold px-2 py-1 cursor-pointer"
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={motionSprings.snappy}
+            className="fixed bottom-6 right-6 z-50 bg-[#29302D] text-[#FCFAF6] px-5 py-3.5 rounded-2xl shadow-2xl border border-[#D99B43]/40 flex items-center justify-between gap-3 max-w-md"
           >
-            ✕
-          </button>
-        </div>
-      )}
+            <div className="flex items-center gap-3">
+              <CheckCircleIcon size={20} className="text-[#2E7D32]" />
+              <span className="text-xs sm:text-sm font-semibold">{toastMessage.text}</span>
+            </div>
+            <button
+              onClick={() => setToastMessage(null)}
+              className="text-white/60 hover:text-white text-xs font-bold px-2 py-1 cursor-pointer"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ========================================================
           1. HERO HEADER
@@ -315,35 +323,35 @@ export const MyServicesPage: React.FC = () => {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         <WorkspaceKpi
           title="Total Services"
-          value={totalCount}
+          value={<AnimatedCounter value={totalCount} />}
           subtitle="In your account"
           icon={<BriefcaseIcon size={18} />}
           accent="coral"
         />
         <WorkspaceKpi
           title="Active (Approved)"
-          value={approvedCount}
+          value={<AnimatedCounter value={approvedCount} />}
           subtitle="Live on Marketplace"
           icon={<CheckCircleIcon size={18} />}
           accent="emerald"
         />
         <WorkspaceKpi
           title="Under Review"
-          value={pendingCount}
+          value={<AnimatedCounter value={pendingCount} />}
           subtitle="Awaiting FIC Review"
           icon={<ClockIcon size={18} />}
           accent="amber"
         />
         <WorkspaceKpi
           title="Drafts"
-          value={draftCount}
+          value={<AnimatedCounter value={draftCount} />}
           subtitle="Not submitted yet"
           icon={<FileTextIcon size={18} />}
           accent="violet"
         />
         <WorkspaceKpi
           title="Needs Revision"
-          value={rejectedCount}
+          value={<AnimatedCounter value={rejectedCount} />}
           subtitle="Check feedback"
           icon={<AlertCircleIcon size={18} />}
           accent="rose"
@@ -367,19 +375,28 @@ export const MyServicesPage: React.FC = () => {
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 shrink-0 cursor-pointer ${
-                  isActive
-                    ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
-                    : 'text-[#77786E] hover:text-[#29302D] hover:bg-[#F5EBDD]/60'
-                }`}
+                className="relative px-4 py-2.5 rounded-2xl font-black text-xs sm:text-sm flex items-center gap-2 shrink-0 cursor-pointer transition-colors duration-200"
               >
-                <span>{tab.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="servicesActiveTabIndicator"
+                    className="absolute inset-0 bg-[#29302D] rounded-2xl shadow-sm z-0"
+                    transition={motionSprings.snappy}
+                  />
+                )}
                 <span
-                  className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-[#EADFCF]/70 text-[#29302D]'
+                  className={`relative z-10 flex items-center gap-2 ${
+                    isActive ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
                   }`}
                 >
-                  {tab.count}
+                  <span>{tab.label}</span>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                      isActive ? 'bg-white/20 text-white' : 'bg-[#EADFCF]/70 text-[#29302D]'
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
                 </span>
               </button>
             );
@@ -405,12 +422,20 @@ export const MyServicesPage: React.FC = () => {
             accent="coral"
           />
         ) : (
-          filteredServices.map((service) => (
-            <motion.div
-              key={service.id}
-              whileHover={{ y: -2 }}
-              transition={{ duration: 0.2 }}
-            >
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+            className="space-y-5"
+          >
+            {filteredServices.map((service) => (
+              <motion.div
+                key={service.id}
+                layout
+                variants={staggerItem}
+                whileHover={{ y: -3, transition: motionSprings.cardHover }}
+                transition={motionSprings.gentle}
+              >
               <div className="bg-white/95 rounded-3xl border border-[#EADFCF] p-6 sm:p-7 shadow-[0_4px_20px_-4px_rgba(41,48,45,0.05)] hover:border-[#C66B52]/40 transition-all flex flex-col justify-between gap-5">
                 <div className="space-y-3.5">
                   {/* Top Bar: Sector + Status Badge */}
@@ -613,17 +638,19 @@ export const MyServicesPage: React.FC = () => {
                 </div>
               </div>
             </motion.div>
-          ))
+          ))}
+          </motion.div>
         )}
       </div>
 
       {/* ========================================================
           5. ADD / EDIT SERVICE MODAL
          ======================================================== */}
-      <Modal
+      <AnimatedModal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
         title={editingServiceId ? 'Edit Capability Listing' : 'Add New Service / Capability'}
+        maxWidth="3xl"
       >
         <div className="space-y-5 max-h-[75vh] overflow-y-auto pr-1">
           {/* Section 1: Basic Information */}
@@ -873,15 +900,16 @@ export const MyServicesPage: React.FC = () => {
             </WorkspaceButton>
           </div>
         </div>
-      </Modal>
+      </AnimatedModal>
 
       {/* ========================================================
           6. SIMULATED REJECTION MODAL
          ======================================================== */}
-      <Modal
+      <AnimatedModal
         isOpen={!!rejectingServiceId}
         onClose={() => setRejectingServiceId(null)}
         title="Simulate FIC Reviewer Feedback (Needs Revision)"
+        maxWidth="lg"
       >
         <div className="space-y-4">
           <p className="text-xs text-[#77786E] leading-relaxed">
@@ -907,7 +935,7 @@ export const MyServicesPage: React.FC = () => {
             </WorkspaceButton>
           </div>
         </div>
-      </Modal>
+      </AnimatedModal>
     </WorkspaceShell>
   );
 };

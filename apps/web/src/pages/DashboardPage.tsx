@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { getStoredUser, apiRequest, getUserRequests, AuthenticatedUser } from '../services/api';
 import { getSubcategoryDashboardConfig } from '../services/dashboardConfig';
 import {
@@ -11,6 +11,13 @@ import {
   WorkspaceButton,
   WorkspaceBadge
 } from '../components/workspace/WorkspaceComponents';
+import {
+  StaggerContainer,
+  StaggerItem,
+  AnimatedCounter,
+  ScrollReveal,
+  AnimatedCard
+} from '../motion';
 import {
   BriefcaseIcon,
   ShieldCheckIcon,
@@ -100,17 +107,25 @@ export const DashboardPage: React.FC = () => {
         rightActions={
           <div className="flex flex-wrap items-center gap-3">
             {/* Membership Validity Pill */}
-            <div className="px-4 py-2.5 rounded-2xl bg-white/90 border border-[#D99B43]/40 shadow-xs text-xs space-y-0.5">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              className="px-4 py-2.5 rounded-2xl bg-white/90 border border-[#D99B43]/40 shadow-xs text-xs space-y-0.5"
+            >
               <span className="text-[#9C6818] font-black block">
                 {user.membershipPlan || '1st Year Membership'}
               </span>
               <span className="text-[#B87A28] text-[11px] font-bold">
                 {user.membershipExpiryDate || 'Valid for 365 Days (₹99)'}
               </span>
-            </div>
+            </motion.div>
 
             {/* KYC Status Pill */}
-            <div className="px-4 py-2.5 rounded-2xl bg-white/90 border border-[#2E7D32]/30 shadow-xs text-xs flex items-center gap-2.5">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+              className="px-4 py-2.5 rounded-2xl bg-white/90 border border-[#2E7D32]/30 shadow-xs text-xs flex items-center gap-2.5"
+            >
               <div className="w-7 h-7 rounded-lg bg-[#2E7D32]/15 flex items-center justify-center text-[#2E7D32] shrink-0">
                 <ShieldCheckIcon size={16} />
               </div>
@@ -122,7 +137,7 @@ export const DashboardPage: React.FC = () => {
                   {user.isKycApproved ? 'Sector Approved' : 'Submitted for Approval'}
                 </span>
               </div>
-            </div>
+            </motion.div>
           </div>
         }
       />
@@ -130,20 +145,24 @@ export const DashboardPage: React.FC = () => {
       {/* ========================================================
           2. DYNAMIC SUBCATEGORY-TAILORED KPI STAT CARDS
          ======================================================== */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-        {dashboardConfig.kpiCards.map((kpi, idx) => (
-          <WorkspaceKpi
-            key={idx}
-            title={kpi.title}
-            value={kpi.value}
-            subtitle={kpi.subtitle}
-            icon={renderDashboardIcon(kpi.iconName, 18)}
-            accent={kpi.accent}
-            trend={kpi.trend}
-            onClick={() => navigate(kpi.path)}
-          />
-        ))}
-      </div>
+      <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+        {dashboardConfig.kpiCards.map((kpi, idx) => {
+          const isNumeric = typeof kpi.value === 'number';
+          return (
+            <StaggerItem key={idx}>
+              <WorkspaceKpi
+                title={kpi.title}
+                value={isNumeric ? <AnimatedCounter value={kpi.value as number} /> : kpi.value}
+                subtitle={kpi.subtitle}
+                icon={renderDashboardIcon(kpi.iconName, 18)}
+                accent={kpi.accent}
+                trend={kpi.trend}
+                onClick={() => navigate(kpi.path)}
+              />
+            </StaggerItem>
+          );
+        })}
+      </StaggerContainer>
 
       {/* ========================================================
           3. TAILORED OPPORTUNITY ACTIONS & SERVICES (7 MODULES)
@@ -151,7 +170,11 @@ export const DashboardPage: React.FC = () => {
       <WorkspaceCard variant="glass" padded={false} className="overflow-hidden">
         <div className="px-6 py-4 border-b border-[#EADFCF] bg-white/60 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#C66B52]" />
+            <motion.span
+              animate={{ scale: [1, 1.3, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              className="w-2.5 h-2.5 rounded-full bg-[#C66B52]"
+            />
             <h2 className="text-base font-black text-[#29302D]">
               Opportunity Actions & Services ({dashboardConfig.roleBadge})
             </h2>
@@ -162,33 +185,35 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         <div className="p-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
+          <StaggerContainer className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3.5">
             {dashboardConfig.quickActions.map((action) => (
-              <motion.div
-                key={action.path + action.title}
-                whileHover={{ y: -3, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Link
-                  to={action.path}
-                  className={`p-4 rounded-2xl border border-[#EADFCF] ${action.borderHover} ${action.bgHover} bg-white/90 transition-all text-center space-y-2.5 cursor-pointer h-full flex flex-col justify-center items-center group shadow-2xs`}
+              <StaggerItem key={action.path + action.title}>
+                <motion.div
+                  whileHover={{ y: -5, scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 25 }}
+                  className="h-full"
                 >
-                  <div
-                    className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${action.gradient} text-white flex items-center justify-center shadow-md group-hover:scale-105 transition-transform`}
+                  <Link
+                    to={action.path}
+                    className={`p-4 rounded-2xl border border-[#EADFCF] ${action.borderHover} ${action.bgHover} bg-white/90 transition-colors text-center space-y-2.5 cursor-pointer h-full flex flex-col justify-center items-center group shadow-2xs`}
                   >
-                    {renderDashboardIcon(action.iconName, 20)}
-                  </div>
-                  <strong className="text-xs text-[#29302D] block font-extrabold group-hover:text-[#C66B52] transition-colors">
-                    {action.title}
-                  </strong>
-                  <span className="text-[11px] text-[#77786E] leading-tight">
-                    {action.subtitle}
-                  </span>
-                </Link>
-              </motion.div>
+                    <div
+                      className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${action.gradient} text-white flex items-center justify-center shadow-md group-hover:scale-110 transition-transform`}
+                    >
+                      {renderDashboardIcon(action.iconName, 20)}
+                    </div>
+                    <strong className="text-xs text-[#29302D] block font-extrabold group-hover:text-[#C66B52] transition-colors">
+                      {action.title}
+                    </strong>
+                    <span className="text-[11px] text-[#77786E] leading-tight">
+                      {action.subtitle}
+                    </span>
+                  </Link>
+                </motion.div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerContainer>
         </div>
       </WorkspaceCard>
 
@@ -196,38 +221,40 @@ export const DashboardPage: React.FC = () => {
           ROLE-SPECIFIC HIGHLIGHT TRACK
          ======================================================== */}
       {dashboardConfig.specializedTrack && (
-        <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-[#FFF9F0] via-white to-[#F5EBDD] border border-[#D99B43]/40 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-2 max-w-2xl">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-md bg-[#8064A9] text-white text-[10px] font-black tracking-wider uppercase">
-                {dashboardConfig.specializedTrack.badge}
-              </span>
-              <h3 className="text-sm sm:text-base font-black text-[#29302D]">
-                {dashboardConfig.specializedTrack.title}
-              </h3>
+        <ScrollReveal direction="up">
+          <div className="p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-[#FFF9F0] via-white to-[#F5EBDD] border border-[#D99B43]/40 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-2xl">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-md bg-[#8064A9] text-white text-[10px] font-black tracking-wider uppercase">
+                  {dashboardConfig.specializedTrack.badge}
+                </span>
+                <h3 className="text-sm sm:text-base font-black text-[#29302D]">
+                  {dashboardConfig.specializedTrack.title}
+                </h3>
+              </div>
+              <p className="text-xs text-[#77786E] leading-relaxed">
+                {dashboardConfig.specializedTrack.description}
+              </p>
+              <div className="flex flex-wrap items-center gap-4 pt-1">
+                {dashboardConfig.specializedTrack.metrics.map((m, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 text-xs">
+                    <span className="text-[#C66B52] font-black">{m.value}</span>
+                    <span className="text-[#77786E]">{m.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <p className="text-xs text-[#77786E] leading-relaxed">
-              {dashboardConfig.specializedTrack.description}
-            </p>
-            <div className="flex flex-wrap items-center gap-4 pt-1">
-              {dashboardConfig.specializedTrack.metrics.map((m, idx) => (
-                <div key={idx} className="flex items-center gap-1.5 text-xs">
-                  <span className="text-[#C66B52] font-black">{m.value}</span>
-                  <span className="text-[#77786E]">{m.label}</span>
-                </div>
-              ))}
+            <div className="shrink-0">
+              <Link
+                to={dashboardConfig.specializedTrack.buttonPath}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#29302D] text-white text-xs font-bold hover:bg-[#C66B52] transition-colors shadow-sm"
+              >
+                <span>{dashboardConfig.specializedTrack.buttonLabel}</span>
+                <ArrowRightIcon size={14} />
+              </Link>
             </div>
           </div>
-          <div className="shrink-0">
-            <Link
-              to={dashboardConfig.specializedTrack.buttonPath}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#29302D] text-white text-xs font-bold hover:bg-[#C66B52] transition-colors shadow-sm"
-            >
-              <span>{dashboardConfig.specializedTrack.buttonLabel}</span>
-              <ArrowRightIcon size={14} />
-            </Link>
-          </div>
-        </div>
+        </ScrollReveal>
       )}
 
       {/* ========================================================
@@ -237,140 +264,158 @@ export const DashboardPage: React.FC = () => {
         
         {/* Left Column: Active Service Requests */}
         <div className="lg:col-span-8">
-          <WorkspaceCard variant="default" padded={false} className="h-full flex flex-col">
-            <div className="px-6 py-4 border-b border-[#EADFCF] bg-[#FAF7F2]/60 flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-black text-[#29302D]">
-                  Active Service Requests & Coordination
-                </h3>
-                <span className="text-xs text-[#77786E]">
-                  Live status of your requirements under FIC intermediary review
-                </span>
-              </div>
-              <Link to="/my-requests">
-                <WorkspaceButton variant="outline" size="sm">
-                  View All &rarr;
-                </WorkspaceButton>
-              </Link>
-            </div>
-
-            <div className="p-6 flex-1 flex flex-col justify-between">
-              {activeRequests.length === 0 ? (
-                <div className="py-12 text-center text-xs text-[#77786E] space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-[#FFF4F0] border border-[#E58C72]/30 text-[#C66B52] flex items-center justify-center mx-auto">
-                    <BriefcaseIcon size={22} />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="font-bold text-[#29302D]">No active requests yet</p>
-                    <p className="max-w-xs mx-auto">Browse the Universal Marketplace to submit requirements across any business sector.</p>
-                  </div>
-                  <Link to="/marketplace" className="inline-block pt-1">
-                    <WorkspaceButton variant="primary" size="sm">
-                      Browse Marketplace &rarr;
-                    </WorkspaceButton>
-                  </Link>
+          <ScrollReveal direction="up" delay={0.1}>
+            <WorkspaceCard variant="default" padded={false} className="h-full flex flex-col">
+              <div className="px-6 py-4 border-b border-[#EADFCF] bg-[#FAF7F2]/60 flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-black text-[#29302D]">
+                    Active Service Requests & Coordination
+                  </h3>
+                  <span className="text-xs text-[#77786E]">
+                    Live status of your requirements under FIC intermediary review
+                  </span>
                 </div>
-              ) : (
-                <div className="divide-y divide-[#EADFCF]/60">
-                  {activeRequests.map((req, idx) => (
-                    <div
-                      key={idx}
-                      className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
-                    >
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-extrabold text-[#29302D] group-hover:text-[#C66B52] transition-colors">
-                          {req.serviceTitle || req.title}
-                        </h4>
-                        <div className="flex items-center gap-2 text-xs text-[#77786E]">
-                          <span>Requested: {req.date || 'Active'}</span>
-                          <span>•</span>
-                          <span className="text-[#8064A9] font-semibold">FIC Officer Assigned</span>
-                        </div>
-                      </div>
-                      <div className="shrink-0">
-                        <WorkspaceBadge
-                          variant={req.status === 'IN_PROGRESS' ? 'proposal' : 'pending'}
-                        >
-                          {req.statusText || req.status || 'Under Review'}
-                        </WorkspaceBadge>
-                      </div>
+                <Link to="/my-requests">
+                  <WorkspaceButton variant="outline" size="sm">
+                    View All &rarr;
+                  </WorkspaceButton>
+                </Link>
+              </div>
+
+              <div className="p-6 flex-1 flex flex-col justify-between">
+                {activeRequests.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-[#77786E] space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-[#FFF4F0] border border-[#E58C72]/30 text-[#C66B52] flex items-center justify-center mx-auto">
+                      <BriefcaseIcon size={22} />
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="space-y-1">
+                      <p className="font-bold text-[#29302D]">No active requests yet</p>
+                      <p className="max-w-xs mx-auto">Browse the Universal Marketplace to submit requirements across any business sector.</p>
+                    </div>
+                    <Link to="/marketplace" className="inline-block pt-1">
+                      <WorkspaceButton variant="primary" size="sm">
+                        Browse Marketplace &rarr;
+                      </WorkspaceButton>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-[#EADFCF]/60">
+                    {activeRequests.map((req, idx) => (
+                      <motion.div
+                        key={idx}
+                        whileHover={{ x: 3 }}
+                        transition={{ duration: 0.15 }}
+                        className="py-4 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                      >
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-extrabold text-[#29302D] group-hover:text-[#C66B52] transition-colors">
+                            {req.serviceTitle || req.title}
+                          </h4>
+                          <div className="flex items-center gap-2 text-xs text-[#77786E]">
+                            <span>Requested: {req.date || 'Active'}</span>
+                            <span>•</span>
+                            <span className="text-[#8064A9] font-semibold">FIC Officer Assigned</span>
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          <WorkspaceBadge
+                            variant={req.status === 'IN_PROGRESS' ? 'proposal' : 'pending'}
+                          >
+                            {req.statusText || req.status || 'Under Review'}
+                          </WorkspaceBadge>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
 
-              {/* Privacy Safeguard Footer */}
-              <div className="pt-4 mt-6 border-t border-[#EADFCF] text-xs text-[#77786E] flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-[#C66B52]/10 text-[#C66B52] flex items-center justify-center shrink-0">
-                  <LockIcon size={13} />
+                {/* Privacy Safeguard Footer */}
+                <div className="pt-4 mt-6 border-t border-[#EADFCF] text-xs text-[#77786E] flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg bg-[#C66B52]/10 text-[#C66B52] flex items-center justify-center shrink-0">
+                    <LockIcon size={13} />
+                  </div>
+                  <span>
+                    Provider communication is strictly coordinated by FIC Officers to maintain confidentiality and guarantee compliance.
+                  </span>
                 </div>
-                <span>
-                  Provider communication is strictly coordinated by FIC Officers to maintain confidentiality and guarantee compliance.
-                </span>
               </div>
-            </div>
-          </WorkspaceCard>
+            </WorkspaceCard>
+          </ScrollReveal>
         </div>
 
         {/* Right Column: Opportunity Bulletin */}
         <div className="lg:col-span-4">
-          <WorkspaceCard variant="amber" padded={false} className="h-full flex flex-col">
-            <div className="px-6 py-4 border-b border-[#D99B43]/30 bg-[#FDF6E9]/60 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <SparklesIcon size={18} className="text-[#D99B43]" />
-                <h3 className="text-sm font-black text-[#29302D]">
-                  FIC Opportunity Bulletin
-                </h3>
-              </div>
-              <WorkspaceBadge variant="luxury" size="sm">
-                Verified
-              </WorkspaceBadge>
-            </div>
-
-            <div className="p-6 space-y-3.5 flex-1">
-              <div className="p-4 rounded-2xl bg-white/95 border border-[#D99B43]/30 shadow-2xs space-y-1.5 hover:border-[#D99B43] transition-colors">
-                <div className="flex items-center justify-between gap-2">
-                  <strong className="text-xs text-[#29302D] font-black">
-                    Universal Discovery Enabled
-                  </strong>
-                  <span className="text-[10px] font-bold text-[#D99B43] bg-[#D99B43]/15 px-2 py-0.5 rounded-md">
-                    All Sectors
-                  </span>
+          <ScrollReveal direction="up" delay={0.2}>
+            <WorkspaceCard variant="amber" padded={false} className="h-full flex flex-col">
+              <div className="px-6 py-4 border-b border-[#D99B43]/30 bg-[#FDF6E9]/60 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <SparklesIcon size={18} className="text-[#D99B43]" />
+                  <h3 className="text-sm font-black text-[#29302D]">
+                    FIC Opportunity Bulletin
+                  </h3>
                 </div>
-                <p className="text-xs text-[#77786E] leading-relaxed">
-                  As an approved member, you can browse listings across all 10 business sectors regardless of your primary category.
-                </p>
+                <WorkspaceBadge variant="luxury" size="sm">
+                  Verified
+                </WorkspaceBadge>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white/95 border border-[#8064A9]/30 shadow-2xs space-y-1.5 hover:border-[#8064A9] transition-colors">
-                <div className="flex items-center justify-between gap-2">
-                  <strong className="text-xs text-[#29302D] font-black">
-                    Tiruppur Textile OEM Tie-Up
-                  </strong>
-                  <span className="text-[10px] font-bold text-[#8064A9] bg-[#8064A9]/15 px-2 py-0.5 rounded-md">
-                    Manufacturing
-                  </span>
-                </div>
-                <p className="text-xs text-[#77786E] leading-relaxed">
-                  Export-grade uniform stitching capacity open for franchise chains and school suppliers through FIC.
-                </p>
-              </div>
+              <div className="p-6 space-y-3.5 flex-1">
+                <motion.div
+                  whileHover={{ y: -3, scale: 1.01 }}
+                  transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                  className="p-4 rounded-2xl bg-white/95 border border-[#D99B43]/30 shadow-2xs space-y-1.5 hover:border-[#D99B43] transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-xs text-[#29302D] font-black">
+                      Universal Discovery Enabled
+                    </strong>
+                    <span className="text-[10px] font-bold text-[#D99B43] bg-[#D99B43]/15 px-2 py-0.5 rounded-md">
+                      All Sectors
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#77786E] leading-relaxed">
+                    As an approved member, you can browse listings across all 10 business sectors regardless of your primary category.
+                  </p>
+                </motion.div>
 
-              <div className="p-4 rounded-2xl bg-white/95 border border-[#C66B52]/30 shadow-2xs space-y-1.5 hover:border-[#C66B52] transition-colors">
-                <div className="flex items-center justify-between gap-2">
-                  <strong className="text-xs text-[#29302D] font-black">
-                    Strict Regulatory Standards
-                  </strong>
-                  <span className="text-[10px] font-bold text-[#C66B52] bg-[#C66B52]/15 px-2 py-0.5 rounded-md">
-                    Compliance
-                  </span>
-                </div>
-                <p className="text-xs text-[#77786E] leading-relaxed">
-                  FIC does not hold custody of investment funds. Financial expressions are strictly confidential introduction requests.
-                </p>
+                <motion.div
+                  whileHover={{ y: -3, scale: 1.01 }}
+                  transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                  className="p-4 rounded-2xl bg-white/95 border border-[#8064A9]/30 shadow-2xs space-y-1.5 hover:border-[#8064A9] transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-xs text-[#29302D] font-black">
+                      Tiruppur Textile OEM Tie-Up
+                    </strong>
+                    <span className="text-[10px] font-bold text-[#8064A9] bg-[#8064A9]/15 px-2 py-0.5 rounded-md">
+                      Manufacturing
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#77786E] leading-relaxed">
+                    Export-grade uniform stitching capacity open for franchise chains and school suppliers through FIC.
+                  </p>
+                </motion.div>
+
+                <motion.div
+                  whileHover={{ y: -3, scale: 1.01 }}
+                  transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                  className="p-4 rounded-2xl bg-white/95 border border-[#C66B52]/30 shadow-2xs space-y-1.5 hover:border-[#C66B52] transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-xs text-[#29302D] font-black">
+                      Strict Regulatory Standards
+                    </strong>
+                    <span className="text-[10px] font-bold text-[#C66B52] bg-[#C66B52]/15 px-2 py-0.5 rounded-md">
+                      Compliance
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#77786E] leading-relaxed">
+                    FIC does not hold custody of investment funds. Financial expressions are strictly confidential introduction requests.
+                  </p>
+                </motion.div>
               </div>
-            </div>
-          </WorkspaceCard>
+            </WorkspaceCard>
+          </ScrollReveal>
         </div>
 
       </div>

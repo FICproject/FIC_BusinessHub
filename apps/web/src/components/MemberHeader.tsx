@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   getStoredUser,
   removeAuthToken,
@@ -176,9 +177,16 @@ export const MemberHeader: React.FC = () => {
               )}
             </button>
 
-            {/* Notification Dropdown Menu */}
-            {notificationOpen && (
-              <div className="absolute right-0 mt-2 w-[calc(100vw-24px)] sm:w-[380px] max-w-[380px] bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in text-[#29302D]">
+            {/* Notification Dropdown Menu with Spring Entrance */}
+            <AnimatePresence>
+              {notificationOpen && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.94, y: -8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                  transition={{ type: 'spring', stiffness: 380, damping: 26 }}
+                  className="absolute right-0 mt-2 w-[calc(100vw-24px)] sm:w-[380px] max-w-[380px] bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl shadow-2xl z-50 overflow-hidden text-[#29302D]"
+                >
                 <div className="px-4 py-3 bg-[#F5EBDD] border-b border-[#E8DBC8] flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-black text-sm text-[#29302D]">Notifications</span>
@@ -255,8 +263,9 @@ export const MemberHeader: React.FC = () => {
                     View Wallet & Account Activity &rarr;
                   </Link>
                 </div>
-              </div>
+              </motion.div>
             )}
+          </AnimatePresence>
           </div>
 
           {/* PROFILE BUTTON */}
@@ -333,75 +342,83 @@ export const MemberHeader: React.FC = () => {
       </div>
 
       {/* ========================================================
-          MOBILE MENU COLLAPSIBLE DRAWER
+          MOBILE MENU COLLAPSIBLE DRAWER WITH SPRING SLIDE
          ======================================================== */}
-      {mobileMenuOpen && (
-        <div className="xl:hidden border-b border-[#E8DBC8] bg-[#F5EBDD] px-4 pt-3 pb-5 space-y-3 shadow-xl max-h-[85vh] overflow-y-auto">
-          {/* Authenticated Member Info Banner in Drawer */}
-          <div className="p-3 bg-white/80 border border-[#E8DBC8] rounded-xl flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#29302D] text-white flex items-center justify-center font-bold text-xs">
-                {user?.fullName?.charAt(0) || 'M'}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            className="xl:hidden border-b border-[#E8DBC8] bg-[#F5EBDD] px-4 pt-3 pb-5 space-y-3 shadow-xl max-h-[85vh] overflow-y-auto"
+          >
+            {/* Authenticated Member Info Banner in Drawer */}
+            <div className="p-3 bg-white/80 border border-[#E8DBC8] rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-[#29302D] text-white flex items-center justify-center font-bold text-xs">
+                  {user?.fullName?.charAt(0) || 'M'}
+                </div>
+                <div className="min-w-0">
+                  <span className="font-bold text-xs text-[#29302D] block truncate max-w-[180px]">
+                    {user?.fullName || 'Member'}
+                  </span>
+                  <span className="text-[10px] text-[#8064A9] font-bold block truncate max-w-[180px]">
+                    {user?.subCategory || 'Enterprise Member'}
+                  </span>
+                </div>
               </div>
-              <div className="min-w-0">
-                <span className="font-bold text-xs text-[#29302D] block truncate max-w-[180px]">
-                  {user?.fullName || 'Member'}
-                </span>
-                <span className="text-[10px] text-[#8064A9] font-bold block truncate max-w-[180px]">
-                  {user?.subCategory || 'Enterprise Member'}
-                </span>
-              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#2E7D32] bg-[#2E7D32]/10 px-2 py-0.5 rounded border border-[#2E7D32]/20">
+                Active
+              </span>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#2E7D32] bg-[#2E7D32]/10 px-2 py-0.5 rounded border border-[#2E7D32]/20">
-              Active
-            </span>
-          </div>
 
-          <div className="space-y-1">
-            {navLinks.map((item) => {
-              const isActive =
-                location.pathname === item.path ||
-                (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={closeMenu}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13.5px] transition-colors min-h-[44px] ${
-                    isActive
-                      ? 'bg-[#29302D] text-[#FCFAF6] font-bold shadow-2xs'
-                      : 'text-[#29302D] hover:bg-[#FFF9F0] font-medium'
-                  }`}
-                >
-                  <span>{item.label}</span>
-                  {isActive && <span className="text-xs text-[#E58C72]">●</span>}
-                </Link>
-              );
-            })}
-            <Link
-              to="/profile"
-              onClick={closeMenu}
-              className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13.5px] font-bold transition-colors min-h-[44px] ${
-                location.pathname.startsWith('/profile')
-                  ? 'bg-[#29302D] text-[#FCFAF6] shadow-2xs'
-                  : 'text-[#29302D] hover:bg-[#FFF9F0]'
-              }`}
-            >
-              <span>Profile & Wallet</span>
-              {location.pathname.startsWith('/profile') && <span className="text-xs text-[#E58C72]">●</span>}
-            </Link>
-          </div>
+            <div className="space-y-1">
+              {navLinks.map((item) => {
+                const isActive =
+                  location.pathname === item.path ||
+                  (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={closeMenu}
+                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13.5px] transition-colors min-h-[44px] ${
+                      isActive
+                        ? 'bg-[#29302D] text-[#FCFAF6] font-bold shadow-2xs'
+                        : 'text-[#29302D] hover:bg-[#FFF9F0] font-medium'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {isActive && <span className="text-xs text-[#E58C72]">●</span>}
+                  </Link>
+                );
+              })}
+              <Link
+                to="/profile"
+                onClick={closeMenu}
+                className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13.5px] font-bold transition-colors min-h-[44px] ${
+                  location.pathname.startsWith('/profile')
+                    ? 'bg-[#29302D] text-[#FCFAF6] shadow-2xs'
+                    : 'text-[#29302D] hover:bg-[#FFF9F0]'
+                }`}
+              >
+                <span>Profile & Wallet</span>
+                {location.pathname.startsWith('/profile') && <span className="text-xs text-[#E58C72]">●</span>}
+              </Link>
+            </div>
 
-          <div className="pt-2 border-t border-[#E8DBC8]">
-            <button
-              onClick={handleLogout}
-              className="w-full py-2.5 min-h-[44px] text-center text-[13px] font-bold text-[#C66B52] bg-white rounded-xl border border-[#E8DBC8] hover:bg-[#C66B52] hover:text-white transition-colors cursor-pointer shadow-2xs"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      )}
+            <div className="pt-2 border-t border-[#E8DBC8]">
+              <button
+                onClick={handleLogout}
+                className="w-full py-2.5 min-h-[44px] text-center text-[13px] font-bold text-[#C66B52] bg-white rounded-xl border border-[#E8DBC8] hover:bg-[#C66B52] hover:text-white transition-colors cursor-pointer shadow-2xs"
+              >
+                Logout
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };

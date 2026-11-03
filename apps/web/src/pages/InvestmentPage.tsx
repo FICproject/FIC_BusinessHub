@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   WorkspaceShell,
   WorkspaceHero,
@@ -8,6 +8,7 @@ import {
   WorkspaceBadge,
   WorkspaceEmptyState
 } from '../components/workspace/WorkspaceComponents';
+import { AnimatedModal, AnimatedProgress, StaggerContainer, StaggerItem } from '../motion';
 import {
   TrendingUpIcon,
   ShieldCheckIcon,
@@ -309,55 +310,76 @@ export const InvestmentPage: React.FC = () => {
       </div>
 
       {/* ========================================================
-          2. THREE-TAB WORKSPACE SWITCHER
+          2. THREE-TAB WORKSPACE SWITCHER WITH SHARED LAYOUT INDICATOR
          ======================================================== */}
       <div className="flex flex-wrap items-center gap-2 border-b border-[#EADFCF] pb-3 mb-6">
         <button
           type="button"
           onClick={() => setActiveTab('submit')}
-          className={`px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'submit'
-              ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
-              : 'text-[#77786E] hover:text-[#29302D] hover:bg-white/80'
+          className={`relative px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'submit' ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
           }`}
         >
-          <LockIcon size={16} />
-          <span>Submit Expression of Interest</span>
+          {activeTab === 'submit' && (
+            <motion.div
+              layoutId="invTabIndicator"
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              className="absolute inset-0 bg-[#29302D] rounded-xl shadow-sm -z-0"
+            />
+          )}
+          <span className="relative z-10 flex items-center gap-2">
+            <LockIcon size={16} />
+            <span>Submit Expression of Interest</span>
+          </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('my_inquiries')}
-          className={`px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'my_inquiries'
-              ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
-              : 'text-[#77786E] hover:text-[#29302D] hover:bg-white/80'
+          className={`relative px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'my_inquiries' ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
           }`}
         >
-          <FileTextIcon size={16} />
-          <span>My Deal Expressions & Status</span>
-          <span
-            className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-              activeTab === 'my_inquiries' ? 'bg-white/20 text-white' : 'bg-[#EADFCF] text-[#29302D]'
-            }`}
-          >
-            {inquiriesList.length}
+          {activeTab === 'my_inquiries' && (
+            <motion.div
+              layoutId="invTabIndicator"
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              className="absolute inset-0 bg-[#29302D] rounded-xl shadow-sm -z-0"
+            />
+          )}
+          <span className="relative z-10 flex items-center gap-2">
+            <FileTextIcon size={16} />
+            <span>My Deal Expressions & Status</span>
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                activeTab === 'my_inquiries' ? 'bg-white/20 text-white' : 'bg-[#EADFCF] text-[#29302D]'
+              }`}
+            >
+              {inquiriesList.length}
+            </span>
           </span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('deal_room')}
-          className={`px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-all duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'deal_room'
-              ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
-              : 'text-[#77786E] hover:text-[#29302D] hover:bg-white/80'
+          className={`relative px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
+            activeTab === 'deal_room' ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
           }`}
         >
-          <SparklesIcon size={16} className="text-[#D99B43]" />
-          <span>Private Deal Room Opportunities</span>
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#D99B43]/20 text-[#9C6818]">
-            {dealRoomOpportunities.length} Active
+          {activeTab === 'deal_room' && (
+            <motion.div
+              layoutId="invTabIndicator"
+              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+              className="absolute inset-0 bg-[#29302D] rounded-xl shadow-sm -z-0"
+            />
+          )}
+          <span className="relative z-10 flex items-center gap-2">
+            <SparklesIcon size={16} className="text-[#D99B43]" />
+            <span>Private Deal Room Opportunities</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#D99B43]/20 text-[#9C6818]">
+              {dealRoomOpportunities.length} Active
+            </span>
           </span>
         </button>
       </div>
@@ -371,12 +393,17 @@ export const InvestmentPage: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
+              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             >
               <WorkspaceCard variant="amber" className="text-center py-12 px-6 space-y-4">
-                <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#D99B43] to-[#B87A28] text-white flex items-center justify-center mx-auto shadow-lg">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                  className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#D99B43] to-[#B87A28] text-white flex items-center justify-center mx-auto shadow-lg"
+                >
                   <CheckCircleIcon size={32} />
-                </div>
+                </motion.div>
                 <div className="space-y-1.5 max-w-lg mx-auto">
                   <h3 className="text-xl font-black text-[#29302D]">Confidential Record Registered!</h3>
                   <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
@@ -414,8 +441,9 @@ export const InvestmentPage: React.FC = () => {
                     Your Commercial Orientation <span className="text-[#C66B52]">*</span>
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button
+                    <motion.button
                       type="button"
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => setProfileType('FUNDING_SEEKER')}
                       className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
                         profileType === 'FUNDING_SEEKER'
@@ -427,10 +455,11 @@ export const InvestmentPage: React.FC = () => {
                       <span className={`text-xs block mt-1 ${profileType === 'FUNDING_SEEKER' ? 'text-[#EADFCF]' : 'text-[#77786E]'}`}>
                         I represent an enterprise or startup seeking expansion investment, working capital, or joint syndication.
                       </span>
-                    </button>
+                    </motion.button>
 
-                    <button
+                    <motion.button
                       type="button"
+                      whileTap={{ scale: 0.98 }}
                       onClick={() => setProfileType('INVESTOR')}
                       className={`p-4 rounded-2xl border text-left transition-all cursor-pointer ${
                         profileType === 'INVESTOR'
@@ -442,7 +471,7 @@ export const InvestmentPage: React.FC = () => {
                       <span className={`text-xs block mt-1 ${profileType === 'INVESTOR' ? 'text-[#EADFCF]' : 'text-[#77786E]'}`}>
                         I represent a private family office, syndicate, or enterprise looking to deploy capital in vetted ventures.
                       </span>
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
 
@@ -473,9 +502,10 @@ export const InvestmentPage: React.FC = () => {
                     {sectorList.map((sec, i) => {
                       const isSelected = selectedSectors.includes(sec);
                       return (
-                        <button
+                        <motion.button
                           type="button"
                           key={i}
+                          whileTap={{ scale: 0.94 }}
                           onClick={() => toggleSector(sec)}
                           className={`text-xs px-3.5 py-2 rounded-xl border transition-all duration-200 cursor-pointer ${
                             isSelected
@@ -485,7 +515,7 @@ export const InvestmentPage: React.FC = () => {
                         >
                           {isSelected ? '✓ ' : '+ '}
                           {sec}
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -555,67 +585,86 @@ export const InvestmentPage: React.FC = () => {
             </div>
           </WorkspaceCard>
 
-          {/* List */}
-          {filteredInquiries.length === 0 ? (
-            <WorkspaceEmptyState
-              icon={<TrendingUpIcon size={28} />}
-              title="No investment inquiries recorded"
-              description="You have not submitted any confidential investment or capital inquiries."
-              actionText="Submit Expression of Interest"
-              onAction={() => setActiveTab('submit')}
-              accent="charcoal"
-            />
-          ) : (
-            <div className="space-y-4">
-              {filteredInquiries.map((inv) => (
-                <WorkspaceCard key={inv.id} variant="default" className="space-y-4 hover:border-[#D99B43]/50 transition-colors">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] text-[#77786E] font-mono font-bold tracking-wider">
-                          DEAL REF: {inv.id}
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-200">
-                          {inv.profileType === 'FUNDING_SEEKER' ? 'Seeking Capital' : 'Investor Profile'}
-                        </span>
+          {/* List (Animated Layout & Stagger) */}
+          <motion.div layout className="space-y-4">
+            <AnimatePresence mode="popLayout">
+              {filteredInquiries.length === 0 ? (
+                <motion.div
+                  key="empty-inquiries"
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                >
+                  <WorkspaceEmptyState
+                    icon={<TrendingUpIcon size={28} />}
+                    title="No investment inquiries recorded"
+                    description="You have not submitted any confidential investment or capital inquiries."
+                    actionText="Submit Expression of Interest"
+                    onAction={() => setActiveTab('submit')}
+                    accent="charcoal"
+                  />
+                </motion.div>
+              ) : (
+                filteredInquiries.map((inv) => (
+                  <motion.div
+                    key={inv.id}
+                    layout
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    whileHover={{ y: -3 }}
+                    transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                  >
+                    <WorkspaceCard variant="default" className="space-y-4 hover:border-[#D99B43]/50 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] text-[#77786E] font-mono font-bold tracking-wider">
+                              DEAL REF: {inv.id}
+                            </span>
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-200">
+                              {inv.profileType === 'FUNDING_SEEKER' ? 'Seeking Capital' : 'Investor Profile'}
+                            </span>
+                          </div>
+                          <h3 className="text-base sm:text-lg font-black text-[#29302D]">
+                            Target Ticket: {inv.amountRange}
+                          </h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#77786E] font-medium">{inv.submittedDate}</span>
+                          {getStatusBadge(inv.status, inv.statusLabel)}
+                        </div>
                       </div>
-                      <h3 className="text-base sm:text-lg font-black text-[#29302D]">
-                        Target Ticket: {inv.amountRange}
-                      </h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-[#77786E] font-medium">{inv.submittedDate}</span>
-                      {getStatusBadge(inv.status, inv.statusLabel)}
-                    </div>
-                  </div>
 
-                  <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed line-clamp-2">
-                    {inv.pitchSummary}
-                  </p>
+                      <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed line-clamp-2">
+                        {inv.pitchSummary}
+                      </p>
 
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#EADFCF]/50">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[11px] font-bold text-[#77786E]">Sectors:</span>
-                      {inv.sectors.map((s, idx) => (
-                        <span key={idx} className="text-[10px] bg-[#FAF7F2] border border-[#EADFCF] text-[#29302D] font-bold px-2 py-0.5 rounded-md">
-                          {s}
-                        </span>
-                      ))}
-                    </div>
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#EADFCF]/50">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[11px] font-bold text-[#77786E]">Sectors:</span>
+                          {inv.sectors.map((s, idx) => (
+                            <span key={idx} className="text-[10px] bg-[#FAF7F2] border border-[#EADFCF] text-[#29302D] font-bold px-2 py-0.5 rounded-md">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
 
-                    <WorkspaceButton
-                      variant="charcoal"
-                      size="sm"
-                      onClick={() => setSelectedRecord(inv)}
-                      icon={<ArrowRightIcon size={13} />}
-                    >
-                      View Confidential Deal Room Status
-                    </WorkspaceButton>
-                  </div>
-                </WorkspaceCard>
-              ))}
-            </div>
-          )}
+                        <WorkspaceButton
+                          variant="charcoal"
+                          size="sm"
+                          onClick={() => setSelectedRecord(inv)}
+                          icon={<ArrowRightIcon size={13} />}
+                        >
+                          View Confidential Deal Room Status
+                        </WorkspaceButton>
+                      </div>
+                    </WorkspaceCard>
+                  </motion.div>
+                ))
+              )}
+            </AnimatePresence>
+          </motion.div>
         </div>
       )}
 
@@ -638,86 +687,91 @@ export const InvestmentPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+          <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
             {dealRoomOpportunities.map((opp) => (
-              <WorkspaceCard key={opp.id} variant="default" className="flex flex-col justify-between space-y-4 border-[#EADFCF] hover:border-[#D99B43] transition-colors">
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#FAF7F2] border border-[#EADFCF] text-[#29302D] rounded-md">
-                      {opp.sector}
-                    </span>
-                    <span className="text-[10px] font-black text-[#C66B52] bg-red-50 border border-red-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                      <LockIcon size={10} /> NDA Required
-                    </span>
+              <motion.div
+                key={opp.id}
+                whileHover={{ y: -5, scale: 1.01 }}
+                transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                className="h-full"
+              >
+                <WorkspaceCard variant="default" className="flex flex-col justify-between h-full space-y-4 border-[#EADFCF] hover:border-[#D99B43] transition-colors">
+                  <div className="space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#FAF7F2] border border-[#EADFCF] text-[#29302D] rounded-md">
+                        {opp.sector}
+                      </span>
+                      <span className="text-[10px] font-black text-[#C66B52] bg-red-50 border border-red-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <LockIcon size={10} /> NDA Required
+                      </span>
+                    </div>
+
+                    <h4 className="text-sm font-black text-[#29302D]">
+                      {opp.dealCode}
+                    </h4>
+
+                    <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EADFCF] space-y-1 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-[#77786E]">Ticket Size:</span>
+                        <strong className="text-[#29302D]">{opp.ticketSize}</strong>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#77786E]">Structure:</span>
+                        <strong className="text-[#29302D]">{opp.tenure}</strong>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-[#77786E] leading-relaxed">
+                      {opp.highlight}
+                    </p>
                   </div>
 
-                  <h4 className="text-sm font-black text-[#29302D]">
-                    {opp.dealCode}
-                  </h4>
-
-                  <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EADFCF] space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-[#77786E]">Ticket Size:</span>
-                      <strong className="text-[#29302D]">{opp.ticketSize}</strong>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[#77786E]">Structure:</span>
-                      <strong className="text-[#29302D]">{opp.tenure}</strong>
-                    </div>
+                  <div className="pt-3 border-t border-[#EADFCF]">
+                    <WorkspaceButton
+                      variant="charcoal"
+                      size="sm"
+                      className="w-full justify-center"
+                      onClick={() => setActiveOpportunity(opp)}
+                      icon={<LockIcon size={13} />}
+                    >
+                      Express Confidential Interest
+                    </WorkspaceButton>
                   </div>
-
-                  <p className="text-xs text-[#77786E] leading-relaxed">
-                    {opp.highlight}
-                  </p>
-                </div>
-
-                <div className="pt-3 border-t border-[#EADFCF]">
-                  <WorkspaceButton
-                    variant="charcoal"
-                    size="sm"
-                    className="w-full justify-center"
-                    onClick={() => setActiveOpportunity(opp)}
-                    icon={<LockIcon size={13} />}
-                  >
-                    Express Confidential Interest
-                  </WorkspaceButton>
-                </div>
-              </WorkspaceCard>
+                </WorkspaceCard>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       )}
 
       {/* ========================================================
-          MODAL 1: MY INQUIRY DETAILS MODAL
+          MODAL 1: MY INQUIRY DETAILS ANIMATED MODAL
          ======================================================== */}
-      {selectedRecord && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#FAF7F2] border border-[#EADFCF] rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto space-y-5 my-auto">
-            <div className="flex items-start justify-between border-b border-[#EADFCF] pb-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[11px] text-[#77786E] font-mono font-bold">
-                    {selectedRecord.id}
-                  </span>
-                  {getStatusBadge(selectedRecord.status, selectedRecord.statusLabel)}
-                </div>
-                <h3 className="text-lg sm:text-xl font-black text-[#29302D]">
-                  {selectedRecord.amountRange}
-                </h3>
-                <span className="text-xs text-[#8064A9] font-bold">
-                  {selectedRecord.profileType === 'FUNDING_SEEKER' ? 'Capital Seeker File' : 'Accredited Investor File'}
+      <AnimatedModal
+        isOpen={!!selectedRecord}
+        onClose={() => setSelectedRecord(null)}
+        maxWidth="max-w-2xl"
+        title={
+          selectedRecord && (
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-[11px] text-[#77786E] font-mono font-bold">
+                  {selectedRecord.id}
                 </span>
+                {getStatusBadge(selectedRecord.status, selectedRecord.statusLabel)}
               </div>
-              <button
-                type="button"
-                onClick={() => setSelectedRecord(null)}
-                className="w-8 h-8 rounded-xl bg-white border border-[#EADFCF] text-[#77786E] hover:text-[#29302D] flex items-center justify-center font-bold cursor-pointer"
-              >
-                ✕
-              </button>
+              <h3 className="text-lg sm:text-xl font-black text-[#29302D]">
+                {selectedRecord.amountRange}
+              </h3>
+              <span className="text-xs text-[#8064A9] font-bold">
+                {selectedRecord.profileType === 'FUNDING_SEEKER' ? 'Capital Seeker File' : 'Accredited Investor File'}
+              </span>
             </div>
-
+          )
+        }
+      >
+        {selectedRecord && (
+          <div className="space-y-5">
             {/* Pitch */}
             <div className="space-y-1.5">
               <span className="text-xs font-black text-[#29302D] uppercase tracking-wider block">
@@ -728,7 +782,7 @@ export const InvestmentPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Due Diligence Scores */}
+            {/* Due Diligence Scores with Animated Progress Bars */}
             {selectedRecord.dueDiligenceScore && (
               <div className="p-4 rounded-2xl bg-white border border-[#EADFCF] space-y-3">
                 <div className="flex items-center justify-between">
@@ -741,23 +795,35 @@ export const InvestmentPage: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                  <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EADFCF] space-y-1">
+                  <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EADFCF] space-y-1.5">
                     <span className="text-[10px] text-[#77786E] font-bold block">Statutory Compliance</span>
                     <span className="text-base font-black text-[#29302D]">
                       {selectedRecord.dueDiligenceScore.statutoryCompliance}%
                     </span>
+                    <AnimatedProgress
+                      value={selectedRecord.dueDiligenceScore.statutoryCompliance}
+                      barColor="bg-emerald-600"
+                    />
                   </div>
-                  <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EADFCF] space-y-1">
+                  <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EADFCF] space-y-1.5">
                     <span className="text-[10px] text-[#77786E] font-bold block">Financial Health</span>
                     <span className="text-base font-black text-[#29302D]">
                       {selectedRecord.dueDiligenceScore.financialHealth}%
                     </span>
+                    <AnimatedProgress
+                      value={selectedRecord.dueDiligenceScore.financialHealth}
+                      barColor="bg-[#D99B43]"
+                    />
                   </div>
-                  <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EADFCF] space-y-1">
+                  <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EADFCF] space-y-1.5">
                     <span className="text-[10px] text-[#77786E] font-bold block">Viability Score</span>
                     <span className="text-base font-black text-[#29302D]">
                       {selectedRecord.dueDiligenceScore.businessModelViability}%
                     </span>
+                    <AnimatedProgress
+                      value={selectedRecord.dueDiligenceScore.businessModelViability}
+                      barColor="bg-purple-600"
+                    />
                   </div>
                 </div>
               </div>
@@ -793,38 +859,41 @@ export const InvestmentPage: React.FC = () => {
               </WorkspaceButton>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedModal>
 
       {/* ========================================================
           MODAL 2: EXPRESS INTEREST IN DEAL ROOM OPPORTUNITY
          ======================================================== */}
-      {activeOpportunity && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-[#FAF7F2] border border-[#EADFCF] rounded-3xl max-w-lg w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto space-y-4 my-auto">
-            <div className="flex items-start justify-between border-b border-[#EADFCF] pb-3">
-              <div>
-                <span className="text-[10px] font-black uppercase text-[#C66B52] tracking-wider">
-                  Confidential Opportunity Expression
-                </span>
-                <h3 className="text-base sm:text-lg font-black text-[#29302D] mt-0.5">
-                  {activeOpportunity.dealCode}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveOpportunity(null)}
-                className="w-8 h-8 rounded-xl bg-white border border-[#EADFCF] text-[#77786E] hover:text-[#29302D] flex items-center justify-center font-bold cursor-pointer"
-              >
-                ✕
-              </button>
+      <AnimatedModal
+        isOpen={!!activeOpportunity}
+        onClose={() => setActiveOpportunity(null)}
+        maxWidth="max-w-lg"
+        title={
+          activeOpportunity && (
+            <div>
+              <span className="text-[10px] font-black uppercase text-[#C66B52] tracking-wider">
+                Confidential Opportunity Expression
+              </span>
+              <h3 className="text-base sm:text-lg font-black text-[#29302D] mt-0.5">
+                {activeOpportunity.dealCode}
+              </h3>
             </div>
-
+          )
+        }
+      >
+        {activeOpportunity && (
+          <div className="space-y-4">
             {oppSuccess ? (
               <div className="py-8 text-center space-y-2">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                  className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto"
+                >
                   <CheckCircleIcon size={24} />
-                </div>
+                </motion.div>
                 <h4 className="text-base font-black text-[#29302D]">Interest Registered Confidentially!</h4>
                 <p className="text-xs text-[#77786E] max-w-xs mx-auto">
                   The FIC Senior Deal Committee has received your notice. An NDA document will be issued to your registered email.
@@ -888,8 +957,8 @@ export const InvestmentPage: React.FC = () => {
               </form>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </AnimatedModal>
     </WorkspaceShell>
   );
 };
