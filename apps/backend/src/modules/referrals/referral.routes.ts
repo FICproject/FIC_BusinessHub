@@ -58,16 +58,39 @@ referralsRouter.get('/my-referrals', authenticate, async (req: AuthenticatedRequ
     const referralCode = `FIC-${user.fullName.toUpperCase().replace(/\s+/g, '')}-${user._id.toString().slice(-4).toUpperCase()}`;
 
     const referrals = await ReferralModel.find({ referrerUserId: req.user.userId })
-      .populate('referredUserId', 'fullName email createdAt')
+      .populate('referredUserId', 'fullName primaryCategoryName primarySubcategoryName subCategory createdAt')
       .sort({ createdAt: -1 });
 
-    const totalReferrals = referrals.length;
-    const pendingReferrals = referrals.filter((r) => r.rewardStatus === 'PENDING_ELIGIBILITY' || r.rewardStatus === 'PENDING_APPROVAL').length;
-    const kycApprovedReferrals = referrals.filter((r) => r.kycStatus === 'VERIFIED').length;
-    const rewardPending = referrals
+    const sanitizedReferrals = referrals.map((r: any) => {
+      const refUser = r.referredUserId || {};
+      const memberId = refUser._id ? `FIC-${refUser._id.toString().slice(-6).toUpperCase()}` : (r.referralId || 'FIC-MBR');
+      return {
+        _id: r._id,
+        referralId: r.referralId,
+        referredUserId: refUser._id ? refUser._id.toString() : '',
+        referredName: refUser.fullName || r.referredName || 'Registered Member',
+        referredMemberName: refUser.fullName || r.referredName || 'Registered Member',
+        referredMemberId: memberId,
+        categoryName: refUser.primaryCategoryName || r.categoryName || 'General Member',
+        subCategory: refUser.primarySubcategoryName || refUser.subCategory || r.subCategory || 'Member',
+        registrationDate: r.registrationDate ? new Date(r.registrationDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recently',
+        paymentStatus: r.paymentStatus || 'PAID',
+        kycStatus: r.kycStatus || 'PENDING',
+        accountStatus: r.accountStatus || 'ACTIVE',
+        referralStatus: r.referralStatus || 'REGISTERED',
+        rewardAmount: r.rewardAmount || 500,
+        rewardStatus: r.rewardStatus || 'PENDING_APPROVAL',
+        referralSource: r.referralSource || 'REFERRED'
+      };
+    });
+
+    const totalReferrals = sanitizedReferrals.length;
+    const pendingReferrals = sanitizedReferrals.filter((r) => r.rewardStatus === 'PENDING_ELIGIBILITY' || r.rewardStatus === 'PENDING_APPROVAL').length;
+    const kycApprovedReferrals = sanitizedReferrals.filter((r) => r.kycStatus === 'VERIFIED').length;
+    const rewardPending = sanitizedReferrals
       .filter((r) => r.rewardStatus === 'PENDING_APPROVAL')
       .reduce((sum, r) => sum + (r.rewardAmount || 500), 0);
-    const rewardCredited = referrals
+    const rewardCredited = sanitizedReferrals
       .filter((r) => r.rewardStatus === 'CREDITED')
       .reduce((sum, r) => sum + (r.rewardAmount || 500), 0);
 
@@ -84,7 +107,7 @@ referralsRouter.get('/my-referrals', authenticate, async (req: AuthenticatedRequ
           rewardCredited,
           totalEarnings: rewardCredited
         },
-        referrals
+        referrals: sanitizedReferrals
       }
     });
   } catch (error) {

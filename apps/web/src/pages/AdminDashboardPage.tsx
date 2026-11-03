@@ -60,8 +60,8 @@ export const AdminDashboardPage: React.FC = () => {
     if (rewardStatusFilter !== 'ALL' && r.rewardStatus !== rewardStatusFilter) return false;
     if (searchMember.trim()) {
       const q = searchMember.toLowerCase();
-      const matchName = r.referredName.toLowerCase().includes(q);
-      const matchEmail = r.referredEmail.toLowerCase().includes(q);
+      const matchName = (r.referredName || '').toLowerCase().includes(q);
+      const matchEmail = (r.referredEmail || '').toLowerCase().includes(q);
       const matchCode = (r.referralCode || '').toLowerCase().includes(q);
       const matchReferrer = (r.referrerName || '').toLowerCase().includes(q);
       if (!matchName && !matchEmail && !matchCode && !matchReferrer) return false;

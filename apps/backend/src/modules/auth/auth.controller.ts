@@ -22,6 +22,9 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       subcategoryIds,
       primarySubcategoryName,
       dynamicProfile,
+      address,
+      referralCode,
+      referredByCode,
       ageConfirmed,
       termsAccepted
     } = req.body;
@@ -70,6 +73,38 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       throw new AppError('An account with this email or mobile number already exists.', 409, 'ACCOUNT_EXISTS');
     }
 
+    // Validate residential address if provided
+    let validatedAddress = undefined;
+    if (address) {
+      if (!address.addressLine1?.trim()) {
+        throw new AppError('Address Line 1 is required.', 400, 'ADDRESS_LINE1_REQUIRED');
+      }
+      if (!address.state?.trim()) {
+        throw new AppError('State is required.', 400, 'STATE_REQUIRED');
+      }
+      if (!address.district?.trim()) {
+        throw new AppError('District is required.', 400, 'DISTRICT_REQUIRED');
+      }
+      if (!address.city?.trim()) {
+        throw new AppError('City / Town is required.', 400, 'CITY_REQUIRED');
+      }
+      if (!address.pinCode?.trim() || !/^\d{6}$/.test(address.pinCode.trim())) {
+        throw new AppError('Valid 6-digit Indian PIN code is required.', 400, 'PINCODE_INVALID');
+      }
+
+      validatedAddress = {
+        addressLine1: address.addressLine1.trim(),
+        addressLine2: address.addressLine2?.trim() || '',
+        landmark: address.landmark?.trim() || '',
+        country: address.country?.trim() || 'India',
+        state: address.state.trim(),
+        district: address.district.trim(),
+        city: address.city.trim(),
+        pinCode: address.pinCode.trim(),
+        addressType: address.addressType?.trim() || 'Residential'
+      };
+    }
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
@@ -77,6 +112,23 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       primarySubcategoryName ||
       subCategory ||
       (Array.isArray(subcategoryIds) && subcategoryIds.length > 0 ? subcategoryIds[0] : 'Member');
+
+    // Referral code generation & attribution
+    const generatedReferralCode = `FIC-${fullName.toUpperCase().replace(/\s+/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    let referrerUserId: mongoose.Types.ObjectId | undefined = undefined;
+    let referralSource: 'REFERRED' | 'ORGANIC' = 'ORGANIC';
+    const cleanRefBy = (referredByCode || referralCode || '').trim().toUpperCase();
+
+    if (cleanRefBy) {
+      const referrer = await UserModel.findOne({
+        $or: [{ referralCode: cleanRefBy }, { email: cleanRefBy.toLowerCase() }]
+      });
+      if (referrer) {
+        referrerUserId = referrer._id as mongoose.Types.ObjectId;
+        referralSource = 'REFERRED';
+      }
+    }
 
     const newUser = await UserModel.create({
       fullName,
@@ -92,11 +144,39 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       primarySubcategoryName: resolvedSubcategory,
       subcategoryIds: Array.isArray(subcategoryIds) ? subcategoryIds.filter(id => mongoose.isValidObjectId(id)) : [],
       dynamicProfile: dynamicProfile || {},
+      address: validatedAddress,
+      referralCode: generatedReferralCode,
+      referralSource,
+      referredByCode: cleanRefBy || undefined,
+      referrerUserId,
       isEmailVerified: true, // simplified for onboarding
       isPhoneVerified: true,
       isKycApproved: false,
       isMembershipActive: false
     });
+
+    // If referred, create attributed Referral record
+    if (referrerUserId) {
+      try {
+        const { ReferralModel } = await import('../referrals/referral.model');
+        await ReferralModel.create({
+          referralId: `REF_${Date.now()}`,
+          referralCode: cleanRefBy,
+          referrerUserId,
+          referredUserId: newUser._id,
+          referralSource: 'REFERRED',
+          registrationDate: new Date(),
+          paymentStatus: 'PAID',
+          kycStatus: 'PENDING',
+          accountStatus: 'ACTIVE',
+          referralStatus: 'ELIGIBLE',
+          rewardAmount: 500,
+          rewardStatus: 'PENDING_APPROVAL'
+        });
+      } catch (err: any) {
+        console.warn('Referral creation warning:', err?.message);
+      }
+    }
 
     const payload: JWTPayload = {
       userId: newUser._id.toString(),
@@ -127,6 +207,8 @@ export const register = async (req: Request, res: Response, next: NextFunction):
           subCategory: newUser.subCategory,
           primarySubcategoryName: newUser.primarySubcategoryName,
           subcategories: [newUser.subCategory].filter(Boolean),
+          address: newUser.address,
+          referralCode: newUser.referralCode,
           isKycApproved: newUser.isKycApproved,
           isMembershipActive: newUser.isMembershipActive
         }
@@ -188,10 +270,67 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
           primarySubcategoryName: user.primarySubcategoryName,
           subcategories: user.subCategory ? [user.subCategory] : [],
           subcategoryIds: user.subcategoryIds,
+          address: user.address,
+          referralCode: user.referralCode,
           isKycApproved: user.isKycApproved,
           isMembershipActive: user.isMembershipActive
         }
       }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProfile = async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    if (!req.user) {
+      throw new AppError('Unauthorized.', 401, 'UNAUTHORIZED');
+    }
+
+    const {
+      fullName,
+      phoneNumber,
+      address,
+      personalInfo,
+      professionalInfo,
+      subCategory,
+      subcategories
+    } = req.body;
+
+    const user = await UserModel.findById(req.user.userId);
+    if (!user) {
+      throw new AppError('User not found.', 404, 'USER_NOT_FOUND');
+    }
+
+    if (fullName) user.fullName = fullName.trim();
+    if (phoneNumber) user.phoneNumber = phoneNumber.trim();
+
+    if (address) {
+      user.address = {
+        addressLine1: address.addressLine1?.trim() || user.address?.addressLine1 || '',
+        addressLine2: address.addressLine2?.trim() || '',
+        landmark: address.landmark?.trim() || '',
+        country: address.country?.trim() || 'India',
+        state: address.state?.trim() || user.address?.state || '',
+        district: address.district?.trim() || user.address?.district || '',
+        city: address.city?.trim() || user.address?.city || '',
+        pinCode: address.pinCode?.trim() || user.address?.pinCode || '',
+        addressType: address.addressType?.trim() || 'Residential'
+      };
+    }
+
+    if (subCategory) {
+      user.subCategory = subCategory;
+      user.primarySubcategoryName = subCategory;
+    }
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully.',
+      data: user
     });
   } catch (error) {
     next(error);

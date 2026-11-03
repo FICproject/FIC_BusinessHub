@@ -32,6 +32,18 @@ export type {
 const BASE_URL = 'http://localhost:5000/api/v1';
 const ACCOUNTS_STORAGE_KEY = 'fic_registered_accounts';
 
+export interface UserAddress {
+  addressLine1: string;
+  addressLine2?: string;
+  landmark?: string;
+  country: string;
+  state: string;
+  district: string;
+  city: string;
+  pinCode: string;
+  addressType?: string;
+}
+
 export interface AuthenticatedUser {
   id: string;
   userId: string;
@@ -45,6 +57,7 @@ export interface AuthenticatedUser {
   subcategories: string[];
   subCategory?: string;
   subcategoryIds?: string[];
+  address?: UserAddress;
   accountStatus: 'ACTIVE' | 'PENDING' | 'SUSPENDED';
   kycStatus: 'VERIFIED' | 'PENDING' | 'SUBMITTED' | 'REJECTED';
   isKycApproved: boolean;
@@ -175,6 +188,17 @@ const INITIAL_SEED_ACCOUNTS: AuthenticatedUser[] = [
       pincode: '600028',
       address: 'No. 42, Anna Salai, Teynampet'
     },
+    address: {
+      addressLine1: 'No. 42, Anna Salai',
+      addressLine2: 'Teynampet',
+      landmark: 'Near DMS Metro Station',
+      country: 'India',
+      state: 'Tamil Nadu',
+      district: 'Chennai',
+      city: 'Chennai',
+      pinCode: '600028',
+      addressType: 'Residential'
+    },
     professionalInfo: {
       roleTitle: 'Full-Stack Software Engineer & Cloud Architect',
       skills: ['React', 'TypeScript', 'Node.js', 'Python', 'AWS Cloud Architecture', 'PostgreSQL'],
@@ -258,6 +282,17 @@ const INITIAL_SEED_ACCOUNTS: AuthenticatedUser[] = [
       pincode: '641604',
       address: 'Plot 12, SIDCO Industrial Estate'
     },
+    address: {
+      addressLine1: 'Plot 12, SIDCO Industrial Estate',
+      addressLine2: 'Phase II',
+      landmark: 'Near Textile Park',
+      country: 'India',
+      state: 'Tamil Nadu',
+      district: 'Tiruppur',
+      city: 'Tiruppur',
+      pinCode: '641604',
+      addressType: 'Business'
+    },
     professionalInfo: {
       businessName: 'Apex Textiles Manufacturing Unit',
       businessType: 'Proprietorship / Export Unit',
@@ -327,6 +362,17 @@ const INITIAL_SEED_ACCOUNTS: AuthenticatedUser[] = [
       state: 'Karnataka',
       pincode: '560001',
       address: 'No. 88, MG Road'
+    },
+    address: {
+      addressLine1: 'No. 88, MG Road',
+      addressLine2: 'Brigade Junction',
+      landmark: 'Opposite Metro Station',
+      country: 'India',
+      state: 'Karnataka',
+      district: 'Bengaluru Urban',
+      city: 'Bengaluru',
+      pinCode: '560001',
+      addressType: 'Residential'
     },
     professionalInfo: {
       businessName: 'Vitality Wellness & Nutrition Consultancy',
@@ -710,10 +756,18 @@ export const saveRegisteredAccount = (account: Partial<AuthenticatedUser> & { em
         : [
             { type: 'AADHAAR_CARD', name: 'Aadhaar Card', status: 'VERIFIED', uploadedAt: 'On Registration' }
           ],
+    address: account.address || existingAccount?.address,
     personalInfo: {
       ...(existingAccount?.personalInfo || {}),
       ...(account.personalInfo || {}),
-      ...(resolvedDob ? { dob: resolvedDob } : {})
+      ...(resolvedDob ? { dob: resolvedDob } : {}),
+      ...(account.address ? {
+        address: account.address.addressLine1 + (account.address.addressLine2 ? ', ' + account.address.addressLine2 : ''),
+        city: account.address.city,
+        district: account.address.district,
+        state: account.address.state,
+        pincode: account.address.pinCode
+      } : {})
     },
     professionalInfo: {
       ...(existingAccount?.professionalInfo || {}),
@@ -741,9 +795,17 @@ export const updateUserProfile = (userId: string, updates: Partial<Authenticated
     updatedAccount = {
       ...accounts[index],
       ...updates,
+      address: updates.address || accounts[index].address,
       personalInfo: {
         ...(accounts[index].personalInfo || {}),
-        ...(updates.personalInfo || {})
+        ...(updates.personalInfo || {}),
+        ...(updates.address ? {
+          address: updates.address.addressLine1 + (updates.address.addressLine2 ? ', ' + updates.address.addressLine2 : ''),
+          city: updates.address.city,
+          district: updates.address.district,
+          state: updates.address.state,
+          pincode: updates.address.pinCode
+        } : {})
       },
       professionalInfo: {
         ...(accounts[index].professionalInfo || {}),
@@ -755,12 +817,26 @@ export const updateUserProfile = (userId: string, updates: Partial<Authenticated
   } else {
     updatedAccount = {
       ...(current || ({} as AuthenticatedUser)),
-      ...updates
+      ...updates,
+      address: updates.address || current?.address
     };
   }
 
   if (current && (current.userId === userId || current.id === userId)) {
     localStorage.setItem('fic_user', JSON.stringify(updatedAccount));
+  }
+
+  // Also sync with backend if token is available
+  try {
+    const token = getAuthToken();
+    if (token) {
+      apiRequest('/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(updates)
+      }).catch((e) => console.warn('Backend profile update deferred:', e?.message));
+    }
+  } catch (err) {
+    // Ignore network / offline errors
   }
 
   return updatedAccount;
@@ -1628,7 +1704,11 @@ const INITIAL_SEED_REFERRALS: IReferral[] = [
     referrerName: 'Kathir',
     referredUserId: 'usr_moorthy_002',
     referredName: 'S. Moorthy',
+    referredMemberName: 'S. Moorthy',
+    referredMemberId: 'FIC-MBR-8842',
     referredEmail: 'moorthy@ficapp.in',
+    categoryName: 'Business & Entrepreneurship',
+    subCategory: 'Textile Manufacturer',
     referralSource: 'REFERRED',
     registrationDate: '28 Oct 2026',
     paymentStatus: 'PAID',
@@ -1650,7 +1730,11 @@ const INITIAL_SEED_REFERRALS: IReferral[] = [
     referrerName: 'Kathir',
     referredUserId: 'usr_ref_004',
     referredName: 'R. Vignesh',
+    referredMemberName: 'R. Vignesh',
+    referredMemberId: 'FIC-MBR-6102',
     referredEmail: 'vignesh.textiles@gmail.com',
+    categoryName: 'Business & Entrepreneurship',
+    subCategory: 'Retailer',
     referralSource: 'REFERRED',
     registrationDate: '29 Oct 2026',
     paymentStatus: 'PAID',
@@ -1672,7 +1756,11 @@ const INITIAL_SEED_REFERRALS: IReferral[] = [
     referrerName: 'Kathir',
     referredUserId: 'usr_ref_005',
     referredName: 'K. Senthil Kumar',
+    referredMemberName: 'K. Senthil Kumar',
+    referredMemberId: 'FIC-MBR-7319',
     referredEmail: 'senthil.logistics@gmail.com',
+    categoryName: 'Agriculture & Natural Resources',
+    subCategory: 'Supply Chain Distributor',
     referralSource: 'REFERRED',
     registrationDate: '30 Oct 2026',
     paymentStatus: 'PAID',
@@ -1694,7 +1782,11 @@ const INITIAL_SEED_REFERRALS: IReferral[] = [
     referrerName: 'Kathir',
     referredUserId: 'usr_ref_006',
     referredName: 'Deepa Ramanathan',
+    referredMemberName: 'Deepa Ramanathan',
+    referredMemberId: 'FIC-MBR-9420',
     referredEmail: 'deepa.fintech@gmail.com',
+    categoryName: 'Investment & Finance',
+    subCategory: 'Financial Consultant',
     referralSource: 'REFERRED',
     registrationDate: '01 Nov 2026',
     paymentStatus: 'PAID',
@@ -1713,7 +1805,11 @@ const INITIAL_SEED_REFERRALS: IReferral[] = [
     referrerName: 'Kathir',
     referredUserId: 'usr_ref_007',
     referredName: 'Arun Prakash',
+    referredMemberName: 'Arun Prakash',
+    referredMemberId: 'FIC-MBR-3811',
     referredEmail: 'arun.agri@gmail.com',
+    categoryName: 'Agriculture & Natural Resources',
+    subCategory: 'Agri-Enterprise',
     referralSource: 'REFERRED',
     registrationDate: '02 Nov 2026',
     paymentStatus: 'PENDING',
@@ -1734,7 +1830,11 @@ const INITIAL_SEED_REFERRALS: IReferral[] = [
     referrerName: 'S. Moorthy',
     referredUserId: 'usr_ref_008',
     referredName: 'G. Balaji',
+    referredMemberName: 'G. Balaji',
+    referredMemberId: 'FIC-MBR-5521',
     referredEmail: 'balaji.spinning@gmail.com',
+    categoryName: 'Business & Entrepreneurship',
+    subCategory: 'Wholesaler',
     referralSource: 'REFERRED',
     registrationDate: '30 Oct 2026',
     paymentStatus: 'PAID',
@@ -1916,11 +2016,23 @@ const saveAllTransactions = (txs: IWalletTransaction[]) => {
 const getAllReferrals = (): IReferral[] => {
   try {
     const raw = localStorage.getItem(REFERRALS_STORAGE_KEY);
+    let list: IReferral[] = [];
     if (!raw) {
       localStorage.setItem(REFERRALS_STORAGE_KEY, JSON.stringify(INITIAL_SEED_REFERRALS));
-      return [...INITIAL_SEED_REFERRALS];
+      list = [...INITIAL_SEED_REFERRALS];
+    } else {
+      list = JSON.parse(raw);
     }
-    return JSON.parse(raw);
+    return list.map((item) => {
+      const match = INITIAL_SEED_REFERRALS.find((s) => s.referralId === item.referralId);
+      return {
+        ...item,
+        referredMemberName: item.referredMemberName || item.referredName || match?.referredMemberName || 'Registered Member',
+        referredMemberId: item.referredMemberId || match?.referredMemberId || (item.referredUserId ? `FIC-${item.referredUserId.slice(-4).toUpperCase()}` : `FIC-${item.referralId}`),
+        categoryName: item.categoryName || match?.categoryName || 'Business & Entrepreneurship',
+        subCategory: item.subCategory || match?.subCategory || 'Registered Member'
+      };
+    });
   } catch {
     return [...INITIAL_SEED_REFERRALS];
   }

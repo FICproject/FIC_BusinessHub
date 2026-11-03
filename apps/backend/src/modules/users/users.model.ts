@@ -1,6 +1,18 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { UserRole, AccountStatus } from '@fic/shared-types';
 
+export interface IUserAddress {
+  addressLine1: string;
+  addressLine2?: string;
+  landmark?: string;
+  country: string;
+  state: string;
+  district: string;
+  city: string;
+  pinCode: string;
+  addressType?: string;
+}
+
 export interface IUserDocument extends Document {
   fullName: string;
   email: string;
@@ -15,6 +27,11 @@ export interface IUserDocument extends Document {
   primarySubcategoryName?: string;
   subcategoryIds: mongoose.Types.ObjectId[];
   dynamicProfile?: Record<string, any>;
+  address?: IUserAddress;
+  referralCode?: string;
+  referralSource?: 'REFERRED' | 'ORGANIC';
+  referredByCode?: string;
+  referrerUserId?: mongoose.Types.ObjectId;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   isKycApproved: boolean;
@@ -48,6 +65,21 @@ const UserSchema = new Schema<IUserDocument>(
     primarySubcategoryName: { type: String, trim: true },
     subcategoryIds: [{ type: Schema.Types.ObjectId, ref: 'Subcategory' }],
     dynamicProfile: { type: Schema.Types.Mixed },
+    address: {
+      addressLine1: { type: String, trim: true },
+      addressLine2: { type: String, trim: true },
+      landmark: { type: String, trim: true },
+      country: { type: String, trim: true, default: 'India' },
+      state: { type: String, trim: true },
+      district: { type: String, trim: true },
+      city: { type: String, trim: true },
+      pinCode: { type: String, trim: true },
+      addressType: { type: String, trim: true, default: 'Residential' }
+    },
+    referralCode: { type: String, trim: true },
+    referralSource: { type: String, enum: ['REFERRED', 'ORGANIC'], default: 'ORGANIC' },
+    referredByCode: { type: String, trim: true },
+    referrerUserId: { type: Schema.Types.ObjectId, ref: 'User' },
     isEmailVerified: { type: Boolean, default: false },
     isPhoneVerified: { type: Boolean, default: false },
     isKycApproved: { type: Boolean, default: false },

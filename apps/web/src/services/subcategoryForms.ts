@@ -762,3 +762,4 @@ export const getSubcategoryFormConfig = (
     ]
   };
 };
+

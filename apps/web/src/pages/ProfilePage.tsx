@@ -25,6 +25,7 @@ import {
   getUserBankAccount,
   saveUserBankAccount,
   AuthenticatedUser,
+  UserAddress,
   IMemberWallet,
   IWalletTransaction,
   IReferral,
@@ -32,6 +33,7 @@ import {
   WalletTransactionType,
   WalletTransactionStatus
 } from '../services/api';
+import { getIndianStates, getDistrictsForState, validateIndianPinCode } from '../services/indianLocations';
 import {
   UserIcon,
   MailIcon,
@@ -72,6 +74,11 @@ export const ProfilePage: React.FC = () => {
   const [txFlowFilter, setTxFlowFilter] = useState<'ALL' | 'CREDIT' | 'DEBIT'>('ALL');
   const [txCurrentPage, setTxCurrentPage] = useState<number>(1);
   const txPerPage = 6;
+
+  // Referred Members Modal State (Opened by "View Details" button in Referral section)
+  const [isReferralModalOpen, setIsReferralModalOpen] = useState<boolean>(false);
+  const [referralPage, setReferralPage] = useState<number>(1);
+  const referralPerPage = 5;
 
   // Referral State
   const [referralData, setReferralData] = useState<{
@@ -120,10 +127,15 @@ export const ProfilePage: React.FC = () => {
   const [editDob, setEditDob] = useState('');
   const [dobError, setDobError] = useState('');
   const [editSubcategories, setEditSubcategories] = useState('');
-  const [editAddress, setEditAddress] = useState('');
+  const [editAddressLine1, setEditAddressLine1] = useState('');
+  const [editAddressLine2, setEditAddressLine2] = useState('');
+  const [editLandmark, setEditLandmark] = useState('');
   const [editCity, setEditCity] = useState('');
-  const [editState, setEditState] = useState('');
+  const [editState, setEditState] = useState('Tamil Nadu');
+  const [editDistrict, setEditDistrict] = useState('Chennai');
   const [editPincode, setEditPincode] = useState('');
+  const [editAddressType, setEditAddressType] = useState('Residential');
+  const [editPinError, setEditPinError] = useState('');
   const [editRoleTitle, setEditRoleTitle] = useState('');
   const [editSkills, setEditSkills] = useState('');
   const [editPortfolio, setEditPortfolio] = useState('');
@@ -179,6 +191,26 @@ export const ProfilePage: React.FC = () => {
     }
   }, [txTypeFilter, txStatusFilter, txSearchQuery, user]);
 
+  // Lock body scroll and handle Escape key for modals
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isReferralModalOpen) setIsReferralModalOpen(false);
+        if (isTransactionModalOpen) setIsTransactionModalOpen(false);
+      }
+    };
+    if (isReferralModalOpen || isTransactionModalOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isReferralModalOpen, isTransactionModalOpen]);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 4500);
@@ -190,10 +222,17 @@ export const ProfilePage: React.FC = () => {
     setEditDob(u.personalInfo?.dob || (u.email?.toLowerCase() === 'kathir@gmail.com' ? '15 Aug 1996' : ''));
     setDobError('');
     setEditSubcategories((u.subcategories || []).join(', '));
-    setEditAddress(u.personalInfo?.address || '');
-    setEditCity(u.personalInfo?.city || '');
-    setEditState(u.personalInfo?.state || '');
-    setEditPincode(u.personalInfo?.pincode || '');
+    setEditAddressLine1(u.address?.addressLine1 || u.personalInfo?.address || '');
+    setEditAddressLine2(u.address?.addressLine2 || '');
+    setEditLandmark(u.address?.landmark || '');
+    const resolvedState = u.address?.state || u.personalInfo?.state || 'Tamil Nadu';
+    setEditState(resolvedState);
+    const districts = getDistrictsForState(resolvedState);
+    setEditDistrict(u.address?.district || u.personalInfo?.district || districts[0] || 'Chennai');
+    setEditCity(u.address?.city || u.personalInfo?.city || '');
+    setEditPincode(u.address?.pinCode || u.personalInfo?.pincode || '');
+    setEditAddressType(u.address?.addressType || 'Residential');
+    setEditPinError('');
     setEditRoleTitle(u.professionalInfo?.roleTitle || u.professionalInfo?.businessName || '');
     setEditSkills((u.professionalInfo?.skills || []).join(', '));
     setEditPortfolio(u.professionalInfo?.portfolioUrl || '');
@@ -384,6 +423,14 @@ export const ProfilePage: React.FC = () => {
   const currentSafePage = Math.min(Math.max(1, txCurrentPage), totalPages);
   const startIdx = (currentSafePage - 1) * txPerPage;
   const paginatedTransactions = filteredTransactions.slice(startIdx, startIdx + txPerPage);
+
+  // Referred members pagination calculation for modal
+  const allReferrals = referralData?.referrals || [];
+  const totalReferralCount = allReferrals.length;
+  const totalReferralPages = Math.max(1, Math.ceil(totalReferralCount / referralPerPage));
+  const safeReferralPage = Math.min(Math.max(1, referralPage), totalReferralPages);
+  const startRefIdx = (safeReferralPage - 1) * referralPerPage;
+  const paginatedReferrals = allReferrals.slice(startRefIdx, startRefIdx + referralPerPage);
 
   const getTxTypeBadge = (type: WalletTransactionType) => {
     switch (type) {
@@ -760,6 +807,40 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
 
+        {/* View Details Button & Action Banner (Positioned ABOVE Summary Cards) */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#FAF7F2] via-white to-[#F7F3FB] border border-[#EADFCF] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#8064A9]/10 text-[#8064A9] flex items-center justify-center shrink-0 border border-[#8064A9]/20 font-black text-lg">
+              👥
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-sm font-bold text-[#29302D]">
+                  Referred Members & Registration Status
+                </h4>
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#8064A9] bg-white px-2 py-0.5 rounded border border-[#8064A9]/20">
+                  {referralData?.referrals?.length || 0} Members
+                </span>
+              </div>
+              <p className="text-xs text-[#77786E] mt-0.5">
+                View members who registered using your referral link.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setIsReferralModalOpen(true);
+              setReferralPage(1);
+            }}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-[#29302D] hover:bg-[#8064A9] text-white transition-all cursor-pointer shadow-2xs shrink-0"
+          >
+            <span>View Referred Members</span>
+            <span className="text-sm">→</span>
+          </button>
+        </div>
+
         {/* 5 Referral Stats Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
           <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
@@ -791,79 +872,6 @@ export const ProfilePage: React.FC = () => {
             <span className="text-xl font-black text-[#8064A9] block mt-1">
               ₹{(referralData?.summary?.rewardCredited || 0).toLocaleString('en-IN')}
             </span>
-          </div>
-        </div>
-
-        {/* Referral History Table */}
-        <div className="border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-            <span className="font-bold text-xs text-slate-700">Referred Members & Status</span>
-            <span className="text-[11px] text-slate-500 font-medium">
-              {referralData?.referrals?.length || 0} Members Attributed
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left text-slate-700">
-              <thead className="bg-slate-50/70 border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 font-bold">
-                <tr>
-                  <th className="px-4 py-3">Member</th>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Payment</th>
-                  <th className="px-4 py-3">KYC</th>
-                  <th className="px-4 py-3">Reward</th>
-                  <th className="px-4 py-3">Reward Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {(referralData?.referrals || []).map((refItem) => (
-                  <tr key={refItem.referralId} className="hover:bg-slate-50/50">
-                    <td className="px-4 py-3">
-                      <span className="font-bold text-slate-900 block">{refItem.referredName}</span>
-                      <span className="text-[11px] text-slate-500">{refItem.referredEmail}</span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{refItem.registrationDate}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`px-2 py-0.5 rounded font-bold text-[10.5px] ${
-                          refItem.paymentStatus === 'PAID'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}
-                      >
-                        {refItem.paymentStatus}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">{renderKycBadge(refItem.kycStatus)}</td>
-                    <td className="px-4 py-3 font-bold text-slate-900">
-                      ₹{refItem.rewardAmount}
-                    </td>
-                    <td className="px-4 py-3">
-                      {refItem.rewardStatus === 'CREDITED' && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          ✓ Credited
-                        </span>
-                      )}
-                      {refItem.rewardStatus === 'PENDING_APPROVAL' && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                          Pending Approval
-                        </span>
-                      )}
-                      {refItem.rewardStatus === 'PENDING_ELIGIBILITY' && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                          Awaiting KYC
-                        </span>
-                      )}
-                      {refItem.rewardStatus === 'REJECTED' && (
-                        <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-red-50 text-red-600 border border-red-200">
-                          Ineligible
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         </div>
       </div>
@@ -1003,13 +1011,33 @@ export const ProfilePage: React.FC = () => {
 
             <div className="sm:col-span-2">
               <span className="text-slate-400 block font-medium">Registered Address & Location</span>
-              <span className="text-slate-800 text-xs block mt-0.5 leading-relaxed font-medium">
-                {user.personalInfo?.address
-                  ? `${user.personalInfo.address}, ${user.personalInfo.city || ''}, ${
-                      user.personalInfo.state || ''
-                    } - ${user.personalInfo.pincode || ''}`
-                  : 'Address on file with KYC submission'}
-              </span>
+              {(user.address?.addressLine1 || user.personalInfo?.address) ? (
+                <div className="flex items-start justify-between gap-3 mt-1">
+                  <span className="text-slate-800 text-xs leading-relaxed font-medium">
+                    {user.address
+                      ? `${user.address.addressLine1}${user.address.addressLine2 ? ', ' + user.address.addressLine2 : ''}${user.address.landmark ? ', Landmark: ' + user.address.landmark : ''}, ${user.address.city}, ${user.address.district}, ${user.address.state} - ${user.address.pinCode}, ${user.address.country || 'India'}`
+                      : `${user.personalInfo?.address || ''}${user.personalInfo?.city ? ', ' + user.personalInfo.city : ''}${user.personalInfo?.district ? ', ' + user.personalInfo.district : ''}${user.personalInfo?.state ? ', ' + user.personalInfo.state : ''}${user.personalInfo?.pincode ? ' - ' + user.personalInfo.pincode : ''}`}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleOpenEdit}
+                    className="text-[11px] font-bold text-[#8064A9] hover:underline shrink-0 cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 mt-1.5">
+                  <span className="text-slate-400 italic text-xs">Address Not Provided</span>
+                  <button
+                    type="button"
+                    onClick={handleOpenEdit}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[#8064A9] bg-[#8064A9]/10 hover:bg-[#8064A9]/20 transition-all cursor-pointer shadow-2xs"
+                  >
+                    + Add Address
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1573,6 +1601,215 @@ export const ProfilePage: React.FC = () => {
       )}
 
       {/* ========================================================
+          MODAL: REFERRED MEMBERS & REGISTRATION STATUS POPUP
+         ======================================================== */}
+      {isReferralModalOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto animate-fade-in"
+          onClick={() => setIsReferralModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative my-auto border border-[#EADFCF] space-y-6 max-h-[92vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EADFCF] gap-3 shrink-0">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-xs font-black uppercase tracking-wider mb-1">
+                  <span>Referral Programme Network</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
+                  Referred Members & Registration Status
+                </h3>
+                <p className="text-xs sm:text-sm text-[#77786E] mt-0.5">
+                  Track members who joined FIC Business Hub through your referral link.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="px-3.5 py-1.5 rounded-xl bg-[#FAF7F2] text-[#29302D] text-xs font-bold border border-[#EADFCF]">
+                  {totalReferralCount} Members Attributed
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsReferralModalOpen(false)}
+                  className="w-9 h-9 rounded-xl bg-[#FAF7F2] hover:bg-[#EADFCF] text-[#77786E] hover:text-[#29302D] flex items-center justify-center font-bold text-base transition-all cursor-pointer border border-[#EADFCF]"
+                  title="Close modal"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content - Table or Empty State */}
+            <div className="overflow-y-auto flex-1 pr-1 -mr-1">
+              {totalReferralCount === 0 ? (
+                <div className="py-12 px-6 text-center bg-[#FAF7F2] rounded-2xl border border-dashed border-[#EADFCF] space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-white border border-[#EADFCF] text-[#8064A9] flex items-center justify-center mx-auto text-2xl font-bold shadow-2xs">
+                    👥
+                  </div>
+                  <h4 className="text-base font-bold text-[#29302D]">
+                    No members have registered through your referral link yet.
+                  </h4>
+                  <p className="text-xs text-[#77786E] max-w-md mx-auto leading-relaxed">
+                    Share your unique referral code <strong className="font-mono text-[#29302D]">{referralData?.referralCode}</strong> or referral link with business contacts. You will earn ₹500 in your personal wallet per verified member.
+                  </p>
+                  <div className="pt-2 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleCopyLink();
+                        showToast('Referral link copied to clipboard!');
+                      }}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-[#29302D] text-white hover:bg-[#8064A9] transition-all cursor-pointer shadow-2xs"
+                    >
+                      Copy Referral Link
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left text-slate-700">
+                      <thead className="bg-[#FAF7F2] border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-600 font-bold">
+                        <tr>
+                          <th className="px-4 py-3.5 whitespace-nowrap">Member Name</th>
+                          <th className="px-4 py-3.5 whitespace-nowrap">Member ID</th>
+                          <th className="px-4 py-3.5 whitespace-nowrap">Registration Date</th>
+                          <th className="px-4 py-3.5 whitespace-nowrap">Category</th>
+                          <th className="px-4 py-3.5 whitespace-nowrap">Subcategory</th>
+                          <th className="px-4 py-3.5 whitespace-nowrap text-center">Payment Status</th>
+                          <th className="px-4 py-3.5 whitespace-nowrap text-center">KYC Status</th>
+                          <th className="px-4 py-3.5 whitespace-nowrap text-right">Reward Amount</th>
+                          <th className="px-4 py-3.5 whitespace-nowrap text-center">Reward Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 bg-white">
+                        {paginatedReferrals.map((refItem) => (
+                          <tr key={refItem.referralId} className="hover:bg-slate-50/70 transition-colors">
+                            {/* Member Name */}
+                            <td className="px-4 py-3.5 font-bold text-slate-900 whitespace-nowrap">
+                              {refItem.referredMemberName || refItem.referredName || 'Registered Member'}
+                            </td>
+
+                            {/* Member ID */}
+                            <td className="px-4 py-3.5 font-mono text-[11px] text-slate-600 whitespace-nowrap">
+                              {refItem.referredMemberId || (refItem.referredUserId ? `FIC-${refItem.referredUserId.slice(-4).toUpperCase()}` : refItem.referralId)}
+                            </td>
+
+                            {/* Registration Date */}
+                            <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
+                              {refItem.registrationDate}
+                            </td>
+
+                            {/* Category */}
+                            <td className="px-4 py-3.5 whitespace-nowrap text-slate-800 font-medium">
+                              {refItem.categoryName || 'General'}
+                            </td>
+
+                            {/* Subcategory */}
+                            <td className="px-4 py-3.5 whitespace-nowrap">
+                              <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold text-[11px] border border-slate-200">
+                                {refItem.subCategory || 'Member'}
+                              </span>
+                            </td>
+
+                            {/* Payment Status */}
+                            <td className="px-4 py-3.5 whitespace-nowrap text-center">
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full font-bold text-[10.5px] border ${
+                                  refItem.paymentStatus === 'PAID'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-amber-50 text-amber-700 border-amber-200'
+                                }`}
+                              >
+                                {refItem.paymentStatus}
+                              </span>
+                            </td>
+
+                            {/* KYC Status */}
+                            <td className="px-4 py-3.5 whitespace-nowrap text-center">
+                              {renderKycBadge(refItem.kycStatus)}
+                            </td>
+
+                            {/* Reward Amount */}
+                            <td className="px-4 py-3.5 whitespace-nowrap text-right font-black text-slate-900">
+                              ₹{(refItem.rewardAmount || 500).toLocaleString('en-IN')}
+                            </td>
+
+                            {/* Reward Status */}
+                            <td className="px-4 py-3.5 whitespace-nowrap text-center">
+                              {refItem.rewardStatus === 'CREDITED' && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  ✓ Credited
+                                </span>
+                              )}
+                              {refItem.rewardStatus === 'PENDING_APPROVAL' && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                  Pending Approval
+                                </span>
+                              )}
+                              {refItem.rewardStatus === 'PENDING_ELIGIBILITY' && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                  Awaiting KYC
+                                </span>
+                              )}
+                              {refItem.rewardStatus === 'REJECTED' && (
+                                <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-red-50 text-red-600 border border-red-200">
+                                  Ineligible
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer with Pagination */}
+            <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-[#EADFCF] gap-3 shrink-0 text-xs">
+              <span className="text-slate-500 font-medium">
+                Showing {totalReferralCount > 0 ? (safeReferralPage - 1) * referralPerPage + 1 : 0} to{' '}
+                {Math.min(safeReferralPage * referralPerPage, totalReferralCount)} of {totalReferralCount} members
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={safeReferralPage <= 1}
+                  onClick={() => setReferralPage((p) => Math.max(1, p - 1))}
+                  className="px-3 py-1.5 rounded-xl border border-[#EADFCF] bg-white font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
+                >
+                  ← Previous
+                </button>
+                <span className="px-3 py-1 text-slate-700 font-bold">
+                  Page {safeReferralPage} of {totalReferralPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={safeReferralPage >= totalReferralPages}
+                  onClick={() => setReferralPage((p) => Math.min(totalReferralPages, p + 1))}
+                  className="px-3 py-1.5 rounded-xl border border-[#EADFCF] bg-white font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
+                >
+                  Next →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsReferralModalOpen(false)}
+                  className="ml-2 px-4 py-1.5 rounded-xl bg-[#29302D] hover:bg-[#8064A9] text-white font-bold transition-all cursor-pointer shadow-2xs"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
           MODAL 1: ADD FUNDS TO WALLET (SECTION 4)
          ======================================================== */}
       {isAddFundsModalOpen && (
@@ -2023,21 +2260,41 @@ export const ProfilePage: React.FC = () => {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                if (editPincode && !validateIndianPinCode(editPincode)) {
+                  setEditPinError('Please enter a valid 6-digit PIN code.');
+                  return;
+                }
+                setEditPinError('');
+
+                const updatedAddress: UserAddress = {
+                  addressLine1: editAddressLine1.trim(),
+                  addressLine2: editAddressLine2.trim() || undefined,
+                  landmark: editLandmark.trim() || undefined,
+                  country: 'India',
+                  state: editState.trim(),
+                  district: editDistrict.trim(),
+                  city: editCity.trim(),
+                  pinCode: editPincode.trim(),
+                  addressType: editAddressType
+                };
+
                 const updated = updateUserProfile(userId, {
                   fullName: editFullName,
                   mobileNumber: editPhone,
                   phoneNumber: editPhone,
                   subcategories: editSubcategories.split(',').map((s) => s.trim()).filter(Boolean),
+                  address: updatedAddress,
                   personalInfo: {
-                    ...(user.personalInfo || {}),
+                    ...(user?.personalInfo || {}),
                     dob: editDob,
-                    address: editAddress,
-                    city: editCity,
-                    state: editState,
-                    pincode: editPincode
+                    address: `${updatedAddress.addressLine1}${updatedAddress.addressLine2 ? ', ' + updatedAddress.addressLine2 : ''}`,
+                    city: updatedAddress.city,
+                    district: updatedAddress.district,
+                    state: updatedAddress.state,
+                    pincode: updatedAddress.pinCode
                   },
                   professionalInfo: {
-                    ...(user.professionalInfo || {}),
+                    ...(user?.professionalInfo || {}),
                     roleTitle: editRoleTitle,
                     skills: editSkills.split(',').map((s) => s.trim()).filter(Boolean),
                     portfolioUrl: editPortfolio,
@@ -2083,33 +2340,128 @@ export const ProfilePage: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">City</label>
+              {/* Residential Address & Location Fields */}
+              <div className="pt-3 border-t border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                    Residential Address & Location
+                  </h4>
+                  <div className="flex items-center gap-1">
+                    {(['Residential', 'Business', 'Other'] as const).map((t) => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setEditAddressType(t)}
+                        className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
+                          editAddressType === t
+                            ? 'bg-[#29302D] text-white shadow-2xs'
+                            : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block font-bold text-slate-700">Address Line 1 (House No., Street)</label>
                   <input
                     type="text"
-                    value={editCity}
-                    onChange={(e) => setEditCity(e.target.value)}
+                    value={editAddressLine1}
+                    onChange={(e) => setEditAddressLine1(e.target.value)}
+                    placeholder="e.g., No. 42, Anna Salai"
                     className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
                   />
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">State</label>
-                  <input
-                    type="text"
-                    value={editState}
-                    onChange={(e) => setEditState(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Address Line 2 (Area, Sector)</label>
+                    <input
+                      type="text"
+                      value={editAddressLine2}
+                      onChange={(e) => setEditAddressLine2(e.target.value)}
+                      placeholder="e.g., Teynampet"
+                      className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Landmark</label>
+                    <input
+                      type="text"
+                      value={editLandmark}
+                      onChange={(e) => setEditLandmark(e.target.value)}
+                      placeholder="e.g., Near Metro Station"
+                      className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Pincode</label>
-                  <input
-                    type="text"
-                    value={editPincode}
-                    onChange={(e) => setEditPincode(e.target.value)}
-                    className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">State</label>
+                    <select
+                      value={editState}
+                      onChange={(e) => {
+                        const newState = e.target.value;
+                        setEditState(newState);
+                        const dists = getDistrictsForState(newState);
+                        setEditDistrict(dists[0] || 'Other District');
+                      }}
+                      className="w-full px-3.5 py-2 border border-slate-300 rounded-xl bg-white"
+                    >
+                      {getIndianStates().map((st) => (
+                        <option key={st} value={st}>
+                          {st}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">District</label>
+                    <select
+                      value={editDistrict}
+                      onChange={(e) => setEditDistrict(e.target.value)}
+                      className="w-full px-3.5 py-2 border border-slate-300 rounded-xl bg-white"
+                    >
+                      {getDistrictsForState(editState).map((dist) => (
+                        <option key={dist} value={dist}>
+                          {dist}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">City / Town</label>
+                    <input
+                      type="text"
+                      value={editCity}
+                      onChange={(e) => setEditCity(e.target.value)}
+                      placeholder="e.g., Chennai"
+                      className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">PIN Code</label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={editPincode}
+                      onChange={(e) => {
+                        const clean = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setEditPincode(clean);
+                        if (clean.length === 6 && validateIndianPinCode(clean)) {
+                          setEditPinError('');
+                        }
+                      }}
+                      placeholder="e.g., 600028"
+                      className={`w-full px-3.5 py-2 border rounded-xl ${
+                        editPinError ? 'border-red-400 bg-red-50/20' : 'border-slate-300'
+                      }`}
+                    />
+                    {editPinError && <p className="text-[10px] text-red-600 mt-0.5">{editPinError}</p>}
+                  </div>
                 </div>
               </div>
 
@@ -2137,13 +2489,13 @@ export const ProfilePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 font-bold text-slate-500"
+                  className="px-4 py-2 font-bold text-slate-500 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl transition-colors"
+                  className="px-5 py-2.5 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl transition-colors cursor-pointer"
                 >
                   Save Profile Changes
                 </button>

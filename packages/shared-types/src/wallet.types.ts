@@ -129,7 +129,11 @@ export interface IReferral {
   referrerName?: string;
   referredUserId: string;
   referredName: string;
-  referredEmail: string;
+  referredMemberName?: string;
+  referredMemberId?: string;
+  referredEmail?: string;
+  categoryName?: string;
+  subCategory?: string;
   referralSource: 'REFERRED' | 'ORGANIC';
   registrationDate: string;
   paymentStatus: 'PAID' | 'PENDING';

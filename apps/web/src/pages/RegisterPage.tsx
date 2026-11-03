@@ -3,6 +3,7 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button, Input, Card, Badge } from '@fic/ui';
 import { INITIAL_CATEGORIES_DATA } from '../services/mockData';
 import { getSubcategoryFormConfig } from '../services/subcategoryForms';
+import { getIndianStates, getDistrictsForState, validateIndianPinCode } from '../services/indianLocations';
 import {
   apiRequest,
   setAuthToken,
@@ -12,7 +13,8 @@ import {
   calculateAgeFromDob,
   formatDisplayDob,
   validateReferralCode,
-  saveRegisteredAccount
+  saveRegisteredAccount,
+  UserAddress
 } from '../services/api';
 import {
   ShieldCheckIcon,
@@ -136,8 +138,23 @@ export const RegisterPage: React.FC = () => {
   // Resolved dynamic configuration for the active subcategory
   const subcategoryConfig = getSubcategoryFormConfig(selectedCategory.name, selectedSubcategory);
 
-  // Step 3: Dynamic details
+  // Step 3: Dynamic details & Residential Address
   const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, any>>({});
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [stateName, setStateName] = useState('Tamil Nadu');
+  const [district, setDistrict] = useState('Chennai');
+  const [city, setCity] = useState('');
+  const [pinCode, setPinCode] = useState('');
+  const [addressType, setAddressType] = useState('Residential');
+  const [pinCodeError, setPinCodeError] = useState('');
+
+  const handleStateChange = (selectedState: string) => {
+    setStateName(selectedState);
+    const availableDistricts = getDistrictsForState(selectedState);
+    setDistrict(availableDistricts[0] || 'Other District');
+  };
 
   // Step 4: Real Document Attachment state (Default + Custom)
   const [docNumbers, setDocNumbers] = useState<Record<string, string>>({});
@@ -303,7 +320,7 @@ export const RegisterPage: React.FC = () => {
     setDynamicAnswers({});
   };
 
-  // Step 3 Dynamic Form Submit -> Tailored to Single Subcategory
+  // Step 3 Dynamic Form Submit -> Tailored to Single Subcategory & Residential Address
   const handleDynamicFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -315,6 +332,35 @@ export const RegisterPage: React.FC = () => {
         return;
       }
     }
+
+    // Validate Residential Address & Location
+    if (!addressLine1.trim()) {
+      setErrorMessage('Address Line 1 is required.');
+      return;
+    }
+    if (!stateName.trim()) {
+      setErrorMessage('Please select your State.');
+      return;
+    }
+    if (!district.trim()) {
+      setErrorMessage('Please select your District.');
+      return;
+    }
+    if (!city.trim()) {
+      setErrorMessage('City / Town / Village is required.');
+      return;
+    }
+    if (!pinCode.trim()) {
+      setErrorMessage('PIN Code is required.');
+      setPinCodeError('PIN Code is required');
+      return;
+    }
+    if (!validateIndianPinCode(pinCode)) {
+      setErrorMessage('Please enter a valid 6-digit Indian PIN Code (e.g., 600028).');
+      setPinCodeError('Must be a valid 6-digit PIN code');
+      return;
+    }
+    setPinCodeError('');
 
     // Advance to Step 4: Role-specific KYC Document Upload
     setStep(4);
@@ -366,6 +412,18 @@ export const RegisterPage: React.FC = () => {
 
     const formattedDob = formatDisplayDob(dob);
 
+    const userAddress: UserAddress = {
+      addressLine1: addressLine1.trim(),
+      addressLine2: addressLine2.trim() || undefined,
+      landmark: landmark.trim() || undefined,
+      country: 'India',
+      state: stateName.trim(),
+      district: district.trim(),
+      city: city.trim(),
+      pinCode: pinCode.trim(),
+      addressType: addressType || 'Residential'
+    };
+
     try {
       // 1. Register Account
       const regResponse = await apiRequest('/auth/register', {
@@ -382,6 +440,7 @@ export const RegisterPage: React.FC = () => {
           primarySubcategoryName: selectedSubcategory,
           subcategoryIds: [selectedSubcategory],
           dynamicProfile: dynamicAnswers,
+          address: userAddress,
           ageConfirmed,
           termsAccepted
         })
@@ -404,10 +463,16 @@ export const RegisterPage: React.FC = () => {
         subcategories: [selectedSubcategory],
         subcategoryIds: [selectedSubcategory],
         dynamicProfile: dynamicAnswers,
+        address: userAddress,
         isMembershipActive: true,
         isKycApproved: false,
         personalInfo: {
-          dob: formattedDob || dob
+          dob: formattedDob || dob,
+          address: `${userAddress.addressLine1}${userAddress.addressLine2 ? ', ' + userAddress.addressLine2 : ''}`,
+          city: userAddress.city,
+          district: userAddress.district,
+          state: userAddress.state,
+          pincode: userAddress.pinCode
         },
         professionalInfo: {
           roleTitle: selectedSubcategory
@@ -422,9 +487,15 @@ export const RegisterPage: React.FC = () => {
       user.subcategories = [selectedSubcategory];
       user.subcategoryIds = [selectedSubcategory];
       user.dynamicProfile = dynamicAnswers;
+      user.address = userAddress;
       user.personalInfo = {
         ...(user.personalInfo || {}),
-        dob: formattedDob || dob
+        dob: formattedDob || dob,
+        address: `${userAddress.addressLine1}${userAddress.addressLine2 ? ', ' + userAddress.addressLine2 : ''}`,
+        city: userAddress.city,
+        district: userAddress.district,
+        state: userAddress.state,
+        pincode: userAddress.pinCode
       };
       user.professionalInfo = {
         ...(user.professionalInfo || {}),
@@ -966,6 +1037,188 @@ export const RegisterPage: React.FC = () => {
                       )}
                     </div>
                   ))}
+                </div>
+
+                {/* ========================================================
+                    RESIDENTIAL ADDRESS & LOCATION SECTION
+                   ======================================================== */}
+                <div className="pt-6 border-t border-[#E8DBC8] space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#29302D] flex items-center gap-2">
+                        <span>Residential Address & Location</span>
+                      </h4>
+                      <p className="text-[11px] text-[#77786E] mt-0.5">
+                        Official contact address for member verification, KYC compliance and correspondence.
+                      </p>
+                    </div>
+                    <span className="self-start sm:self-auto text-[10px] font-black uppercase tracking-wider text-[#8064A9] bg-[#8064A9]/10 px-2 py-0.5 rounded border border-[#8064A9]/20">
+                      Verified Address
+                    </span>
+                  </div>
+
+                  {/* Address Type Selection */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-xs font-semibold text-[#29302D]">Address Type:</span>
+                    {(['Residential', 'Business', 'Other'] as const).map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setAddressType(type)}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          addressType === type
+                            ? 'bg-[#29302D] text-white shadow-2xs'
+                            : 'bg-white border border-[#E8DBC8] text-[#77786E] hover:text-[#29302D]'
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Address Line 1 */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-[#29302D] block">
+                      Address Line 1 (Flat, House / Door No., Building, Street) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g., No. 42, Anna Salai"
+                      value={addressLine1}
+                      onChange={(e) => setAddressLine1(e.target.value)}
+                      required
+                      className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
+                    />
+                  </div>
+
+                  {/* Address Line 2 & Landmark */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-[#29302D] block">
+                        Address Line 2 (Area, Locality, Sector) <span className="text-slate-400 font-normal">(Optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Teynampet"
+                        value={addressLine2}
+                        onChange={(e) => setAddressLine2(e.target.value)}
+                        className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-[#29302D] block">
+                        Landmark <span className="text-slate-400 font-normal">(Optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Near DMS Metro Station"
+                        value={landmark}
+                        onChange={(e) => setLandmark(e.target.value)}
+                        className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Country, State, District & City */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-[#29302D] block">
+                        Country
+                      </label>
+                      <input
+                        type="text"
+                        value="India"
+                        disabled
+                        className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl bg-slate-50 text-slate-700 font-medium cursor-not-allowed"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-[#29302D] block">
+                        State <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={stateName}
+                        onChange={(e) => handleStateChange(e.target.value)}
+                        required
+                        className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
+                      >
+                        {getIndianStates().map((st) => (
+                          <option key={st} value={st}>
+                            {st}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-[#29302D] block">
+                        District <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={district}
+                        onChange={(e) => setDistrict(e.target.value)}
+                        required
+                        className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
+                      >
+                        {getDistrictsForState(stateName).map((dist) => (
+                          <option key={dist} value={dist}>
+                            {dist}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-[#29302D] block">
+                        City / Town / Village <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Chennai"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        required
+                        className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* PIN Code */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-[#29302D] block">
+                        PIN Code (6 Digits) <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="e.g., 600028"
+                        value={pinCode}
+                        onChange={(e) => {
+                          const clean = e.target.value.replace(/\D/g, '').slice(0, 6);
+                          setPinCode(clean);
+                          if (clean.length === 6 && validateIndianPinCode(clean)) {
+                            setPinCodeError('');
+                          } else if (clean.length > 0 && clean.length < 6) {
+                            setPinCodeError('Must be a 6-digit PIN code');
+                          } else {
+                            setPinCodeError('');
+                          }
+                        }}
+                        required
+                        className={`w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none focus:ring-2 ${
+                          pinCodeError
+                            ? 'border-red-300 focus:ring-red-400 bg-red-50/20'
+                            : 'border-[#E8DBC8] focus:ring-[#C66B52] bg-white'
+                        }`}
+                      />
+                      {pinCodeError && (
+                        <p className="text-[11px] text-red-600 font-medium">{pinCodeError}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="pt-3 flex justify-between items-center border-t border-[#E8DBC8]">
