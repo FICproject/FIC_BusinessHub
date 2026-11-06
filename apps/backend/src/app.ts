@@ -6,6 +6,7 @@ import path from 'path';
 import fs from 'fs';
 import { config } from './config';
 import { apiRouter } from './routes';
+import { adminRouter } from './modules/admin';
 import { errorHandler } from './common/middleware/error.middleware';
 
 export const createApp = (): Application => {
@@ -40,12 +41,15 @@ export const createApp = (): Application => {
     app.use(morgan('dev'));
   }
 
-  // API Routes
+  // Member API Routes
   app.use('/api/v1', apiRouter);
+
+  // Consolidated Admin API Routes (accessible via /api/admin or /api/v1/admin)
+  app.use('/api/admin', adminRouter);
+  app.use('/api/v1/admin', adminRouter);
 
   // Global Error Handler
   app.use(errorHandler);
 
   return app;
 };
-

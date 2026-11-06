@@ -18,9 +18,15 @@ export const config = {
   },
   cors: {
     allowedOrigins: [
+      ...(process.env.CORS_ALLOWED_ORIGINS
+        ? process.env.CORS_ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+        : []),
       process.env.WEB_ORIGIN || 'http://localhost:5173',
-      process.env.ADMIN_ORIGIN || 'http://localhost:5174'
-    ]
+      process.env.ADMIN_ORIGIN || 'http://localhost:3001',
+      'http://localhost:5173',
+      'http://localhost:3001',
+      'http://localhost:3000'
+    ].filter(Boolean)
   }
 };
 

@@ -1,7 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
-import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { ServiceListingModel } from './services.model';
-import { ServiceListingStatus } from '@fic/shared-types';
+import { ServiceListingStatus, UserRole } from '@fic/shared-types';
 
 export const servicesRouter = Router();
 
@@ -195,7 +195,7 @@ servicesRouter.post('/:id/submit', authenticate, async (req: AuthenticatedReques
 });
 
 // 6. Approve service (FIC Reviewer / Admin action)
-servicesRouter.post('/:id/approve', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+servicesRouter.post('/:id/approve', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const service = await ServiceListingModel.findById(id);
@@ -220,7 +220,7 @@ servicesRouter.post('/:id/approve', authenticate, async (req: AuthenticatedReque
 });
 
 // 7. Reject service with feedback (FIC Reviewer / Admin action)
-servicesRouter.post('/:id/reject', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+servicesRouter.post('/:id/reject', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;

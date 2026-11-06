@@ -4,8 +4,9 @@ import {
   InvestorProfileModel,
   InvestmentProfileModel
 } from './investment.model';
-import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
+import { UserRole } from '@fic/shared-types';
 
 export const investmentRouter = Router();
 
@@ -97,7 +98,7 @@ investmentRouter.get('/funding/:id', authenticate, async (req: AuthenticatedRequ
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
-    const isStaff = req.user.role === 'ADMIN';
+    const isStaff = [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(req.user.role as any);
     const query: any = { $or: [{ _id: req.params.id }, { refNumber: req.params.id }] };
     if (!isStaff) {
       query.userId = req.user.userId;
@@ -207,7 +208,7 @@ investmentRouter.get('/investor/:id', authenticate, async (req: AuthenticatedReq
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
-    const isStaff = req.user.role === 'ADMIN';
+    const isStaff = [UserRole.ADMIN, UserRole.SUPER_ADMIN].includes(req.user.role as any);
     const query: any = { $or: [{ _id: req.params.id }, { refNumber: req.params.id }] };
     if (!isStaff) {
       query.userId = req.user.userId;
@@ -256,12 +257,8 @@ investmentRouter.get('/me', authenticate, async (req: AuthenticatedRequest, res:
 // ========================================================
 
 // Admin: Get all funding requests
-investmentRouter.get('/admin/funding', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.get('/admin/funding', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.user || req.user.role !== 'ADMIN') {
-      throw new AppError('Admin permission required.', 403);
-    }
-
     const { status, industry, search } = req.query;
     const filter: any = {};
 
@@ -283,12 +280,8 @@ investmentRouter.get('/admin/funding', authenticate, async (req: AuthenticatedRe
 });
 
 // Admin: Update funding request status & member update
-investmentRouter.put('/admin/funding/:id/status', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.put('/admin/funding/:id/status', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.user || req.user.role !== 'ADMIN') {
-      throw new AppError('Admin permission required.', 403);
-    }
-
     const { status, latestFicUpdate, whatHappensNext, internalNote } = req.body;
     const funding = await FundingRequestModel.findOne({
       $or: [{ _id: req.params.id }, { refNumber: req.params.id }]
@@ -338,12 +331,8 @@ investmentRouter.put('/admin/funding/:id/status', authenticate, async (req: Auth
 });
 
 // Admin: Get all investor profiles
-investmentRouter.get('/admin/investor', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.get('/admin/investor', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.user || req.user.role !== 'ADMIN') {
-      throw new AppError('Admin permission required.', 403);
-    }
-
     const { status, investorType, search } = req.query;
     const filter: any = {};
 
@@ -365,12 +354,8 @@ investmentRouter.get('/admin/investor', authenticate, async (req: AuthenticatedR
 });
 
 // Admin: Update investor profile status & member update
-investmentRouter.put('/admin/investor/:id/status', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.put('/admin/investor/:id/status', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    if (!req.user || req.user.role !== 'ADMIN') {
-      throw new AppError('Admin permission required.', 403);
-    }
-
     const { status, latestFicUpdate, whatHappensNext, internalNote } = req.body;
     const investor = await InvestorProfileModel.findOne({
       $or: [{ _id: req.params.id }, { refNumber: req.params.id }]

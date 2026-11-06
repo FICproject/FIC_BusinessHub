@@ -1,5 +1,14 @@
 import { UserRole, AccountStatus } from './auth.types';
 
+export interface IUserAddress {
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+}
+
 export interface IUser {
   _id: string;
   fullName: string;

@@ -1,6 +1,7 @@
 import { Router, Response, NextFunction } from 'express';
 import { BusinessDevRequestModel } from './business-development.model';
-import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { UserRole } from '@fic/shared-types';
 import { AppError } from '../../common/errors/app-error';
 
 export const businessDevRouter = Router();
@@ -113,7 +114,7 @@ businessDevRouter.get('/me', authenticate, async (req: AuthenticatedRequest, res
 });
 
 // Update request status and latest FIC update (authorized FIC team / admin)
-businessDevRouter.put('/:id/fic-update', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+businessDevRouter.put('/:id/fic-update', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 

@@ -1,11 +1,10 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 
-// 4 Distinct Layouts
+// 3 Distinct Layouts for Member Portal
 import { PublicLayout } from './layouts/PublicLayout';
 import { MemberLayout } from './layouts/MemberLayout';
 import { AuthLayout } from './layouts/AuthLayout';
-import { AdminLayout } from './layouts/AdminLayout';
 
 // Guard
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -34,7 +33,6 @@ import { MyRequestsPage } from './pages/MyRequestsPage';
 import { MyServicesPage } from './pages/MyServicesPage';
 import { SkillDevelopmentPage } from './pages/SkillDevelopmentPage';
 import { ProfilePage } from './pages/ProfilePage';
-import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
 export const App: React.FC = () => {
   return (
@@ -89,13 +87,8 @@ export const App: React.FC = () => {
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
 
-        {/* ========================================================
-            4. ADMIN LAYOUT: Dedicated executive portal shell
-           ======================================================== */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboardPage />} />
-          <Route path="*" element={<AdminDashboardPage />} />
-        </Route>
+        {/* Fallback unknown routes */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

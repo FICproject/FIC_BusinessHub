@@ -155,6 +155,33 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       isMembershipActive: false
     });
 
+    // Synchronize to Admin Portal members collection in Atlas
+    try {
+      await mongoose.connection.collection('members').updateOne(
+        { email: newUser.email.toLowerCase() },
+        {
+          $set: {
+            name: newUser.fullName,
+            email: newUser.email.toLowerCase(),
+            phone: newUser.phoneNumber,
+            primaryCategory: newUser.primaryCategoryId,
+            primaryCategoryName: newUser.primaryCategoryName || '',
+            subcategories: [newUser.subCategory || 'Member'],
+            status: 'ACTIVE',
+            membershipPlan: 'FIRST_YEAR_INTRO',
+            membershipFeePaid: 99,
+            paymentStatus: 'PAID',
+            kycStatus: 'SUBMITTED',
+            registeredAt: new Date(),
+            updatedAt: new Date()
+          }
+        },
+        { upsert: true }
+      );
+    } catch (adminSyncErr) {
+      console.warn('Admin member sync warning:', adminSyncErr);
+    }
+
     // If referred, create attributed Referral record
     if (referrerUserId) {
       try {
@@ -221,7 +248,14 @@ export const register = async (req: Request, res: Response, next: NextFunction):
 
 export const login = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { identifier, password } = req.body;
+    const rawIdentifier = req.body.identifier || req.body.email || req.body.phoneNumber || '';
+    const password = req.body.password;
+
+    if (!rawIdentifier || !password) {
+      throw new AppError('Email/mobile and password are required.', 400, 'CREDENTIALS_REQUIRED');
+    }
+
+    const identifier = String(rawIdentifier).trim();
 
     const user = await UserModel.findOne({
       $or: [{ email: identifier.toLowerCase() }, { phoneNumber: identifier }]
@@ -327,10 +361,13 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response, ne
 
     await user.save();
 
+    const userResponse = user.toJSON();
+    delete (userResponse as any).passwordHash;
+
     res.status(200).json({
       success: true,
       message: 'Profile updated successfully.',
-      data: user
+      data: userResponse
     });
   } catch (error) {
     next(error);

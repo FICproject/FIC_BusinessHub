@@ -1,3 +1,11 @@
-// FIC Module: admin
-export {};
-
+export * from './admin.routes';
+export * from './middleware/admin-auth.middleware';
+export * from './models/AdminUser';
+export * from './models/AuditLog';
+export * from './models/Member';
+export * from './models/FicRequest';
+export * from './models/Meeting';
+export * from './models/SupportTicket';
+export * from './models/InvestmentPool';
+export * from './models/FundingApplication';
+export * from './models/Referral';

@@ -1,9 +1,9 @@
 import { Router, Response, NextFunction } from 'express';
 import { KYCSubmissionModel } from './kyc.model';
 import { UserModel } from '../users/users.model';
-import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
-import { KYCStatus } from '@fic/shared-types';
+import { KYCStatus, UserRole } from '@fic/shared-types';
 
 export const kycRouter = Router();
 
@@ -64,9 +64,12 @@ kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Re
   }
 });
 
-// Demo/Testing helper: instant approval for development verification
-kycRouter.post('/dev-approve-me', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Demo/Testing helper: restricted instant approval for development verification
+kycRouter.post('/dev-approve-me', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      throw new AppError('Development endpoint disabled in production.', 404);
+    }
     if (!req.user) throw new AppError('Unauthorized', 401);
 
     await KYCSubmissionModel.findOneAndUpdate(
@@ -82,7 +85,7 @@ kycRouter.post('/dev-approve-me', authenticate, async (req: AuthenticatedRequest
 
     res.status(200).json({
       success: true,
-      message: 'KYC marked as Approved for testing.',
+      message: 'KYC marked as Approved for testing by Administrator.',
       data: user
     });
   } catch (error) {

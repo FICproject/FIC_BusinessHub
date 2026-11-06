@@ -423,6 +423,74 @@ export const seedDatabase = async (): Promise<void> => {
       console.warn('Mentoring/Investment cleanup warning:', cleanupErr);
     }
 
+    // 4.4 Synchronize members collection for Admin Portal integration
+    try {
+      const allUsers = await UserModel.find();
+      const membersColl = mongoose.connection.collection('members');
+      for (const u of allUsers) {
+        await membersColl.updateOne(
+          { email: u.email.toLowerCase() },
+          {
+            $set: {
+              name: u.fullName,
+              email: u.email.toLowerCase(),
+              phone: u.phoneNumber,
+              primaryCategory: u.primaryCategoryId,
+              primaryCategoryName: u.primaryCategoryName || '',
+              subcategories: [u.subCategory || u.primarySubcategoryName || 'Member'],
+              status: u.status || 'ACTIVE',
+              membershipPlan: 'FIRST_YEAR_INTRO',
+              membershipFeePaid: 99,
+              paymentStatus: 'PAID',
+              kycStatus: u.isKycApproved ? 'APPROVED' : 'SUBMITTED',
+              registeredAt: u.createdAt || new Date(),
+              updatedAt: new Date()
+            }
+          },
+          { upsert: true }
+        );
+      }
+      console.log('✅ Synchronized members collection for Admin Portal integration.');
+    } catch (syncErr) {
+      console.warn('Members sync warning:', syncErr);
+    }
+
+    // 4.5 Seed initial Super Admin account if not present
+    try {
+      const { AdminUserModel } = await import('../modules/admin/models/AdminUser');
+      const adminCount = await AdminUserModel.countDocuments();
+      if (adminCount === 0) {
+        const superAdminPassword = await bcrypt.hash('change_this_password', 10);
+        await AdminUserModel.create({
+          name: 'FIC Super Administrator',
+          email: 'superadmin@ficapp.in',
+          passwordHash: superAdminPassword,
+          role: 'SUPER_ADMIN',
+          department: 'MANAGEMENT',
+          regionScope: 'All Regions',
+          requirePasswordReset: false,
+          isActive: true,
+          permissions: ['*']
+        });
+        console.log('✅ Seeded Super Administrator account: superadmin@ficapp.in');
+      }
+
+      const { ReferralConfigModel } = await import('../modules/admin/models/Referral');
+      const refConfig = await ReferralConfigModel.findOne({ key: 'DEFAULT_CONFIG' });
+      if (!refConfig) {
+        await ReferralConfigModel.create({
+          key: 'DEFAULT_CONFIG',
+          bonusPerReferral: 500,
+          currency: 'INR',
+          minimumPayoutAmount: 1000,
+          isActive: true,
+          updatedBy: 'System'
+        });
+      }
+    } catch (adminSeedErr) {
+      console.warn('Super Admin seeding warning:', adminSeedErr);
+    }
+
     console.log('🎉 FIC Business Hub database seed completed successfully!');
   } catch (error) {
     console.error('❌ Database seed error:', error);

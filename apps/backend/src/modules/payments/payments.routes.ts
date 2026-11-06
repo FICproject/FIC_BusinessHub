@@ -47,9 +47,22 @@ paymentsRouter.post('/membership/confirm', authenticate, async (req: Authenticat
     if (!req.user) throw new AppError('Unauthorized', 401);
     const { orderId, transactionId } = req.body;
 
+    if (!orderId) {
+      throw new AppError('Order ID is required.', 400);
+    }
+
     const payment = await PaymentModel.findOne({ orderId, userId: req.user.userId });
     if (!payment) {
       throw new AppError('Payment order not found.', 404);
+    }
+
+    if (payment.status === PaymentStatus.SUCCESS) {
+      throw new AppError('Payment has already been processed and activated.', 400);
+    }
+
+    // In production, reject unverified mock confirmation
+    if (process.env.NODE_ENV === 'production' && payment.provider === 'MOCK_GATEWAY') {
+      throw new AppError('Direct client confirmation is disabled in production. Payments must be verified via gateway webhook or signature.', 403);
     }
 
     // Mark payment as success

@@ -8,13 +8,14 @@ import {
   MemberBankAccountModel
 } from './wallet.model';
 import { UserModel } from '../users/users.model';
-import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
 import {
   WalletStatus,
   WalletTransactionType,
   WalletTransactionStatus,
-  WithdrawalStatus
+  WithdrawalStatus,
+  UserRole
 } from '@fic/shared-types';
 
 export const walletRouter = Router();
@@ -95,6 +96,10 @@ walletRouter.post('/add-funds', authenticate, async (req: AuthenticatedRequest, 
     }
     if (numericAmount > 200000) {
       throw new AppError('Maximum deposit amount per transaction is ₹2,00,000.', 400);
+    }
+
+    if (process.env.NODE_ENV === 'production' && req.user.role === UserRole.MEMBER && !req.body.gatewaySignature) {
+      throw new AppError('Direct wallet top-up requires verified payment gateway signature.', 403, 'GATEWAY_VERIFICATION_REQUIRED');
     }
 
     const wallet = await getOrCreateWallet(req.user.userId);
@@ -291,7 +296,7 @@ walletRouter.post('/bank-accounts', authenticate, async (req: AuthenticatedReque
 });
 
 // 7. Admin: GET /api/v1/wallet/admin/wallets - List member wallets for admin monitoring
-walletRouter.get('/admin/wallets', authenticate, async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+walletRouter.get('/admin/wallets', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const wallets = await MemberWalletModel.find().populate('userId', 'fullName email phoneNumber primaryCategory');
     const withdrawals = await WalletWithdrawalModel.find().populate('userId', 'fullName email');

@@ -3,9 +3,9 @@ import { ReferralModel, ReferralProgrammeConfigModel } from './referral.model';
 import { UserModel } from '../users/users.model';
 import { getOrCreateWallet } from '../wallet/wallet.routes';
 import { WalletTransactionModel } from '../wallet/wallet.model';
-import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
-import { WalletTransactionType, WalletTransactionStatus } from '@fic/shared-types';
+import { WalletTransactionType, WalletTransactionStatus, UserRole } from '@fic/shared-types';
 
 export const referralsRouter = Router();
 
@@ -116,7 +116,7 @@ referralsRouter.get('/my-referrals', authenticate, async (req: AuthenticatedRequ
 });
 
 // 3. Admin: GET /api/v1/referrals/admin/all - View all referrals with attribution
-referralsRouter.get('/admin/all', authenticate, async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+referralsRouter.get('/admin/all', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (_req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const referrals = await ReferralModel.find()
       .populate('referrerUserId', 'fullName email')
@@ -134,7 +134,7 @@ referralsRouter.get('/admin/all', authenticate, async (_req: AuthenticatedReques
 });
 
 // 4. Admin: PATCH /api/v1/referrals/admin/:id/approve-reward - Approve reward & credit referrer wallet
-referralsRouter.patch('/admin/:id/approve-reward', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+referralsRouter.patch('/admin/:id/approve-reward', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const referral = await ReferralModel.findById(id);

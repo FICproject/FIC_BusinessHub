@@ -440,7 +440,7 @@ export const SkillDevelopmentPage: React.FC = () => {
                   playsInline
                   src={
                     activeVideo.videoUrl.startsWith('/uploads')
-                      ? `http://localhost:5000${activeVideo.videoUrl}`
+                      ? `${(import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/api\/v1\/?$/, '')}${activeVideo.videoUrl}`
                       : activeVideo.videoUrl
                   }
                   className="w-full h-full object-contain bg-black"

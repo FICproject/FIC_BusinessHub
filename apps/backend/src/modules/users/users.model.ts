@@ -1,17 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { UserRole, AccountStatus } from '@fic/shared-types';
-
-export interface IUserAddress {
-  addressLine1: string;
-  addressLine2?: string;
-  landmark?: string;
-  country: string;
-  state: string;
-  district: string;
-  city: string;
-  pinCode: string;
-  addressType?: string;
-}
+import { UserRole, AccountStatus, IUserAddress } from '@fic/shared-types';
 
 export interface IUserDocument extends Document {
   fullName: string;
@@ -25,7 +13,7 @@ export interface IUserDocument extends Document {
   primaryCategoryName?: string;
   subCategory?: string;
   primarySubcategoryName?: string;
-  subcategoryIds: mongoose.Types.ObjectId[];
+  subcategoryIds?: mongoose.Types.ObjectId[];
   dynamicProfile?: Record<string, any>;
   address?: IUserAddress;
   referralCode?: string;
@@ -90,5 +78,19 @@ const UserSchema = new Schema<IUserDocument>(
   { timestamps: true }
 );
 
-export const UserModel = mongoose.model<IUserDocument>('User', UserSchema);
+// Never expose passwordHash in JSON or Object representations
+UserSchema.set('toJSON', {
+  transform: (_doc, ret: any) => {
+    delete ret.passwordHash;
+    return ret;
+  }
+});
 
+UserSchema.set('toObject', {
+  transform: (_doc, ret: any) => {
+    delete ret.passwordHash;
+    return ret;
+  }
+});
+
+export const UserModel = mongoose.models.User || mongoose.model<IUserDocument>('User', UserSchema);
