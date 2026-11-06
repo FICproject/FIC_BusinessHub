@@ -3,7 +3,6 @@
   "compilerOptions": {
     "rootDir": "../../",
     "outDir": "./dist",
-    "baseUrl": ".",
     "paths": {
       "@fic/shared-types": ["../../packages/shared-types/src"],
       "@fic/validators": ["../../packages/validators/src"]
