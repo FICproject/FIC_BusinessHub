@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --bg-ivory: #FAF7F2;
+  --bg-surface: #FFFFFF;
+  --text-brown: #51463F;
+  --text-secondary: #82776E;
+  --accent-coral: #E8795B;
+  --accent-purple: #8064B1;
+  --accent-amber: #E5A23B;
+  --accent-teal: #3B9C91;
+  --border-warm: #EDE2D7;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -9,6 +21,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-ivory);
+  color: var(--text-brown);
 }
 
 /* ========================================================

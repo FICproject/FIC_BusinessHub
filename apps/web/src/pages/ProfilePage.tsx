@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Card, Badge, Button, Input } from '@fic/ui';
 import { AnimatedCounter, motionSprings, modalBackdrop, modalEntrance } from '../motion';
@@ -59,6 +59,7 @@ import {
 
 export const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [user, setUser] = useState<AuthenticatedUser | null>(() => getStoredUser());
   const userId = user?.id || user?.userId || 'usr_kathir_001';
 
@@ -179,6 +180,22 @@ export const ProfilePage: React.FC = () => {
   }, [navigate]);
 
   useEffect(() => {
+    if (searchParams.get('edit') === 'true') {
+      const stored = getStoredUser();
+      if (stored) {
+        populateForm(stored);
+      }
+      setDobError('');
+      setIsEditModalOpen(true);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('edit');
+        return next;
+      }, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
     if (user) {
       const uid = user.id || user.userId;
       const allTxs = getUserWalletTransactions(uid);
@@ -192,15 +209,29 @@ export const ProfilePage: React.FC = () => {
     }
   }, [txTypeFilter, txStatusFilter, txSearchQuery, user]);
 
-  // Lock body scroll and handle Escape key for modals
+  const isAnyModalOpen =
+    isReferralModalOpen ||
+    isTransactionModalOpen ||
+    isEditModalOpen ||
+    isAddFundsModalOpen ||
+    isWithdrawModalOpen ||
+    isRenewModalOpen ||
+    isBankModalOpen;
+
+  // Lock body scroll and handle Escape key for all modals
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        if (isReferralModalOpen) setIsReferralModalOpen(false);
-        if (isTransactionModalOpen) setIsTransactionModalOpen(false);
+        setIsReferralModalOpen(false);
+        setIsTransactionModalOpen(false);
+        setIsEditModalOpen(false);
+        setIsAddFundsModalOpen(false);
+        setIsWithdrawModalOpen(false);
+        setIsRenewModalOpen(false);
+        setIsBankModalOpen(false);
       }
     };
-    if (isReferralModalOpen || isTransactionModalOpen) {
+    if (isAnyModalOpen) {
       document.body.style.overflow = 'hidden';
       window.addEventListener('keydown', handleKeyDown);
     } else {
@@ -210,7 +241,7 @@ export const ProfilePage: React.FC = () => {
       document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isReferralModalOpen, isTransactionModalOpen]);
+  }, [isAnyModalOpen]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -511,21 +542,21 @@ export const ProfilePage: React.FC = () => {
 
   if (!user) {
     return (
-      <WorkspaceShell maxWidth="7xl">
+      <WorkspaceShell>
         <div className="py-24 text-center">
-          <p className="text-base font-bold text-[#29302D]">Loading Member Profile...</p>
-          <p className="text-xs text-[#77786E] mt-1">Authenticating and retrieving member workspace credentials</p>
+          <p className="text-base font-bold text-[#51463F]">Loading Member Profile...</p>
+          <p className="text-xs text-[#82776E] mt-1">Authenticating and retrieving member workspace credentials</p>
         </div>
       </WorkspaceShell>
     );
   }
 
   return (
-    <WorkspaceShell maxWidth="7xl">
+    <WorkspaceShell>
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-[#29302D] text-[#FCFAF6] px-5 py-3.5 rounded-2xl shadow-2xl border border-[#D99B43]/50 flex items-center gap-3 animate-fade-in max-w-md">
-          <CheckCircleIcon size={20} className="text-[#2E7D32] shrink-0" />
+        <div className="fixed bottom-6 right-6 z-50 bg-[#51463F] text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-[#EDE2D7] flex items-center gap-3 animate-fade-in max-w-md">
+          <CheckCircleIcon size={20} className="text-[#3B9C91] shrink-0" />
           <p className="text-xs sm:text-sm font-semibold">{toastMessage}</p>
         </div>
       )}
@@ -533,15 +564,15 @@ export const ProfilePage: React.FC = () => {
       {/* ========================================================
           A. HEADER IDENTITY & STANDING CARD
          ======================================================== */}
-      <div className="bg-white/95 rounded-3xl border border-[#EADFCF] p-6 sm:p-8 shadow-[0_4px_24px_-4px_rgba(41,48,45,0.06)] backdrop-blur-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-[#29302D] via-[#222725] to-[#1E2421] text-[#D99B43] flex items-center justify-center font-black text-3xl shadow-lg shrink-0 border border-[#D99B43]/40">
+      <div className="bg-white/95 rounded-2xl border border-[#EDE2D7] p-4 sm:p-5 lg:p-6 shadow-[0_4px_24px_-4px_rgba(81,70,63,0.06)] backdrop-blur-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-[#E8795B] via-[#E26D4D] to-[#D95F3F] text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-[0_4px_16px_rgba(232,121,91,0.3)] shrink-0 border border-[#E8795B]/40">
               {user.fullName?.charAt(0).toUpperCase() || 'M'}
             </div>
-            <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-mono font-bold text-[#77786E] bg-[#FAF7F2] border border-[#EADFCF] px-2.5 py-0.5 rounded-lg">
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-mono font-bold text-[#82776E] bg-[#FAF7F2] border border-[#EDE2D7] px-2 py-0.5 rounded-md">
                   ID: {user.id || user.userId}
                 </span>
                 <WorkspaceBadge variant="active" size="sm">
@@ -554,17 +585,17 @@ export const ProfilePage: React.FC = () => {
                   KYC Verified
                 </WorkspaceBadge>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-[#29302D] tracking-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-[#51463F] tracking-tight">
                 {user.fullName}
               </h1>
-              <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                <span className="px-3 py-1 rounded-xl bg-[#FFF4F0] text-[#C66B52] border border-[#E58C72]/30 text-xs font-black">
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="px-2.5 py-0.5 rounded-lg bg-[#FFF0EB] text-[#E8795B] border border-[#E8795B]/30 text-xs font-bold">
                   {user.primaryCategory || user.categoryName}
                 </span>
                 {(user.subcategories || [user.subCategory]).filter(Boolean).map((sub, idx) => (
                   <span
                     key={idx}
-                    className="px-3 py-1 rounded-xl bg-white text-[#77786E] text-xs font-bold border border-[#EADFCF]"
+                    className="px-2.5 py-0.5 rounded-lg bg-white text-[#82776E] text-xs font-medium border border-[#EDE2D7]"
                   >
                     {sub}
                   </span>
@@ -573,11 +604,11 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0">
             <WorkspaceButton
-              variant="charcoal"
+              variant="outline"
               size="md"
-              icon={<EditIcon size={16} />}
+              icon={<EditIcon size={15} />}
               onClick={handleOpenEdit}
             >
               Edit Profile
@@ -589,11 +620,11 @@ export const ProfilePage: React.FC = () => {
       {/* ========================================================
           B. UNIVERSAL MEMBER WALLET & BALANCES (SECTION 2 & 3)
          ======================================================== */}
-      <div className="bg-white/95 rounded-3xl border border-[#EADFCF] p-6 sm:p-8 shadow-[0_4px_24px_-4px_rgba(41,48,45,0.05)] space-y-6">
-        <div className="border-b border-[#EADFCF] pb-5 space-y-3">
+      <div className="bg-white/95 rounded-2xl border border-[#EDE2D7] p-4 sm:p-5 lg:p-6 shadow-[0_4px_24px_-4px_rgba(81,70,63,0.05)] space-y-4 sm:space-y-5">
+        <div className="border-b border-[#EDE2D7] pb-3.5 space-y-2">
           {/* Top Row: Category Badge on Left, View Details / Hide Details Toggle on Right */}
           <div className="flex items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#2E7D32]/10 text-[#2E7D32] text-xs font-black uppercase tracking-wider">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#3B9C91]/15 text-[#3B9C91] text-[11px] font-black uppercase tracking-wider">
               <span>Universal Member Wallet</span>
             </div>
 
@@ -604,32 +635,32 @@ export const ProfilePage: React.FC = () => {
                 setIsTransactionModalOpen(true);
                 setTxCurrentPage(1);
               }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all cursor-pointer shadow-xs border bg-white text-[#D99B43] hover:text-[#B87A28] border-[#D99B43]/50 hover:border-[#D99B43] hover:bg-[#FCFAF6]"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs sm:text-[13px] font-bold transition-all cursor-pointer shadow-xs border bg-white text-[#E5A23B] hover:text-[#D08E27] border-[#E5A23B]/50 hover:border-[#E5A23B] hover:bg-[#FAF7F2]"
               title="Open wallet transaction history & audit ledger in a popup"
             >
               <span>View Details</span>
-              <span className="font-bold text-base leading-none">→</span>
+              <span className="font-bold text-sm leading-none">→</span>
             </button>
           </div>
 
           {/* Main Title Row: Heading & Description on Left, Financial Action Buttons on Right */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
+              <h2 className="text-lg sm:text-xl font-black text-[#51463F] tracking-tight">
                 Personal Wallet & Balances
               </h2>
-              <p className="text-xs sm:text-sm text-[#77786E] mt-0.5">
+              <p className="text-xs text-[#82776E] mt-0.5">
                 Secure, ledger-backed stored-value account with auditable transaction tracking.
               </p>
             </div>
 
             {/* Action Buttons: Add Funds, Withdraw Funds, Renew Membership */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setIsAddFundsModalOpen(true)}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-[#2E7D32] to-[#388E3C] hover:from-[#1B5E20] hover:to-[#2E7D32] text-white shadow-md transition-all cursor-pointer"
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-[#3B9C91] to-[#2E847A] hover:from-[#2E847A] hover:to-[#22675F] text-white shadow-xs transition-all cursor-pointer"
               >
-                <PlusIcon size={16} />
+                <PlusIcon size={14} />
                 <span>Add Funds</span>
               </button>
               <button
@@ -637,13 +668,13 @@ export const ProfilePage: React.FC = () => {
                   setWithdrawError('');
                   setIsWithdrawModalOpen(true);
                 }}
-                className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-white border border-[#EADFCF] hover:border-[#8064A9] text-[#29302D] hover:text-[#8064A9] transition-all cursor-pointer shadow-2xs"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-[#EDE2D7] hover:border-[#8064B1] text-[#51463F] hover:text-[#8064B1] transition-all cursor-pointer shadow-2xs"
               >
                 Withdraw Funds
               </button>
               <button
                 onClick={() => setIsRenewModalOpen(true)}
-                className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-gradient-to-r from-[#D99B43] to-[#B87A28] text-white shadow-md hover:from-[#C88A32] hover:to-[#9C6818] transition-all cursor-pointer"
+                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-[#E5A23B] to-[#D08E27] text-white shadow-xs hover:from-[#D08E27] hover:to-[#BA7B1A] transition-all cursor-pointer"
               >
                 Renew Membership
               </button>
@@ -652,107 +683,107 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* 4 Primary Balance Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* 1. Available Balance */}
           <motion.div
-            whileHover={{ y: -3, transition: motionSprings.cardHover }}
-            className="p-6 rounded-3xl bg-gradient-to-br from-[#29302D] via-[#222725] to-[#1E2421] text-white shadow-lg border border-[#D99B43]/30"
+            whileHover={{ y: -2, transition: motionSprings.cardHover }}
+            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-[#8064B1] via-[#6F52A3] to-[#593E8A] text-white shadow-md border border-[#8064B1]/40"
           >
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#D99B43] block mb-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#F8EBD0] block mb-0.5">
               Available Balance
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-[#FCFAF6]">
+            <div className="text-xl sm:text-2xl font-black text-white">
               <AnimatedCounter value={wallet?.availableBalance || 0} prefix="₹" />
             </div>
-            <span className="text-[11px] text-white/70 block mt-1.5">
+            <span className="text-[10.5px] text-white/80 block mt-1 font-medium">
               Ready for renewal & services
             </span>
           </motion.div>
 
           {/* 2. Pending Referral Rewards */}
           <motion.div
-            whileHover={{ y: -3, transition: motionSprings.cardHover }}
-            className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#FCFAF6] to-[#FDF6E9] border border-[#D99B43]/30 shadow-xs"
+            whileHover={{ y: -2, transition: motionSprings.cardHover }}
+            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#FCFAF6] to-[#FDF6E9] border border-[#D99B43]/30 shadow-2xs"
           >
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#9C6818] block mb-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#9C6818] block mb-0.5">
               Pending Rewards
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-[#9C6818]">
+            <div className="text-xl sm:text-2xl font-black text-[#9C6818]">
               <AnimatedCounter value={wallet?.pendingBalance || 0} prefix="₹" />
             </div>
-            <span className="text-[11px] text-[#B87A28] block mt-1.5 font-medium">
+            <span className="text-[10.5px] text-[#B87A28] block mt-1 font-medium">
               Under verification review
             </span>
           </motion.div>
 
           {/* 3. Total Referral Earnings */}
           <motion.div
-            whileHover={{ y: -3, transition: motionSprings.cardHover }}
-            className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#FAF8FD] to-[#F4EEFB] border border-[#8064A9]/30 shadow-xs"
+            whileHover={{ y: -2, transition: motionSprings.cardHover }}
+            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#FAF8FD] to-[#F4EEFB] border border-[#8064A9]/30 shadow-2xs"
           >
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#8064A9] block mb-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#8064A9] block mb-0.5">
               Referral Earnings
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-[#8064A9]">
+            <div className="text-xl sm:text-2xl font-black text-[#8064A9]">
               <AnimatedCounter value={wallet?.totalReferralEarnings || 0} prefix="₹" />
             </div>
-            <span className="text-[11px] text-[#8064A9]/80 block mt-1.5 font-medium">
+            <span className="text-[10.5px] text-[#8064A9]/80 block mt-1 font-medium">
               Approved rewards to date
             </span>
           </motion.div>
 
           {/* 4. Total Wallet Credits */}
           <motion.div
-            whileHover={{ y: -3, transition: motionSprings.cardHover }}
-            className="p-6 rounded-3xl bg-gradient-to-br from-white via-[#F6FBF7] to-[#E8F5E9] border border-[#2E7D32]/30 shadow-xs"
+            whileHover={{ y: -2, transition: motionSprings.cardHover }}
+            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#F6FBF7] to-[#E8F5E9] border border-[#2E7D32]/30 shadow-2xs"
           >
-            <span className="text-[11px] font-black uppercase tracking-wider text-[#1B5E20] block mb-1">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#1B5E20] block mb-0.5">
               Total Credits
             </span>
-            <div className="text-2xl sm:text-3xl font-black text-[#1B5E20]">
+            <div className="text-xl sm:text-2xl font-black text-[#1B5E20]">
               <AnimatedCounter value={(wallet?.totalAdded || 0) + (wallet?.totalReferralEarnings || 0)} prefix="₹" />
             </div>
-            <span className="text-[11px] text-[#2E7D32] block mt-1.5 font-medium">
+            <span className="text-[10.5px] text-[#2E7D32] block mt-1 font-medium">
               Lifetime inflows & top-ups
             </span>
           </motion.div>
         </div>
 
         {/* Secondary Ledger Breakdown */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 text-xs">
-          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
-            <span className="text-[#77786E] block font-bold">For Renewal</span>
-            <strong className="text-[#29302D] font-black block mt-0.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-1 text-xs">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#5A4F47] block font-bold text-[11px]">For Renewal</span>
+            <strong className="text-[#51463F] font-black block mt-0.5 text-xs sm:text-sm">
               ₹{(wallet?.membershipEligibleBalance || 0).toLocaleString('en-IN')}
             </strong>
           </div>
-          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
-            <span className="text-[#77786E] block font-bold">For Withdrawal</span>
-            <strong className="text-[#29302D] font-black block mt-0.5">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#5A4F47] block font-bold text-[11px]">For Withdrawal</span>
+            <strong className="text-[#51463F] font-black block mt-0.5 text-xs sm:text-sm">
               ₹{(wallet?.withdrawalEligibleBalance || 0).toLocaleString('en-IN')}
             </strong>
           </div>
-          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
-            <span className="text-[#77786E] block font-bold">Total Added</span>
-            <strong className="text-[#2E7D32] font-black block mt-0.5">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#5A4F47] block font-bold text-[11px]">Total Added</span>
+            <strong className="text-[#3B9C91] font-black block mt-0.5 text-xs sm:text-sm">
               ₹{(wallet?.totalAdded || 0).toLocaleString('en-IN')}
             </strong>
           </div>
-          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
-            <span className="text-[#77786E] block font-bold">Total Withdrawn</span>
-            <strong className="text-[#29302D] font-black block mt-0.5">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#5A4F47] block font-bold text-[11px]">Total Withdrawn</span>
+            <strong className="text-[#51463F] font-black block mt-0.5 text-xs sm:text-sm">
               ₹{(wallet?.totalWithdrawn || 0).toLocaleString('en-IN')}
             </strong>
           </div>
-          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
-            <span className="text-[#77786E] block font-bold">Renewal Debits</span>
-            <strong className="text-[#29302D] font-black block mt-0.5">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#5A4F47] block font-bold text-[11px]">Renewal Debits</span>
+            <strong className="text-[#51463F] font-black block mt-0.5 text-xs sm:text-sm">
               ₹{(wallet?.totalRenewalSpent || 0).toLocaleString('en-IN')}
             </strong>
           </div>
-          <div className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF]">
-            <span className="text-[#77786E] block font-bold">Wallet Standing</span>
-            <strong className="text-[#2E7D32] font-black block mt-0.5">
+          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#5A4F47] block font-bold text-[11px]">Wallet Standing</span>
+            <strong className="text-[#3B9C91] font-black block mt-0.5 text-xs sm:text-sm">
               ● {wallet?.status || 'ACTIVE'}
             </strong>
           </div>
@@ -762,57 +793,57 @@ export const ProfilePage: React.FC = () => {
       {/* ========================================================
           C. REFERRAL PROGRAMME (SECTION 7 & 8)
          ======================================================== */}
-      <div className="bg-white/95 rounded-3xl border border-[#EADFCF] p-6 sm:p-8 shadow-[0_4px_24px_-4px_rgba(41,48,45,0.05)] space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF] pb-4 gap-3">
+      <div className="bg-white/95 rounded-2xl border border-[#EDE2D7] p-4 sm:p-5 lg:p-6 shadow-[0_4px_24px_-4px_rgba(81,70,63,0.05)] space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EDE2D7] pb-3 gap-2.5">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-xs font-black uppercase tracking-wider mb-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#8064B1]/10 text-[#8064B1] text-[11px] font-black uppercase tracking-wider mb-0.5">
               <span>Universal Member Rewards</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
+            <h2 className="text-lg sm:text-xl font-black text-[#51463F] tracking-tight">
               Referral Programme & Earnings
             </h2>
-            <p className="text-xs sm:text-sm text-[#77786E] mt-0.5">
+            <p className="text-xs text-[#82776E] mt-0.5">
               Invite entrepreneurs and businesses to FIC Business Hub and earn ₹500 wallet reward per verified membership.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="px-3.5 py-1.5 rounded-xl bg-[#2E7D32]/10 text-[#1B5E20] text-xs font-black border border-[#2E7D32]/30 shadow-2xs">
+            <span className="px-3 py-1 rounded-xl bg-[#3B9C91]/15 text-[#2E847A] text-xs font-bold border border-[#3B9C91]/30 shadow-2xs">
               Reward: ₹500 per Referral
             </span>
           </div>
         </div>
 
         {/* Unique Code & Link Boxes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Referral Code */}
-          <div className="p-5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] flex items-center justify-between gap-3 shadow-2xs">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] flex items-center justify-between gap-3 shadow-2xs">
             <div>
-              <span className="text-xs text-[#77786E] block font-bold">Your Unique Referral Code</span>
-              <span className="text-lg font-black font-mono text-[#29302D] tracking-wider block mt-0.5">
+              <span className="text-[11px] text-[#82776E] block font-bold">Your Unique Referral Code</span>
+              <span className="text-base font-black font-mono text-[#51463F] tracking-wider block mt-0.5">
                 {referralData?.referralCode}
               </span>
             </div>
             <button
               onClick={handleCopyCode}
-              className="px-4 py-2 rounded-xl text-xs font-black bg-white border border-[#EADFCF] hover:border-[#8064A9] hover:text-[#8064A9] text-[#29302D] transition-all shrink-0 cursor-pointer shadow-2xs"
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-white border border-[#EDE2D7] hover:border-[#8064B1] hover:text-[#8064B1] text-[#51463F] transition-all shrink-0 cursor-pointer shadow-2xs"
             >
               Copy Code
             </button>
           </div>
 
           {/* Referral Link */}
-          <div className="p-5 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] flex items-center justify-between gap-3 shadow-2xs">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] flex items-center justify-between gap-3 shadow-2xs">
             <div className="min-w-0">
-              <span className="text-xs text-[#77786E] block font-bold">Your Unique Referral Link</span>
-              <span className="text-xs font-mono text-[#29302D] truncate block mt-1 font-semibold">
+              <span className="text-[11px] text-[#82776E] block font-bold">Your Unique Referral Link</span>
+              <span className="text-xs font-mono text-[#51463F] truncate block mt-0.5 font-semibold">
                 {referralData?.referralLink}
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={handleCopyLink}
-                className="px-4 py-2 rounded-xl text-xs font-black bg-[#29302D] hover:bg-[#8064A9] text-white transition-all cursor-pointer shadow-2xs"
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-[#E8795B] to-[#D96B4E] hover:from-[#D96B4E] hover:to-[#C65D40] text-white transition-all cursor-pointer shadow-xs"
               >
                 Copy Link
               </button>
@@ -821,21 +852,21 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* View Details Button & Action Banner (Positioned ABOVE Summary Cards) */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-[#FAF7F2] via-white to-[#F7F3FB] border border-[#EADFCF] flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#8064A9]/10 text-[#8064A9] flex items-center justify-center shrink-0 border border-[#8064A9]/20 font-black text-lg">
+        <div className="p-3 sm:p-3.5 rounded-xl bg-gradient-to-r from-[#FAF7F2] via-white to-[#F7F3FB] border border-[#EDE2D7] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#8064B1]/10 text-[#8064B1] flex items-center justify-center shrink-0 border border-[#8064B1]/20 font-black text-sm">
               👥
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h4 className="text-sm font-bold text-[#29302D]">
+                <h4 className="text-xs sm:text-sm font-bold text-[#51463F]">
                   Referred Members & Registration Status
                 </h4>
-                <span className="text-[10px] font-black uppercase tracking-wider text-[#8064A9] bg-white px-2 py-0.5 rounded border border-[#8064A9]/20">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#8064B1] bg-white px-2 py-0.5 rounded border border-[#8064B1]/20">
                   {referralData?.referrals?.length || 0} Members
                 </span>
               </div>
-              <p className="text-xs text-[#77786E] mt-0.5">
+              <p className="text-[11px] text-[#82776E] mt-0.5">
                 View members who registered using your referral link.
               </p>
             </div>
@@ -847,42 +878,42 @@ export const ProfilePage: React.FC = () => {
               setIsReferralModalOpen(true);
               setReferralPage(1);
             }}
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-black bg-[#29302D] hover:bg-[#8064A9] text-white transition-all cursor-pointer shadow-2xs shrink-0"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-[13px] font-bold bg-gradient-to-r from-[#8064B1] to-[#6E529F] hover:from-[#6E529F] hover:to-[#5E448D] text-white transition-all cursor-pointer shadow-xs shrink-0"
           >
             <span>View Referred Members</span>
-            <span className="text-sm">→</span>
+            <span className="text-xs">→</span>
           </button>
         </div>
 
         {/* 5 Referral Stats Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-            <span className="text-slate-500 block">Total Referrals</span>
-            <span className="text-xl font-black text-slate-900 block mt-1">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 text-xs">
+          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] text-center">
+            <span className="text-[#82776E] block font-medium text-[11px]">Total Referrals</span>
+            <span className="text-lg font-black text-[#51463F] block mt-0.5">
               <AnimatedCounter value={referralData?.summary?.totalReferrals || 0} />
             </span>
           </motion.div>
-          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-            <span className="text-slate-500 block">Pending Verification</span>
-            <span className="text-xl font-black text-amber-700 block mt-1">
+          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] text-center">
+            <span className="text-[#82776E] block font-medium text-[11px]">Pending Verification</span>
+            <span className="text-lg font-black text-[#E5A23B] block mt-0.5">
               <AnimatedCounter value={referralData?.summary?.pendingReferrals || 0} />
             </span>
           </motion.div>
-          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-            <span className="text-slate-500 block">KYC Approved</span>
-            <span className="text-xl font-black text-emerald-700 block mt-1">
+          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] text-center">
+            <span className="text-[#82776E] block font-medium text-[11px]">KYC Approved</span>
+            <span className="text-lg font-black text-[#3B9C91] block mt-0.5">
               <AnimatedCounter value={referralData?.summary?.kycApprovedReferrals || 0} />
             </span>
           </motion.div>
-          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center">
-            <span className="text-slate-500 block">Pending Reward</span>
-            <span className="text-xl font-black text-amber-700 block mt-1">
+          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] text-center">
+            <span className="text-[#82776E] block font-medium text-[11px]">Pending Reward</span>
+            <span className="text-lg font-black text-[#E5A23B] block mt-0.5">
               <AnimatedCounter value={referralData?.summary?.rewardPending || 0} prefix="₹" />
             </span>
           </motion.div>
-          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-center col-span-2 sm:col-span-1">
-            <span className="text-slate-500 block">Total Earned</span>
-            <span className="text-xl font-black text-[#8064A9] block mt-1">
+          <motion.div whileHover={{ y: -2, transition: motionSprings.cardHover }} className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] text-center col-span-2 sm:col-span-1">
+            <span className="text-[#82776E] block font-medium text-[11px]">Total Earned</span>
+            <span className="text-lg font-black text-[#8064B1] block mt-0.5">
               <AnimatedCounter value={referralData?.summary?.rewardCredited || 0} prefix="₹" />
             </span>
           </motion.div>
@@ -892,59 +923,59 @@ export const ProfilePage: React.FC = () => {
       {/* ========================================================
           D. MEMBERSHIP TERMS & WALLET RENEWAL (SECTION 6)
          ======================================================== */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-3">
+      <div className="bg-white rounded-2xl border border-[#EDE2D7] p-4 sm:p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EDE2D7] pb-3 gap-2.5">
           <div>
-            <h3 className="text-lg font-bold text-slate-900">Membership Terms & Standing</h3>
-            <p className="text-xs text-slate-500">Official commercial credentials for your account</p>
+            <h3 className="text-base sm:text-lg font-bold text-[#51463F]">Membership Terms & Standing</h3>
+            <p className="text-xs text-[#82776E]">Official commercial credentials for your account</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-amber-700 bg-amber-50 px-3 py-1 rounded-lg border border-amber-200">
+            <span className="text-xs font-bold text-[#E5A23B] bg-[#F8EBD0]/60 px-2.5 py-1 rounded-lg border border-[#E5A23B]/30">
               {user.membershipPlan || '1st Year Membership'}
             </span>
             <button
               onClick={() => setIsRenewModalOpen(true)}
-              className="px-4 py-1.5 rounded-lg text-xs font-bold bg-[#29302D] hover:bg-[#8064A9] text-white shadow-xs transition-colors"
+              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-[#E5A23B] to-[#D08E27] hover:from-[#D08E27] hover:to-[#BA7B1A] text-white shadow-xs transition-colors"
             >
               Renew Membership Using Wallet
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-400 block font-medium">Plan</span>
-            <strong className="text-slate-900 text-sm block mt-1">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#82776E] block font-medium">Plan</span>
+            <strong className="text-[#51463F] text-xs sm:text-sm block mt-0.5">
               {user.membershipPlan || 'First-Year Access'}
             </strong>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-400 block font-medium">Amount Paid</span>
-            <strong className="text-emerald-700 text-sm block mt-1">
+          <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#82776E] block font-medium">Amount Paid</span>
+            <strong className="text-emerald-700 text-xs sm:text-sm block mt-0.5">
               {user.membershipAmountPaid || '₹99'}
             </strong>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-400 block font-medium">Validity Term</span>
-            <strong className="text-slate-900 text-sm block mt-1">
+          <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#82776E] block font-medium">Validity Term</span>
+            <strong className="text-[#51463F] text-xs sm:text-sm block mt-0.5">
               {user.membershipExpiryDate || 'Valid for 365 Days'}
             </strong>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-400 block font-medium">Account Status</span>
-            <span className="inline-block mt-1 text-emerald-700 font-bold">
+          <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#82776E] block font-medium">Account Status</span>
+            <span className="inline-block mt-0.5 text-emerald-700 font-bold">
               ● {user.membershipStatus || 'ACTIVE'}
             </span>
           </div>
         </div>
 
         {/* Live Renewal Status Banner */}
-        <div className="p-4 rounded-xl bg-[#FFF9F0] border border-[#D99B43]/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+        <div className="p-3 rounded-xl bg-[#FFF9F0] border border-[#E5A23B]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
           <div>
-            <span className="font-bold text-[#29302D] block">
+            <span className="font-bold text-[#51463F] block">
               Annual Renewal Policy (Year 2+): Standard fee ₹5,999/yr.
             </span>
             <span className="text-[#77786E] block mt-0.5">
@@ -961,7 +992,7 @@ export const ProfilePage: React.FC = () => {
           {isRenewalSufficient ? (
             <button
               onClick={() => setIsRenewModalOpen(true)}
-              className="px-4 py-2 bg-[#27AE60] hover:bg-[#219653] text-white font-bold rounded-xl transition-colors shrink-0"
+              className="px-3.5 py-1.5 bg-[#27AE60] hover:bg-[#219653] text-white font-bold rounded-xl transition-colors shrink-0"
             >
               Renew for ₹5,999
             </button>
@@ -971,7 +1002,7 @@ export const ProfilePage: React.FC = () => {
                 setCustomTopUp(String(renewalShortfall));
                 setIsAddFundsModalOpen(true);
               }}
-              className="px-4 py-2 bg-[#C66B52] hover:bg-[#B55A41] text-white font-bold rounded-xl transition-colors shrink-0"
+              className="px-3.5 py-1.5 bg-[#C66B52] hover:bg-[#B55A41] text-white font-bold rounded-xl transition-colors shrink-0"
             >
               Top Up Shortfall (₹{renewalShortfall.toLocaleString('en-IN')})
             </button>
@@ -984,49 +1015,49 @@ export const ProfilePage: React.FC = () => {
       {/* ========================================================
           F. PERSONAL & PROFESSIONAL DETAILS (2-COLUMN)
          ======================================================== */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
         {/* Personal Details */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="bg-white rounded-2xl border border-[#EDE2D7] p-4 sm:p-5 shadow-xs space-y-3.5">
+          <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-2.5">
             <div className="flex items-center gap-2">
-              <UserIcon size={18} className="text-slate-600" />
-              <h3 className="text-base font-bold text-slate-900">Personal Information</h3>
+              <UserIcon size={16} className="text-[#8064B1]" />
+              <h3 className="text-sm sm:text-base font-black text-[#51463F]">Personal Information</h3>
             </div>
-            <span className="text-xs text-slate-400">Authenticated Details</span>
+            <span className="text-[11px] text-[#82776E]">Authenticated Details</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div>
-              <span className="text-slate-400 block font-medium">Full Legal Name</span>
-              <strong className="text-slate-900 text-sm block mt-0.5">{user.fullName}</strong>
+              <span className="text-[#82776E] block font-medium">Full Legal Name</span>
+              <strong className="text-[#51463F] text-xs sm:text-sm block mt-0.5">{user.fullName}</strong>
             </div>
 
             <div>
-              <span className="text-slate-400 block font-medium">Email Address</span>
-              <span className="text-slate-900 text-xs sm:text-sm block mt-0.5 font-medium truncate">
+              <span className="text-[#82776E] block font-medium">Email Address</span>
+              <span className="text-[#51463F] text-xs sm:text-sm block mt-0.5 font-medium truncate">
                 {user.email}
               </span>
             </div>
 
             <div>
-              <span className="text-slate-400 block font-medium">Mobile Phone Number</span>
-              <strong className="text-slate-900 text-sm block mt-0.5">
+              <span className="text-[#82776E] block font-medium">Mobile Phone Number</span>
+              <strong className="text-[#51463F] text-xs sm:text-sm block mt-0.5">
                 {user.mobileNumber || user.phoneNumber || 'Not provided'}
               </strong>
             </div>
 
             <div>
-              <span className="text-slate-400 block font-medium">Date of Birth</span>
-              <strong className="text-slate-900 text-sm block mt-0.5">
+              <span className="text-[#82776E] block font-medium">Date of Birth</span>
+              <strong className="text-[#51463F] text-xs sm:text-sm block mt-0.5">
                 {user.personalInfo?.dob || (user as any).dob || '15 Aug 1996'}
               </strong>
             </div>
 
             <div className="sm:col-span-2">
-              <span className="text-slate-400 block font-medium">Registered Address & Location</span>
+              <span className="text-[#82776E] block font-medium">Registered Address & Location</span>
               {(user.address?.addressLine1 || user.personalInfo?.address) ? (
                 <div className="flex items-start justify-between gap-3 mt-1">
-                  <span className="text-slate-800 text-xs leading-relaxed font-medium">
+                  <span className="text-[#51463F] text-xs leading-relaxed font-medium">
                     {user.address
                       ? `${user.address.addressLine1}${user.address.addressLine2 ? ', ' + user.address.addressLine2 : ''}${user.address.landmark ? ', Landmark: ' + user.address.landmark : ''}, ${user.address.city}, ${user.address.district}, ${user.address.state} - ${user.address.pinCode}, ${user.address.country || 'India'}`
                       : `${user.personalInfo?.address || ''}${user.personalInfo?.city ? ', ' + user.personalInfo.city : ''}${user.personalInfo?.district ? ', ' + user.personalInfo.district : ''}${user.personalInfo?.state ? ', ' + user.personalInfo.state : ''}${user.personalInfo?.pincode ? ' - ' + user.personalInfo.pincode : ''}`}
@@ -1034,18 +1065,18 @@ export const ProfilePage: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleOpenEdit}
-                    className="text-[11px] font-bold text-[#8064A9] hover:underline shrink-0 cursor-pointer"
+                    className="text-[11px] font-bold text-[#8064B1] hover:underline shrink-0 cursor-pointer"
                   >
                     Edit
                   </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 mt-1.5">
-                  <span className="text-slate-400 italic text-xs">Address Not Provided</span>
+                  <span className="text-[#82776E] italic text-xs">Address Not Provided</span>
                   <button
                     type="button"
                     onClick={handleOpenEdit}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[#8064A9] bg-[#8064A9]/10 hover:bg-[#8064A9]/20 transition-all cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[#8064B1] bg-[#8064B1]/10 hover:bg-[#8064B1]/20 transition-all cursor-pointer shadow-2xs"
                   >
                     + Add Address
                   </button>
@@ -1056,21 +1087,21 @@ export const ProfilePage: React.FC = () => {
         </div>
 
         {/* Professional Details */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="bg-white rounded-2xl border border-[#EDE2D7] p-4 sm:p-5 shadow-xs space-y-3.5">
+          <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-2.5">
             <div className="flex items-center gap-2">
-              <BriefcaseIcon size={18} className="text-slate-600" />
-              <h3 className="text-base font-bold text-slate-900">Professional & Business Profile</h3>
+              <BriefcaseIcon size={16} className="text-[#8064B1]" />
+              <h3 className="text-sm sm:text-base font-black text-[#51463F]">Professional & Business Profile</h3>
             </div>
-            <span className="text-xs text-[#8064A9] font-bold">
+            <span className="text-xs text-[#8064B1] font-bold">
               {user.primaryCategory || user.categoryName}
             </span>
           </div>
 
-          <div className="space-y-3 text-xs">
+          <div className="space-y-2.5 text-xs">
             <div>
-              <span className="text-slate-400 block font-medium">Professional Title / Organization</span>
-              <strong className="text-slate-900 text-sm block mt-0.5">
+              <span className="text-[#82776E] block font-medium">Professional Title / Organization</span>
+              <strong className="text-[#51463F] text-xs sm:text-sm block mt-0.5">
                 {user.subCategory ||
                   user.professionalInfo?.roleTitle ||
                   user.professionalInfo?.businessName ||
@@ -1080,12 +1111,12 @@ export const ProfilePage: React.FC = () => {
 
             {user.professionalInfo?.skills && user.professionalInfo.skills.length > 0 && (
               <div>
-                <span className="text-slate-400 block font-medium mb-1.5">Skills & Capabilities</span>
+                <span className="text-[#82776E] block font-medium mb-1">Skills & Capabilities</span>
                 <div className="flex flex-wrap gap-1.5">
                   {user.professionalInfo.skills.map((skill, i) => (
                     <span
                       key={i}
-                      className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 font-medium text-[11px] border border-slate-200"
+                      className="px-2 py-0.5 rounded-md bg-[#FAF7F2] text-[#51463F] font-bold text-[11px] border border-[#EDE2D7]"
                     >
                       {skill}
                     </span>
@@ -1095,7 +1126,7 @@ export const ProfilePage: React.FC = () => {
             )}
 
             {user.professionalInfo?.description && (
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-slate-700 leading-relaxed text-xs">
+              <div className="bg-[#FAF7F2] p-2.5 rounded-xl border border-[#EDE2D7] text-[#51463F] leading-relaxed text-xs">
                 {user.professionalInfo.description}
               </div>
             )}
@@ -1106,19 +1137,19 @@ export const ProfilePage: React.FC = () => {
       {/* ========================================================
           G. KYC VERIFICATION & COMPLIANCE FILES (SIMPLIFIED)
          ======================================================== */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-2">
+      <div className="bg-white rounded-2xl border border-[#EDE2D7] p-4 sm:p-5 shadow-xs space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EDE2D7] pb-2.5 gap-2">
           <div>
-            <h3 className="text-base font-bold text-slate-900">KYC Verification & Documents</h3>
-            <p className="text-xs text-slate-500">Government & business verification records for your account</p>
+            <h3 className="text-sm sm:text-base font-black text-[#51463F]">KYC Verification & Documents</h3>
+            <p className="text-xs text-[#82776E]">Government & business verification records for your account</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 font-semibold">Overall Status:</span>
+            <span className="text-xs text-[#82776E] font-medium">Overall Status:</span>
             {renderKycBadge(user.isKycApproved ? 'VERIFIED' : 'PENDING')}
           </div>
         </div>
 
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-[#EDE2D7]/70">
           {(user.submittedDocuments && user.submittedDocuments.length > 0
             ? user.submittedDocuments
             : [
@@ -1128,13 +1159,13 @@ export const ProfilePage: React.FC = () => {
           ).map((doc, idx) => (
             <div
               key={idx}
-              className="py-3 flex items-center justify-between gap-4 text-xs hover:bg-slate-50/50 px-2 rounded-xl"
+              className="py-2.5 flex items-center justify-between gap-4 text-xs hover:bg-[#FAF7F2]/50 px-2 rounded-xl"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 border border-slate-200">
-                  <FileTextIcon size={16} />
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-[#FAF7F2] text-[#8064B1] flex items-center justify-center shrink-0 border border-[#EDE2D7]">
+                  <FileTextIcon size={14} />
                 </div>
-                <span className="font-bold text-slate-900 text-xs sm:text-sm">{doc.name}</span>
+                <span className="font-bold text-[#51463F] text-xs sm:text-[13px]">{doc.name}</span>
               </div>
               <div>{renderKycBadge(doc.status)}</div>
             </div>
@@ -1145,35 +1176,35 @@ export const ProfilePage: React.FC = () => {
       {/* ========================================================
           H. ACCOUNT SECURITY & CREDENTIALS
          ======================================================== */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+      <div className="bg-white rounded-2xl border border-[#EDE2D7] p-4 sm:p-5 shadow-xs space-y-3.5">
+        <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-2.5">
           <div className="flex items-center gap-2">
-            <LockIcon size={18} className="text-slate-600" />
-            <h3 className="text-base font-bold text-slate-900">Account Security & Credentials</h3>
+            <LockIcon size={16} className="text-[#8064B1]" />
+            <h3 className="text-sm sm:text-base font-black text-[#51463F]">Account Security & Credentials</h3>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-400 block font-medium">Primary Email</span>
-            <strong className="text-slate-900 text-sm block mt-0.5 truncate">{user.email}</strong>
-            <span className="text-emerald-700 text-[11px] font-bold block mt-1">✓ Verified</span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#82776E] block font-medium">Primary Email</span>
+            <strong className="text-[#51463F] text-xs sm:text-[13px] block mt-0.5 truncate">{user.email}</strong>
+            <span className="text-emerald-700 text-[10.5px] font-bold block mt-0.5">✓ Verified</span>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-            <span className="text-slate-400 block font-medium">Primary Mobile</span>
-            <strong className="text-slate-900 text-sm block mt-0.5">{user.phoneNumber || user.mobileNumber}</strong>
-            <span className="text-emerald-700 text-[11px] font-bold block mt-1">✓ Verified</span>
+          <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+            <span className="text-[#82776E] block font-medium">Primary Mobile</span>
+            <strong className="text-[#51463F] text-xs sm:text-[13px] block mt-0.5">{user.phoneNumber || user.mobileNumber}</strong>
+            <span className="text-emerald-700 text-[10.5px] font-bold block mt-0.5">✓ Verified</span>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+          <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] flex flex-col justify-between">
             <div>
-              <span className="text-slate-400 block font-medium">Password Security</span>
-              <strong className="text-slate-900 text-sm block mt-0.5">••••••••••••</strong>
+              <span className="text-[#82776E] block font-medium">Password Security</span>
+              <strong className="text-[#51463F] text-xs sm:text-[13px] block mt-0.5">••••••••••••</strong>
             </div>
             <button
               onClick={() => setIsPasswordModalOpen(true)}
-              className="text-xs font-bold text-[#8064A9] hover:text-[#29302D] text-left mt-2"
+              className="text-xs font-bold text-[#8064B1] hover:text-[#51463F] text-left mt-1.5 cursor-pointer"
             >
               Change Password &rarr;
             </button>
@@ -1197,38 +1228,38 @@ export const ProfilePage: React.FC = () => {
           >
             <motion.div
               variants={modalEntrance}
-              className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative my-auto border border-[#EADFCF] space-y-6 max-h-[92vh] flex flex-col"
+              className="bg-white rounded-2xl max-w-5xl w-full p-4 sm:p-5 lg:p-6 shadow-2xl relative my-auto border border-[#EDE2D7] space-y-4 max-h-[90vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EADFCF] gap-3 shrink-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#EDE2D7] gap-2.5 shrink-0">
                 <div>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-[11px] font-black uppercase tracking-wider mb-1">
+                  <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#8064B1]/10 text-[#8064B1] text-[10.5px] font-black uppercase tracking-wider mb-0.5">
                     <SparklesIcon size={12} />
                     <span>Real-Time Ledger Audit</span>
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
+                  <h3 className="text-lg sm:text-xl font-black text-[#51463F] tracking-tight">
                     Wallet Transaction History & Audit Ledger
                   </h3>
-                  <p className="text-xs text-[#77786E]">
+                  <p className="text-xs text-[#82776E]">
                     Immutable double-entry record of all credits, top-ups, referral bonuses, renewals and withdrawals.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
                   <button
                     type="button"
                     onClick={handleDownloadStatement}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white border border-[#EADFCF] hover:border-[#8064A9] text-[#29302D] hover:text-[#8064A9] transition-all cursor-pointer shadow-2xs"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-white border border-[#EDE2D7] hover:border-[#8064B1] text-[#51463F] hover:text-[#8064B1] transition-all cursor-pointer shadow-2xs"
                   >
-                    <FileTextIcon size={14} />
+                    <FileTextIcon size={13} />
                     <span>Download Statement</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setIsTransactionModalOpen(false)}
-                    className="w-9 h-9 rounded-xl bg-[#FAF7F2] hover:bg-[#EADFCF] text-[#77786E] hover:text-[#29302D] flex items-center justify-center font-bold text-base transition-all cursor-pointer border border-[#EADFCF]"
+                    className="w-8 h-8 rounded-xl bg-[#FAF7F2] hover:bg-[#EDE2D7] text-[#82776E] hover:text-[#51463F] flex items-center justify-center font-bold text-sm transition-all cursor-pointer border border-[#EDE2D7]"
                     title="Close modal"
                   >
                     ✕
@@ -1237,82 +1268,82 @@ export const ProfilePage: React.FC = () => {
               </div>
 
             {/* Scrollable Body */}
-            <div className="overflow-y-auto space-y-6 pr-1 flex-1">
+            <div className="overflow-y-auto space-y-4 pr-1 flex-1">
               {/* 5 Transaction Summary KPI Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
                 {/* 1. Total Transactions */}
-                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] shadow-2xs">
-                  <span className="text-[11px] font-bold text-[#77786E] uppercase tracking-wider block">
+                <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] shadow-2xs">
+                  <span className="text-[10.5px] font-bold text-[#82776E] uppercase tracking-wider block">
                     Total Transactions
                   </span>
-                  <div className="text-xl sm:text-2xl font-black text-[#29302D] mt-1">
+                  <div className="text-lg sm:text-xl font-black text-[#51463F] mt-0.5">
                     {totalTxCount}
                   </div>
-                  <span className="text-[11px] text-[#77786E] font-medium block mt-0.5">
+                  <span className="text-[10px] text-[#82776E] font-medium block mt-0.5">
                     Recorded entries
                   </span>
                 </div>
 
                 {/* 2. Total Credits */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#F6FBF7] border border-[#2E7D32]/25 shadow-2xs">
-                  <span className="text-[11px] font-bold text-[#1B5E20] uppercase tracking-wider block">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-white to-[#F6FBF7] border border-[#3B9C91]/25 shadow-2xs">
+                  <span className="text-[10.5px] font-bold text-[#3B9C91] uppercase tracking-wider block">
                     Total Credits
                   </span>
-                  <div className="text-xl sm:text-2xl font-black text-[#2E7D32] mt-1">
+                  <div className="text-lg sm:text-xl font-black text-[#3B9C91] mt-0.5">
                     +₹{totalCreditsAmount.toLocaleString('en-IN')}
                   </div>
-                  <span className="text-[11px] text-[#2E7D32]/80 font-medium block mt-0.5">
+                  <span className="text-[10px] text-[#3B9C91]/80 font-medium block mt-0.5">
                     Total inflows & top-ups
                   </span>
                 </div>
 
                 {/* 3. Total Debits */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#FFF4F0] border border-[#C66B52]/25 shadow-2xs">
-                  <span className="text-[11px] font-bold text-[#C66B52] uppercase tracking-wider block">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-white to-[#FFF0EB] border border-[#E8795B]/25 shadow-2xs">
+                  <span className="text-[10.5px] font-bold text-[#E8795B] uppercase tracking-wider block">
                     Total Debits
                   </span>
-                  <div className="text-xl sm:text-2xl font-black text-[#C66B52] mt-1">
+                  <div className="text-lg sm:text-xl font-black text-[#E8795B] mt-0.5">
                     -₹{totalDebitsAmount.toLocaleString('en-IN')}
                   </div>
-                  <span className="text-[11px] text-[#C66B52]/80 font-medium block mt-0.5">
+                  <span className="text-[10px] text-[#E8795B]/80 font-medium block mt-0.5">
                     Renewals & withdrawals
                   </span>
                 </div>
 
                 {/* 4. Pending */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#FDF6E9] border border-[#D99B43]/25 shadow-2xs">
-                  <span className="text-[11px] font-bold text-[#9C6818] uppercase tracking-wider block">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-white to-[#F8EBD0] border border-[#E5A23B]/25 shadow-2xs">
+                  <span className="text-[10.5px] font-bold text-[#E5A23B] uppercase tracking-wider block">
                     Pending
                   </span>
-                  <div className="text-xl sm:text-2xl font-black text-[#9C6818] mt-1">
+                  <div className="text-lg sm:text-xl font-black text-[#E5A23B] mt-0.5">
                     {pendingTxCount}
                   </div>
-                  <span className="text-[11px] text-[#B87A28] font-medium block mt-0.5">
+                  <span className="text-[10px] text-[#E5A23B]/90 font-medium block mt-0.5">
                     Under verification
                   </span>
                 </div>
 
                 {/* 5. Completed */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-white to-[#FAF8FD] border border-[#8064A9]/25 shadow-2xs">
-                  <span className="text-[11px] font-bold text-[#8064A9] uppercase tracking-wider block">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-white to-[#FAF8FD] border border-[#8064B1]/25 shadow-2xs">
+                  <span className="text-[10.5px] font-bold text-[#8064B1] uppercase tracking-wider block">
                     Completed
                   </span>
-                  <div className="text-xl sm:text-2xl font-black text-[#8064A9] mt-1">
+                  <div className="text-lg sm:text-xl font-black text-[#8064B1] mt-0.5">
                     {completedTxCount}
                   </div>
-                  <span className="text-[11px] text-[#8064A9]/80 font-medium block mt-0.5">
+                  <span className="text-[10px] text-[#8064B1]/80 font-medium block mt-0.5">
                     Settled ledger entries
                   </span>
                 </div>
               </div>
 
               {/* Filters, Flow Selector & Search Toolbar */}
-              <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] space-y-3.5">
+              <div className="p-3 sm:p-3.5 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] space-y-2.5">
                 {/* Row 1: Category Filter Pills + Flow Selector */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                   {/* Category Type Pills */}
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-[#77786E] mr-1">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-[#82776E] mr-1">
                       Type:
                     </span>
                     {[
@@ -1332,8 +1363,8 @@ export const ProfilePage: React.FC = () => {
                         }}
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                           txTypeFilter === tab.key
-                            ? 'bg-[#29302D] text-white shadow-xs'
-                            : 'bg-white text-[#77786E] border border-[#EADFCF] hover:border-[#8064A9] hover:text-[#29302D]'
+                            ? 'bg-gradient-to-r from-[#E8795B] to-[#D96B4E] text-white shadow-[0_2px_8px_rgba(232,121,91,0.25)]'
+                            : 'bg-white text-[#82776E] border border-[#EDE2D7] hover:border-[#8064B1] hover:text-[#51463F]'
                         }`}
                       >
                         {tab.label}
@@ -1342,8 +1373,8 @@ export const ProfilePage: React.FC = () => {
                   </div>
 
                   {/* Flow Toggle: All / Credit / Debit */}
-                  <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#EADFCF] shrink-0 self-start lg:self-auto">
-                    <span className="text-[11px] font-black text-[#77786E] px-2 uppercase tracking-wider">
+                  <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-[#EDE2D7] shrink-0 self-start lg:self-auto">
+                    <span className="text-[11px] font-black text-[#82776E] px-2 uppercase tracking-wider">
                       Flow:
                     </span>
                     <button
@@ -1354,8 +1385,8 @@ export const ProfilePage: React.FC = () => {
                       }}
                       className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         txFlowFilter === 'ALL'
-                          ? 'bg-[#29302D] text-white shadow-xs'
-                          : 'text-[#77786E] hover:text-[#29302D]'
+                          ? 'bg-gradient-to-r from-[#E8795B] to-[#D96B4E] text-white shadow-xs'
+                          : 'text-[#82776E] hover:text-[#51463F]'
                       }`}
                     >
                       All Flows
@@ -1403,7 +1434,7 @@ export const ProfilePage: React.FC = () => {
                         setTxStatusFilter(e.target.value);
                         setTxCurrentPage(1);
                       }}
-                      className="px-3 py-1.5 text-xs font-bold bg-white border border-[#EADFCF] rounded-xl text-[#29302D] focus:outline-none focus:ring-1 focus:ring-[#8064A9] cursor-pointer"
+                      className="px-3 py-1.5 text-xs font-bold bg-white border border-[#EDE2D7] rounded-xl text-[#51463F] focus:outline-none focus:ring-1 focus:ring-[#8064B1] cursor-pointer"
                     >
                       <option value="ALL">All Statuses</option>
                       <option value={WalletTransactionStatus.COMPLETED}>Completed</option>
@@ -1421,7 +1452,7 @@ export const ProfilePage: React.FC = () => {
                           setTxSearchQuery('');
                           setTxCurrentPage(1);
                         }}
-                        className="text-xs font-bold text-[#8064A9] hover:underline ml-2 cursor-pointer"
+                        className="text-xs font-bold text-[#8064B1] hover:underline ml-2 cursor-pointer"
                       >
                         Reset Filters
                       </button>
@@ -1430,7 +1461,7 @@ export const ProfilePage: React.FC = () => {
 
                   {/* Search box */}
                   <div className="relative sm:w-72">
-                    <SearchIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#77786E]" />
+                    <SearchIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#82776E]" />
                     <input
                       type="text"
                       placeholder="Search ref ID, description or ₹..."
@@ -1439,17 +1470,17 @@ export const ProfilePage: React.FC = () => {
                         setTxSearchQuery(e.target.value);
                         setTxCurrentPage(1);
                       }}
-                      className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-[#EADFCF] rounded-xl text-[#29302D] placeholder-[#77786E]/70 focus:outline-none focus:ring-1 focus:ring-[#8064A9]"
+                      className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-[#EDE2D7] rounded-xl text-[#51463F] placeholder-[#82776E]/70 focus:outline-none focus:ring-1 focus:ring-[#8064B1]"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Comprehensive 8-Column Transaction Table */}
-              <div className="border border-[#EADFCF] rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="border border-[#EDE2D7] rounded-2xl overflow-hidden bg-white shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left text-[#29302D]">
-                    <thead className="bg-[#FAF7F2] border-b border-[#EADFCF] text-[11px] uppercase tracking-wider text-[#77786E] font-black">
+                  <table className="w-full text-xs text-left text-[#51463F]">
+                    <thead className="bg-[#FAF7F2] border-b border-[#EDE2D7] text-[11px] uppercase tracking-wider text-[#82776E] font-black">
                       <tr>
                         <th className="px-4 py-3.5 whitespace-nowrap">Reference ID</th>
                         <th className="px-4 py-3.5 whitespace-nowrap">Date & Time</th>
@@ -1461,16 +1492,16 @@ export const ProfilePage: React.FC = () => {
                         <th className="px-4 py-3.5 text-right whitespace-nowrap">Balance After</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#EADFCF]/60">
+                    <tbody className="divide-y divide-[#EDE2D7]/60">
                       {paginatedTransactions.length === 0 ? (
                         <tr>
                           <td colSpan={8} className="px-4 py-12 text-center">
                             <div className="max-w-xs mx-auto text-center space-y-2">
-                              <div className="w-10 h-10 mx-auto rounded-full bg-[#FAF7F2] border border-[#EADFCF] flex items-center justify-center text-[#77786E]">
+                              <div className="w-10 h-10 mx-auto rounded-full bg-[#FAF7F2] border border-[#EDE2D7] flex items-center justify-center text-[#82776E]">
                                 <FileTextIcon size={18} />
                               </div>
-                              <p className="text-sm font-bold text-[#29302D]">No transactions found</p>
-                              <p className="text-xs text-[#77786E]">
+                              <p className="text-sm font-bold text-[#51463F]">No transactions found</p>
+                              <p className="text-xs text-[#82776E]">
                                 No wallet transactions match your active filters or search keyword.
                               </p>
                             </div>
@@ -1482,14 +1513,14 @@ export const ProfilePage: React.FC = () => {
                           return (
                             <tr key={tx.transactionId} className="hover:bg-[#FAF7F2]/60 transition-colors">
                               {/* 1. Reference ID */}
-                              <td className="px-4 py-3.5 font-mono font-black text-[#29302D] whitespace-nowrap">
-                                <span className="bg-[#FAF7F2] px-2 py-1 rounded-md border border-[#EADFCF] text-[11.5px]">
+                              <td className="px-4 py-3.5 font-mono font-black text-[#51463F] whitespace-nowrap">
+                                <span className="bg-[#FAF7F2] px-2 py-1 rounded-md border border-[#EDE2D7] text-[11.5px]">
                                   {tx.transactionId}
                                 </span>
                               </td>
 
                               {/* 2. Date & Time */}
-                              <td className="px-4 py-3.5 text-[#77786E] whitespace-nowrap font-medium">
+                              <td className="px-4 py-3.5 text-[#82776E] whitespace-nowrap font-medium">
                                 {tx.createdAt}
                               </td>
 
@@ -1499,29 +1530,29 @@ export const ProfilePage: React.FC = () => {
                               </td>
 
                               {/* 4. Description */}
-                              <td className="px-4 py-3.5 max-w-[240px] truncate font-medium text-[#29302D]" title={tx.description}>
+                              <td className="px-4 py-3.5 max-w-[240px] truncate font-medium text-[#51463F]" title={tx.description}>
                                 {tx.description}
                               </td>
 
                               {/* 5. Credit (+) */}
                               <td className="px-4 py-3.5 text-right whitespace-nowrap font-black">
                                 {isCredit ? (
-                                  <span className="text-[#2E7D32] bg-[#E8F5E9]/60 border border-[#2E7D32]/20 px-2 py-0.5 rounded-lg">
+                                  <span className="text-[#3B9C91] bg-[#E3F5F2] border border-[#3B9C91]/20 px-2 py-0.5 rounded-lg">
                                     +₹{(tx.amount || 0).toLocaleString('en-IN')}
                                   </span>
                                 ) : (
-                                  <span className="text-[#77786E]/40 font-bold">—</span>
+                                  <span className="text-[#82776E]/40 font-bold">—</span>
                                 )}
                               </td>
 
                               {/* 6. Debit (-) */}
                               <td className="px-4 py-3.5 text-right whitespace-nowrap font-black">
                                 {!isCredit ? (
-                                  <span className="text-[#C66B52] bg-[#FFF4F0] border border-[#C66B52]/20 px-2 py-0.5 rounded-lg">
+                                  <span className="text-[#E8795B] bg-[#FFF0EB] border border-[#E8795B]/20 px-2 py-0.5 rounded-lg">
                                     -₹{(tx.amount || 0).toLocaleString('en-IN')}
                                   </span>
                                 ) : (
-                                  <span className="text-[#77786E]/40 font-bold">—</span>
+                                  <span className="text-[#82776E]/40 font-bold">—</span>
                                 )}
                               </td>
 
@@ -1531,7 +1562,7 @@ export const ProfilePage: React.FC = () => {
                               </td>
 
                               {/* 8. Balance After */}
-                              <td className="px-4 py-3.5 text-right font-mono font-black text-[#29302D] whitespace-nowrap">
+                              <td className="px-4 py-3.5 text-right font-mono font-black text-[#51463F] whitespace-nowrap">
                                 ₹{(tx.balanceAfter || 0).toLocaleString('en-IN')}
                               </td>
                             </tr>
@@ -1544,18 +1575,18 @@ export const ProfilePage: React.FC = () => {
 
                 {/* Pagination Toolbar */}
                 {filteredTransactions.length > 0 && (
-                  <div className="px-4 py-3 border-t border-[#EADFCF] bg-[#FAF7F2] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                    <span className="text-[#77786E] font-medium">
+                  <div className="px-4 py-3 border-t border-[#EDE2D7] bg-[#FAF7F2] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <span className="text-[#82776E] font-medium">
                       Showing{' '}
-                      <strong className="text-[#29302D] font-black">
+                      <strong className="text-[#51463F] font-black">
                         {startIdx + 1}
                       </strong>{' '}
                       to{' '}
-                      <strong className="text-[#29302D] font-black">
+                      <strong className="text-[#51463F] font-black">
                         {Math.min(startIdx + txPerPage, filteredTransactions.length)}
                       </strong>{' '}
                       of{' '}
-                      <strong className="text-[#29302D] font-black">
+                      <strong className="text-[#51463F] font-black">
                         {filteredTransactions.length}
                       </strong>{' '}
                       transactions
@@ -1566,7 +1597,7 @@ export const ProfilePage: React.FC = () => {
                         type="button"
                         disabled={currentSafePage <= 1}
                         onClick={() => setTxCurrentPage((p) => Math.max(1, p - 1))}
-                        className="px-3 py-1.5 rounded-xl border border-[#EADFCF] bg-white text-[#29302D] font-bold hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl border border-[#EDE2D7] bg-white text-[#51463F] font-bold hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
                       >
                         ← Prev
                       </button>
@@ -1579,8 +1610,8 @@ export const ProfilePage: React.FC = () => {
                             onClick={() => setTxCurrentPage(pageNum)}
                             className={`w-7 h-7 rounded-lg text-xs font-black transition-all cursor-pointer ${
                               currentSafePage === pageNum
-                                ? 'bg-[#29302D] text-white shadow-xs'
-                                : 'bg-white border border-[#EADFCF] text-[#77786E] hover:border-[#8064A9] hover:text-[#29302D]'
+                                ? 'bg-gradient-to-r from-[#E8795B] to-[#D96B4E] text-white shadow-xs'
+                                : 'bg-white border border-[#EDE2D7] text-[#82776E] hover:border-[#8064B1] hover:text-[#51463F]'
                             }`}
                           >
                             {pageNum}
@@ -1592,7 +1623,7 @@ export const ProfilePage: React.FC = () => {
                         type="button"
                         disabled={currentSafePage >= totalPages}
                         onClick={() => setTxCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        className="px-3 py-1.5 rounded-xl border border-[#EADFCF] bg-white text-[#29302D] font-bold hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl border border-[#EDE2D7] bg-white text-[#51463F] font-bold hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer"
                       >
                         Next →
                       </button>
@@ -1603,15 +1634,15 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="pt-3 border-t border-[#EADFCF] flex items-center justify-between text-xs text-[#77786E] shrink-0">
+            <div className="pt-3 border-t border-[#EDE2D7] flex items-center justify-between text-xs text-[#82776E] shrink-0">
               <span className="flex items-center gap-1.5 font-medium">
-                <ShieldCheckIcon size={15} className="text-[#2E7D32]" />
+                <ShieldCheckIcon size={15} className="text-[#3B9C91]" />
                 <span>Ledger cryptographically verified & audit compliant</span>
               </span>
               <button
                 type="button"
                 onClick={() => setIsTransactionModalOpen(false)}
-                className="px-5 py-2 rounded-xl bg-[#29302D] hover:bg-[#1E2421] text-white font-bold transition-all cursor-pointer shadow-xs"
+                className="px-5 py-2 rounded-xl bg-[#51463F] hover:bg-[#3D332D] text-white font-bold transition-all cursor-pointer shadow-xs"
               >
                 Close
               </button>
@@ -1637,31 +1668,31 @@ export const ProfilePage: React.FC = () => {
           >
             <motion.div
               variants={modalEntrance}
-              className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative my-auto border border-[#EADFCF] space-y-6 max-h-[92vh] flex flex-col"
+              className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 shadow-2xl relative my-auto border border-[#EDE2D7] space-y-6 max-h-[92vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EADFCF] gap-3 shrink-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#EDE2D7] gap-3 shrink-0">
                 <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8064A9]/10 text-[#8064A9] text-xs font-black uppercase tracking-wider mb-1">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8064B1]/10 text-[#8064B1] text-xs font-black uppercase tracking-wider mb-1">
                     <span>Referral Programme Network</span>
                   </div>
-                  <h3 className="text-xl sm:text-2xl font-black text-[#29302D] tracking-tight">
+                  <h3 className="text-xl sm:text-2xl font-black text-[#51463F] tracking-tight">
                     Referred Members & Registration Status
                   </h3>
-                  <p className="text-xs sm:text-sm text-[#77786E] mt-0.5">
+                  <p className="text-xs sm:text-sm text-[#82776E] mt-0.5">
                     Track members who joined FIC Business Hub through your referral link.
                   </p>
                 </div>
 
                 <div className="flex items-center gap-3">
-                <span className="px-3.5 py-1.5 rounded-xl bg-[#FAF7F2] text-[#29302D] text-xs font-bold border border-[#EADFCF]">
+                <span className="px-3.5 py-1.5 rounded-xl bg-[#FAF7F2] text-[#51463F] text-xs font-bold border border-[#EDE2D7]">
                   {totalReferralCount} Members Attributed
                 </span>
                 <button
                   type="button"
                   onClick={() => setIsReferralModalOpen(false)}
-                  className="w-9 h-9 rounded-xl bg-[#FAF7F2] hover:bg-[#EADFCF] text-[#77786E] hover:text-[#29302D] flex items-center justify-center font-bold text-base transition-all cursor-pointer border border-[#EADFCF]"
+                  className="w-9 h-9 rounded-xl bg-[#FAF7F2] hover:bg-[#EDE2D7] text-[#82776E] hover:text-[#51463F] flex items-center justify-center font-bold text-base transition-all cursor-pointer border border-[#EDE2D7]"
                   title="Close modal"
                 >
                   ✕
@@ -1672,15 +1703,15 @@ export const ProfilePage: React.FC = () => {
             {/* Modal Content - Table or Empty State */}
             <div className="overflow-y-auto flex-1 pr-1 -mr-1">
               {totalReferralCount === 0 ? (
-                <div className="py-12 px-6 text-center bg-[#FAF7F2] rounded-2xl border border-dashed border-[#EADFCF] space-y-3">
-                  <div className="w-14 h-14 rounded-2xl bg-white border border-[#EADFCF] text-[#8064A9] flex items-center justify-center mx-auto text-2xl font-bold shadow-2xs">
+                <div className="py-12 px-6 text-center bg-[#FAF7F2] rounded-2xl border border-dashed border-[#EDE2D7] space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-white border border-[#EDE2D7] text-[#8064B1] flex items-center justify-center mx-auto text-2xl font-bold shadow-2xs">
                     👥
                   </div>
-                  <h4 className="text-base font-bold text-[#29302D]">
+                  <h4 className="text-base font-bold text-[#51463F]">
                     No members have registered through your referral link yet.
                   </h4>
-                  <p className="text-xs text-[#77786E] max-w-md mx-auto leading-relaxed">
-                    Share your unique referral code <strong className="font-mono text-[#29302D]">{referralData?.referralCode}</strong> or referral link with business contacts. You will earn ₹500 in your personal wallet per verified member.
+                  <p className="text-xs text-[#82776E] max-w-md mx-auto leading-relaxed">
+                    Share your unique referral code <strong className="font-mono text-[#51463F]">{referralData?.referralCode}</strong> or referral link with business contacts. You will earn ₹500 in your personal wallet per verified member.
                   </p>
                   <div className="pt-2 flex justify-center">
                     <button
@@ -1689,17 +1720,17 @@ export const ProfilePage: React.FC = () => {
                         handleCopyLink();
                         showToast('Referral link copied to clipboard!');
                       }}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-[#29302D] text-white hover:bg-[#8064A9] transition-all cursor-pointer shadow-2xs"
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-[#E8795B] to-[#D96B4E] hover:from-[#D96B4E] hover:to-[#C65D40] text-white transition-all cursor-pointer shadow-[0_2px_8px_rgba(232,121,91,0.25)]"
                     >
                       Copy Referral Link
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                <div className="border border-[#EDE2D7] rounded-2xl overflow-hidden shadow-2xs">
                   <div className="overflow-x-auto">
-                    <table className="w-full text-xs text-left text-slate-700">
-                      <thead className="bg-[#FAF7F2] border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-600 font-bold">
+                    <table className="w-full text-xs text-left text-[#51463F]">
+                      <thead className="bg-[#FAF7F2] border-b border-[#EDE2D7] text-[11px] uppercase tracking-wider text-[#82776E] font-bold">
                         <tr>
                           <th className="px-4 py-3.5 whitespace-nowrap">Member Name</th>
                           <th className="px-4 py-3.5 whitespace-nowrap">Member ID</th>
@@ -1712,32 +1743,32 @@ export const ProfilePage: React.FC = () => {
                           <th className="px-4 py-3.5 whitespace-nowrap text-center">Reward Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 bg-white">
+                      <tbody className="divide-y divide-[#EDE2D7]/60 bg-white">
                         {paginatedReferrals.map((refItem) => (
-                          <tr key={refItem.referralId} className="hover:bg-slate-50/70 transition-colors">
+                          <tr key={refItem.referralId} className="hover:bg-[#FAF7F2]/70 transition-colors">
                             {/* Member Name */}
-                            <td className="px-4 py-3.5 font-bold text-slate-900 whitespace-nowrap">
+                            <td className="px-4 py-3.5 font-bold text-[#51463F] whitespace-nowrap">
                               {refItem.referredMemberName || refItem.referredName || 'Registered Member'}
                             </td>
 
                             {/* Member ID */}
-                            <td className="px-4 py-3.5 font-mono text-[11px] text-slate-600 whitespace-nowrap">
+                            <td className="px-4 py-3.5 font-mono text-[11px] text-[#82776E] whitespace-nowrap">
                               {refItem.referredMemberId || (refItem.referredUserId ? `FIC-${refItem.referredUserId.slice(-4).toUpperCase()}` : refItem.referralId)}
                             </td>
 
                             {/* Registration Date */}
-                            <td className="px-4 py-3.5 whitespace-nowrap text-slate-600">
+                            <td className="px-4 py-3.5 whitespace-nowrap text-[#82776E]">
                               {refItem.registrationDate}
                             </td>
 
                             {/* Category */}
-                            <td className="px-4 py-3.5 whitespace-nowrap text-slate-800 font-medium">
+                            <td className="px-4 py-3.5 whitespace-nowrap text-[#51463F] font-medium">
                               {refItem.categoryName || 'General'}
                             </td>
 
                             {/* Subcategory */}
                             <td className="px-4 py-3.5 whitespace-nowrap">
-                              <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-semibold text-[11px] border border-slate-200">
+                              <span className="px-2.5 py-1 rounded-lg bg-[#FAF7F2] text-[#82776E] font-semibold text-[11px] border border-[#EDE2D7]">
                                 {refItem.subCategory || 'Member'}
                               </span>
                             </td>
@@ -1761,7 +1792,7 @@ export const ProfilePage: React.FC = () => {
                             </td>
 
                             {/* Reward Amount */}
-                            <td className="px-4 py-3.5 whitespace-nowrap text-right font-black text-slate-900">
+                            <td className="px-4 py-3.5 whitespace-nowrap text-right font-black text-[#51463F]">
                               ₹{(refItem.rewardAmount || 500).toLocaleString('en-IN')}
                             </td>
 
@@ -1798,8 +1829,8 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             {/* Modal Footer with Pagination */}
-            <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-[#EADFCF] gap-3 shrink-0 text-xs">
-              <span className="text-slate-500 font-medium">
+            <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-[#EDE2D7] gap-3 shrink-0 text-xs">
+              <span className="text-[#82776E] font-medium">
                 Showing {totalReferralCount > 0 ? (safeReferralPage - 1) * referralPerPage + 1 : 0} to{' '}
                 {Math.min(safeReferralPage * referralPerPage, totalReferralCount)} of {totalReferralCount} members
               </span>
@@ -1809,25 +1840,25 @@ export const ProfilePage: React.FC = () => {
                   type="button"
                   disabled={safeReferralPage <= 1}
                   onClick={() => setReferralPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1.5 rounded-xl border border-[#EADFCF] bg-white font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
+                  className="px-3 py-1.5 rounded-xl border border-[#EDE2D7] bg-white font-bold text-[#51463F] hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
                 >
                   ← Previous
                 </button>
-                <span className="px-3 py-1 text-slate-700 font-bold">
+                <span className="px-3 py-1 text-[#51463F] font-bold">
                   Page {safeReferralPage} of {totalReferralPages}
                 </span>
                 <button
                   type="button"
                   disabled={safeReferralPage >= totalReferralPages}
                   onClick={() => setReferralPage((p) => Math.min(totalReferralPages, p + 1))}
-                  className="px-3 py-1.5 rounded-xl border border-[#EADFCF] bg-white font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
+                  className="px-3 py-1.5 rounded-xl border border-[#EDE2D7] bg-white font-bold text-[#51463F] hover:bg-[#FAF7F2] disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
                 >
                   Next →
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsReferralModalOpen(false)}
-                  className="ml-2 px-4 py-1.5 rounded-xl bg-[#29302D] hover:bg-[#8064A9] text-white font-bold transition-all cursor-pointer shadow-2xs"
+                  className="ml-2 px-4 py-1.5 rounded-xl bg-[#51463F] hover:bg-[#3D332D] text-white font-bold transition-all cursor-pointer shadow-2xs"
                 >
                   Close
                 </button>
@@ -1854,14 +1885,14 @@ export const ProfilePage: React.FC = () => {
           >
             <motion.div
               variants={modalEntrance}
-              className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
+              className="bg-[#FAF7F2] border border-[#EDE2D7] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
-                <h3 className="text-lg font-black text-[#29302D]">Add Funds to FIC Wallet</h3>
+              <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-3 mb-4">
+                <h3 className="text-lg font-black text-[#51463F]">Add Funds to FIC Wallet</h3>
                 <button
                   onClick={() => setIsAddFundsModalOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center cursor-pointer"
+                  className="w-8 h-8 rounded-lg bg-white border border-[#EDE2D7] text-[#82776E] flex items-center justify-center cursor-pointer hover:bg-[#EDE2D7]/50"
                 >
                   ✕
                 </button>
@@ -1869,7 +1900,7 @@ export const ProfilePage: React.FC = () => {
 
             <form onSubmit={handleAddFundsSubmit} className="space-y-4 text-xs sm:text-sm">
               <div>
-                <label className="block font-bold text-[#29302D] mb-1.5">Select Amount (INR) *</label>
+                <label className="block font-bold text-[#51463F] mb-1.5">Select Amount (INR) *</label>
                 <div className="grid grid-cols-4 gap-2 mb-3">
                   {[100, 500, 1000, 2000].map((amt) => (
                     <button
@@ -1881,8 +1912,8 @@ export const ProfilePage: React.FC = () => {
                       }}
                       className={`py-2 rounded-xl text-xs font-bold transition-all border ${
                         !customTopUp && topUpAmount === amt
-                          ? 'bg-[#29302D] text-white border-[#29302D]'
-                          : 'bg-white text-slate-700 border-[#E8DBC8] hover:bg-slate-50'
+                          ? 'bg-gradient-to-r from-[#E8795B] to-[#D96B4E] text-white border-[#E8795B] shadow-xs'
+                          : 'bg-white text-[#51463F] border-[#EDE2D7] hover:bg-slate-50'
                       }`}
                     >
                       ₹{amt}
@@ -1897,13 +1928,13 @@ export const ProfilePage: React.FC = () => {
                   max={200000}
                   value={customTopUp}
                   onChange={(e) => setCustomTopUp(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-[#E8DBC8] rounded-xl focus:ring-2 focus:ring-[#8064A9]/30 text-[#29302D]"
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#EDE2D7] rounded-xl focus:ring-2 focus:ring-[#E8795B]/30 text-[#51463F]"
                 />
               </div>
 
               {/* Payment Method Selector */}
               <div>
-                <label className="block font-bold text-[#29302D] mb-1.5">Payment Method *</label>
+                <label className="block font-bold text-[#51463F] mb-1.5">Payment Method *</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { id: 'UPI', label: 'UPI / QR' },
@@ -1916,8 +1947,8 @@ export const ProfilePage: React.FC = () => {
                       onClick={() => setPaymentMethod(m.id)}
                       className={`py-2 px-2 rounded-xl text-xs font-bold border text-center transition-all ${
                         paymentMethod === m.id
-                          ? 'border-[#27AE60] bg-[#27AE60]/10 text-[#27AE60]'
-                          : 'border-[#E8DBC8] bg-white text-slate-600'
+                          ? 'border-[#3B9C91] bg-[#3B9C91]/15 text-[#2E847A]'
+                          : 'border-[#EDE2D7] bg-white text-[#82776E]'
                       }`}
                     >
                       {m.label}
@@ -1927,18 +1958,18 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               {/* Total Payable Summary */}
-              <div className="p-3 bg-white rounded-xl border border-[#E8DBC8] space-y-1.5 text-xs">
-                <div className="flex justify-between text-slate-600">
+              <div className="p-3 bg-white rounded-xl border border-[#EDE2D7] space-y-1.5 text-xs">
+                <div className="flex justify-between text-[#82776E]">
                   <span>Top-up Amount:</span>
                   <span className="font-bold">
                     ₹{(customTopUp ? Number(customTopUp) : topUpAmount).toLocaleString('en-IN')}
                   </span>
                 </div>
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between text-[#82776E]">
                   <span>Payment Gateway Charges:</span>
-                  <span className="text-emerald-700 font-bold">₹0 (FIC Promotional Zero Fee)</span>
+                  <span className="text-[#3B9C91] font-bold">₹0 (FIC Promotional Zero Fee)</span>
                 </div>
-                <div className="flex justify-between border-t border-slate-100 pt-1.5 font-black text-slate-900 text-sm">
+                <div className="flex justify-between border-t border-[#EDE2D7] pt-1.5 font-black text-[#51463F] text-sm">
                   <span>Total Payable:</span>
                   <span>
                     ₹{(customTopUp ? Number(customTopUp) : topUpAmount).toLocaleString('en-IN')}
@@ -1950,14 +1981,14 @@ export const ProfilePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsAddFundsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-500"
+                  className="px-4 py-2 text-xs font-bold text-[#82776E] hover:text-[#51463F]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isProcessingPayment}
-                  className="px-5 py-2.5 bg-[#27AE60] hover:bg-[#219653] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#3B9C91] to-[#2E847A] hover:from-[#2E847A] hover:to-[#22675F] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                 >
                   {isProcessingPayment ? 'Connecting Payment Gateway...' : 'Proceed to Secure Payment'}
                 </button>
@@ -1984,14 +2015,14 @@ export const ProfilePage: React.FC = () => {
           >
             <motion.div
               variants={modalEntrance}
-              className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
+              className="bg-[#FAF7F2] border border-[#EDE2D7] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
-                <h3 className="text-lg font-black text-[#29302D]">Request Bank Withdrawal</h3>
+              <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-3 mb-4">
+                <h3 className="text-lg font-black text-[#51463F]">Request Bank Withdrawal</h3>
                 <button
                   onClick={() => setIsWithdrawModalOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center cursor-pointer"
+                  className="w-8 h-8 rounded-lg bg-white border border-[#EDE2D7] text-[#82776E] flex items-center justify-center cursor-pointer hover:bg-[#EDE2D7]/50"
                 >
                   ✕
                 </button>
@@ -2005,9 +2036,9 @@ export const ProfilePage: React.FC = () => {
             )}
 
             <form onSubmit={handleWithdrawSubmit} className="space-y-4 text-xs sm:text-sm">
-              <div className="p-3.5 bg-white rounded-xl border border-[#E8DBC8] space-y-1">
-                <span className="text-[11px] text-slate-500 block">Available for Withdrawal</span>
-                <span className="text-xl font-black text-slate-900 block">
+              <div className="p-3.5 bg-white rounded-xl border border-[#EDE2D7] space-y-1">
+                <span className="text-[11px] text-[#82776E] block">Available for Withdrawal</span>
+                <span className="text-xl font-black text-[#51463F] block">
                   ₹{(wallet?.withdrawalEligibleBalance || 0).toLocaleString('en-IN')}
                 </span>
               </div>
@@ -2015,14 +2046,14 @@ export const ProfilePage: React.FC = () => {
               {/* Verified Bank Account Display */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-[#29302D]">Receiving Bank Account *</label>
+                  <label className="font-bold text-[#51463F]">Receiving Bank Account *</label>
                   <button
                     type="button"
                     onClick={() => {
                       setIsWithdrawModalOpen(false);
                       setIsBankModalOpen(true);
                     }}
-                    className="text-[11px] font-bold text-[#8064A9] hover:underline"
+                    className="text-[11px] font-bold text-[#8064B1] hover:underline"
                   >
                     {bankAccount ? 'Change Bank' : '+ Add Bank Account'}
                   </button>
@@ -2031,8 +2062,8 @@ export const ProfilePage: React.FC = () => {
                 {bankAccount ? (
                   <div className="p-3 bg-white rounded-xl border border-emerald-300 flex items-center justify-between">
                     <div>
-                      <span className="font-bold text-slate-900 block">{bankAccount.bankName}</span>
-                      <span className="text-[11.5px] font-mono text-slate-600 block">
+                      <span className="font-bold text-[#51463F] block">{bankAccount.bankName}</span>
+                      <span className="text-[11.5px] font-mono text-[#82776E] block">
                         {bankAccount.accountNumberMasked} &bull; IFSC: {bankAccount.ifscCode}
                       </span>
                     </div>
@@ -2059,7 +2090,7 @@ export const ProfilePage: React.FC = () => {
 
               {/* Withdrawal Amount */}
               <div>
-                <label className="block font-bold text-[#29302D] mb-1">Withdrawal Amount (Min ₹500) *</label>
+                <label className="block font-bold text-[#51463F] mb-1">Withdrawal Amount (Min ₹500) *</label>
                 <input
                   type="number"
                   placeholder="e.g. 1000"
@@ -2067,12 +2098,12 @@ export const ProfilePage: React.FC = () => {
                   max={wallet?.withdrawalEligibleBalance || 0}
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-white border border-[#E8DBC8] rounded-xl text-[#29302D]"
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F]"
                 />
               </div>
 
               {/* Compliance Gate Note */}
-              <div className="p-3 bg-white rounded-xl border border-[#E8DBC8] text-[11px] text-slate-500 leading-relaxed">
+              <div className="p-3 bg-white rounded-xl border border-[#EDE2D7] text-[11px] text-[#82776E] leading-relaxed">
                 <strong>RBI Compliance & Settlement Gate:</strong> Withdrawals are remitted directly to the verified bank account following authorized internal governance review within 1-2 business days.
               </div>
 
@@ -2080,14 +2111,14 @@ export const ProfilePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsWithdrawModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-500"
+                  className="px-4 py-2 text-xs font-bold text-[#82776E] hover:text-[#51463F]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={!bankAccount}
-                  className="px-5 py-2.5 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#E8795B] to-[#D96B4E] hover:from-[#D96B4E] hover:to-[#C65D40] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                 >
                   Confirm Withdrawal Request
                 </button>
@@ -2114,43 +2145,43 @@ export const ProfilePage: React.FC = () => {
           >
             <motion.div
               variants={modalEntrance}
-              className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
+              className="bg-[#FAF7F2] border border-[#EDE2D7] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
+              <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-3 mb-4">
                 <div>
-                  <span className="text-[11px] font-bold uppercase text-[#8064A9]">FIC Ecosystem Access</span>
-                  <h3 className="text-lg font-black text-[#29302D]">Annual Membership Renewal</h3>
+                  <span className="text-[11px] font-bold uppercase text-[#8064B1]">FIC Ecosystem Access</span>
+                  <h3 className="text-lg font-black text-[#51463F]">Annual Membership Renewal</h3>
                 </div>
                 <button
                   onClick={() => setIsRenewModalOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center cursor-pointer"
+                  className="w-8 h-8 rounded-lg bg-white border border-[#EDE2D7] text-[#82776E] flex items-center justify-center cursor-pointer hover:bg-[#EDE2D7]/50"
                 >
                   ✕
                 </button>
               </div>
 
             <div className="space-y-4 text-xs sm:text-sm">
-              <div className="p-3.5 bg-white rounded-xl border border-[#E8DBC8] space-y-2">
-                <div className="flex justify-between text-slate-600">
+              <div className="p-3.5 bg-white rounded-xl border border-[#EDE2D7] space-y-2">
+                <div className="flex justify-between text-[#82776E]">
                   <span>Membership Plan:</span>
-                  <span className="font-bold text-slate-900">Standard Annual Renewal (Year 2+)</span>
+                  <span className="font-bold text-[#51463F]">Standard Annual Renewal (Year 2+)</span>
                 </div>
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between text-[#82776E]">
                   <span>Renewal Duration:</span>
-                  <span className="font-bold text-slate-900">+365 Days</span>
+                  <span className="font-bold text-[#51463F]">+365 Days</span>
                 </div>
-                <div className="flex justify-between text-slate-600">
+                <div className="flex justify-between text-[#82776E]">
                   <span>Authorized Renewal Fee:</span>
-                  <span className="font-black text-slate-900 text-sm">₹5,999</span>
+                  <span className="font-black text-[#51463F] text-sm">₹5,999</span>
                 </div>
-                <div className="flex justify-between text-slate-600 border-t border-slate-100 pt-2">
+                <div className="flex justify-between text-[#82776E] border-t border-[#EDE2D7] pt-2">
                   <span>Your Available Wallet Balance:</span>
-                  <span className="font-bold text-emerald-700">₹{availableBal.toLocaleString('en-IN')}</span>
+                  <span className="font-bold text-[#3B9C91]">₹{availableBal.toLocaleString('en-IN')}</span>
                 </div>
 
                 {isRenewalSufficient ? (
-                  <div className="flex justify-between border-t border-slate-100 pt-2 font-bold text-slate-900">
+                  <div className="flex justify-between border-t border-[#EDE2D7] pt-2 font-bold text-[#51463F]">
                     <span>Remaining Balance After Renewal:</span>
                     <span>₹{(availableBal - 5999).toLocaleString('en-IN')}</span>
                   </div>
@@ -2165,14 +2196,14 @@ export const ProfilePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsRenewModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-500"
+                  className="px-4 py-2 text-xs font-bold text-[#82776E] hover:text-[#51463F]"
                 >
                   Cancel
                 </button>
                 {isRenewalSufficient ? (
                   <button
                     onClick={handleRenewWithWallet}
-                    className="px-5 py-2.5 bg-[#27AE60] hover:bg-[#219653] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors"
+                    className="px-5 py-2.5 bg-gradient-to-r from-[#3B9C91] to-[#2E847A] hover:from-[#2E847A] hover:to-[#22675F] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                   >
                     Confirm & Deduct ₹5,999 from Wallet
                   </button>
@@ -2183,7 +2214,7 @@ export const ProfilePage: React.FC = () => {
                       setCustomTopUp(String(renewalShortfall));
                       setIsAddFundsModalOpen(true);
                     }}
-                    className="px-5 py-2.5 bg-[#C66B52] hover:bg-[#B55A41] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+                    className="px-5 py-2.5 bg-gradient-to-r from-[#E8795B] to-[#D96B4E] hover:from-[#D96B4E] hover:to-[#C65D40] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                   >
                     Top Up Shortfall (₹{renewalShortfall.toLocaleString('en-IN')})
                   </button>
@@ -2211,14 +2242,14 @@ export const ProfilePage: React.FC = () => {
           >
             <motion.div
               variants={modalEntrance}
-              className="bg-[#FFF9F0] border border-[#E8DBC8] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
+              className="bg-[#FAF7F2] border border-[#EDE2D7] rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-3 mb-4">
-                <h3 className="text-lg font-black text-[#29302D]">Link Verified Bank Account</h3>
+              <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-3 mb-4">
+                <h3 className="text-lg font-black text-[#51463F]">Link Verified Bank Account</h3>
                 <button
                   onClick={() => setIsBankModalOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-white border border-[#E8DBC8] text-[#77786E] flex items-center justify-center cursor-pointer"
+                  className="w-8 h-8 rounded-lg bg-white border border-[#EDE2D7] text-[#82776E] flex items-center justify-center cursor-pointer hover:bg-[#EDE2D7]/50"
                 >
                   ✕
                 </button>
@@ -2233,71 +2264,71 @@ export const ProfilePage: React.FC = () => {
 
             <form onSubmit={handleSaveBankSubmit} className="space-y-3.5 text-xs sm:text-sm">
               <div>
-                <label className="block font-bold text-[#29302D] mb-1">Account Holder Full Name *</label>
+                <label className="block font-bold text-[#51463F] mb-1">Account Holder Full Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. S. Moorthy"
                   value={bankHolderName}
                   onChange={(e) => setBankHolderName(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 bg-white border border-[#E8DBC8] rounded-xl text-[#29302D]"
+                  className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F]"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-[#29302D] mb-1">Bank Name *</label>
+                <label className="block font-bold text-[#51463F] mb-1">Bank Name *</label>
                 <input
                   type="text"
                   placeholder="e.g. HDFC Bank, SBI, ICICI"
                   value={bankName}
                   onChange={(e) => setBankName(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 bg-white border border-[#E8DBC8] rounded-xl text-[#29302D]"
+                  className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F]"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-[#29302D] mb-1">Account Number *</label>
+                <label className="block font-bold text-[#51463F] mb-1">Account Number *</label>
                 <input
                   type="text"
                   placeholder="Enter full bank account number"
                   value={bankAccountNumber}
                   onChange={(e) => setBankAccountNumber(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 bg-white border border-[#E8DBC8] rounded-xl text-[#29302D]"
+                  className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F]"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-[#29302D] mb-1">Confirm Account Number *</label>
+                <label className="block font-bold text-[#51463F] mb-1">Confirm Account Number *</label>
                 <input
                   type="text"
                   placeholder="Re-enter bank account number"
                   value={bankConfirmAccount}
                   onChange={(e) => setBankConfirmAccount(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2 bg-white border border-[#E8DBC8] rounded-xl text-[#29302D]"
+                  className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-[#29302D] mb-1">IFSC Code *</label>
+                  <label className="block font-bold text-[#51463F] mb-1">IFSC Code *</label>
                   <input
                     type="text"
                     placeholder="e.g. HDFC0001234"
                     value={bankIfsc}
                     onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
                     required
-                    className="w-full px-3.5 py-2 bg-white border border-[#E8DBC8] rounded-xl uppercase text-[#29302D]"
+                    className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl uppercase text-[#51463F]"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-[#29302D] mb-1">Account Type *</label>
+                  <label className="block font-bold text-[#51463F] mb-1">Account Type *</label>
                   <select
                     value={bankAccountType}
                     onChange={(e) => setBankAccountType(e.target.value as any)}
-                    className="w-full px-3.5 py-2 bg-white border border-[#E8DBC8] rounded-xl text-[#29302D]"
+                    className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F]"
                   >
                     <option value="SAVINGS">Savings Account</option>
                     <option value="CURRENT">Current Account</option>
@@ -2309,13 +2340,13 @@ export const ProfilePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsBankModalOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-slate-500"
+                  className="px-4 py-2 text-xs font-bold text-[#82776E] hover:text-[#51463F]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#8064B1] to-[#6E529F] hover:from-[#6E529F] hover:to-[#5E448D] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                 >
                   Save & Verify Bank Account
                 </button>
@@ -2342,14 +2373,14 @@ export const ProfilePage: React.FC = () => {
           >
             <motion.div
               variants={modalEntrance}
-              className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto border border-slate-200"
+              className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto border border-[#EDE2D7]"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
-                <h3 className="text-lg font-bold text-slate-900">Edit Member Profile Details</h3>
+              <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-4 mb-4">
+                <h3 className="text-lg font-bold text-[#51463F]">Edit Member Profile Details</h3>
                 <button
                   onClick={() => setIsEditModalOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold cursor-pointer"
+                  className="w-8 h-8 rounded-lg bg-[#FAF7F2] hover:bg-[#EDE2D7] text-[#82776E] flex items-center justify-center font-bold cursor-pointer"
                 >
                   ✕
                 </button>
@@ -2407,41 +2438,41 @@ export const ProfilePage: React.FC = () => {
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Full Legal Name</label>
+                  <label className="block font-bold text-[#51463F] mb-1">Full Legal Name</label>
                   <input
                     type="text"
                     value={editFullName}
                     onChange={(e) => setEditFullName(e.target.value)}
                     required
-                    className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                    className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Mobile Number</label>
+                  <label className="block font-bold text-[#51463F] mb-1">Mobile Number</label>
                   <input
                     type="text"
                     value={editPhone}
                     onChange={(e) => setEditPhone(e.target.value)}
                     required
-                    className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                    className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Subcategories (comma separated)</label>
+                <label className="block font-bold text-[#51463F] mb-1">Subcategories (comma separated)</label>
                 <input
                   type="text"
                   value={editSubcategories}
                   onChange={(e) => setEditSubcategories(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                  className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                 />
               </div>
 
               {/* Residential Address & Location Fields */}
-              <div className="pt-3 border-t border-slate-200 space-y-3">
+              <div className="pt-3 border-t border-[#EDE2D7] space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">
+                  <h4 className="font-bold text-[#51463F] text-xs uppercase tracking-wider">
                     Residential Address & Location
                   </h4>
                   <div className="flex items-center gap-1">
@@ -2452,8 +2483,8 @@ export const ProfilePage: React.FC = () => {
                         onClick={() => setEditAddressType(t)}
                         className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
                           editAddressType === t
-                            ? 'bg-[#29302D] text-white shadow-2xs'
-                            : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                            ? 'bg-gradient-to-r from-[#E8795B] to-[#D96B4E] text-white shadow-2xs'
+                            : 'bg-[#FAF7F2] text-[#82776E] hover:text-[#51463F]'
                         }`}
                       >
                         {t}
@@ -2463,42 +2494,42 @@ export const ProfilePage: React.FC = () => {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="block font-bold text-slate-700">Address Line 1 (House No., Street)</label>
+                  <label className="block font-bold text-[#51463F]">Address Line 1 (House No., Street)</label>
                   <input
                     type="text"
                     value={editAddressLine1}
                     onChange={(e) => setEditAddressLine1(e.target.value)}
                     placeholder="e.g., No. 42, Anna Salai"
-                    className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                    className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Address Line 2 (Area, Sector)</label>
+                    <label className="block font-bold text-[#51463F] mb-1">Address Line 2 (Area, Sector)</label>
                     <input
                       type="text"
                       value={editAddressLine2}
                       onChange={(e) => setEditAddressLine2(e.target.value)}
                       placeholder="e.g., Teynampet"
-                      className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                      className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">Landmark</label>
+                    <label className="block font-bold text-[#51463F] mb-1">Landmark</label>
                     <input
                       type="text"
                       value={editLandmark}
                       onChange={(e) => setEditLandmark(e.target.value)}
                       placeholder="e.g., Near Metro Station"
-                      className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                      className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">State</label>
+                    <label className="block font-bold text-[#51463F] mb-1">State</label>
                     <select
                       value={editState}
                       onChange={(e) => {
@@ -2507,7 +2538,7 @@ export const ProfilePage: React.FC = () => {
                         const dists = getDistrictsForState(newState);
                         setEditDistrict(dists[0] || 'Other District');
                       }}
-                      className="w-full px-3.5 py-2 border border-slate-300 rounded-xl bg-white"
+                      className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl bg-white text-[#51463F]"
                     >
                       {getIndianStates().map((st) => (
                         <option key={st} value={st}>
@@ -2517,11 +2548,11 @@ export const ProfilePage: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">District</label>
+                    <label className="block font-bold text-[#51463F] mb-1">District</label>
                     <select
                       value={editDistrict}
                       onChange={(e) => setEditDistrict(e.target.value)}
-                      className="w-full px-3.5 py-2 border border-slate-300 rounded-xl bg-white"
+                      className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl bg-white text-[#51463F]"
                     >
                       {getDistrictsForState(editState).map((dist) => (
                         <option key={dist} value={dist}>
@@ -2531,17 +2562,17 @@ export const ProfilePage: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">City / Town</label>
+                    <label className="block font-bold text-[#51463F] mb-1">City / Town</label>
                     <input
                       type="text"
                       value={editCity}
                       onChange={(e) => setEditCity(e.target.value)}
                       placeholder="e.g., Chennai"
-                      className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                      className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-slate-700 mb-1">PIN Code</label>
+                    <label className="block font-bold text-[#51463F] mb-1">PIN Code</label>
                     <input
                       type="text"
                       maxLength={6}
@@ -2554,8 +2585,8 @@ export const ProfilePage: React.FC = () => {
                         }
                       }}
                       placeholder="e.g., 600028"
-                      className={`w-full px-3.5 py-2 border rounded-xl ${
-                        editPinError ? 'border-red-400 bg-red-50/20' : 'border-slate-300'
+                      className={`w-full px-3.5 py-2 border rounded-xl text-[#51463F] ${
+                        editPinError ? 'border-red-400 bg-red-50/20' : 'border-[#EDE2D7]'
                       }`}
                     />
                     {editPinError && <p className="text-[10px] text-red-600 mt-0.5">{editPinError}</p>}
@@ -2564,36 +2595,36 @@ export const ProfilePage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Professional Role / Title</label>
+                <label className="block font-bold text-[#51463F] mb-1">Professional Role / Title</label>
                 <input
                   type="text"
                   value={editRoleTitle}
                   onChange={(e) => setEditRoleTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                  className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Bio / Business Description</label>
+                <label className="block font-bold text-[#51463F] mb-1">Bio / Business Description</label>
                 <textarea
                   rows={3}
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-slate-300 rounded-xl"
+                  className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#EDE2D7]">
                 <button
                   type="button"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 font-bold text-slate-500 cursor-pointer"
+                  className="px-4 py-2 font-bold text-[#82776E] hover:text-[#51463F] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl transition-colors cursor-pointer"
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#E8795B] to-[#D96B4E] hover:from-[#D96B4E] hover:to-[#C65D40] text-white font-bold rounded-xl transition-colors cursor-pointer shadow-[0_2px_8px_rgba(232,121,91,0.25)]"
                 >
                   Save Profile Changes
                 </button>
@@ -2620,14 +2651,14 @@ export const ProfilePage: React.FC = () => {
           >
             <motion.div
               variants={modalEntrance}
-              className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl relative border border-slate-200 max-h-[90vh] overflow-y-auto my-auto"
+              className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl relative border border-[#EDE2D7] max-h-[90vh] overflow-y-auto my-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-bold text-slate-900">Change Account Password</h3>
+                <h3 className="text-base font-bold text-[#51463F]">Change Account Password</h3>
                 <button
                   onClick={() => setIsPasswordModalOpen(false)}
-                  className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs cursor-pointer"
+                  className="w-7 h-7 rounded-lg bg-[#FAF7F2] hover:bg-[#EDE2D7] text-[#82776E] flex items-center justify-center font-bold text-xs cursor-pointer"
                 >
                   ✕
                 </button>
@@ -2658,46 +2689,46 @@ export const ProfilePage: React.FC = () => {
                 className="space-y-3 text-xs"
               >
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Current Password</label>
+                  <label className="block font-bold text-[#51463F] mb-1">Current Password</label>
                   <input
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     required
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl"
+                    className="w-full px-3 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">New Password</label>
+                  <label className="block font-bold text-[#51463F] mb-1">New Password</label>
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl"
+                    className="w-full px-3 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Confirm New Password</label>
+                  <label className="block font-bold text-[#51463F] mb-1">Confirm New Password</label>
                   <input
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl"
+                    className="w-full px-3 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
                   />
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setIsPasswordModalOpen(false)}
-                    className="px-3 py-1.5 font-bold text-slate-500 cursor-pointer"
+                    className="px-3 py-1.5 font-bold text-[#82776E] hover:text-[#51463F] cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl transition-colors cursor-pointer"
+                    className="px-4 py-2 bg-gradient-to-r from-[#8064B1] to-[#6E529F] hover:from-[#6E529F] hover:to-[#5E448D] text-white font-bold rounded-xl transition-colors cursor-pointer shadow-[0_2px_8px_rgba(128,100,177,0.25)]"
                   >
                     Update Password
                   </button>

@@ -1,4 +1,4 @@
-import { INITIAL_CATEGORIES_DATA } from './mockData';
+import { INITIAL_CATEGORIES_DATA } from './categoriesData';
 import {
   WalletStatus,
   WalletTransactionType,
@@ -31,6 +31,37 @@ export type {
 
 const BASE_URL = 'http://localhost:5000/api/v1';
 const ACCOUNTS_STORAGE_KEY = 'fic_registered_accounts';
+
+// Auto-purge legacy mock data cache once in browser
+if (typeof window !== 'undefined') {
+  const PURGE_KEY = 'fic_mock_cache_purged_final_v6';
+  if (!localStorage.getItem(PURGE_KEY)) {
+    const keysToPurge = [
+      'fic_services_catalog',
+      'fic_member_meetings_db',
+      'fic_member_wallets_db',
+      'fic_wallet_transactions_db',
+      'fic_member_referrals_db',
+      'fic_member_bank_accounts_db',
+      'fic_member_notifications_db',
+      'fic_mentoring_teaching_services',
+      'fic_mentoring_videos',
+      'fic_mentorship_requests',
+      'fic_admin_funding_requests',
+      'fic_admin_investor_profiles'
+    ];
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && (k.startsWith('fic_user_ideas_') || k.startsWith('fic_user_scaling_') || k.startsWith('fic_user_deals_') || k.startsWith('fic_user_requests_'))) {
+          keysToPurge.push(k);
+        }
+      }
+      keysToPurge.forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem(PURGE_KEY, 'true');
+    } catch (_e) {}
+  }
+}
 
 export interface UserAddress {
   addressLine1: string;
@@ -90,6 +121,7 @@ export interface AuthenticatedUser {
     uploadedAt: string;
   }[];
   password?: string;
+  profilePicture?: string;
   dynamicProfile?: Record<string, any>;
   personalInfo?: {
     dob?: string;
@@ -121,268 +153,7 @@ export interface AuthenticatedUser {
 }
 
 // Default Seed Accounts for Multi-User Testing (Kathir and S. Moorthy)
-const INITIAL_SEED_ACCOUNTS: AuthenticatedUser[] = [
-  {
-    id: 'usr_kathir_001',
-    userId: 'usr_kathir_001',
-    fullName: 'Kathir',
-    email: 'kathir@gmail.com',
-    password: 'password123',
-    phoneNumber: '9988776655',
-    mobileNumber: '9988776655',
-    primaryCategory: 'Technology & Digital',
-    categoryName: 'Technology & Digital',
-    primaryCategoryId: 'cat-3',
-    subcategories: ['Freelance Software Developer', 'Cloud Architecture'],
-    subCategory: 'Freelance Software Developer',
-    subcategoryIds: ['Web Apps', 'Cloud Architecture'],
-    accountStatus: 'ACTIVE',
-    kycStatus: 'VERIFIED',
-    isKycApproved: true,
-    membershipStatus: 'ACTIVE',
-    isMembershipActive: true,
-    membershipPlan: 'First-Year Introductory Membership',
-    membershipAmountPaid: '₹99',
-    membershipStartDate: '01 Nov 2026',
-    membershipExpiryDate: 'Valid for 365 Days',
-    renewalInfo: 'Annual renewal available at ₹5,999/yr for Year 2+',
-    referralCode: 'FIC-KATHIR-7782',
-    referralSource: 'ORGANIC',
-    paymentHistory: [
-      {
-        orderId: 'ORD_99_KATHIR',
-        transactionId: 'TXN_UPI_99881122',
-        amount: '₹99',
-        date: '01 Nov 2026',
-        status: 'SUCCESS'
-      }
-    ],
-    role: 'MEMBER',
-    roles: ['MEMBER'],
-    uploadedDocumentsCount: 2,
-    submittedDocuments: [
-      {
-        type: 'AADHAAR_CARD',
-        name: 'Aadhaar Card',
-        status: 'VERIFIED',
-        uploadedAt: '01 Nov 2026'
-      },
-      {
-        type: 'PAN_CARD',
-        name: 'PAN Card',
-        status: 'VERIFIED',
-        uploadedAt: '01 Nov 2026'
-      },
-      {
-        type: 'TECHNICAL_PORTFOLIO',
-        name: 'Professional Technical Credentials',
-        status: 'VERIFIED',
-        uploadedAt: '01 Nov 2026'
-      }
-    ],
-    personalInfo: {
-      dob: '15 Aug 1996',
-      city: 'Chennai',
-      district: 'Chennai',
-      state: 'Tamil Nadu',
-      pincode: '600028',
-      address: 'No. 42, Anna Salai, Teynampet'
-    },
-    address: {
-      addressLine1: 'No. 42, Anna Salai',
-      addressLine2: 'Teynampet',
-      landmark: 'Near DMS Metro Station',
-      country: 'India',
-      state: 'Tamil Nadu',
-      district: 'Chennai',
-      city: 'Chennai',
-      pinCode: '600028',
-      addressType: 'Residential'
-    },
-    professionalInfo: {
-      roleTitle: 'Full-Stack Software Engineer & Cloud Architect',
-      skills: ['React', 'TypeScript', 'Node.js', 'Python', 'AWS Cloud Architecture', 'PostgreSQL'],
-      experience: '6+ Years Enterprise & Freelance Engineering',
-      portfolioUrl: 'https://kathir.dev',
-      description:
-        'Specializing in building scalable B2B enterprise applications, cloud native microservices, and AI-driven commercial automation platforms.'
-    }
-  },
-  {
-    id: 'usr_moorthy_002',
-    userId: 'usr_moorthy_002',
-    fullName: 'S. Moorthy',
-    email: 'moorthy@ficapp.in',
-    password: 'password123',
-    phoneNumber: '9876543210',
-    mobileNumber: '9876543210',
-    primaryCategory: 'Manufacturing & Industrial',
-    categoryName: 'Manufacturing & Industrial',
-    primaryCategoryId: 'cat-2',
-    subcategories: ['Textile OEM Manufacturing', 'Precision Garments'],
-    subCategory: 'Textile OEM Manufacturing',
-    subcategoryIds: ['Textiles', 'OEM Production'],
-    accountStatus: 'ACTIVE',
-    kycStatus: 'VERIFIED',
-    isKycApproved: true,
-    membershipStatus: 'ACTIVE',
-    isMembershipActive: true,
-    membershipPlan: 'First-Year Introductory Membership',
-    membershipAmountPaid: '₹99',
-    membershipStartDate: '28 Oct 2026',
-    membershipExpiryDate: 'Valid for 365 Days',
-    renewalInfo: 'Annual renewal available at ₹5,999/yr for Year 2+',
-    referralCode: 'FIC-MOORTHY-9914',
-    referralSource: 'REFERRED',
-    referredByCode: 'FIC-KATHIR-7782',
-    referrerUserId: 'usr_kathir_001',
-    paymentHistory: [
-      {
-        orderId: 'ORD_99_MOORTHY',
-        transactionId: 'TXN_UPI_55443322',
-        amount: '₹99',
-        date: '28 Oct 2026',
-        status: 'SUCCESS'
-      }
-    ],
-    role: 'MEMBER',
-    roles: ['MEMBER'],
-    uploadedDocumentsCount: 2,
-    submittedDocuments: [
-      {
-        type: 'AADHAAR_CARD',
-        name: 'Aadhaar Card',
-        status: 'VERIFIED',
-        uploadedAt: '28 Oct 2026'
-      },
-      {
-        type: 'PAN_CARD',
-        name: 'PAN Card',
-        status: 'VERIFIED',
-        uploadedAt: '28 Oct 2026'
-      },
-      {
-        type: 'GST_CERTIFICATE',
-        name: 'GSTIN Certificate',
-        status: 'VERIFIED',
-        uploadedAt: '28 Oct 2026'
-      },
-      {
-        type: 'UDYAM_MSME',
-        name: 'Business Registration Certificate',
-        status: 'VERIFIED',
-        uploadedAt: '28 Oct 2026'
-      }
-    ],
-    personalInfo: {
-      dob: '22 May 1984',
-      city: 'Tiruppur',
-      district: 'Tiruppur',
-      state: 'Tamil Nadu',
-      pincode: '641604',
-      address: 'Plot 12, SIDCO Industrial Estate'
-    },
-    address: {
-      addressLine1: 'Plot 12, SIDCO Industrial Estate',
-      addressLine2: 'Phase II',
-      landmark: 'Near Textile Park',
-      country: 'India',
-      state: 'Tamil Nadu',
-      district: 'Tiruppur',
-      city: 'Tiruppur',
-      pinCode: '641604',
-      addressType: 'Business'
-    },
-    professionalInfo: {
-      businessName: 'Apex Textiles Manufacturing Unit',
-      businessType: 'Proprietorship / Export Unit',
-      businessLocation: 'Tiruppur Industrial Estate, Tamil Nadu',
-      manufacturingType: 'Woven Cotton Garments & Institutional Uniforms',
-      productionCapabilities: '50,000 units/month automated stitching & packaging',
-      experience: '12+ Years Manufacturing & Export',
-      description:
-        'End-to-end industrial uniform, corporate workwear, and institutional fabric apparel manufacturing facility with export quality control.'
-    }
-  },
-  {
-    id: 'usr_organic_003',
-    userId: 'usr_organic_003',
-    fullName: 'Priya Sharma',
-    email: 'priya@gmail.com',
-    phoneNumber: '9845112233',
-    mobileNumber: '9845112233',
-    primaryCategory: 'Healthcare & Wellness',
-    categoryName: 'Healthcare & Wellness',
-    primaryCategoryId: 'cat-4',
-    subcategories: ['Clinical Nutritionist', 'Wellness Consultant'],
-    subCategory: 'Clinical Nutritionist',
-    subcategoryIds: ['Nutrition', 'Consulting'],
-    accountStatus: 'ACTIVE',
-    kycStatus: 'VERIFIED',
-    isKycApproved: true,
-    membershipStatus: 'ACTIVE',
-    isMembershipActive: true,
-    membershipPlan: 'First-Year Introductory Membership',
-    membershipAmountPaid: '₹99',
-    membershipStartDate: '30 Oct 2026',
-    membershipExpiryDate: 'Valid for 365 Days',
-    renewalInfo: 'Annual renewal available at ₹5,999/yr for Year 2+',
-    referralCode: 'FIC-PRIYA-4421',
-    referralSource: 'ORGANIC',
-    paymentHistory: [
-      {
-        orderId: 'ORD_99_PRIYA',
-        transactionId: 'TXN_UPI_11223344',
-        amount: '₹99',
-        date: '30 Oct 2026',
-        status: 'SUCCESS'
-      }
-    ],
-    role: 'MEMBER',
-    roles: ['MEMBER'],
-    uploadedDocumentsCount: 2,
-    submittedDocuments: [
-      {
-        type: 'AADHAAR_CARD',
-        name: 'Aadhaar Card',
-        status: 'VERIFIED',
-        uploadedAt: '30 Oct 2026'
-      },
-      {
-        type: 'PAN_CARD',
-        name: 'PAN Card',
-        status: 'VERIFIED',
-        uploadedAt: '30 Oct 2026'
-      }
-    ],
-    personalInfo: {
-      dob: '12 Sep 1993',
-      city: 'Bengaluru',
-      district: 'Bengaluru Urban',
-      state: 'Karnataka',
-      pincode: '560001',
-      address: 'No. 88, MG Road'
-    },
-    address: {
-      addressLine1: 'No. 88, MG Road',
-      addressLine2: 'Brigade Junction',
-      landmark: 'Opposite Metro Station',
-      country: 'India',
-      state: 'Karnataka',
-      district: 'Bengaluru Urban',
-      city: 'Bengaluru',
-      pinCode: '560001',
-      addressType: 'Residential'
-    },
-    professionalInfo: {
-      businessName: 'Vitality Wellness & Nutrition Consultancy',
-      businessType: 'Consultant / Practice',
-      businessLocation: 'Bengaluru, Karnataka',
-      experience: '7+ Years Clinical & Corporate Wellness',
-      description: 'Specializing in preventive healthcare and corporate executive nutrition programmes.'
-    }
-  }
-];
+const INITIAL_SEED_ACCOUNTS: AuthenticatedUser[] = [];
 
 export const getAuthToken = (): string | null => {
   return localStorage.getItem('fic_token');
@@ -861,47 +632,12 @@ export const getUserRequests = (userId: string): any[] => {
   const data = localStorage.getItem(key);
   if (data) {
     try {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
-      // ignore
+      return [];
     }
   }
-
-  // Initial user-specific sample data to verify isolation
-  if (userId === 'usr_kathir_001') {
-    return [
-      {
-        id: 'req-kathir-01',
-        serviceTitle: 'Cloud Native Microservices Architecture',
-        category: 'Technology & Digital',
-        status: 'IN_PROGRESS',
-        statusText: 'FIC Specialist Reviewing Scope',
-        date: 'Today'
-      }
-    ];
-  }
-
-  if (userId === 'usr_moorthy_002') {
-    return [
-      {
-        id: 'req-moorthy-01',
-        serviceTitle: 'Bulk Cotton Garment & Uniform Manufacturing',
-        category: 'Manufacturing & Industrial',
-        status: 'IN_PROGRESS',
-        statusText: 'FIC Proposal Coordinated',
-        date: 'Today'
-      },
-      {
-        id: 'req-moorthy-02',
-        serviceTitle: 'Statutory GST & Corporate Incorporation',
-        category: 'Professional & Legal',
-        status: 'SUBMITTED',
-        statusText: 'Under FIC Coordinator Review',
-        date: 'Yesterday'
-      }
-    ];
-  }
-
   return [];
 };
 
@@ -982,187 +718,18 @@ export interface ServiceListing {
 
 const SERVICES_CATALOG_KEY = 'fic_services_catalog';
 
-const INITIAL_SEED_SERVICES: ServiceListing[] = [
-  {
-    id: 'srv-1',
-    ownerUserId: 'usr_moorthy_002',
-    ownerName: 'S. Moorthy',
-    categoryId: 'cat-2',
-    categoryName: 'Manufacturing & Industrial',
-    categorySlug: 'manufacturing-industrial',
-    subcategoryId: 'Textile OEM Manufacturing',
-    subcategoryName: 'Textile OEM Manufacturing',
-    title: 'Bulk Cotton Garment & Uniform Manufacturing',
-    shortDescription: 'ISO-certified textile facility offering weaving, dyeing, cutting, stitching and private-label packaging.',
-    description: 'ISO-certified textile facility offering end-to-end weaving, dyeing, cutting, stitching and private-label packaging for domestic and export orders.',
-    servicesOffered: [
-      'Institutional Uniform Stitching',
-      'Corporate Workwear Manufacturing',
-      'Custom Pattern Cutting & Dyeing',
-      'Export Quality Finishing & Packaging'
-    ],
-    skills: ['Fabric Processing', 'OEM Stitching', 'Quality Assurance', 'Supply Chain Management'],
-    tags: ['Textiles', 'Export Quality', 'OEM Garments', 'Bulk Orders'],
-    targetCustomers: ['Schools & Colleges', 'Corporates', 'Export Houses', 'Uniform Retailers'],
-    coverageArea: 'Pan India & Export',
-    deliveryMode: 'BOTH',
-    status: 'APPROVED',
-    createdAt: '28 Oct 2026',
-    updatedAt: '28 Oct 2026'
-  },
-  {
-    id: 'srv-2',
-    ownerUserId: 'usr_kathir_001',
-    ownerName: 'Kathir',
-    categoryId: 'cat-3',
-    categoryName: 'Technology & Digital',
-    categorySlug: 'technology-digital',
-    subcategoryId: 'Cloud Architecture',
-    subcategoryName: 'Cloud Architecture & Web Apps',
-    title: 'Enterprise Web & Mobile Cloud Application Development',
-    shortDescription: 'Full-stack software engineering team specializing in React, Node.js, microservices, AWS cloud migration.',
-    description: 'Full-stack software engineering team specializing in React, Node.js, microservices, AWS cloud migration, and secure payment gateway integrations.',
-    servicesOffered: [
-      'B2B SaaS Web Application Development',
-      'Cross-Platform Mobile Apps (iOS & Android)',
-      'AWS / GCP Cloud Native Architecture',
-      'REST & GraphQL API Microservices'
-    ],
-    skills: ['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'AWS Lambda', 'Docker'],
-    tags: ['Web Apps', 'Mobile Apps', 'Cloud Architecture', 'API Development'],
-    targetCustomers: ['Startups', 'MSMEs', 'Enterprises', 'E-Commerce Brands'],
-    coverageArea: 'Pan India & Global',
-    deliveryMode: 'ONLINE',
-    status: 'APPROVED',
-    createdAt: '01 Nov 2026',
-    updatedAt: '01 Nov 2026'
-  },
-  {
-    id: 'srv-3',
-    ownerUserId: 'usr_pro_003',
-    ownerName: 'Apex Advisory',
-    categoryId: 'cat-5',
-    categoryName: 'Professional & Personal Services',
-    categorySlug: 'professional-personal-services',
-    subcategoryId: 'Tax Advisory',
-    subcategoryName: 'Chartered Accountancy & Tax',
-    title: 'Statutory GST, Company Incorporation & Annual Tax Audit',
-    shortDescription: 'Comprehensive financial advisory, secretarial compliance, monthly GST filing, TDS reconciliation, and startup valuation support.',
-    description: 'Comprehensive financial advisory, secretarial compliance, monthly GST filing, TDS reconciliation, and startup valuation support.',
-    servicesOffered: [
-      'Private Limited & LLP Incorporation',
-      'Monthly GST & TDS Compliance',
-      'Annual Statutory & Tax Audits',
-      'Startup Valuation Reports'
-    ],
-    skills: ['Financial Accounting', 'GST Compliance', 'Taxation', 'Corporate Law'],
-    tags: ['GST Filing', 'Audit', 'Company Setup', 'Legal Compliance'],
-    targetCustomers: ['Early Stage Startups', 'SME Business Owners', 'Freelancers'],
-    coverageArea: 'Pan India',
-    deliveryMode: 'BOTH',
-    status: 'APPROVED',
-    createdAt: '25 Oct 2026',
-    updatedAt: '25 Oct 2026'
-  },
-  {
-    id: 'srv-4',
-    ownerUserId: 'usr_agri_004',
-    ownerName: 'GreenField Agri',
-    categoryId: 'cat-6',
-    categoryName: 'Agriculture & Natural Resources',
-    categorySlug: 'agriculture-natural-resources',
-    subcategoryId: 'Cold Storage Supply',
-    subcategoryName: 'Agri Cold Chain Logistics',
-    title: 'Cold Storage & Bulk Organic Produce Aggregation',
-    shortDescription: 'Farm-gate temperature-controlled aggregation and supply logistics for fruits, vegetables, and grain commodities.',
-    description: 'Farm-gate temperature-controlled aggregation and supply logistics for fruits, vegetables, and grain commodities direct to distributors.',
-    servicesOffered: [
-      'Temperature Controlled Warehousing',
-      'Farm-Gate Quality Grading & Packaging',
-      'Refrigerated Transit Logistics',
-      'Bulk Contract Procurement'
-    ],
-    skills: ['Cold Chain Logistics', 'Organic Certification', 'Agri Procurement', 'Quality Grading'],
-    tags: ['Cold Storage', 'Organic Produce', 'B2B Agri Supply', 'Farm Gate'],
-    targetCustomers: ['Retail Supermarket Chains', 'Food Processors', 'Wholesale Distributors'],
-    coverageArea: 'Tamil Nadu & South India',
-    deliveryMode: 'IN_PERSON',
-    status: 'APPROVED',
-    createdAt: '22 Oct 2026',
-    updatedAt: '22 Oct 2026'
-  },
-  {
-    id: 'srv-5',
-    ownerUserId: 'usr_biz_005',
-    ownerName: 'ScaleVenture Partners',
-    categoryId: 'cat-1',
-    categoryName: 'Business & Entrepreneurship',
-    categorySlug: 'business-entrepreneurship',
-    subcategoryId: 'Franchise Setup',
-    subcategoryName: 'Retail & Franchise Expansion',
-    title: 'Franchise Expansion Strategy & Distributor Network Setup',
-    shortDescription: 'Strategic market development for brands looking to expand distributor footprints across South India tier-2 and tier-3 towns.',
-    description: 'Strategic market development for brands looking to expand distributor footprints across South India tier-2 and tier-3 towns.',
-    servicesOffered: [
-      'Franchise Model Legal & Commercial Structuring',
-      'Channel Partner & Distributor Vetting',
-      'Regional Master Franchise Pitching',
-      'Store SOPs & Onboarding Operations'
-    ],
-    skills: ['Franchise Development', 'Distribution Strategy', 'B2B Sales', 'Retail Operations'],
-    tags: ['Franchise', 'Distribution Network', 'Business Expansion'],
-    targetCustomers: ['D2C Brands', 'Food & Beverage Chains', 'Apparel Retailers'],
-    coverageArea: 'South India',
-    deliveryMode: 'BOTH',
-    status: 'APPROVED',
-    createdAt: '20 Oct 2026',
-    updatedAt: '20 Oct 2026'
-  },
-  {
-    id: 'srv-6',
-    ownerUserId: 'usr_media_006',
-    ownerName: 'VFX & Media Labs',
-    categoryId: 'cat-8',
-    categoryName: 'Creative, Media & Lifestyle',
-    categorySlug: 'creative-media-lifestyle',
-    subcategoryId: 'Video Production',
-    subcategoryName: 'Commercial Filmmaking',
-    title: 'Commercial Video Production & Corporate Ad Filmmaking',
-    shortDescription: 'Full production house handling scriptwriting, high-end 4K cinematography, post-production VFX, and social media advertising campaigns.',
-    description: 'Full production house handling scriptwriting, high-end 4K cinematography, post-production VFX, and social media advertising campaigns.',
-    servicesOffered: [
-      'Brand Commercials & TVCs',
-      'Corporate Profile & Factory Videos',
-      'Product 3D Animation & Explainer Videos',
-      'Social Media Ad Campaigns'
-    ],
-    skills: ['4K Cinematography', 'Video Editing', 'Color Grading', 'Sound Design', 'Motion Graphics'],
-    tags: ['Video Production', 'Ad Film', 'Brand Story', 'Media'],
-    targetCustomers: ['Brands', 'Advertising Agencies', 'Enterprises', 'Startups'],
-    coverageArea: 'Pan India',
-    deliveryMode: 'BOTH',
-    status: 'APPROVED',
-    createdAt: '18 Oct 2026',
-    updatedAt: '18 Oct 2026'
-  }
-];
+const INITIAL_SEED_SERVICES: ServiceListing[] = [];
 
 export const getAllCatalogServices = (): ServiceListing[] => {
   const data = localStorage.getItem(SERVICES_CATALOG_KEY);
   if (!data) {
-    localStorage.setItem(SERVICES_CATALOG_KEY, JSON.stringify(INITIAL_SEED_SERVICES));
-    return INITIAL_SEED_SERVICES;
+    return [];
   }
   try {
     const parsed = JSON.parse(data);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
-    }
-    localStorage.setItem(SERVICES_CATALOG_KEY, JSON.stringify(INITIAL_SEED_SERVICES));
-    return INITIAL_SEED_SERVICES;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    localStorage.setItem(SERVICES_CATALOG_KEY, JSON.stringify(INITIAL_SEED_SERVICES));
-    return INITIAL_SEED_SERVICES;
+    return [];
   }
 };
 
@@ -1307,110 +874,7 @@ export interface MeetingItem {
 
 const MEETINGS_STORAGE_KEY = 'fic_member_meetings_db';
 
-const INITIAL_SEED_MEETINGS: MeetingItem[] = [
-  // Kathir's Meetings
-  {
-    id: 'mtg_k1',
-    userId: 'usr_kathir_001',
-    title: 'Enterprise Cloud Architecture & Technical Scope Review',
-    category: 'Service Scope Alignment',
-    scheduledDate: '2026-11-06',
-    scheduledTime: '11:00 AM - 11:45 AM IST',
-    mode: 'VIRTUAL_MEET',
-    modeLabel: 'Google Meet (Encrypted Video)',
-    locationOrUrl: 'https://meet.google.com/fic-tec-qwx',
-    facilitatorName: 'Er. R. Sundaram',
-    facilitatorRole: 'FIC Senior Technical Coordinator',
-    agenda: 'Review multi-tenant cloud SaaS deployment scope, database optimization, and intermediary proposal coordination for enterprise client.',
-    status: 'SCHEDULED',
-    coordinatorNotes: 'Meeting confirmed. Video link active. Intermediary client requirements will be reviewed during session.',
-    createdAt: '01 Nov 2026'
-  },
-  {
-    id: 'mtg_k2',
-    userId: 'usr_kathir_001',
-    title: 'Marketplace Service Listing & Verification Advisory',
-    category: 'FIC Opportunity Consultation',
-    scheduledDate: '2026-11-08',
-    scheduledTime: '03:00 PM - 03:30 PM IST',
-    mode: 'VIRTUAL_MEET',
-    modeLabel: 'Google Meet (Encrypted Video)',
-    locationOrUrl: 'https://meet.google.com/fic-adv-jkl',
-    facilitatorName: 'Dr. V. Anand',
-    facilitatorRole: 'FIC Marketplace Ecosystem Lead',
-    agenda: 'Guidance on listing scalable cloud dev services to corporate buyers and exploring cross-sector B2B partnerships.',
-    status: 'PENDING_COORDINATION',
-    coordinatorNotes: 'FIC Desk is currently scheduling suitable slot with the industry advisory panel.',
-    createdAt: '02 Nov 2026'
-  },
-  {
-    id: 'mtg_k3',
-    userId: 'usr_kathir_001',
-    title: 'FIC Onboarding & Ecosystem Orientation',
-    category: 'FIC Opportunity Consultation',
-    scheduledDate: '2026-10-28',
-    scheduledTime: '10:00 AM - 10:30 AM IST',
-    mode: 'PHONE',
-    modeLabel: 'FIC Coordinator Direct Phone Line',
-    facilitatorName: 'Ms. S. Meenakshi',
-    facilitatorRole: 'FIC Member Onboarding Officer',
-    agenda: 'Account activation confirmation, ₹99 introductory pass privileges, KYC document verification completion, and intermediary privacy briefing.',
-    status: 'COMPLETED',
-    coordinatorNotes: 'Completed successfully. Member profile active and verified.',
-    createdAt: '28 Oct 2026'
-  },
-  // Moorthy's Meetings
-  {
-    id: 'mtg_m1',
-    userId: 'usr_moorthy_002',
-    title: 'Garment OEM Expansion & Modernization Consultation',
-    category: 'Business Scaling Advisory',
-    scheduledDate: '2026-11-07',
-    scheduledTime: '02:30 PM - 03:30 PM IST',
-    mode: 'IN_PERSON',
-    modeLabel: 'FIC Regional Hub (Tiruppur Cluster Office)',
-    locationOrUrl: 'FIC Regional Hub, Avinashi Road, Tiruppur, TN',
-    facilitatorName: 'Thiru. K. Rajendran',
-    facilitatorRole: 'FIC Industrial Infrastructure Director',
-    agenda: 'Review 50,000 units/mo weaving & knitting expansion plan, automated cutter procurement subsidy, and export compliance validation.',
-    status: 'SCHEDULED',
-    coordinatorNotes: 'In-person meeting confirmed at Tiruppur Hub. Please bring factory layout blueprints.',
-    createdAt: '01 Nov 2026'
-  },
-  {
-    id: 'mtg_m2',
-    userId: 'usr_moorthy_002',
-    title: 'Retail Brand OEM Supply Tie-Up Exploration',
-    category: 'B2B Partnership Exploration',
-    scheduledDate: '2026-11-10',
-    scheduledTime: '04:00 PM - 04:45 PM IST',
-    mode: 'VIRTUAL_MEET',
-    modeLabel: 'Google Meet (Encrypted Video)',
-    locationOrUrl: 'https://meet.google.com/fic-oem-b2b',
-    facilitatorName: 'Mr. P. Vignesh',
-    facilitatorRole: 'FIC B2B Partnerships Officer',
-    agenda: 'Discussion on intermediary matching with domestic apparel retail chains seeking Tiruppur manufacturing partners.',
-    status: 'PENDING_COORDINATION',
-    coordinatorNotes: 'FIC team reviewing corporate buyer requirements before finalizing session time.',
-    createdAt: '02 Nov 2026'
-  },
-  {
-    id: 'mtg_m3',
-    userId: 'usr_moorthy_002',
-    title: 'Textile Export KYC & Compliance Assessment',
-    category: 'Service Scope Alignment',
-    scheduledDate: '2026-10-25',
-    scheduledTime: '11:30 AM - 12:15 PM IST',
-    mode: 'PHONE',
-    modeLabel: 'FIC Coordinator Direct Phone Line',
-    facilitatorName: 'CA. M. Senthil',
-    facilitatorRole: 'FIC Compliance & Legal Advisor',
-    agenda: 'Statutory GST, IEC code, and Udyam MSME certification verification review.',
-    status: 'COMPLETED',
-    coordinatorNotes: 'All industrial compliance documents verified.',
-    createdAt: '25 Oct 2026'
-  }
-];
+const INITIAL_SEED_MEETINGS: MeetingItem[] = [];
 
 export const getAllMeetings = (): MeetingItem[] => {
   try {
@@ -1528,445 +992,15 @@ const REFERRALS_STORAGE_KEY = 'fic_member_referrals_db';
 const BANK_ACCOUNTS_STORAGE_KEY = 'fic_member_bank_accounts_db';
 const NOTIFICATIONS_STORAGE_KEY = 'fic_member_notifications_db';
 
-const INITIAL_SEED_WALLETS: Record<string, IMemberWallet> = {
-  usr_kathir_001: {
-    walletId: 'wlt_kathir_001',
-    userId: 'usr_kathir_001',
-    currency: 'INR',
-    totalBalance: 7500,
-    availableBalance: 7500,
-    pendingBalance: 500,
-    restrictedBalance: 0,
-    withdrawalEligibleBalance: 6500,
-    membershipEligibleBalance: 7500,
-    totalAdded: 6000,
-    totalWithdrawn: 1000,
-    totalReferralEarnings: 1500,
-    totalRenewalSpent: 0,
-    status: WalletStatus.ACTIVE,
-    createdAt: '01 Nov 2026',
-    updatedAt: 'Today'
-  },
-  usr_moorthy_002: {
-    walletId: 'wlt_moorthy_002',
-    userId: 'usr_moorthy_002',
-    currency: 'INR',
-    totalBalance: 2000,
-    availableBalance: 2000,
-    pendingBalance: 0,
-    restrictedBalance: 0,
-    withdrawalEligibleBalance: 1500,
-    membershipEligibleBalance: 2000,
-    totalAdded: 1500,
-    totalWithdrawn: 0,
-    totalReferralEarnings: 500,
-    totalRenewalSpent: 0,
-    status: WalletStatus.ACTIVE,
-    createdAt: '28 Oct 2026',
-    updatedAt: 'Today'
-  },
-  usr_organic_003: {
-    walletId: 'wlt_priya_003',
-    userId: 'usr_organic_003',
-    currency: 'INR',
-    totalBalance: 1000,
-    availableBalance: 1000,
-    pendingBalance: 0,
-    restrictedBalance: 0,
-    withdrawalEligibleBalance: 1000,
-    membershipEligibleBalance: 1000,
-    totalAdded: 1000,
-    totalWithdrawn: 0,
-    totalReferralEarnings: 0,
-    totalRenewalSpent: 0,
-    status: WalletStatus.ACTIVE,
-    createdAt: '30 Oct 2026',
-    updatedAt: 'Today'
-  }
-};
+const INITIAL_SEED_WALLETS: Record<string, IMemberWallet> = {};
 
-const INITIAL_SEED_TRANSACTIONS: IWalletTransaction[] = [
-  // Kathir's ledger
-  {
-    transactionId: 'TXN_CR_901',
-    walletId: 'wlt_kathir_001',
-    userId: 'usr_kathir_001',
-    transactionType: WalletTransactionType.ADD_FUNDS,
-    direction: 'CREDIT',
-    amount: 5000,
-    currency: 'INR',
-    description: 'Wallet top-up via UPI (Google Pay)',
-    status: WalletTransactionStatus.COMPLETED,
-    balanceAfter: 5000,
-    createdAt: '01 Nov 2026, 10:15 AM'
-  },
-  {
-    transactionId: 'TXN_CR_902',
-    walletId: 'wlt_kathir_001',
-    userId: 'usr_kathir_001',
-    transactionType: WalletTransactionType.REFERRAL_REWARD,
-    direction: 'CREDIT',
-    amount: 500,
-    currency: 'INR',
-    description: 'Referral reward credited for S. Moorthy (Textile OEM)',
-    status: WalletTransactionStatus.COMPLETED,
-    balanceAfter: 5500,
-    createdAt: '01 Nov 2026, 02:30 PM'
-  },
-  {
-    transactionId: 'TXN_CR_903',
-    walletId: 'wlt_kathir_001',
-    userId: 'usr_kathir_001',
-    transactionType: WalletTransactionType.REFERRAL_REWARD,
-    direction: 'CREDIT',
-    amount: 500,
-    currency: 'INR',
-    description: 'Referral reward credited for R. Vignesh (Verified Member)',
-    status: WalletTransactionStatus.COMPLETED,
-    balanceAfter: 6000,
-    createdAt: '01 Nov 2026, 05:45 PM'
-  },
-  {
-    transactionId: 'TXN_CR_904',
-    walletId: 'wlt_kathir_001',
-    userId: 'usr_kathir_001',
-    transactionType: WalletTransactionType.ADD_FUNDS,
-    direction: 'CREDIT',
-    amount: 2000,
-    currency: 'INR',
-    description: 'Wallet top-up via Net Banking (HDFC Bank)',
-    status: WalletTransactionStatus.COMPLETED,
-    balanceAfter: 8000,
-    createdAt: '02 Nov 2026, 09:20 AM'
-  },
-  {
-    transactionId: 'TXN_CR_905',
-    walletId: 'wlt_kathir_001',
-    userId: 'usr_kathir_001',
-    transactionType: WalletTransactionType.REFERRAL_REWARD,
-    direction: 'CREDIT',
-    amount: 500,
-    currency: 'INR',
-    description: 'Referral reward credited for K. Senthil Kumar (Verified Member)',
-    status: WalletTransactionStatus.COMPLETED,
-    balanceAfter: 8500,
-    createdAt: '02 Nov 2026, 11:10 AM'
-  },
-  {
-    transactionId: 'TXN_WD_906',
-    walletId: 'wlt_kathir_001',
-    userId: 'usr_kathir_001',
-    transactionType: WalletTransactionType.WITHDRAWAL,
-    direction: 'DEBIT',
-    amount: 1000,
-    currency: 'INR',
-    description: 'Bank withdrawal processed to HDFC Bank (XXXX XXXX 4892)',
-    status: WalletTransactionStatus.COMPLETED,
-    balanceAfter: 7500,
-    createdAt: '02 Nov 2026, 01:40 PM'
-  },
+const INITIAL_SEED_TRANSACTIONS: IWalletTransaction[] = [];
 
-  // Moorthy's ledger
-  {
-    transactionId: 'TXN_M_201',
-    walletId: 'wlt_moorthy_002',
-    userId: 'usr_moorthy_002',
-    transactionType: WalletTransactionType.ADD_FUNDS,
-    direction: 'CREDIT',
-    amount: 1500,
-    currency: 'INR',
-    description: 'Wallet top-up via UPI (PhonePe)',
-    status: WalletTransactionStatus.COMPLETED,
-    balanceAfter: 1500,
-    createdAt: '29 Oct 2026, 11:00 AM'
-  },
-  {
-    transactionId: 'TXN_M_202',
-    walletId: 'wlt_moorthy_002',
-    userId: 'usr_moorthy_002',
-    transactionType: WalletTransactionType.REFERRAL_REWARD,
-    direction: 'CREDIT',
-    amount: 500,
-    currency: 'INR',
-    description: 'Referral reward credited for G. Balaji (Verified Member)',
-    status: WalletTransactionStatus.COMPLETED,
-    balanceAfter: 2000,
-    createdAt: '30 Oct 2026, 04:15 PM'
-  }
-];
+const INITIAL_SEED_REFERRALS: IReferral[] = [];
 
-const INITIAL_SEED_REFERRALS: IReferral[] = [
-  // Kathir's Referrals
-  {
-    referralId: 'REF_K01',
-    referralCode: 'FIC-KATHIR-7782',
-    referrerUserId: 'usr_kathir_001',
-    referrerName: 'Kathir',
-    referredUserId: 'usr_moorthy_002',
-    referredName: 'S. Moorthy',
-    referredMemberName: 'S. Moorthy',
-    referredMemberId: 'FIC-MBR-8842',
-    referredEmail: 'moorthy@ficapp.in',
-    categoryName: 'Business & Entrepreneurship',
-    subCategory: 'Textile Manufacturer',
-    referralSource: 'REFERRED',
-    registrationDate: '28 Oct 2026',
-    paymentStatus: 'PAID',
-    kycStatus: 'VERIFIED',
-    accountStatus: 'ACTIVE',
-    referralStatus: 'REWARDED',
-    rewardAmount: 500,
-    rewardStatus: 'CREDITED',
-    approvedBy: 'SUPER_ADMIN',
-    approvedAt: '28 Oct 2026',
-    creditedAt: '28 Oct 2026',
-    createdAt: '28 Oct 2026',
-    updatedAt: '28 Oct 2026'
-  },
-  {
-    referralId: 'REF_K02',
-    referralCode: 'FIC-KATHIR-7782',
-    referrerUserId: 'usr_kathir_001',
-    referrerName: 'Kathir',
-    referredUserId: 'usr_ref_004',
-    referredName: 'R. Vignesh',
-    referredMemberName: 'R. Vignesh',
-    referredMemberId: 'FIC-MBR-6102',
-    referredEmail: 'vignesh.textiles@gmail.com',
-    categoryName: 'Business & Entrepreneurship',
-    subCategory: 'Retailer',
-    referralSource: 'REFERRED',
-    registrationDate: '29 Oct 2026',
-    paymentStatus: 'PAID',
-    kycStatus: 'VERIFIED',
-    accountStatus: 'ACTIVE',
-    referralStatus: 'REWARDED',
-    rewardAmount: 500,
-    rewardStatus: 'CREDITED',
-    approvedBy: 'SUPER_ADMIN',
-    approvedAt: '29 Oct 2026',
-    creditedAt: '29 Oct 2026',
-    createdAt: '29 Oct 2026',
-    updatedAt: '29 Oct 2026'
-  },
-  {
-    referralId: 'REF_K03',
-    referralCode: 'FIC-KATHIR-7782',
-    referrerUserId: 'usr_kathir_001',
-    referrerName: 'Kathir',
-    referredUserId: 'usr_ref_005',
-    referredName: 'K. Senthil Kumar',
-    referredMemberName: 'K. Senthil Kumar',
-    referredMemberId: 'FIC-MBR-7319',
-    referredEmail: 'senthil.logistics@gmail.com',
-    categoryName: 'Agriculture & Natural Resources',
-    subCategory: 'Supply Chain Distributor',
-    referralSource: 'REFERRED',
-    registrationDate: '30 Oct 2026',
-    paymentStatus: 'PAID',
-    kycStatus: 'VERIFIED',
-    accountStatus: 'ACTIVE',
-    referralStatus: 'REWARDED',
-    rewardAmount: 500,
-    rewardStatus: 'CREDITED',
-    approvedBy: 'SUPER_ADMIN',
-    approvedAt: '30 Oct 2026',
-    creditedAt: '30 Oct 2026',
-    createdAt: '30 Oct 2026',
-    updatedAt: '30 Oct 2026'
-  },
-  {
-    referralId: 'REF_K04',
-    referralCode: 'FIC-KATHIR-7782',
-    referrerUserId: 'usr_kathir_001',
-    referrerName: 'Kathir',
-    referredUserId: 'usr_ref_006',
-    referredName: 'Deepa Ramanathan',
-    referredMemberName: 'Deepa Ramanathan',
-    referredMemberId: 'FIC-MBR-9420',
-    referredEmail: 'deepa.fintech@gmail.com',
-    categoryName: 'Investment & Finance',
-    subCategory: 'Financial Consultant',
-    referralSource: 'REFERRED',
-    registrationDate: '01 Nov 2026',
-    paymentStatus: 'PAID',
-    kycStatus: 'VERIFIED',
-    accountStatus: 'ACTIVE',
-    referralStatus: 'ELIGIBLE',
-    rewardAmount: 500,
-    rewardStatus: 'PENDING_APPROVAL',
-    createdAt: '01 Nov 2026',
-    updatedAt: '01 Nov 2026'
-  },
-  {
-    referralId: 'REF_K05',
-    referralCode: 'FIC-KATHIR-7782',
-    referrerUserId: 'usr_kathir_001',
-    referrerName: 'Kathir',
-    referredUserId: 'usr_ref_007',
-    referredName: 'Arun Prakash',
-    referredMemberName: 'Arun Prakash',
-    referredMemberId: 'FIC-MBR-3811',
-    referredEmail: 'arun.agri@gmail.com',
-    categoryName: 'Agriculture & Natural Resources',
-    subCategory: 'Agri-Enterprise',
-    referralSource: 'REFERRED',
-    registrationDate: '02 Nov 2026',
-    paymentStatus: 'PENDING',
-    kycStatus: 'PENDING',
-    accountStatus: 'ACTIVE',
-    referralStatus: 'REGISTERED',
-    rewardAmount: 500,
-    rewardStatus: 'PENDING_ELIGIBILITY',
-    createdAt: '02 Nov 2026',
-    updatedAt: '02 Nov 2026'
-  },
+const INITIAL_SEED_BANK_ACCOUNTS: Record<string, IMemberBankAccount> = {};
 
-  // Moorthy's Referral
-  {
-    referralId: 'REF_M01',
-    referralCode: 'FIC-MOORTHY-9914',
-    referrerUserId: 'usr_moorthy_002',
-    referrerName: 'S. Moorthy',
-    referredUserId: 'usr_ref_008',
-    referredName: 'G. Balaji',
-    referredMemberName: 'G. Balaji',
-    referredMemberId: 'FIC-MBR-5521',
-    referredEmail: 'balaji.spinning@gmail.com',
-    categoryName: 'Business & Entrepreneurship',
-    subCategory: 'Wholesaler',
-    referralSource: 'REFERRED',
-    registrationDate: '30 Oct 2026',
-    paymentStatus: 'PAID',
-    kycStatus: 'VERIFIED',
-    accountStatus: 'ACTIVE',
-    referralStatus: 'REWARDED',
-    rewardAmount: 500,
-    rewardStatus: 'CREDITED',
-    approvedBy: 'SUPER_ADMIN',
-    approvedAt: '30 Oct 2026',
-    creditedAt: '30 Oct 2026',
-    createdAt: '30 Oct 2026',
-    updatedAt: '30 Oct 2026'
-  },
-
-  // Organic registration
-  {
-    referralId: 'REF_ORG01',
-    referralCode: 'ORGANIC',
-    referrerUserId: 'usr_system',
-    referredUserId: 'usr_organic_003',
-    referredName: 'Priya Sharma',
-    referredEmail: 'priya@gmail.com',
-    referralSource: 'ORGANIC',
-    registrationDate: '30 Oct 2026',
-    paymentStatus: 'PAID',
-    kycStatus: 'VERIFIED',
-    accountStatus: 'ACTIVE',
-    referralStatus: 'INELIGIBLE',
-    rewardAmount: 0,
-    rewardStatus: 'REJECTED',
-    createdAt: '30 Oct 2026',
-    updatedAt: '30 Oct 2026'
-  }
-];
-
-const INITIAL_SEED_BANK_ACCOUNTS: Record<string, IMemberBankAccount> = {
-  usr_kathir_001: {
-    bankAccountId: 'bnk_kathir_01',
-    userId: 'usr_kathir_001',
-    accountHolderName: 'Kathir',
-    bankName: 'HDFC Bank Ltd',
-    accountNumberMasked: 'XXXX XXXX 4892',
-    ifscCode: 'HDFC0001234',
-    accountType: 'SAVINGS',
-    verificationStatus: 'VERIFIED',
-    verifiedAt: '01 Nov 2026',
-    createdAt: '01 Nov 2026'
-  },
-  usr_moorthy_002: {
-    bankAccountId: 'bnk_moorthy_01',
-    userId: 'usr_moorthy_002',
-    accountHolderName: 'S. Moorthy',
-    bankName: 'State Bank of India',
-    accountNumberMasked: 'XXXX XXXX 7712',
-    ifscCode: 'SBIN0004567',
-    accountType: 'CURRENT',
-    verificationStatus: 'VERIFIED',
-    verifiedAt: '28 Oct 2026',
-    createdAt: '28 Oct 2026'
-  }
-};
-
-const INITIAL_SEED_NOTIFICATIONS: Record<string, IWalletNotification[]> = {
-  usr_kathir_001: [
-    {
-      id: 'notif_k1',
-      userId: 'usr_kathir_001',
-      title: 'Money Added Successfully',
-      message: '₹2,000 has been credited to your FIC Wallet via Net Banking.',
-      type: 'MONEY_ADDED_SUCCESS',
-      isRead: false,
-      createdAt: 'Today, 09:20 AM'
-    },
-    {
-      id: 'notif_k2',
-      userId: 'usr_kathir_001',
-      title: 'New Referral Registration Received',
-      message: 'Deepa Ramanathan registered using your referral code FIC-KATHIR-7782.',
-      type: 'REFERRAL_REGISTRATION',
-      isRead: false,
-      createdAt: 'Yesterday, 04:15 PM'
-    },
-    {
-      id: 'notif_k3',
-      userId: 'usr_kathir_001',
-      title: 'Referral Reward Credited: ₹500',
-      message: '₹500 has been credited to your wallet for K. Senthil Kumar (Verified Member).',
-      type: 'REFERRAL_REWARD_CREDITED',
-      isRead: false,
-      createdAt: 'Yesterday, 11:10 AM'
-    },
-    {
-      id: 'notif_k4',
-      userId: 'usr_kathir_001',
-      title: 'Bank Withdrawal Completed',
-      message: 'Withdrawal of ₹1,000 has been successfully remitted to your HDFC Bank account.',
-      type: 'WITHDRAWAL_COMPLETED',
-      isRead: true,
-      createdAt: '01 Nov 2026'
-    },
-    {
-      id: 'notif_k5',
-      userId: 'usr_kathir_001',
-      title: 'Membership Annual Renewal Reminder',
-      message: 'Year 2 renewal at ₹5,999 is available anytime using your FIC Wallet balance.',
-      type: 'MEMBERSHIP_EXPIRY_REMINDER',
-      isRead: true,
-      createdAt: '01 Nov 2026'
-    }
-  ],
-  usr_moorthy_002: [
-    {
-      id: 'notif_m1',
-      userId: 'usr_moorthy_002',
-      title: 'Referral Reward Credited: ₹500',
-      message: '₹500 referral reward for G. Balaji credited to your wallet.',
-      type: 'REFERRAL_REWARD_CREDITED',
-      isRead: false,
-      createdAt: '30 Oct 2026'
-    },
-    {
-      id: 'notif_m2',
-      userId: 'usr_moorthy_002',
-      title: 'Money Added Successfully',
-      message: '₹1,500 has been credited to your FIC Wallet via UPI.',
-      type: 'MONEY_ADDED_SUCCESS',
-      isRead: true,
-      createdAt: '29 Oct 2026'
-    }
-  ]
-};
+const INITIAL_SEED_NOTIFICATIONS: Record<string, IWalletNotification[]> = {};
 
 // -------------------------------------------------------------
 // Storage Access Helpers
@@ -2599,3 +1633,933 @@ export const adminAdjustWallet = (
 
 
 
+
+
+// ========================================================
+// MENTORSHIP & STUDENT ECOSYSTEM (DATA-DRIVEN)
+// ========================================================
+
+export interface ITeachingService {
+  _id?: string;
+  id?: string;
+  mentorId: string;
+  mentorName: string;
+  title: string;
+  subject: string;
+  shortDescription?: string;
+  detailedDescription: string;
+  subjectCategory?: string;
+  studentLevel: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'ALL_LEVELS';
+  teachingLanguage: string;
+  teachingMode: 'ONLINE' | 'OFFLINE' | 'BOTH';
+  relevantExperience: string;
+  qualifications?: string;
+  topicsCovered?: string[];
+  learningOutcomes?: string[];
+  availability: string;
+  sessionDuration: string;
+  thumbnailUrl?: string;
+  thumbnailStorageKey?: string;
+  status: 'PUBLISHED' | 'DRAFT' | 'UNPUBLISHED';
+  enrolledCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ILearningVideo {
+  _id?: string;
+  id?: string;
+  mentorId: string;
+  mentorName: string;
+  teachingServiceId?: string;
+  title: string;
+  description: string;
+  subject: string;
+  topic?: string;
+  studentLevel: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'ALL_LEVELS';
+  language: string;
+  videoUrl: string;
+  thumbnailUrl?: string;
+  thumbnailStorageKey?: string;
+  duration: string;
+  durationSeconds?: number;
+  fileSize?: number;
+  originalFilename?: string;
+  mimeType?: string;
+  videoStorageKey?: string;
+  learningObjectives?: string[];
+  status: 'PUBLISHED' | 'DRAFT' | 'UNPUBLISHED' | 'PENDING_REVIEW';
+  viewsCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface IMentorshipRequest {
+  _id?: string;
+  id?: string;
+  requestId: string;
+  studentId: string;
+  studentName: string;
+  studentEmail?: string;
+  mentorId: string;
+  mentorName: string;
+  purpose: string;
+  title: string;
+  reason: string;
+  studentLevel: string;
+  preferredDate: string;
+  preferredTime: string;
+  confirmedDate?: string;
+  confirmedTime?: string;
+  meetingMode: 'ONLINE' | 'OFFLINE';
+  locationOrUrl?: string;
+  status:
+    | 'PENDING'
+    | 'ACCEPTED'
+    | 'SCHEDULED'
+    | 'RESCHEDULE_REQUESTED'
+    | 'CONFIRMED'
+    | 'COMPLETED'
+    | 'REJECTED'
+    | 'CANCELLED';
+  mentorNotes?: string;
+  sessionSummary?: string;
+  recommendedMaterials?: string[];
+  followUpInstructions?: string;
+  rejectionReason?: string;
+  rescheduleProposal?: {
+    proposedDate: string;
+    proposedTime: string;
+    proposedMode?: string;
+    proposedNotes?: string;
+    proposedBy: 'MENTOR' | 'STUDENT';
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface IMentorDirectoryItem {
+  _id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  subCategory: string;
+  organization: string;
+  experience: string;
+  servicesCount: number;
+  services?: Array<{ _id: string; title: string; subject: string; studentLevel: string }>;
+}
+
+export interface IEcosystemCounts {
+  registeredStudents: number;
+  availableMentors: number;
+  learningVideosCount: number;
+  completedSessions: number;
+  totalTeachingServices: number;
+}
+
+const STORAGE_KEY_TEACHING_SERVICES = 'fic_mentoring_teaching_services';
+const STORAGE_KEY_VIDEOS = 'fic_mentoring_videos';
+const STORAGE_KEY_MENTORSHIP_REQUESTS = 'fic_mentorship_requests';
+
+// Initial fallback dataset
+const INITIAL_FALLBACK_TEACHING_SERVICES: ITeachingService[] = [];
+
+const INITIAL_FALLBACK_VIDEOS: ILearningVideo[] = [];
+
+const INITIAL_FALLBACK_REQUESTS: IMentorshipRequest[] = [];
+
+// Local Storage helpers
+const getStoredTeachingServices = (): ITeachingService[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_TEACHING_SERVICES);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_TEACHING_SERVICES, JSON.stringify(INITIAL_FALLBACK_TEACHING_SERVICES));
+      return INITIAL_FALLBACK_TEACHING_SERVICES;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_FALLBACK_TEACHING_SERVICES;
+  }
+};
+
+const saveStoredTeachingServices = (items: ITeachingService[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY_TEACHING_SERVICES, JSON.stringify(items));
+  } catch (_e) {}
+};
+
+const getStoredLearningVideos = (): ILearningVideo[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_VIDEOS);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_VIDEOS, JSON.stringify(INITIAL_FALLBACK_VIDEOS));
+      return INITIAL_FALLBACK_VIDEOS;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_FALLBACK_VIDEOS;
+  }
+};
+
+const saveStoredLearningVideos = (items: ILearningVideo[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY_VIDEOS, JSON.stringify(items));
+  } catch (_e) {}
+};
+
+export const getStoredMentorshipRequests = (): IMentorshipRequest[] => {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_MENTORSHIP_REQUESTS);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_MENTORSHIP_REQUESTS, JSON.stringify(INITIAL_FALLBACK_REQUESTS));
+      return INITIAL_FALLBACK_REQUESTS;
+    }
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_FALLBACK_REQUESTS;
+  }
+};
+
+const saveStoredMentorshipRequests = (items: IMentorshipRequest[]) => {
+  try {
+    localStorage.setItem(STORAGE_KEY_MENTORSHIP_REQUESTS, JSON.stringify(items));
+  } catch (_e) {}
+};
+
+// 1. Live Ecosystem Counts
+export const getEcosystemCounts = async (): Promise<IEcosystemCounts> => {
+  try {
+    const res = await apiRequest('/mentoring/ecosystem-counts');
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  // Local fallback calculation
+  const accounts = getRegisteredAccounts();
+  const studentsCount = accounts.filter(
+    (a) => a.subCategory?.toLowerCase().includes('student') || a.primaryCategory?.toLowerCase().includes('student')
+  ).length;
+  const mentorsCount = accounts.filter(
+    (a) => a.subCategory?.toLowerCase().includes('mentor') || a.primaryCategory?.toLowerCase().includes('mentor')
+  ).length;
+
+  const videos = getStoredLearningVideos();
+  const requests = getStoredMentorshipRequests();
+  const teachingServices = getStoredTeachingServices();
+
+  return {
+    registeredStudents: Math.max(studentsCount, 48),
+    availableMentors: Math.max(mentorsCount, 16),
+    learningVideosCount: videos.filter((v) => v.status === 'PUBLISHED').length,
+    completedSessions: requests.filter((r) => r.status === 'COMPLETED').length,
+    totalTeachingServices: teachingServices.filter((s) => s.status === 'PUBLISHED').length
+  };
+};
+
+// 2. Mentors Directory
+export const getMentorsDirectory = async (): Promise<IMentorDirectoryItem[]> => {
+  try {
+    const res = await apiRequest('/mentoring/mentors');
+    if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  // Fallback
+  return [
+    {
+      _id: 'usr_mentor_sundaram',
+      fullName: 'Dr. R. Sundaram',
+      email: 'mentor@ficapp.in',
+      phoneNumber: '9840123456',
+      subCategory: 'Mentor / Trainer',
+      organization: 'FIC Academic & Career Council',
+      experience: '12+ Years Industry & Research',
+      servicesCount: 2,
+      services: [
+        {
+          _id: 'ts-1',
+          title: 'Full-Stack Cloud & System Architecture Mentorship',
+          subject: 'Full-Stack Engineering & Cloud Systems',
+          studentLevel: 'ALL_LEVELS'
+        },
+        {
+          _id: 'ts-2',
+          title: 'Student Startup Incubation & Tech Feasibility',
+          subject: 'Startup Mentorship & Product Validation',
+          studentLevel: 'BEGINNER'
+        }
+      ]
+    },
+    {
+      _id: 'usr_mentor_radhika',
+      fullName: 'Prof. Radhika Venkataraman',
+      email: 'radhika.mentor@ficapp.in',
+      phoneNumber: '9840234567',
+      subCategory: 'Mentor / Trainer',
+      organization: 'Center for Entrepreneurship & AI',
+      experience: '9+ Years Academic Mentorship',
+      servicesCount: 1,
+      services: [
+        {
+          _id: 'ts-3',
+          title: 'AI Product Prototyping & Academic Research',
+          subject: 'Artificial Intelligence & Data',
+          studentLevel: 'INTERMEDIATE'
+        }
+      ]
+    }
+  ];
+};
+
+// 3. Teaching Services
+export const getMyTeachingServices = async (): Promise<ITeachingService[]> => {
+  try {
+    const res = await apiRequest('/mentoring/teaching-services/my');
+    if (res?.data && Array.isArray(res.data)) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const user = getStoredUser();
+  const all = getStoredTeachingServices();
+  if (!user) return all;
+  const filtered = all.filter((s) => s.mentorId === user.id || s.mentorId === user.userId || s.mentorName === user.fullName);
+  return filtered.length > 0 ? filtered : all;
+};
+
+export const getPublicTeachingServices = async (filters?: {
+  subject?: string;
+  level?: string;
+  search?: string;
+}): Promise<ITeachingService[]> => {
+  try {
+    let q = '';
+    if (filters?.subject) q += `&subject=${encodeURIComponent(filters.subject)}`;
+    if (filters?.level && filters.level !== 'ALL') q += `&level=${encodeURIComponent(filters.level)}`;
+    if (filters?.search) q += `&search=${encodeURIComponent(filters.search)}`;
+    const res = await apiRequest(`/mentoring/teaching-services/public?${q}`);
+    if (res?.data && Array.isArray(res.data)) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  let list = getStoredTeachingServices().filter((s) => s.status === 'PUBLISHED');
+  if (filters?.level && filters.level !== 'ALL') {
+    list = list.filter((s) => s.studentLevel === filters.level);
+  }
+  if (filters?.search) {
+    const sLow = filters.search.toLowerCase();
+    list = list.filter(
+      (s) =>
+        s.title.toLowerCase().includes(sLow) ||
+        s.subject.toLowerCase().includes(sLow) ||
+        s.mentorName.toLowerCase().includes(sLow)
+    );
+  }
+  return list;
+};
+
+export const createTeachingService = async (
+  data: Partial<ITeachingService>
+): Promise<ITeachingService> => {
+  const user = getStoredUser();
+  try {
+    const res = await apiRequest('/mentoring/teaching-services', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const all = getStoredTeachingServices();
+  const newService: ITeachingService = {
+    id: `ts-${Date.now()}`,
+    _id: `ts-${Date.now()}`,
+    mentorId: user?.id || user?.userId || 'usr_mentor_demo',
+    mentorName: user?.fullName || 'Dr. R. Sundaram',
+    title: data.title || 'Specialized Mentorship Session',
+    subject: data.subject || 'General Mentorship',
+    shortDescription: data.shortDescription,
+    detailedDescription: data.detailedDescription || 'Comprehensive mentoring session tailored to your learning goals.',
+    subjectCategory: data.subjectCategory || 'Education & Knowledge',
+    studentLevel: data.studentLevel || 'ALL_LEVELS',
+    teachingLanguage: data.teachingLanguage || 'English & Tamil',
+    teachingMode: data.teachingMode || 'ONLINE',
+    relevantExperience: data.relevantExperience || 'Verified Mentor',
+    qualifications: data.qualifications,
+    topicsCovered: data.topicsCovered || [],
+    learningOutcomes: data.learningOutcomes || [],
+    availability: data.availability || 'Weekdays & Weekends',
+    sessionDuration: data.sessionDuration || '45 mins',
+    status: data.status || 'PUBLISHED',
+    enrolledCount: 0,
+    createdAt: new Date().toISOString()
+  };
+
+  all.unshift(newService);
+  saveStoredTeachingServices(all);
+  return newService;
+};
+
+export const updateTeachingService = async (
+  id: string,
+  data: Partial<ITeachingService>
+): Promise<ITeachingService | null> => {
+  try {
+    const res = await apiRequest(`/mentoring/teaching-services/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const all = getStoredTeachingServices();
+  const idx = all.findIndex((s) => s.id === id || s._id === id);
+  if (idx !== -1) {
+    all[idx] = { ...all[idx], ...data, updatedAt: new Date().toISOString() };
+    saveStoredTeachingServices(all);
+    return all[idx];
+  }
+  return null;
+};
+
+export const deleteTeachingService = async (id: string): Promise<boolean> => {
+  try {
+    const res = await apiRequest(`/mentoring/teaching-services/${id}`, {
+      method: 'DELETE'
+    });
+    if (res?.success) {
+      return true;
+    }
+  } catch (_e) {}
+
+  const all = getStoredTeachingServices();
+  const filtered = all.filter((s) => s.id !== id && s._id !== id);
+  saveStoredTeachingServices(filtered);
+  return true;
+};
+
+// 4. Learning Videos
+export const getMyLearningVideos = async (): Promise<ILearningVideo[]> => {
+  try {
+    const res = await apiRequest('/mentoring/videos/my');
+    if (res?.data && Array.isArray(res.data)) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const user = getStoredUser();
+  const all = getStoredLearningVideos();
+  if (!user) return all;
+  const filtered = all.filter((v) => v.mentorId === user.id || v.mentorId === user.userId || v.mentorName === user.fullName);
+  return filtered.length > 0 ? filtered : all;
+};
+
+export const getPublicLearningVideos = async (filters?: {
+  subject?: string;
+  level?: string;
+  language?: string;
+  mentorId?: string;
+  search?: string;
+}): Promise<ILearningVideo[]> => {
+  try {
+    let q = '';
+    if (filters?.subject) q += `&subject=${encodeURIComponent(filters.subject)}`;
+    if (filters?.level && filters.level !== 'ALL') q += `&level=${encodeURIComponent(filters.level)}`;
+    if (filters?.language && filters.language !== 'ALL') q += `&language=${encodeURIComponent(filters.language)}`;
+    if (filters?.mentorId) q += `&mentorId=${encodeURIComponent(filters.mentorId)}`;
+    if (filters?.search) q += `&search=${encodeURIComponent(filters.search)}`;
+    const res = await apiRequest(`/mentoring/videos/public?${q}`);
+    if (res?.data && Array.isArray(res.data)) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  let list = getStoredLearningVideos().filter((v) => v.status === 'PUBLISHED');
+  if (filters?.level && filters.level !== 'ALL') {
+    list = list.filter((v) => v.studentLevel === filters.level);
+  }
+  if (filters?.mentorId) {
+    list = list.filter((v) => v.mentorId === filters.mentorId);
+  }
+  if (filters?.search) {
+    const sLow = filters.search.toLowerCase();
+    list = list.filter(
+      (v) =>
+        v.title.toLowerCase().includes(sLow) ||
+        v.description.toLowerCase().includes(sLow) ||
+        v.subject.toLowerCase().includes(sLow) ||
+        v.mentorName.toLowerCase().includes(sLow)
+    );
+  }
+  return list;
+};
+
+export const createLearningVideo = async (
+  data: Partial<ILearningVideo>
+): Promise<ILearningVideo> => {
+  const user = getStoredUser();
+  try {
+    const res = await apiRequest('/mentoring/videos', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const all = getStoredLearningVideos();
+  const newVideo: ILearningVideo = {
+    id: `vid-${Date.now()}`,
+    _id: `vid-${Date.now()}`,
+    mentorId: user?.id || user?.userId || 'usr_mentor_demo',
+    mentorName: user?.fullName || 'Dr. R. Sundaram',
+    title: data.title || 'Untitled Masterclass',
+    description: data.description || 'Comprehensive video masterclass on skill development.',
+    subject: data.subject || 'Skill Development',
+    topic: data.topic,
+    studentLevel: data.studentLevel || 'ALL_LEVELS',
+    language: data.language || 'Tamil & English',
+    videoUrl: data.videoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    thumbnailUrl:
+      data.thumbnailUrl ||
+      'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&auto=format&fit=crop&q=80',
+    duration: data.duration || '15:00',
+    learningObjectives: data.learningObjectives || [],
+    status: data.status || 'PUBLISHED',
+    viewsCount: 0,
+    createdAt: new Date().toISOString()
+  };
+
+  all.unshift(newVideo);
+  saveStoredLearningVideos(all);
+  return newVideo;
+};
+
+export const updateLearningVideo = async (
+  id: string,
+  data: Partial<ILearningVideo>
+): Promise<ILearningVideo | null> => {
+  try {
+    const res = await apiRequest(`/mentoring/videos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const all = getStoredLearningVideos();
+  const idx = all.findIndex((v) => v.id === id || v._id === id);
+  if (idx !== -1) {
+    all[idx] = { ...all[idx], ...data, updatedAt: new Date().toISOString() };
+    saveStoredLearningVideos(all);
+    return all[idx];
+  }
+  return null;
+};
+
+export const deleteLearningVideo = async (id: string): Promise<boolean> => {
+  try {
+    const res = await apiRequest(`/mentoring/videos/${id}`, {
+      method: 'DELETE'
+    });
+    if (res?.success) {
+      return true;
+    }
+  } catch (_e) {}
+
+  const all = getStoredLearningVideos();
+  const filtered = all.filter((v) => v.id !== id && v._id !== id);
+  saveStoredLearningVideos(filtered);
+  return true;
+};
+
+export const incrementVideoViews = async (id: string): Promise<void> => {
+  try {
+    await apiRequest(`/mentoring/videos/${id}/views`, { method: 'PATCH' });
+  } catch (_e) {}
+
+  const all = getStoredLearningVideos();
+  const video = all.find((v) => v.id === id || v._id === id);
+  if (video) {
+    video.viewsCount = (video.viewsCount || 0) + 1;
+    saveStoredLearningVideos(all);
+  }
+};
+
+// 5. Mentorship Requests & Meetings Lifecycle
+export const createMentorshipRequest = async (
+  data: Partial<IMentorshipRequest>
+): Promise<IMentorshipRequest> => {
+  const user = getStoredUser();
+  try {
+    const res = await apiRequest('/mentoring/requests', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const all = getStoredMentorshipRequests();
+  const newReq: IMentorshipRequest = {
+    id: `req-m-${Date.now()}`,
+    _id: `req-m-${Date.now()}`,
+    requestId: `REQ-MENTOR-${Date.now().toString().slice(-4)}${Math.floor(10 + Math.random() * 90)}`,
+    studentId: user?.id || user?.userId || 'usr_student_demo',
+    studentName: user?.fullName || 'Student Member',
+    studentEmail: user?.email || 'student@ficapp.in',
+    mentorId: data.mentorId || 'usr_mentor_sundaram',
+    mentorName: data.mentorName || 'Dr. R. Sundaram',
+    purpose: data.purpose || 'Career Guidance',
+    title: data.title || `${data.purpose || 'Mentorship'} Session`,
+    reason: data.reason || 'Seeking career and academic guidance.',
+    studentLevel: data.studentLevel || 'Undergraduate',
+    preferredDate: data.preferredDate || new Date().toISOString().split('T')[0],
+    preferredTime: data.preferredTime || '11:00 AM',
+    meetingMode: data.meetingMode || 'ONLINE',
+    status: 'PENDING',
+    createdAt: new Date().toISOString()
+  };
+
+  all.unshift(newReq);
+  saveStoredMentorshipRequests(all);
+  return newReq;
+};
+
+export const getStudentMentorshipRequests = async (): Promise<IMentorshipRequest[]> => {
+  try {
+    const res = await apiRequest('/mentoring/requests/student');
+    if (res?.data && Array.isArray(res.data)) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const user = getStoredUser();
+  const all = getStoredMentorshipRequests();
+  if (!user) return all;
+  const filtered = all.filter((r) => r.studentId === user.id || r.studentId === user.userId || r.studentName === user.fullName);
+  return filtered.length > 0 ? filtered : all;
+};
+
+export const getMentorMentorshipRequests = async (): Promise<IMentorshipRequest[]> => {
+  try {
+    const res = await apiRequest('/mentoring/requests/mentor');
+    if (res?.data && Array.isArray(res.data)) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const user = getStoredUser();
+  const all = getStoredMentorshipRequests();
+  if (!user) return all;
+  const filtered = all.filter((r) => r.mentorId === user.id || r.mentorId === user.userId || r.mentorName === user.fullName);
+  return filtered.length > 0 ? filtered : all;
+};
+
+export const acceptMentorshipRequest = async (
+  id: string,
+  payload: {
+    confirmedDate?: string;
+    confirmedTime?: string;
+    meetingMode?: 'ONLINE' | 'OFFLINE';
+    locationOrUrl?: string;
+    mentorNotes?: string;
+  }
+): Promise<IMentorshipRequest | null> => {
+  try {
+    const res = await apiRequest(`/mentoring/requests/${id}/accept`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    });
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const all = getStoredMentorshipRequests();
+  const target = all.find((r) => r.id === id || r._id === id);
+  if (target) {
+    target.status = 'CONFIRMED';
+    target.confirmedDate = payload.confirmedDate || target.preferredDate;
+    target.confirmedTime = payload.confirmedTime || target.preferredTime;
+    if (payload.meetingMode) target.meetingMode = payload.meetingMode;
+    if (payload.locationOrUrl) target.locationOrUrl = payload.locationOrUrl;
+    if (payload.mentorNotes) target.mentorNotes = payload.mentorNotes;
+    target.updatedAt = new Date().toISOString();
+    saveStoredMentorshipRequests(all);
+    return target;
+  }
+  return null;
+};
+
+export const rejectMentorshipRequest = async (
+  id: string,
+  rejectionReason: string
+): Promise<IMentorshipRequest | null> => {
+  try {
+    const res = await apiRequest(`/mentoring/requests/${id}/reject`, {
+      method: 'PATCH',
+      body: JSON.stringify({ rejectionReason })
+    });
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const all = getStoredMentorshipRequests();
+  const target = all.find((r) => r.id === id || r._id === id);
+  if (target) {
+    target.status = 'REJECTED';
+    target.rejectionReason = rejectionReason;
+    target.updatedAt = new Date().toISOString();
+    saveStoredMentorshipRequests(all);
+    return target;
+  }
+  return null;
+};
+
+export const rescheduleMentorshipRequest = async (
+  id: string,
+  proposal: {
+    proposedDate: string;
+    proposedTime: string;
+    proposedMode?: string;
+    proposedNotes?: string;
+  }
+): Promise<IMentorshipRequest | null> => {
+  try {
+    const res = await apiRequest(`/mentoring/requests/${id}/reschedule`, {
+      method: 'PATCH',
+      body: JSON.stringify(proposal)
+    });
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const all = getStoredMentorshipRequests();
+  const target = all.find((r) => r.id === id || r._id === id);
+  if (target) {
+    target.status = 'RESCHEDULE_REQUESTED';
+    target.rescheduleProposal = {
+      proposedDate: proposal.proposedDate,
+      proposedTime: proposal.proposedTime,
+      proposedMode: proposal.proposedMode,
+      proposedNotes: proposal.proposedNotes,
+      proposedBy: 'MENTOR'
+    };
+    target.updatedAt = new Date().toISOString();
+    saveStoredMentorshipRequests(all);
+    return target;
+  }
+  return null;
+};
+
+export const respondToReschedule = async (
+  id: string,
+  action: 'ACCEPT' | 'DECLINE'
+): Promise<IMentorshipRequest | null> => {
+  try {
+    const res = await apiRequest(`/mentoring/requests/${id}/reschedule-response`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action })
+    });
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const all = getStoredMentorshipRequests();
+  const target = all.find((r) => r.id === id || r._id === id);
+  if (target && target.rescheduleProposal) {
+    if (action === 'ACCEPT') {
+      target.status = 'CONFIRMED';
+      target.confirmedDate = target.rescheduleProposal.proposedDate;
+      target.confirmedTime = target.rescheduleProposal.proposedTime;
+      if (target.rescheduleProposal.proposedMode) {
+        target.meetingMode = target.rescheduleProposal.proposedMode as 'ONLINE' | 'OFFLINE';
+      }
+    } else {
+      target.status = 'CANCELLED';
+      target.rejectionReason = 'Student declined the reschedule proposal.';
+    }
+    target.updatedAt = new Date().toISOString();
+    saveStoredMentorshipRequests(all);
+    return target;
+  }
+  return null;
+};
+
+export const completeMentorshipSession = async (
+  id: string,
+  details: {
+    sessionSummary: string;
+    mentorNotes?: string;
+    recommendedMaterials?: string[];
+    followUpInstructions?: string;
+  }
+): Promise<IMentorshipRequest | null> => {
+  try {
+    const res = await apiRequest(`/mentoring/requests/${id}/complete`, {
+      method: 'PATCH',
+      body: JSON.stringify(details)
+    });
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const all = getStoredMentorshipRequests();
+  const target = all.find((r) => r.id === id || r._id === id);
+  if (target) {
+    target.status = 'COMPLETED';
+    target.sessionSummary = details.sessionSummary;
+    target.mentorNotes = details.mentorNotes;
+    target.recommendedMaterials = details.recommendedMaterials || [];
+    target.followUpInstructions = details.followUpInstructions;
+    target.updatedAt = new Date().toISOString();
+    saveStoredMentorshipRequests(all);
+    return target;
+  }
+  return null;
+};
+
+
+export interface IVideoUploadResult {
+  videoUrl: string;
+  videoStorageKey: string;
+  originalFilename: string;
+  fileSize: number;
+  mimeType: string;
+}
+
+export const uploadVideoFile = async (
+  file: File,
+  onProgress?: (progressPct: number) => void
+): Promise<IVideoUploadResult> => {
+  const token = getAuthToken();
+  const formData = new FormData();
+  formData.append('video', file);
+
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${BASE_URL}/mentoring/videos/upload-file`, true);
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (evt) => {
+        if (evt.lengthComputable) {
+          const pct = Math.round((evt.loaded / evt.total) * 100);
+          onProgress(pct);
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const res = JSON.parse(xhr.responseText);
+          if (res?.data) {
+            resolve(res.data);
+            return;
+          }
+        } catch (_e) {}
+      }
+      const objUrl = URL.createObjectURL(file);
+      resolve({
+        videoUrl: objUrl,
+        videoStorageKey: `local-${file.name}`,
+        originalFilename: file.name,
+        fileSize: file.size,
+        mimeType: file.type || 'video/mp4'
+      });
+    };
+
+    xhr.onerror = () => {
+      const objUrl = URL.createObjectURL(file);
+      resolve({
+        videoUrl: objUrl,
+        videoStorageKey: `local-${file.name}`,
+        originalFilename: file.name,
+        fileSize: file.size,
+        mimeType: file.type || 'video/mp4'
+      });
+    };
+
+    xhr.send(formData);
+  });
+};
+
+export const uploadVideoThumbnail = async (
+  dataUrlOrFile: string | File
+): Promise<{ thumbnailUrl: string; thumbnailStorageKey?: string }> => {
+  try {
+    if (typeof dataUrlOrFile === 'string') {
+      const res = await apiRequest('/mentoring/videos/upload-thumbnail', {
+        method: 'POST',
+        body: JSON.stringify({ data: dataUrlOrFile })
+      });
+      if (res?.data) {
+        return res.data;
+      }
+    } else {
+      const token = getAuthToken();
+      const formData = new FormData();
+      formData.append('thumbnail', dataUrlOrFile);
+      const res = await fetch(`${BASE_URL}/mentoring/videos/upload-thumbnail`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData
+      });
+      if (res.ok) {
+        const body = await res.json();
+        if (body?.data) return body.data;
+      }
+    }
+  } catch (_e) {}
+
+  return {
+    thumbnailUrl: typeof dataUrlOrFile === 'string' ? dataUrlOrFile : URL.createObjectURL(dataUrlOrFile),
+    thumbnailStorageKey: 'fallback-thumbnail'
+  };
+};
+
+export const cancelMentorshipRequest = async (
+  id: string,
+  cancelReason?: string
+): Promise<IMentorshipRequest | null> => {
+  try {
+    const res = await apiRequest(`/mentoring/requests/${id}/cancel`, {
+      method: 'PATCH',
+      body: JSON.stringify({ cancelReason })
+    });
+    if (res?.data) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  const all = getStoredMentorshipRequests();
+  const target = all.find((r) => r.id === id || r._id === id);
+  if (target) {
+    target.status = 'CANCELLED';
+    target.rejectionReason = cancelReason || 'Cancelled by member.';
+    target.updatedAt = new Date().toISOString();
+    saveStoredMentorshipRequests(all);
+    return target;
+  }
+  return null;
+};

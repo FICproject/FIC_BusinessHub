@@ -4,6 +4,10 @@ import { CategoryModel, SubcategoryModel } from '../modules/categories/categorie
 import { CategoryConfigurationModel } from '../modules/category-configurations/category-configurations.model';
 import { ServiceListingModel } from '../modules/services/services.model';
 import { UserModel } from '../modules/users/users.model';
+import { TeachingServiceModel } from '../modules/mentoring/teaching-service.model';
+import { LearningVideoModel } from '../modules/mentoring/learning-video.model';
+import { MentorshipRequestModel } from '../modules/mentoring/mentorship.model';
+import { FundingRequestModel, InvestorProfileModel } from '../modules/investment/investment.model';
 import { UserRole, AccountStatus, ConfigStatus, ServiceListingStatus } from '@fic/shared-types';
 import bcrypt from 'bcryptjs';
 
@@ -299,74 +303,125 @@ export const seedDatabase = async (): Promise<void> => {
       );
     }
 
-    // 3. Seed Privacy-Safe Universal Marketplace Listings
-    const sampleListings = [
-      {
-        categorySlug: 'manufacturing-industrial',
-        title: 'Bulk Cotton Garment & Uniform Manufacturing',
-        description: 'ISO-certified textile facility offering end-to-end weaving, dyeing, cutting, stitching and private-label packaging for domestic and export orders.',
-        pricingType: 'STARTING_FROM',
-        price: 150,
-        deliveryTimeline: '15 - 30 Days',
-        tags: ['Textiles', 'Export Quality', 'OEM Garments', 'Bulk Orders']
-      },
-      {
-        categorySlug: 'technology-digital',
-        title: 'Enterprise Web & Mobile Cloud Application Development',
-        description: 'Full-stack software engineering team specializing in React, Node.js, microservices, AWS cloud migration, and secure payment gateway integrations.',
-        pricingType: 'CUSTOM_QUOTE',
-        deliveryTimeline: '3 - 8 Weeks',
-        tags: ['Web Apps', 'Mobile Apps', 'Cloud Architecture', 'API Development']
-      },
-      {
-        categorySlug: 'professional-personal-services',
-        title: 'Statutory GST, Company Incorporation & Annual Tax Audit',
-        description: 'Comprehensive financial advisory, secretarial compliance, monthly GST filing, TDS reconciliation, and startup valuation support.',
-        pricingType: 'FIXED',
-        price: 4999,
-        deliveryTimeline: '3 - 7 Working Days',
-        tags: ['GST Filing', 'Audit', 'Company Setup', 'Legal Compliance']
-      },
-      {
-        categorySlug: 'agriculture-natural-resources',
-        title: 'Cold Storage & Bulk Organic Produce Aggregation',
-        description: 'Farm-gate temperature-controlled aggregation and supply logistics for fruits, vegetables, and grain commodities direct to distributors.',
-        pricingType: 'CUSTOM_QUOTE',
-        deliveryTimeline: 'Ongoing Daily Supply',
-        tags: ['Cold Storage', 'Organic Produce', 'B2B Agri Supply', 'Farm Gate']
-      },
-      {
-        categorySlug: 'business-entrepreneurship',
-        title: 'Franchise Expansion Strategy & Distributor Network Setup',
-        description: 'Strategic market development for brands looking to expand distributor footprints across South India tier-2 and tier-3 towns.',
-        pricingType: 'CUSTOM_QUOTE',
-        deliveryTimeline: '4 - 12 Weeks',
-        tags: ['Franchise', 'Distribution Network', 'Business Expansion']
-      }
-    ];
-
-    for (const item of sampleListings) {
-      const cat = await CategoryModel.findOne({ slug: item.categorySlug });
-      if (cat) {
-        await ServiceListingModel.findOneAndUpdate(
-          { title: item.title },
-          {
-            providerId: providerUser._id,
-            categoryId: cat._id,
-            title: item.title,
-            description: item.description,
-            pricingType: item.pricingType,
-            price: item.price,
-            deliveryTimeline: item.deliveryTimeline,
-            tags: item.tags,
-            status: ServiceListingStatus.APPROVED,
-            isActive: true
-          },
-          { upsert: true }
-        );
-      }
+    // 3. Clear any legacy mock marketplace listings
+    try {
+      await ServiceListingModel.deleteMany({
+        title: {
+          $in: [
+            'Bulk Cotton Garment & Uniform Manufacturing',
+            'Enterprise Web & Mobile Cloud Application Development',
+            'Statutory GST, Company Incorporation & Annual Tax Audit',
+            'Cold Storage & Bulk Organic Produce Aggregation',
+            'Franchise Expansion Strategy & Distributor Network Setup'
+          ]
+        }
+      });
+      console.log('✅ Cleaned mock marketplace listings from database.');
+    } catch (cleanupErr) {
+      console.warn('Marketplace mock cleanup warning:', cleanupErr);
     }
-    console.log('✅ Seeded Sample Privacy-Safe Universal Marketplace Listings.');
+
+    // 4. Seed Verified Mentors & Students for Education & Mentoring Ecosystem
+    const defaultPasswordHash = await bcrypt.hash('Password@123', salt);
+
+    // 4.1 Mentor User
+    let mentorUser = await UserModel.findOne({ email: 'mentor@ficapp.in' });
+    if (!mentorUser) {
+      const eduCategory = await CategoryModel.findOne({ slug: 'education-knowledge' });
+      mentorUser = await UserModel.create({
+        fullName: 'Dr. R. Sundaram',
+        email: 'mentor@ficapp.in',
+        phoneNumber: '9840123456',
+        dob: '1982-05-14',
+        passwordHash: defaultPasswordHash,
+        role: UserRole.MEMBER,
+        status: AccountStatus.ACTIVE,
+        primaryCategoryId: eduCategory?._id,
+        primaryCategoryName: 'Education & Knowledge',
+        subCategory: 'Mentor / Trainer',
+        primarySubcategoryName: 'Mentor / Trainer',
+        dynamicProfile: {
+          institutionName: 'FIC Academic & Career Council',
+          yearsOfExperience: '12+ Years Industry & Research',
+          educationLevel: 'Ph.D. Computer Science & AI',
+          primarySkillset: 'Full-Stack Development, Cloud Architecture, Career Mentorship'
+        },
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        isKycApproved: true,
+        isMembershipActive: true
+      });
+      console.log('✅ Seeded Verified Mentor: Dr. R. Sundaram');
+    }
+
+    // 4.2 Student User
+    let studentUser = await UserModel.findOne({ email: 'student@ficapp.in' });
+    if (!studentUser) {
+      const eduCategory = await CategoryModel.findOne({ slug: 'education-knowledge' });
+      studentUser = await UserModel.create({
+        fullName: 'Ananya Ramesh',
+        email: 'student@ficapp.in',
+        phoneNumber: '9840987654',
+        dob: '2003-08-22',
+        passwordHash: defaultPasswordHash,
+        role: UserRole.MEMBER,
+        status: AccountStatus.ACTIVE,
+        primaryCategoryId: eduCategory?._id,
+        primaryCategoryName: 'Education & Knowledge',
+        subCategory: 'Student',
+        primarySubcategoryName: 'Student',
+        dynamicProfile: {
+          institutionName: 'Anna University, Chennai',
+          educationLevel: 'B.Tech Computer Science (3rd Year)',
+          interests: 'Web Development, Artificial Intelligence, Product Design'
+        },
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        isKycApproved: true,
+        isMembershipActive: true
+      });
+      console.log('✅ Seeded Verified Student: Ananya Ramesh');
+    }
+
+    // 4.3 Arun Kumar (Developer Test Account)
+    let arunUser = await UserModel.findOne({ email: 'arun.kumar01@gmail.com' });
+    if (!arunUser) {
+      const techCategory = await CategoryModel.findOne({ slug: 'technology-digital' });
+      arunUser = await UserModel.create({
+        fullName: 'Arun Kumar',
+        email: 'arun.kumar01@gmail.com',
+        phoneNumber: '9840129988',
+        dob: '1995-05-10',
+        passwordHash: defaultPasswordHash,
+        role: UserRole.MEMBER,
+        status: AccountStatus.ACTIVE,
+        primaryCategoryId: techCategory?._id,
+        primaryCategoryName: 'Technology & Digital',
+        subCategory: 'Freelance Software Developer',
+        primarySubcategoryName: 'Freelance Software Developer',
+        dynamicProfile: {
+          roleTitle: 'Software Engineer',
+          skills: ['React', 'TypeScript', 'Node.js']
+        },
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        isKycApproved: true,
+        isMembershipActive: true
+      });
+      console.log('✅ Seeded Developer Account: Arun Kumar (arun.kumar01@gmail.com)');
+    }
+
+    // 4.3 Clear any legacy fake teaching services, videos, mentorship requests, and investment deals
+    try {
+      await MentorshipRequestModel.deleteMany({ requestId: { $in: ['REQ-MENTOR-1001', 'REQ-MENTOR-1002'] } });
+      await TeachingServiceModel.deleteMany({ title: { $in: ['Full-Stack Cloud & System Architecture Mentorship', 'Student Startup Incubation & Tech Feasibility'] } });
+      await LearningVideoModel.deleteMany({ title: { $in: ['Mastering Modern Full-Stack System Design (Tamil & English)', 'Career Roadmap: Moving from Student to Full-Stack Engineer', 'Building Scalable APIs with Node.js, Express & TypeScript'] } });
+      await FundingRequestModel.deleteMany({ refNumber: { $in: ['FIC-FUND-2026-001', 'FIC-FUND-2026-042'] } });
+      await InvestorProfileModel.deleteMany({ refNumber: { $in: ['FIC-INV-2026-002', 'FIC-INV-2026-089'] } });
+      console.log('✅ Cleaned all fake mentoring, videos, and investment demo records.');
+    } catch (cleanupErr) {
+      console.warn('Mentoring/Investment cleanup warning:', cleanupErr);
+    }
 
     console.log('🎉 FIC Business Hub database seed completed successfully!');
   } catch (error) {

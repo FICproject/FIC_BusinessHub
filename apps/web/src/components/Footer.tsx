@@ -58,8 +58,8 @@ export const Footer: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/partnerships" className="hover:text-[#E58C72] hover:translate-x-1 inline-block transition-transform duration-200">
-                  Strategic B2B Partnerships
+                <Link to="/business-development" className="hover:text-[#E58C72] hover:translate-x-1 inline-block transition-transform duration-200">
+                  Enterprise Scaling & Advisory
                 </Link>
               </li>
             </ul>

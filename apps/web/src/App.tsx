@@ -29,10 +29,10 @@ import { MarketplacePage } from './pages/MarketplacePage';
 import { BusinessIdeasPage } from './pages/BusinessIdeasPage';
 import { BusinessDevPage } from './pages/BusinessDevPage';
 import { InvestmentPage } from './pages/InvestmentPage';
-import { PartnershipsPage } from './pages/PartnershipsPage';
 import { MeetingsPage } from './pages/MeetingsPage';
 import { MyRequestsPage } from './pages/MyRequestsPage';
 import { MyServicesPage } from './pages/MyServicesPage';
+import { SkillDevelopmentPage } from './pages/SkillDevelopmentPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 
@@ -81,10 +81,11 @@ export const App: React.FC = () => {
           <Route path="/business-development" element={<BusinessDevPage />} />
           <Route path="/scaling" element={<Navigate to="/business-development" replace />} />
           <Route path="/investment" element={<InvestmentPage />} />
-          <Route path="/partnerships" element={<PartnershipsPage />} />
+          <Route path="/partnerships" element={<Navigate to="/my-requests" replace />} />
           <Route path="/meetings" element={<MeetingsPage />} />
           <Route path="/my-requests" element={<MyRequestsPage />} />
           <Route path="/my-services" element={<MyServicesPage />} />
+          <Route path="/skill-development" element={<SkillDevelopmentPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
 

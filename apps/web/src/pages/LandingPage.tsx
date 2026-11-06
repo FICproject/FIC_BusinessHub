@@ -222,16 +222,16 @@ export const LandingPage: React.FC = () => {
     },
     {
       id: 4,
-      title: 'Business Partnerships & Tie-ups',
-      badge: 'B2B Alliances',
+      title: 'Enterprise Business Development',
+      badge: 'Scaling & Advisory',
       accent: '#D78E9A',
-      shortDesc: 'Strategic joint ventures, distribution tie-ups, manufacturing agreements, and B2B introductions.',
+      shortDesc: 'Structured turnaround advisory, technological modernization, and FIC-coordinated B2B commercial introductions.',
       detail:
-        'Find regional distributors, factory co-packers, wholesale partners, and authorized franchisees through FIC-verified corporate matchmaking.',
+        'Access strategic business transformation blueprints, export logistics setup, and verified supply chain introductions with dedicated FIC intermediary governance.',
       icon: HandshakeIcon,
-      actionText: 'Explore Strategic Tie-ups',
-      link: '/partnerships',
-      highlightBadge: 'Verified Alliances'
+      actionText: 'Explore Business Development',
+      link: '/business-development',
+      highlightBadge: 'FIC Moderated'
     },
     {
       id: 5,
@@ -1023,9 +1023,9 @@ export const LandingPage: React.FC = () => {
               }`}
             >
               <HandshakeIcon size={22} className="text-[#D78E9A]" />
-              <h3 className="text-base font-bold mt-3 mb-1 text-white">B2B Partnerships</h3>
+              <h3 className="text-base font-bold mt-3 mb-1 text-white">B2B Trade & Scaling</h3>
               <p className="text-xs text-[#A7AAA0] leading-relaxed">
-                Joint ventures, regional distribution, and factory packaging.
+                FIC-governed distribution screening, supply chain tie-ups, and export advisory.
               </p>
             </motion.div>
 

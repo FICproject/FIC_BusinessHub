@@ -5,11 +5,11 @@
 **Document type:** Consolidated BRD + PRD + SRS + Solution
 Architecture + Technical Design + UX Specification + Data/API Design +
 Security + QA + Deployment + Roadmap\
-**Version:** 1.0\
-**Status:** Draft for stakeholder review\
+**Version:** 2.0 (Updated & Aligned with Live Application Architecture)\
+**Status:** Approved Technical Architecture & Living Baseline\
 **Prepared for:** FIC Business Hub\
-**Technology direction:** MERN + TypeScript + Turborepo + pnpm\
-**Date:** 31 October 2026
+**Technology direction:** MERN + TypeScript + Turborepo + pnpm + Motion for React\
+**Date:** November 2026
 
 ------------------------------------------------------------------------
 
@@ -18,67 +18,63 @@ Security + QA + Deployment + Roadmap\
   Field                  Details
   ---------------------- ----------------------------------------------------------
   Project                FIC Business Hub
-  Document               Complete Project Blueprint
-  Version                1.0
-  Status                 Draft -- requires business, legal and technical approval
-  Owner                  FIC
-  Primary applications   Member Website, Admin Portal
-  Backend                One shared API
-  Primary database       MongoDB
-  Architecture           Turborepo + pnpm monorepo; modular monolith initially
+  Document               Complete Project Blueprint & Architecture Baseline
+  Version                2.0
+  Status                 Active Production Architecture
+  Owner                  FIC (Federation of Indian Chambers / Business Hub Governance)
+  Primary applications   Member Web Portal (`apps/web`), Admin Portal (`apps/admin`)
+  Backend                Shared Modular Monolith API (`apps/backend`)
+  Primary database       MongoDB (Mongoose ODM)
+  Architecture           Turborepo + pnpm monorepo with centralized dynamic RBAC
+  Core Governance Model  FIC Intermediary Governance (Direct partnerships retired to prevent business bypass)
 
-## How to use this document
+## Document Evolution & Key Architectural Updates (v1.0 → v2.0)
 
-This is the consolidated baseline specification for planning and
-building FIC Business Hub. It combines the key content normally
-maintained in separate BRD, PRD, SRS, architecture, database, API,
-security, testing and deployment documents.
-
-Treat confirmed decisions as requirements. Treat recommendations as
-proposals until FIC approves them. Do not silently convert assumptions
-or illustrative examples into production business rules.
-
-Before implementation: 1. Review the open decisions in Section 25. 2.
-Obtain business-owner approval for pricing, membership terms, service
-workflows and investment-related operating boundaries. 3. Obtain
-legal/CA/regulatory review for applicable Indian compliance matters. 4.
-Validate the technical architecture and acceptance criteria. 5. Baseline
-and version this document.
+1. **FIC Intermediary Governance Enforcement**: Standalone unmediated "Partnerships" have been permanently removed from the application architecture to prevent direct member-to-member bypass. All B2B trade inquiries, supplier discovery, subcontractor sourcing, and OEM tie-ups flow through the **Universal Services Marketplace**, **Enterprise Scaling Desk**, and **Facilitated Meetings Desk**. The legacy `/partnerships` route permanently redirects to `/my-requests`.
+2. **Distinct Advisory Desks**:
+   - **Business Ideas & Incubation Desk (`/business-ideas`)**: Focuses on **Stage 0 → 1** pre-launch concept validation, bilateral NDA protection, automated 3-metric feasibility scoring (Market Viability, Technical Feasibility, Commercial Scalability), and mentor review notes.
+   - **Business Development & Enterprise Scaling (`/business-development`)**: Focuses on **Stage 1 → 10** operational bottleneck turnaround for existing operational enterprises, factory floor lean optimization, cloud ERP modernization, regional distributor channel expansion, and phased diagnostic roadmaps.
+3. **Dedicated Student & Mentor Ecosystem**: Full specialized portals for:
+   - **Student Talent & Skill Development (`/skill-development`)**: Masterclass discovery filtered by domain and language (Tamil, English, etc.), and 1-on-1 consultation booking.
+   - **Mentor / Trainer Workspace (`/my-services`, `/my-requests`)**: Streamlined masterclass video upload form (Topic Domain, Language, Video File Upload, Duration, Curriculum), teaching services catalog, and consultation management (`Accept`, `Reject`, `Reschedule`, `Complete & Log Audit`).
+4. **Motion for React Design System**: Migration to official `motion/react` v12+, standardized motion tokens, and layout-level zero-opacity protection to guarantee 100% viewport visibility on route navigation.
+5. **Warm Ivory & Soft Sand Luxury Theme**: Sophisticated multi-color Warm Ivory (`#FAF7F2`) surface with deep Earth Brown text (`#51463F`, `#453A33`) exceeding WCAG AAA contrast (> 7.5:1 ratio).
 
 ------------------------------------------------------------------------
 
 # 1. Executive Summary
 
-FIC Business Hub is a membership-based business, professional and
-opportunity ecosystem. It is intended to bring eligible individuals and
-organizations into one platform so they can discover services, offer
-services, submit business ideas, request business development support,
-express investment interest, seek funding connections, build
-partnerships and participate in networking.
+FIC Business Hub is a membership-based, intermediary-governed business,
+professional and opportunity ecosystem. It brings eligible individuals,
+MSMEs, manufacturers, freelancers, investors, mentors and students into
+one trusted platform so they can discover capabilities, offer verified
+services, validate business ideas, request enterprise scaling advisory,
+access confidential private deal rooms, schedule expert consultations,
+and engage in skill development.
 
-The platform is not merely a business directory or a conventional
-e-commerce marketplace. FIC acts as the central coordinator/intermediary
-for member-to-member business introductions and service requests.
+The platform is neither a passive business directory nor an open,
+unmoderated marketplace. **FIC acts as the sole coordinating intermediary
+for all member-to-member business interactions.** Public listings never
+expose private contact details or company identities; all inquiries,
+tenders, and introductions are reviewed, verified, and facilitated
+directly through FIC governance to protect the business model and
+prevent off-platform bypass.
 
-The platform has exactly two websites: 1. **FIC Business Hub Website:**
-public landing page, registration, login, member experience,
-category-specific dashboard and universal marketplace. 2. **FIC Admin
-Portal:** Super Admin, Admin and Verification Executive workspaces.
+The monorepo encompasses two web applications and one backend API:
+1. **FIC Business Hub Member Portal (`apps/web`):** Public marketing landing,
+   dynamic registration, authenticated member workspace, universal services
+   marketplace, incubation desk, enterprise scaling desk, private deal room,
+   and student/mentor portals (Port 5173).
+2. **FIC Admin Portal (`apps/admin`):** Super Admin, Admin, and Verification
+   Executive operations workspace for KYC approvals, marketplace listing audits,
+   scaling roadmaps, and meeting moderation (Port 5174).
+3. **Shared Backend API (`apps/backend`):** High-performance Express + TypeScript
+   modular monolith connected to MongoDB (Port 5000).
 
-Both websites use one shared backend API and a shared MongoDB database.
-
-The member experience is dynamically configured. A member selects one
-primary main category, then the relevant subcategory or subcategories,
-completes a configuration-driven details form, pays the membership fee
-and submits category-specific KYC. Full dashboard access is granted only
-after payment, KYC approval, active membership and active account
-status.
-
-The service marketplace is universal: an eligible member can discover
-approved services from every category, regardless of the member's own
-primary category. Public listings must not reveal provider identity or
-private contact details. Requests are routed to FIC, which coordinates
-with the requester and provider.
+The member workspace is dynamically configured from a single source of truth
+(`apps/web/src/services/dashboardConfig.ts`). Upon authentication, members
+receive role-tailored navigation, KPIs, action cards, and specialized tracks
+optimized for their specific industry track.
 
 ------------------------------------------------------------------------
 
@@ -86,27 +82,25 @@ with the requester and provider.
 
 ## 2.1 Business vision
 
-**Vision:** Bring every eligible individual into one trusted ecosystem
-and help them discover, offer and access business opportunities through
-FIC.
+**Vision:** Bring every eligible enterprise, professional, innovator and
+student into one trusted ecosystem and empower them to discover, offer
+and execute business opportunities through FIC intermediary governance.
 
-**Suggested positioning statement:**\
-"One Platform. Unlimited Business Opportunities."
+**Positioning statement:**\
+"One Platform. Unlimited Opportunity Ecosystem."
 
 ## 2.2 Business objectives
 
--   Build a broad membership ecosystem for people aged 18 and above.
--   Allow members to both offer services and request services.
--   Make approved services discoverable across all member categories.
--   Enable FIC-mediated business introductions and service coordination.
--   Support business idea submission and business development requests.
--   Enable private expression of investment readiness and funding
-    requirements.
--   Facilitate partnerships, tie-ups and networking.
--   Provide category- and subcategory-configured member experiences.
--   Create an operational platform for FIC staff to review, coordinate
-    and monitor requests.
--   Establish a scalable foundation for future categories and modules.
+-   Build a broad membership ecosystem for individuals and organizations aged 18 and above.
+-   Allow members to both publish verified service capabilities and submit requirements.
+-   Make approved services discoverable across all 10 business sectors via a Universal Marketplace.
+-   Enforce FIC-mediated business introductions and eliminate direct unmoderated bypass.
+-   Provide a dedicated **Incubation Desk** for early-stage (0 → 1) business ideas with structured feasibility scoring.
+-   Provide an **Enterprise Scaling Desk** for operational (1 → 10) businesses facing bottlenecks.
+-   Enable a **Confidential Private Deal Room** for institutional investment and capital syndication under strict non-disclosure.
+-   Provide an integrated **Student & Mentor Ecosystem** for academic guidance, skill development masterclasses, and paid faculty consultations.
+-   Deliver dynamic, role-tailored member dashboards from a unified code architecture.
+-   Provide robust operations tooling for FIC staff to moderate requests, assign specialists, and manage KYC verification.
 
 ## 2.3 Target audiences
 
@@ -444,114 +438,124 @@ A renewal must not bypass an account block, suspension or revoked KYC
 decision. Define how an approved KYC application is rechecked if
 documents expire or a material profile change occurs.
 
-## 3.8 Member dashboard
+## 3.8 Dynamic Role-Based Member Dashboard
 
-One reusable dashboard renderer; not ten separate codebases.
+One unified, dynamic frontend dashboard architecture driven by a single source
+of truth (`apps/web/src/services/dashboardConfig.ts`), avoiding disparate codebases.
 
-Common dashboard areas may include: - Overview - Profile - Membership -
-My Services - Discover Services - Business Opportunities - Business
-Development Requests - Investment and Funding - Partnerships -
-Networking - My Requests - FIC Communications - Notifications - Support
+### Centralized Navigation & Roles
+The top navigation header dynamically adapts according to the member's subcategory:
 
-Menus and widgets are selected through configuration and permissions. A
-member's category controls their dashboard experience but must not
-restrict universal service discovery.
+1. **Default Business Track (Business Owner, MSME, Manufacturer, Freelancer, Trader)**:
+   - Header Tabs: `Dashboard`, `Marketplace`, `Business Ideas`, `Scaling`, `Investment`, `Meetings`, `My Requests`, `My Services`.
+2. **Student Track**:
+   - Header Tabs: `Dashboard`, `Marketplace`, `Business Ideas`, `Investment`, `Meetings`, `My Requests`, `Skill Development`.
+3. **Mentor / Trainer Track**:
+   - Header Tabs: `Dashboard`, `Marketplace`, `Business Ideas`, `Investment`, `Meetings`, `My Requests`, `My Services`.
+4. **Professor / Faculty Track**:
+   - Header Tabs: `Dashboard`, `Marketplace`, `Business Ideas`, `Investment`, `Meetings`, `My Requests`, `My Services`.
 
-## 3.9 Universal services marketplace
+### Dashboard Architecture Components
+- **Welcome & Identity Hero**: Displays member fullName, dynamic subcategory badge, account status, membership validity pill, and KYC verification status.
+- **Dynamic KPI Stat Cards**: 4 responsive stat cards tailored to the member's subcategory (e.g. Registered Students, My Teaching Services, Client Inquiries, Active Deal Rooms).
+- **Opportunity Actions & Services**: High-impact shortcut grid (7 to 8 actions) linking to core modules, explicitly labeled as *"Moderated by FIC Intermediary Governance"*.
+- **Specialized Track Card**: A high-touch spotlight banner with key domain metrics (e.g. Student Talent Accelerator, Universal Service Marketplace Showcase).
 
-Every eligible member can discover all approved, active services,
-regardless of their primary category.
+## 3.9 Universal Services Marketplace (`/marketplace`)
 
-Only listings that satisfy the required provider account, membership,
-KYC and listing-approval conditions may be visible.
+Every eligible member can discover all approved, active services across **10 business sectors**
+(Business & Entrepreneurship, Manufacturing, Technology, Education, Professional Services,
+Agriculture, Investment & Finance, Healthcare, Creative Media, Employment & Community).
 
-Public listing fields: - Service title - Description - Category and
-subcategory - Approved images/portfolio - Capabilities - Privacy-safe
-location if enabled - Verification indicator if appropriate - Request
-Service action
+### Privacy & Governance Protocol
+- Public listings **never** expose provider personal name, company name, private phone, private email, or direct contact links.
+- Backend strictly enforces field-level privacy at the API layer.
+- Member-to-member communication is coordinated directly by FIC Officers to eliminate spam and bypass.
+- Public fields: Service title, category, subcategory, verified deliverables list, industry tags, FIC verification badge, response timeframe, and *"Request Service through FIC"* CTA.
 
-Never expose provider personal name, company name, private phone,
-private email or direct contact links in public listing responses.
+## 3.10 Service Request Workflow
 
-Backend must enforce field-level privacy. Do not fetch sensitive fields
-and merely hide them in the UI.
+Lifecycle:
+`SUBMITTED` → `UNDER_REVIEW` → `REQUIREMENTS_COLLECTED` → `ASSIGNED_TO_PROVIDER` → `PROPOSAL_SHARED` → `ACCEPTED` → `IN_PROGRESS` → `COMPLETED` → `CANCELLED` / `DISPUTED`.
 
-Search/filter examples: - Service category - Subcategory - Keywords -
-Skills/capabilities - Privacy-safe location - Availability -
-Verification status
+1. Member submits a requirement for an approved marketplace service.
+2. Request appears in member's **My Requests** desk (`/my-requests?tab=services`).
+3. FIC Desk evaluates scope, confirms member eligibility, and coordinates with the service provider.
+4. Proposal and deliverables are shared under FIC moderation.
 
-## 3.10 Service request workflow
+## 3.11 Advisory Desks: Business Ideas vs Enterprise Scaling
 
-Suggested statuses: - SUBMITTED - UNDER_REVIEW -
-REQUIREMENTS_COLLECTED - ASSIGNED_TO_PROVIDER - PROVIDER_CONTACTED -
-PROPOSAL_SHARED - ACCEPTED - IN_PROGRESS - COMPLETED - REJECTED -
-CANCELLED - DISPUTED
+The platform clearly distinguishes between early-stage innovation and existing business turnaround:
 
-Workflow: 1. Member selects a service. 2. Member submits a requirement.
-3. FIC receives the request. 4. FIC contacts requester and collects
-details. 5. Authorized staff identify and contact provider. 6. FIC
-coordinates proposal and next steps. 7. Request status and
-communications are tracked. 8. Completion, cancellation or dispute is
-recorded.
+### 3.11.1 Business Ideas & Incubation Desk (`/business-ideas`) — *Stage 0 → 1*
+Designed for innovators, students, researchers, and early entrepreneurs validating a **new concept**:
+- **Form Inputs**: Idea Title, Detailed Concept Description, Target Market / Geography, Current Maturity Stage (*Idea on Paper, Prototype/MVP, Early Traction, Growth*), and Support Needed (*Idea Validation, Business Plan Preparation, Technology/MVP Development, Mentoring & Advisory, Regulatory Setup, Go-to-Market Strategy*).
+- **IP Protection Guarantee**: Submissions are protected by strict bilateral non-disclosure protocols and reviewed only by accredited FIC consultants.
+- **Feasibility Scoring Engine**: Submissions receive an automated diagnostic evaluation across:
+  - *Market Viability (out of 100)*
+  - *Technical Feasibility (out of 100)*
+  - *Commercial Scalability (out of 100)*
+- **Tracking Lifecycle**: `UNDER_REVIEW` → `FEASIBILITY_ANALYSIS` → `ADVISORY_SCHEDULED` → `APPROVED_INCUBATION`.
+- **Review Notes & Next Steps**: Members receive diagnostic notes and structured next steps from senior incubation specialists.
 
-Provider identity and contact details are available only to authorized
-FIC personnel and only for legitimate operational purposes.
+### 3.11.2 Business Development & Enterprise Scaling (`/business-development`) — *Stage 1 → 10*
+Designed for **established operational businesses, MSMEs, and factories** facing operational bottlenecks:
+- **Form Inputs**: Enterprise Name, Required Growth Area (*Strategic Business Planning & Turnaround, Technology Modernization & Cloud Systems, Regional Expansion & Distributor Channel Onboarding, Operational & Factory Floor Lean Optimization, New Entity Setup*), Current Operational Bottlenecks, and Target Objectives / Milestones.
+- **Specialist Assignment**: FIC assigns senior Domain Directors (e.g. Technology & Cloud Modernization Wing, FMCG & Commercial Retail Syndication).
+- **Diagnostic Roadmaps & Milestones**: Specialists formulate phased transformation roadmaps:
+  - *Phase 1: Diagnostic Assessment & Architecture Audit*
+  - *Phase 2: Modernization Execution & Vendor Coordination*
+  - *Phase 3: Performance Verification & Go-Live*
+- **Tracking Lifecycle**: `DIAGNOSTIC_PENDING` → `SPECIALIST_ASSIGNED` → `ROADMAP_PREPARED` → `EXECUTION_IN_PROGRESS`.
 
-## 3.11 Business ideas and development
+## 3.12 Confidential Investment & Private Deal Room (`/investment`)
 
-Members may: - Submit a business idea. - Request help validating or
-developing an idea. - Express interest in starting a business. - Explore
-FIC-published opportunities. - Request a consultation or meeting.
+An institutional capital channel connecting high-growth enterprises with accredited syndicates:
+- **Expression of Interest (EOI)**: Private submission for both capital seekers (ticket size, business stage, pitch deck) and investors (investment appetite, preferred sectors, liquidity horizon).
+- **Private Deal Room Opportunities Bulletin**: Pre-screened commercial deals vetted by the FIC Senior Deal Committee (e.g. Tier-1 automated spinning units, solar cold-chain logistics, ayurvedic extraction facilities).
+- **Bilateral NDA Protection**: Deal rooms require signed non-disclosure agreements before confidential financial data rooms are unlocked.
+- **Compliance Protocol**: FIC does not hold investor custody, collect public deposits, or operate an unregistered securities exchange; operations are strictly structured as private B2B intermediary coordination.
 
-Business development request examples: - Business planning - Business
-setup guidance - Market research - Branding and marketing - Technology
-development - Operational improvement - Business expansion and scaling -
-Consultancy
+## 3.13 FIC Intermediary Governance & B2B Coordination (Retirement of Direct Partnerships)
 
-FIC reviews, gathers requirements, assigns appropriate internal staff or
-external support and tracks progress. Meeting scheduling and provider
-introductions must be recorded.
+### Business Justification
+In earlier specifications, a standalone "Partnerships" module allowed direct company-to-company connections. This created an existential business vulnerability: once Company A and Company B connected directly, FIC was bypassed in all subsequent commercial transactions.
 
-## 3.12 Investment and funding interest
+### Architectural Policy
+1. **Complete Removal of Standalone Partnerships**: The "Partnerships" module, navigation tabs, action shortcuts, and creation endpoints have been completely eliminated from the member portal.
+2. **Redirect Strategy**: The route `/partnerships` permanently redirects to `/my-requests`.
+3. **Mediated B2B Trade & Expansion**: Genuine B2B business collaboration (OEM supply chains, distributor onboarding, vendor sourcing, subcontracting) is routed strictly through the **Universal Marketplace**, **Enterprise Scaling Desk**, and **Facilitated Meetings Desk**, where FIC Officers oversee eligibility, vetting, and execution.
 
-Members may privately indicate: - Willingness/readiness to invest -
-Available investment range - Preferred sectors - Preferred business
-stage - Investment interests and conditions
+## 3.14 Student & Mentor Ecosystem
 
-Funding seekers may privately submit: - Funding amount/range required -
-Purpose - Business/project information - Business stage - Proposal and
-supporting documents
+A comprehensive, role-tailored ecosystem connecting students and academic mentees with verified industry mentors and faculty:
 
-Only authorized FIC personnel can view sensitive financial information.
-Do not publicly expose exact amounts, identity or financial documents.
+### 3.14.1 Student Skill Development Portal (`/skill-development`)
+- **Masterclass Video Discovery**: Filter verified video masterclasses by Topic Domain (Java, Python, Web Development, Digital Marketing, Mathematics) and Language (Tamil, English, Hindi, Kannada, Telugu).
+- **Curriculum & Syllabus Details**: Students inspect video duration, target learning outcomes, and mentor credentials.
+- **1-on-1 Mentor Consultation Booking**: Students can directly request a 1-on-1 career or academic guidance session with the mentor, specifying preferred dates, times, and meeting agendas.
 
-This module initially records and manages interest and FIC-coordinated
-introductions. It must not perform investment-money transfers, hold
-funds, operate a securities marketplace, offer regulated financial
-products or make investment recommendations until the legal and
-regulatory model has been approved.
+### 3.14.2 Mentor Workspace & Video Upload Form (`/my-services`)
+- **Streamlined Video Upload Form**: Eliminates obsolete fields (stream URL, target level, embed links) and focuses on core essentials:
+  1. *Subject / Topic Domain* (Required)
+  2. *Language* (Required — Tamil, English, etc.)
+  3. *Video Masterclass File* (Required — Drag-and-drop file upload supporting MP4, WebM, MOV)
+  4. *Session Duration* (Minutes)
+  5. *Curriculum & Topic Description* (Required)
+- **Teaching Services Catalog**: Mentors publish structured consulting and coaching tracks into the marketplace.
 
-## 3.13 Partnerships and networking
-
-Support requests for: - Business collaboration - Manufacturing
-partnerships - Distribution relationships - Franchise opportunities -
-Vendor relationships - Joint ventures - Strategic partnerships -
-Professional introductions - Industry networking - Meetings
-
-FIC coordinates introductions and records consent, status and outcomes.
-
-## 3.14 Mentoring
-
-Support business, career, technical and professional mentoring.
-
-Student-to-mentor direct payment is not part of the approved model. FIC
-pays eligible mentors from its approved company budget, subject to
-completed sessions, attendance, feedback, quality checks, complaint
-review, approval and payout processing.
-
-Commission percentages, score weightages, payout timing and eligibility
-remain configurable and require approval. Do not invent fixed production
-values.
+### 3.14.3 Mentorship Consultations Management (`/my-requests`)
+Role-based tab separation in `MyRequestsPage.tsx`:
+- **Mentor View**:
+  - Displays `Marketplace Requests` and `Student Requests`.
+  - Mentors can execute direct actions:
+    - **Accept & Schedule**: Specify confirmed date, time, meeting mode (Online/Offline), Google Meet URL, and mentor notes.
+    - **Reject Request**: Provide constructive feedback reason.
+    - **Propose Reschedule**: Suggest alternative dates and times with notes.
+    - **Complete Session & Log Audit**: Record session summary, mentor notes, recommended materials, and follow-up guidance before closing the booking.
+- **Student View**:
+  - Displays `Marketplace Requests` and `Mentor Requests`.
+  - Students track booking status (`PENDING`, `ACCEPTED`, `RESCHEDULE_PROPOSED`, `COMPLETED`), access meeting links, and accept or decline mentor reschedule proposals.
 
 ------------------------------------------------------------------------
 
@@ -1199,14 +1203,22 @@ indexes and retention rules must be reviewed before production.
   investmentConnectionRequests        FIC-reviewed potential
                                       introductions
 
-  partnershipRequests                 Business tie-up requests
+  partnershipRequests                 DEPRECATED & RETIRED (Direct partnerships
+                                      eliminated to enforce FIC intermediary governance)
+
+  teachingServices                    Accredited mentor teaching & advisory offerings
+
+  learningVideos                      Uploaded masterclass videos with curriculum,
+                                      language, and video stream metadata
+
+  mentorshipRequests                  1-on-1 student consultation bookings with
+                                      reschedule workflows and session completion audits
 
   networkingRequests                  Networking and introduction
                                       requests
 
-  connectionRequests                  Generic FIC-coordinated
-                                      service/connection request records,
-                                      if useful
+  connectionRequests                  FIC-coordinated service, B2B trade, and
+                                      connection request records
 
   conversations                       FIC-mediated conversation threads
 
@@ -1364,31 +1376,48 @@ decisions.
                                                                  service request
   --------------------------------------------------------------------------------------
 
-## 9.4 Business opportunity APIs
+## 9.4 Business opportunity & Mentoring APIs
 
   --------------------------------------------------------------------------------------------
   Method                  Endpoint                                     Purpose
   ----------------------- -------------------------------------------- -----------------------
-  POST                    `/api/v1/business-ideas`                     Submit idea
+  POST                    `/api/v1/business-ideas`                     Submit idea (0 → 1)
 
-  GET                     `/api/v1/business-ideas/me`                  Own ideas
+  GET                     `/api/v1/business-ideas/me`                  Own submitted ideas
 
-  POST                    `/api/v1/business-development-requests`      Request development
-                                                                       support
+  POST                    `/api/v1/business-development-requests`      Submit scaling request (1 → 10)
 
-  GET                     `/api/v1/business-development-requests/me`   Own requests
+  GET                     `/api/v1/business-development-requests/me`   Own scaling requests
 
-  POST                    `/api/v1/investment-profiles`                Submit private
-                                                                       investment interest
+  POST                    `/api/v1/investment-profiles`                Submit private investment appetite
 
-  POST                    `/api/v1/funding-requests`                   Submit private funding
-                                                                       need
+  POST                    `/api/v1/funding-requests`                   Submit funding requirement
 
-  POST                    `/api/v1/partnership-requests`               Submit partnership
-                                                                       request
+  POST                    `/api/v1/partnership-requests`               *DEPRECATED* (HTTP 410 Gone / Intermediary Policy)
 
-  POST                    `/api/v1/networking-requests`                Submit networking
-                                                                       request
+  GET                     `/api/mentoring/services`                    Browse mentor teaching offerings
+
+  POST                    `/api/mentoring/services`                    Publish mentor teaching offering
+
+  GET                     `/api/mentoring/videos`                      Browse masterclass videos (filter by domain & lang)
+
+  POST                    `/api/mentoring/videos`                      Upload new masterclass video
+
+  GET                     `/api/mentoring/videos/my`                   Own uploaded masterclass videos
+
+  POST                    `/api/mentoring/requests`                    Book 1-on-1 consultation session
+
+  GET                     `/api/mentoring/requests/student`            Student's active mentorship bookings
+
+  GET                     `/api/mentoring/requests/mentor`             Mentor's incoming mentorship bookings
+
+  PUT                     `/api/mentoring/requests/:id/accept`         Accept and schedule consultation
+
+  PUT                     `/api/mentoring/requests/:id/reschedule`     Mentor proposes new schedule
+
+  PUT                     `/api/mentoring/requests/:id/respond-reschedule` Student responds to reschedule
+
+  PUT                     `/api/mentoring/requests/:id/complete`       Log completion audit and close session
   --------------------------------------------------------------------------------------------
 
 ## 9.5 Admin APIs
@@ -1416,49 +1445,59 @@ public endpoints.
 
 # 10. UI/UX Specification
 
-## 10.1 Design principles
+## 10.1 Design principles & Visual Identity
 
--   Premium, modern, trustworthy business-focused interface.
--   Simple and pleasant registration.
--   Clear progress indicator.
--   Consistent typography, spacing and component behavior.
--   Responsive desktop, tablet and mobile.
--   Accessible labels, keyboard navigation and contrast.
--   Clear loading, empty, error and success states.
--   No misleading promotional patterns.
--   Explain why sensitive information is requested.
--   Avoid overwhelming users with every module at once.
+-   **Warm Ivory & Soft Sand Luxury Theme**: An earthy, warm, professional enterprise aesthetic avoiding harsh dark modes or stark pure black.
+-   **WCAG AAA Contrast Standard**: All primary and secondary text uses Deep Earth Brown (`#51463F` and `#453A33`) exceeding 7.5:1 contrast ratios on ivory surfaces. No pale white text on light badges.
+-   **Multi-Color Luxury Accents**:
+    -   *Terracotta / Coral (`#E8795B`, `#C65638`)*: Primary brand emphasis, marketplace highlights.
+    -   *Golden Amber (`#E5A23B`, `#D99B43`)*: Incubation ideas, validity indicators.
+    -   *Forest Teal (`#3B9C91`, `#1C6960`)*: Private deal rooms, confidential investment badges.
+    -   *Royal Violet (`#8064B1`, `#6E529F`)*: Scaling advisory, mentorship desk.
+-   **Frosted Glass Card Surfaces**: White cards (`bg-white/80` or `bg-white/95`) with delicate sand borders (`#EDE2D7`) and soft depth elevation.
+-   **Full Viewport Responsiveness**: High-density layouts spanning 320px to 1920px viewports without awkward empty margins.
 
-## 10.2 Suggested member navigation
+## 10.2 Motion for React (`motion/react`) System
 
-Navigation must be configuration-driven. Possible common sections: -
-Overview - My Profile - Membership - My Services - Discover Services -
-Business Opportunities - Business Development - Investment/Funding -
-Partnerships - Networking - My Requests - FIC Messages - Notifications -
-Help & Support
+Standardized exclusively on **Motion for React** (`motion/react` v12+):
+-   **Guaranteed Route Visibility**: Layout shells wrap routes without blocking initial zero-opacity transitions, eliminating blank-screen glitches during client-side tab switching.
+-   **Motion Tokens**:
+    -   *Durations*: Fast (150ms), Normal (260ms), Slow (400ms).
+    -   *Springs*: Snappy (`stiffness: 380, damping: 28`), Gentle (`stiffness: 260, damping: 22`).
+    -   *Easing*: Premium cubic-bezier curves (`[0.22, 1, 0.36, 1]`).
+-   **Reusable Motion Primitives**: `AnimatedModal`, `AnimatedCard`, `AnimatedCounter`, `AnimatedProgress`, `ScrollReveal`, and `StaggerContainer`.
 
-## 10.3 Suggested admin navigation
+## 10.3 Centralized Role-Based Member Navigation
 
--   Overview
--   Members
--   KYC Verification
--   Categories
--   Subcategories
--   Form Builder
--   Dashboard Builder
--   Memberships
--   Payments
--   Service Listings
--   Service Requests
--   Business Ideas
--   Business Development
--   Investment Interest
--   Funding Requests
--   Partnerships
--   Networking
--   Mentoring
--   Complaints
--   Reports
+Navigation is dynamically generated via `getRoleNavigation(user)` in `apps/web/src/services/dashboardConfig.ts`:
+
+-   **Business / MSME / Manufacturer / Freelancer (8 Core Modules)**:
+    `Dashboard` • `Marketplace` • `Business Ideas` • `Scaling` • `Investment` • `Meetings` • `My Requests` • `My Services`
+-   **Student (7 Core Modules)**:
+    `Dashboard` • `Marketplace` • `Business Ideas` • `Investment` • `Meetings` • `My Requests` • `Skill Development`
+-   **Mentor / Trainer (7 Core Modules)**:
+    `Dashboard` • `Marketplace` • `Business Ideas` • `Investment` • `Meetings` • `My Requests` • `My Services`
+-   **Professor / Faculty (7 Core Modules)**:
+    `Dashboard` • `Marketplace` • `Business Ideas` • `Investment` • `Meetings` • `My Requests` • `My Services`
+
+## 10.4 Admin Operations Navigation
+
+-   Overview & Operations KPI Telemetry
+-   Member Accounts & Profile Directory
+-   KYC Verification & Document Approvals
+-   Categories & Subcategories Manager
+-   Registration Form Builder
+-   Dashboard Configuration Manager
+-   Membership Plans & Renewals
+-   Payments & Fee Reconciliation
+-   Marketplace Service Listings Moderation
+-   Client Service Requests Coordinator
+-   Business Ideas & Incubation Desk
+-   Enterprise Scaling Requests & Roadmaps
+-   Private Deal Room & Investment Inquiries
+-   Mentorship & Masterclass Moderation
+-   Complaints & Dispute Resolution
+-   System Reports & Audit Logs
 -   Staff & Permissions
 -   Audit Logs
 -   Settings

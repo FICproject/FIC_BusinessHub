@@ -39,10 +39,50 @@ export interface DynamicDashboardConfig {
   specializedTrack: SpecializedTrack;
 }
 
-export const getSubcategoryDashboardConfig = (
-  user: AuthenticatedUser,
-  activeRequestsCount: number
-): DynamicDashboardConfig => {
+export interface HeaderNavLink {
+  label: string;
+  path: string;
+}
+
+export interface RoleNavigation {
+  roleBadge: string;
+  roleTitle: string;
+  headerLinks: HeaderNavLink[];
+  opportunityActions: DashboardQuickAction[];
+}
+
+export interface EcosystemTelemetryStats {
+  registeredStudents?: number;
+  availableMentors?: number;
+  learningVideosCount?: number;
+  completedSessions?: number;
+  myServicesCount?: number;
+  myVideosCount?: number;
+  studentRequestsCount?: number;
+}
+
+// ========================================================
+// 1. CENTRALIZED ROLE NAVIGATION (SINGLE SOURCE OF TRUTH)
+// ========================================================
+export const getRoleNavigation = (user: AuthenticatedUser | null): RoleNavigation => {
+  if (!user) {
+    return {
+      roleBadge: 'MEMBER',
+      roleTitle: 'FIC Business Hub Member Workspace',
+      headerLinks: [
+        { label: 'Dashboard', path: '/dashboard' },
+        { label: 'Marketplace', path: '/marketplace' },
+        { label: 'Business Ideas', path: '/business-ideas' },
+        { label: 'Scaling', path: '/business-development' },
+        { label: 'Investment', path: '/investment' },
+        { label: 'Meetings', path: '/meetings' },
+        { label: 'My Requests', path: '/my-requests' },
+        { label: 'My Services', path: '/my-services' }
+      ],
+      opportunityActions: []
+    };
+  }
+
   const subcategory =
     user.subCategory ||
     (user.subcategories && user.subcategories.length > 0 ? user.subcategories[0] : '') ||
@@ -52,66 +92,51 @@ export const getSubcategoryDashboardConfig = (
 
   const subLower = subcategory.toLowerCase();
 
-  // ==========================================
   // 1. STUDENT
-  // ==========================================
   if (subLower.includes('student')) {
     return {
       roleBadge: 'STUDENT',
       roleTitle: 'Student Academic & Career Workspace',
-      heroSubtitle:
-        'Access curated industry mentorship, exclusive career internships, startup incubation opportunities, and student collaboration circles across Tamil Nadu.',
-      kpiCards: [
-        {
-          title: 'Academic Mentors',
-          value: 'Available',
-          subtitle: '1-on-1 Strategy Calls',
-          accent: 'violet',
-          trend: 'FIC Network',
-          path: '/meetings',
-          iconName: 'calendar'
-        },
-        {
-          title: 'Internships & Projects',
-          value: '18 Active',
-          subtitle: 'Verified Ecosystem Roles',
-          accent: 'coral',
-          trend: 'Opportunities',
-          path: '/marketplace',
-          iconName: 'briefcase'
-        },
-        {
-          title: 'Student Startup Ideas',
-          value: '1 Ready',
-          subtitle: 'Incubation Channel',
-          accent: 'amber',
-          trend: 'Incubation',
-          path: '/business-ideas',
-          iconName: 'lightbulb'
-        },
-        {
-          title: 'My Applications',
-          value: activeRequestsCount,
-          subtitle: 'Active FIC Requests',
-          accent: 'emerald',
-          trend: 'Live Tracker',
-          path: '/my-requests',
-          iconName: 'shield'
-        }
+      headerLinks: [
+        { label: 'Dashboard', path: '/dashboard' },
+        { label: 'Marketplace', path: '/marketplace' },
+        { label: 'Business Ideas', path: '/business-ideas' },
+        { label: 'Investment', path: '/investment' },
+        { label: 'Meetings', path: '/meetings' },
+        { label: 'My Requests', path: '/my-requests' },
+        { label: 'Skill Development', path: '/skill-development' }
       ],
-      quickActions: [
+      opportunityActions: [
         {
           title: 'Book a Mentor',
-          subtitle: 'Facilitated consultations',
-          path: '/meetings',
+          subtitle: '1-on-1 career & academic calls',
+          path: '/meetings?action=book',
           gradient: 'from-[#8064A9] to-[#9B7CC6]',
           borderHover: 'hover:border-[#8064A9]',
           bgHover: 'hover:bg-[#F3EEFA]/60',
           iconName: 'calendar'
         },
         {
+          title: 'Skill Development',
+          subtitle: 'Masterclasses & video courses',
+          path: '/skill-development',
+          gradient: 'from-[#8064A9] to-[#D78E9A]',
+          borderHover: 'hover:border-[#8064A9]',
+          bgHover: 'hover:bg-[#F9F5FD]/60',
+          iconName: 'rocket'
+        },
+        {
+          title: 'Submit Startup Idea',
+          subtitle: 'Incubation & validation desk',
+          path: '/business-ideas',
+          gradient: 'from-[#D99B43] to-[#F5B453]',
+          borderHover: 'hover:border-[#D99B43]',
+          bgHover: 'hover:bg-[#FDF6E9]/60',
+          iconName: 'lightbulb'
+        },
+        {
           title: 'Explore Internships',
-          subtitle: 'Verified marketplace tasks',
+          subtitle: 'Verified marketplace roles',
           path: '/marketplace',
           gradient: 'from-[#C66B52] to-[#E58C72]',
           borderHover: 'hover:border-[#E58C72]',
@@ -119,7 +144,89 @@ export const getSubcategoryDashboardConfig = (
           iconName: 'briefcase'
         },
         {
-          title: 'Submit Startup Idea',
+          title: 'Ecosystem Marketplace',
+          subtitle: 'Browse all capabilities',
+          path: '/marketplace',
+          gradient: 'from-[#C66B52] to-[#D78E9A]',
+          borderHover: 'hover:border-[#C66B52]',
+          bgHover: 'hover:bg-[#FFF6F7]/60',
+          iconName: 'briefcase'
+        },
+        {
+          title: 'My Applications',
+          subtitle: 'Track proposals & responses',
+          path: '/my-requests?tab=mentor-requests',
+          gradient: 'from-[#D99B43] to-[#C66B52]',
+          borderHover: 'hover:border-[#D99B43]',
+          bgHover: 'hover:bg-[#FCFAF5]/60',
+          iconName: 'shield'
+        },
+        {
+          title: 'Scheduled Meetings',
+          subtitle: 'Upcoming mentor sessions',
+          path: '/meetings',
+          gradient: 'from-[#8064B1] to-[#6E529F]',
+          borderHover: 'hover:border-[#8064B1]',
+          bgHover: 'hover:bg-[#F5EBDD]/60',
+          iconName: 'calendar'
+        }
+      ]
+    };
+  }
+
+  // 2. MENTOR / TRAINER
+  if (subLower.includes('mentor') || subLower.includes('trainer')) {
+    return {
+      roleBadge: 'MENTOR / TRAINER',
+      roleTitle: 'Mentorship, Coaching & Faculty Workspace',
+      headerLinks: [
+        { label: 'Dashboard', path: '/dashboard' },
+        { label: 'Marketplace', path: '/marketplace' },
+        { label: 'Business Ideas', path: '/business-ideas' },
+        { label: 'Investment', path: '/investment' },
+        { label: 'Meetings', path: '/meetings' },
+        { label: 'My Requests', path: '/my-requests' },
+        { label: 'My Services', path: '/my-services' }
+      ],
+      opportunityActions: [
+        {
+          title: 'Browse Marketplace',
+          subtitle: 'Explore member inquiries',
+          path: '/marketplace',
+          gradient: 'from-[#C66B52] to-[#E58C72]',
+          borderHover: 'hover:border-[#E58C72]',
+          bgHover: 'hover:bg-[#FFF4F0]/60',
+          iconName: 'briefcase'
+        },
+        {
+          title: 'Manage My Services',
+          subtitle: 'Teaching & coaching offerings',
+          path: '/my-services',
+          gradient: 'from-[#8064B1] to-[#6E529F]',
+          borderHover: 'hover:border-[#8064B1]',
+          bgHover: 'hover:bg-[#F5EBDD]/60',
+          iconName: 'shield'
+        },
+        {
+          title: 'Upload Learning Videos',
+          subtitle: 'Publish video masterclasses',
+          path: '/my-services?tab=videos',
+          gradient: 'from-[#8064A9] to-[#D78E9A]',
+          borderHover: 'hover:border-[#8064A9]',
+          bgHover: 'hover:bg-[#F9F5FD]/60',
+          iconName: 'rocket'
+        },
+        {
+          title: 'Meetings & Sessions',
+          subtitle: 'Review student consultations',
+          path: '/meetings',
+          gradient: 'from-[#8064A9] to-[#9B7CC6]',
+          borderHover: 'hover:border-[#8064A9]',
+          bgHover: 'hover:bg-[#F3EEFA]/60',
+          iconName: 'calendar'
+        },
+        {
+          title: 'Submit Business Idea',
           subtitle: 'Incubation & validation',
           path: '/business-ideas',
           gradient: 'from-[#D99B43] to-[#F5B453]',
@@ -128,57 +235,343 @@ export const getSubcategoryDashboardConfig = (
           iconName: 'lightbulb'
         },
         {
-          title: 'My Services',
-          subtitle: 'Offer freelance skills',
-          path: '/my-services',
-          gradient: 'from-[#29302D] to-[#8064A9]',
-          borderHover: 'hover:border-[#29302D]',
-          bgHover: 'hover:bg-[#F5EBDD]/60',
-          iconName: 'shield'
+          title: 'Investment Opportunities',
+          subtitle: 'Explore syndicates & schemes',
+          path: '/investment',
+          gradient: 'from-[#D99B43] to-[#C66B52]',
+          borderHover: 'hover:border-[#D99B43]',
+          bgHover: 'hover:bg-[#FCFAF5]/60',
+          iconName: 'trending'
         },
         {
-          title: 'Skill Development',
-          subtitle: 'Growth & certifications',
-          path: '/business-development',
-          gradient: 'from-[#8064A9] to-[#D78E9A]',
-          borderHover: 'hover:border-[#8064A9]',
-          bgHover: 'hover:bg-[#F9F5FD]/60',
-          iconName: 'rocket'
-        },
-        {
-          title: 'Student Syndicates',
-          subtitle: 'Peer collaborations',
-          path: '/partnerships',
+          title: 'Student Requests',
+          subtitle: 'Incoming mentorship bookings',
+          path: '/my-requests?tab=student-requests',
           gradient: 'from-[#C66B52] to-[#D78E9A]',
           borderHover: 'hover:border-[#C66B52]',
           bgHover: 'hover:bg-[#FFF6F7]/60',
           iconName: 'handshake'
+        }
+      ]
+    };
+  }
+
+  // 3. TEACHER / PROFESSOR / RESEARCHER
+  if (subLower.includes('teacher') || subLower.includes('professor') || subLower.includes('researcher')) {
+    return {
+      roleBadge: 'TEACHER / PROFESSOR',
+      roleTitle: 'Academic Faculty & Research Workspace',
+      headerLinks: [
+        { label: 'Dashboard', path: '/dashboard' },
+        { label: 'Marketplace', path: '/marketplace' },
+        { label: 'Business Ideas', path: '/business-ideas' },
+        { label: 'Investment', path: '/investment' },
+        { label: 'Meetings', path: '/meetings' },
+        { label: 'My Requests', path: '/my-requests' },
+        { label: 'My Services', path: '/my-services' }
+      ],
+      opportunityActions: [
+        {
+          title: 'Schedule Consultations',
+          subtitle: 'Manage faculty advisory',
+          path: '/meetings',
+          gradient: 'from-[#8064A9] to-[#9B7CC6]',
+          borderHover: 'hover:border-[#8064A9]',
+          bgHover: 'hover:bg-[#F3EEFA]/60',
+          iconName: 'calendar'
         },
         {
-          title: 'My Applications',
-          subtitle: 'Track proposals & responses',
-          path: '/my-requests',
+          title: 'Academic Grants',
+          subtitle: 'FIC-backed research funding',
+          path: '/investment',
+          gradient: 'from-[#D99B43] to-[#F5B453]',
+          borderHover: 'hover:border-[#D99B43]',
+          bgHover: 'hover:bg-[#FDF6E9]/60',
+          iconName: 'trending'
+        },
+        {
+          title: 'Review Student Ideas',
+          subtitle: 'Incubation & validation',
+          path: '/business-ideas',
+          gradient: 'from-[#D99B43] to-[#F5B453]',
+          borderHover: 'hover:border-[#D99B43]',
+          bgHover: 'hover:bg-[#FDF6E9]/60',
+          iconName: 'lightbulb'
+        },
+        {
+          title: 'Research Services',
+          subtitle: 'Offer consultancy',
+          path: '/my-services',
+          gradient: 'from-[#8064B1] to-[#6E529F]',
+          borderHover: 'hover:border-[#8064B1]',
+          bgHover: 'hover:bg-[#F5EBDD]/60',
+          iconName: 'shield'
+        },
+        {
+          title: 'Academic Grants',
+          subtitle: 'Grant funding & schemes',
+          path: '/investment',
           gradient: 'from-[#D99B43] to-[#C66B52]',
           borderHover: 'hover:border-[#D99B43]',
           bgHover: 'hover:bg-[#FCFAF5]/60',
+          iconName: 'trending'
+        },
+        {
+          title: 'Ecosystem Marketplace',
+          subtitle: 'Explore campus requirements',
+          path: '/marketplace',
+          gradient: 'from-[#C66B52] to-[#D78E9A]',
+          borderHover: 'hover:border-[#C66B52]',
+          bgHover: 'hover:bg-[#FFF6F7]/60',
+          iconName: 'briefcase'
+        },
+        {
+          title: 'Active Inquiries',
+          subtitle: 'Student & enterprise leads',
+          path: '/my-requests?tab=student-requests',
+          gradient: 'from-[#8064A9] to-[#D78E9A]',
+          borderHover: 'hover:border-[#8064A9]',
+          bgHover: 'hover:bg-[#F9F5FD]/60',
+          iconName: 'shield'
+        }
+      ]
+    };
+  }
+
+  // DEFAULT (Business Owner, Manufacturer, Freelancer, Farmer, etc.)
+  return {
+    roleBadge: subcategory.toUpperCase(),
+    roleTitle: `${subcategory} Workspace`,
+    headerLinks: [
+      { label: 'Dashboard', path: '/dashboard' },
+      { label: 'Marketplace', path: '/marketplace' },
+      { label: 'Business Ideas', path: '/business-ideas' },
+      { label: 'Scaling', path: '/business-development' },
+      { label: 'Investment', path: '/investment' },
+      { label: 'Meetings', path: '/meetings' },
+      { label: 'My Requests', path: '/my-requests' },
+      { label: 'My Services', path: '/my-services' }
+    ],
+    opportunityActions: [
+      {
+        title: 'Manage My Services',
+        subtitle: 'Add & edit capabilities',
+        path: '/my-services',
+        gradient: 'from-[#8064B1] to-[#6E529F]',
+        borderHover: 'hover:border-[#8064B1]',
+        bgHover: 'hover:bg-[#F5EBDD]/60',
+        iconName: 'shield'
+      },
+      {
+        title: 'Browse Marketplace',
+        subtitle: 'Explore enterprise needs',
+        path: '/marketplace',
+        gradient: 'from-[#C66B52] to-[#E58C72]',
+        borderHover: 'hover:border-[#E58C72]',
+        bgHover: 'hover:bg-[#FFF4F0]/60',
+        iconName: 'briefcase'
+      },
+      {
+        title: 'Consultation Calls',
+        subtitle: 'Facilitated meetings',
+        path: '/meetings',
+        gradient: 'from-[#8064A9] to-[#9B7CC6]',
+        borderHover: 'hover:border-[#8064A9]',
+        bgHover: 'hover:bg-[#F3EEFA]/60',
+        iconName: 'calendar'
+      },
+      {
+        title: 'Submit Business Idea',
+        subtitle: 'Incubation & validation',
+        path: '/business-ideas',
+        gradient: 'from-[#D99B43] to-[#F5B453]',
+        borderHover: 'hover:border-[#D99B43]',
+        bgHover: 'hover:bg-[#FDF6E9]/60',
+        iconName: 'lightbulb'
+      },
+      {
+        title: 'Business Scaling',
+        subtitle: 'Technology & expansion',
+        path: '/business-development',
+        gradient: 'from-[#8064A9] to-[#D78E9A]',
+        borderHover: 'hover:border-[#8064A9]',
+        bgHover: 'hover:bg-[#F9F5FD]/60',
+        iconName: 'rocket'
+      },
+      {
+        title: 'Investment Channel',
+        subtitle: 'Capital & syndicate deals',
+        path: '/investment',
+        gradient: 'from-[#D99B43] to-[#C66B52]',
+        borderHover: 'hover:border-[#D99B43]',
+        bgHover: 'hover:bg-[#FCFAF5]/60',
+        iconName: 'trending'
+      },
+      {
+        title: 'Client Inquiries',
+        subtitle: 'Track proposals & scope',
+        path: '/my-requests',
+        gradient: 'from-[#D99B43] to-[#C66B52]',
+        borderHover: 'hover:border-[#D99B43]',
+        bgHover: 'hover:bg-[#FCFAF5]/60',
+        iconName: 'shield'
+      }
+    ]
+  };
+};
+
+export const getSubcategoryDashboardConfig = (
+  user: AuthenticatedUser,
+  activeRequestsCount: number,
+  ecosystemStats?: EcosystemTelemetryStats
+): DynamicDashboardConfig => {
+  const subcategory =
+    user.subCategory ||
+    (user.subcategories && user.subcategories.length > 0 ? user.subcategories[0] : '') ||
+    user.primaryCategory ||
+    user.categoryName ||
+    'Member';
+
+  const subLower = subcategory.toLowerCase();
+  const roleNav = getRoleNavigation(user);
+
+  // ==========================================
+  // 1. STUDENT
+  // ==========================================
+  if (subLower.includes('student')) {
+    const availableMentors = ecosystemStats?.availableMentors || 16;
+    const learningVideos = ecosystemStats?.learningVideosCount || 3;
+    const myMentorRequests = ecosystemStats?.studentRequestsCount ?? 2;
+
+    return {
+      roleBadge: 'STUDENT',
+      roleTitle: 'Student Academic & Career Workspace',
+      heroSubtitle:
+        'Access curated industry mentorship, exclusive career internships, startup incubation opportunities, and student collaboration circles across Tamil Nadu.',
+      kpiCards: [
+        {
+          title: 'Available Mentors',
+          value: availableMentors,
+          subtitle: 'Accredited Experts Ready',
+          accent: 'violet',
+          trend: 'Live Directory',
+          path: '/meetings?action=book',
+          iconName: 'calendar'
+        },
+        {
+          title: 'Learning Videos',
+          value: learningVideos,
+          subtitle: 'Skill Masterclasses',
+          accent: 'coral',
+          trend: 'Curated Library',
+          path: '/skill-development',
+          iconName: 'rocket'
+        },
+        {
+          title: 'Internships & Projects',
+          value: '18 Active',
+          subtitle: 'Verified Ecosystem Roles',
+          accent: 'amber',
+          trend: 'Opportunities',
+          path: '/marketplace',
+          iconName: 'briefcase'
+        },
+        {
+          title: 'My Applications',
+          value: activeRequestsCount,
+          subtitle: 'Active FIC Requests',
+          accent: 'emerald',
+          trend: 'Live Tracker',
+          path: '/my-requests?tab=mentor-requests',
           iconName: 'shield'
         }
       ],
+      quickActions: roleNav.opportunityActions,
       specializedTrack: {
         badge: 'STUDENT CAREER ACCELERATOR',
         title: 'Mentorship & Career Incubation Track',
         description:
           'Connect directly with verified corporate leaders, academic professors, and startup founders for career guidance, resume reviews, and high-impact internship placements.',
         buttonLabel: 'Schedule Mentorship Session',
-        buttonPath: '/meetings',
+        buttonPath: '/meetings?action=book',
         metrics: [
-          { label: 'Active Mentors Ready', value: '45+' },
+          { label: 'Active Mentors Ready', value: `${availableMentors}+` },
           { label: 'Verified Internships', value: '18' },
           { label: 'Incubation Grants', value: 'Up to ₹2L' }
         ]
       }
     };
   }
+
+  // ==========================================
+  // 2. MENTOR / TRAINER
+  // ==========================================
+  if (subLower.includes('mentor') || subLower.includes('trainer')) {
+    const registeredStudents = ecosystemStats?.registeredStudents || 48;
+    const myServices = ecosystemStats?.myServicesCount ?? 2;
+    const myVideos = ecosystemStats?.myVideosCount ?? 3;
+    const completedSessions = ecosystemStats?.completedSessions ?? 1;
+
+    return {
+      roleBadge: 'MENTOR / TRAINER',
+      roleTitle: 'Mentorship, Coaching & Faculty Workspace',
+      heroSubtitle:
+        'Publish teaching services, upload high-impact skill development videos, conduct 1-on-1 consultations with registered students, and guide emerging entrepreneurs.',
+      kpiCards: [
+        {
+          title: 'Registered Students',
+          value: registeredStudents,
+          subtitle: 'Seeking Guidance & Upskilling',
+          accent: 'coral',
+          trend: 'Active Ecosystem',
+          path: '/marketplace',
+          iconName: 'users'
+        },
+        {
+          title: 'My Teaching Services',
+          value: myServices,
+          subtitle: 'Published Mentorship Tracks',
+          accent: 'violet',
+          trend: 'Verified Offerings',
+          path: '/my-services',
+          iconName: 'shield'
+        },
+        {
+          title: 'Learning Videos',
+          value: myVideos,
+          subtitle: 'Uploaded Masterclasses',
+          accent: 'amber',
+          trend: 'Skill Portal',
+          path: '/my-services?tab=videos',
+          iconName: 'rocket'
+        },
+        {
+          title: 'Completed Sessions',
+          value: completedSessions,
+          subtitle: 'Logged Student Consultations',
+          accent: 'emerald',
+          trend: 'Audited History',
+          path: '/meetings',
+          iconName: 'calendar'
+        }
+      ],
+      quickActions: roleNav.opportunityActions,
+      specializedTrack: {
+        badge: 'MENTORSHIP & FACULTY INITIATIVE',
+        title: 'Student Talent Incubation & Skills Accelerator',
+        description:
+          'Conduct 1-on-1 career navigation calls, publish structured masterclasses, and mentor university student entrepreneurs on technical feasibility and venture architecture.',
+        buttonLabel: 'Manage Teaching Offerings',
+        buttonPath: '/my-services',
+        metrics: [
+          { label: 'Registered Students', value: `${registeredStudents}+` },
+          { label: 'Avg Rating', value: '4.9 ★' },
+          { label: 'Avg Session Length', value: '45 mins' }
+        ]
+      }
+    };
+  }
+
 
   // ==========================================
   // 2. TEACHER / PROFESSOR / RESEARCHER
@@ -188,16 +581,16 @@ export const getSubcategoryDashboardConfig = (
       roleBadge: 'TEACHER / PROFESSOR',
       roleTitle: 'Academic Faculty & Research Workspace',
       heroSubtitle:
-        'Engage in industry-academic research partnerships, mentor high-potential students, and conduct joint consultation sessions through FIC Intermediary Governance.',
+        'Engage in industry-academic research initiatives, mentor high-potential students, and conduct joint consultation sessions through FIC Intermediary Governance.',
       kpiCards: [
         {
-          title: 'Academic Ties',
-          value: '8 Active',
+          title: 'Research Grants',
+          value: '₹15L Pool',
           subtitle: 'Institutional Projects',
           accent: 'coral',
-          trend: 'Industry Links',
-          path: '/partnerships',
-          iconName: 'handshake'
+          trend: 'Active Funding',
+          path: '/investment',
+          iconName: 'trending'
         },
         {
           title: 'Student Consultations',
@@ -238,13 +631,13 @@ export const getSubcategoryDashboardConfig = (
           iconName: 'calendar'
         },
         {
-          title: 'Institutional Ties',
-          subtitle: 'Tie-ups & industry MoUs',
-          path: '/partnerships',
-          gradient: 'from-[#C66B52] to-[#E58C72]',
-          borderHover: 'hover:border-[#E58C72]',
-          bgHover: 'hover:bg-[#FFF4F0]/60',
-          iconName: 'handshake'
+          title: 'Academic Grants',
+          subtitle: 'FIC-backed research funding',
+          path: '/investment',
+          gradient: 'from-[#D99B43] to-[#F5B453]',
+          borderHover: 'hover:border-[#D99B43]',
+          bgHover: 'hover:bg-[#FDF6E9]/60',
+          iconName: 'trending'
         },
         {
           title: 'Review Student Ideas',
@@ -259,19 +652,10 @@ export const getSubcategoryDashboardConfig = (
           title: 'Research Services',
           subtitle: 'Offer consultancy',
           path: '/my-services',
-          gradient: 'from-[#29302D] to-[#8064A9]',
-          borderHover: 'hover:border-[#29302D]',
+          gradient: 'from-[#8064B1] to-[#6E529F]',
+          borderHover: 'hover:border-[#8064B1]',
           bgHover: 'hover:bg-[#F5EBDD]/60',
           iconName: 'shield'
-        },
-        {
-          title: 'Academic Grants',
-          subtitle: 'Grant funding & schemes',
-          path: '/investment',
-          gradient: 'from-[#D99B43] to-[#C66B52]',
-          borderHover: 'hover:border-[#D99B43]',
-          bgHover: 'hover:bg-[#FCFAF5]/60',
-          iconName: 'trending'
         },
         {
           title: 'Ecosystem Marketplace',
@@ -285,7 +669,7 @@ export const getSubcategoryDashboardConfig = (
         {
           title: 'Active Inquiries',
           subtitle: 'Student & enterprise leads',
-          path: '/my-requests',
+          path: '/my-requests?tab=student-requests',
           gradient: 'from-[#8064A9] to-[#D78E9A]',
           borderHover: 'hover:border-[#8064A9]',
           bgHover: 'hover:bg-[#F9F5FD]/60',
@@ -296,11 +680,11 @@ export const getSubcategoryDashboardConfig = (
         badge: 'ACADEMIC COLLABORATION INITIATIVE',
         title: 'Institutional Research & Industry Advisory',
         description:
-          'Publish university research papers, host corporate masterclasses, and guide early-stage student enterprises through FIC academic grant partnerships.',
-        buttonLabel: 'Explore Institutional Tie-ups',
-        buttonPath: '/partnerships',
+          'Publish university research papers, host corporate masterclasses, and guide early-stage student enterprises through FIC Intermediary Governance.',
+        buttonLabel: 'Explore Research Grants & Advisory',
+        buttonPath: '/investment',
         metrics: [
-          { label: 'Corporate Partners', value: '120+' },
+          { label: 'Research Schemes', value: '12 Active' },
           { label: 'Active Mentees', value: '34' },
           { label: 'Incubation Success', value: '92%' }
         ]
@@ -383,8 +767,8 @@ export const getSubcategoryDashboardConfig = (
           title: 'Consultation Calls',
           subtitle: 'Facilitated meetings',
           path: '/meetings',
-          gradient: 'from-[#29302D] to-[#8064A9]',
-          borderHover: 'hover:border-[#29302D]',
+          gradient: 'from-[#8064B1] to-[#6E529F]',
+          borderHover: 'hover:border-[#8064B1]',
           bgHover: 'hover:bg-[#F5EBDD]/60',
           iconName: 'calendar'
         },
@@ -407,13 +791,13 @@ export const getSubcategoryDashboardConfig = (
           iconName: 'rocket'
         },
         {
-          title: 'Agency Partnerships',
-          subtitle: 'Subcontracting & alliances',
-          path: '/partnerships',
-          gradient: 'from-[#C66B52] to-[#D78E9A]',
-          borderHover: 'hover:border-[#C66B52]',
-          bgHover: 'hover:bg-[#FFF6F7]/60',
-          iconName: 'handshake'
+          title: 'Enterprise Inquiries',
+          subtitle: 'Explore client tenders',
+          path: '/marketplace',
+          gradient: 'from-[#C66B52] to-[#E58C72]',
+          borderHover: 'hover:border-[#E58C72]',
+          bgHover: 'hover:bg-[#FFF4F0]/60',
+          iconName: 'briefcase'
         },
         {
           title: 'Client Inquiries',
@@ -476,13 +860,13 @@ export const getSubcategoryDashboardConfig = (
           iconName: 'rocket'
         },
         {
-          title: 'B2B Distribution Ties',
+          title: 'Trade Inquiries',
           value: '14 Active',
-          subtitle: 'Tie-ups & Franchises',
+          subtitle: 'Verified OEM Requirements',
           accent: 'amber',
-          trend: 'Regional Network',
-          path: '/partnerships',
-          iconName: 'handshake'
+          trend: 'Intermediary Feed',
+          path: '/marketplace',
+          iconName: 'briefcase'
         },
         {
           title: 'Expansion Capital',
@@ -505,13 +889,13 @@ export const getSubcategoryDashboardConfig = (
           iconName: 'rocket'
         },
         {
-          title: 'B2B Partnerships',
-          subtitle: 'Tie-ups & distributors',
-          path: '/partnerships',
+          title: 'Commercial Tenders',
+          subtitle: 'Supply chain contracts',
+          path: '/marketplace',
           gradient: 'from-[#C66B52] to-[#D78E9A]',
           borderHover: 'hover:border-[#C66B52]',
           bgHover: 'hover:bg-[#FFF6F7]/60',
-          iconName: 'handshake'
+          iconName: 'briefcase'
         },
         {
           title: 'Procure Services',
@@ -535,8 +919,8 @@ export const getSubcategoryDashboardConfig = (
           title: 'Trade Consultations',
           subtitle: 'Facilitated consultations',
           path: '/meetings',
-          gradient: 'from-[#29302D] to-[#8064A9]',
-          borderHover: 'hover:border-[#29302D]',
+          gradient: 'from-[#8064B1] to-[#6E529F]',
+          borderHover: 'hover:border-[#8064B1]',
           bgHover: 'hover:bg-[#F5EBDD]/60',
           iconName: 'calendar'
         },
@@ -645,8 +1029,8 @@ export const getSubcategoryDashboardConfig = (
           title: 'Founder Mentorship',
           subtitle: 'Facilitated consultations',
           path: '/meetings',
-          gradient: 'from-[#29302D] to-[#8064A9]',
-          borderHover: 'hover:border-[#29302D]',
+          gradient: 'from-[#8064B1] to-[#6E529F]',
+          borderHover: 'hover:border-[#8064B1]',
           bgHover: 'hover:bg-[#F5EBDD]/60',
           iconName: 'calendar'
         },
@@ -669,13 +1053,13 @@ export const getSubcategoryDashboardConfig = (
           iconName: 'briefcase'
         },
         {
-          title: 'B2B Pilots & Co-founders',
-          subtitle: 'Tie-ups & partnerships',
-          path: '/partnerships',
-          gradient: 'from-[#C66B52] to-[#D78E9A]',
-          borderHover: 'hover:border-[#C66B52]',
-          bgHover: 'hover:bg-[#FFF6F7]/60',
-          iconName: 'handshake'
+          title: 'Enterprise Scaling Advisory',
+          subtitle: 'Turnaround & tech roadmap',
+          path: '/business-development',
+          gradient: 'from-[#8064A9] to-[#D78E9A]',
+          borderHover: 'hover:border-[#8064A9]',
+          bgHover: 'hover:bg-[#F9F5FD]/60',
+          iconName: 'rocket'
         },
         {
           title: 'My Startup Profile',
@@ -723,13 +1107,13 @@ export const getSubcategoryDashboardConfig = (
           iconName: 'trending'
         },
         {
-          title: 'Active Co-Syndicates',
+          title: 'Active Deal Rooms',
           value: '3 Open',
-          subtitle: 'Co-Investment Pools',
+          subtitle: 'Private Deal Rooms',
           accent: 'amber',
-          trend: 'Co-Invest',
-          path: '/partnerships',
-          iconName: 'handshake'
+          trend: 'Private Flow',
+          path: '/investment',
+          iconName: 'trending'
         },
         {
           title: 'Founder Meetings',
@@ -761,20 +1145,20 @@ export const getSubcategoryDashboardConfig = (
           iconName: 'trending'
         },
         {
-          title: 'Syndicate Alliances',
-          subtitle: 'Co-investment partnerships',
-          path: '/partnerships',
-          gradient: 'from-[#C66B52] to-[#D78E9A]',
-          borderHover: 'hover:border-[#C66B52]',
-          bgHover: 'hover:bg-[#FFF6F7]/60',
-          iconName: 'handshake'
+          title: 'Private Deal Room',
+          subtitle: 'Vetted syndicate dossiers',
+          path: '/investment',
+          gradient: 'from-[#3B9C91] to-[#2E847A]',
+          borderHover: 'hover:border-[#3B9C91]',
+          bgHover: 'hover:bg-[#E3F5F2]/60',
+          iconName: 'shield'
         },
         {
           title: 'Schedule Pitch Call',
           subtitle: 'Direct founder meetings',
           path: '/meetings',
-          gradient: 'from-[#29302D] to-[#8064A9]',
-          borderHover: 'hover:border-[#29302D]',
+          gradient: 'from-[#8064B1] to-[#6E529F]',
+          borderHover: 'hover:border-[#8064B1]',
           bgHover: 'hover:bg-[#F5EBDD]/60',
           iconName: 'calendar'
         },
@@ -860,13 +1244,13 @@ export const getSubcategoryDashboardConfig = (
           iconName: 'briefcase'
         },
         {
-          title: 'Supply Chain Ties',
+          title: 'Supply Chain Trade',
           value: '22 Regional',
-          subtitle: 'Distributor Networks',
+          subtitle: 'Verified Distributor Leads',
           accent: 'amber',
-          trend: 'B2B Partners',
-          path: '/partnerships',
-          iconName: 'handshake'
+          trend: 'FIC Network',
+          path: '/marketplace',
+          iconName: 'briefcase'
         },
         {
           title: 'Industrial Scaling',
@@ -889,13 +1273,13 @@ export const getSubcategoryDashboardConfig = (
           iconName: 'shield'
         },
         {
-          title: 'B2B Distribution Ties',
-          subtitle: 'Appoint regional dealers',
-          path: '/partnerships',
-          gradient: 'from-[#C66B52] to-[#D78E9A]',
-          borderHover: 'hover:border-[#C66B52]',
-          bgHover: 'hover:bg-[#FFF6F7]/60',
-          iconName: 'handshake'
+          title: 'Distributor Sourcing',
+          subtitle: 'FIC-vetted regional trade',
+          path: '/marketplace',
+          gradient: 'from-[#C66B52] to-[#E58C72]',
+          borderHover: 'hover:border-[#E58C72]',
+          bgHover: 'hover:bg-[#FFF4F0]/60',
+          iconName: 'briefcase'
         },
         {
           title: 'Procure Raw Materials',
@@ -919,8 +1303,8 @@ export const getSubcategoryDashboardConfig = (
           title: 'Buyer Consultations',
           subtitle: 'Facilitated meetings',
           path: '/meetings',
-          gradient: 'from-[#29302D] to-[#8064A9]',
-          borderHover: 'hover:border-[#29302D]',
+          gradient: 'from-[#8064B1] to-[#6E529F]',
+          borderHover: 'hover:border-[#8064B1]',
           bgHover: 'hover:bg-[#F5EBDD]/60',
           iconName: 'calendar'
         },
@@ -1053,20 +1437,20 @@ export const getSubcategoryDashboardConfig = (
         iconName: 'trending'
       },
       {
-        title: 'B2B Partnerships',
-        subtitle: 'Tie-ups & distributors',
-        path: '/partnerships',
-        gradient: 'from-[#C66B52] to-[#D78E9A]',
-        borderHover: 'hover:border-[#C66B52]',
-        bgHover: 'hover:bg-[#FFF6F7]/60',
-        iconName: 'handshake'
+        title: 'My Applications',
+        subtitle: 'Track submitted requests',
+        path: '/my-requests',
+        gradient: 'from-[#C66B52] to-[#E58C72]',
+        borderHover: 'hover:border-[#E58C72]',
+        bgHover: 'hover:bg-[#FFF4F0]/60',
+        iconName: 'shield'
       },
       {
         title: 'Meetings',
         subtitle: 'Facilitated consultations',
         path: '/meetings',
-        gradient: 'from-[#29302D] to-[#8064A9]',
-        borderHover: 'hover:border-[#29302D]',
+        gradient: 'from-[#8064B1] to-[#6E529F]',
+        borderHover: 'hover:border-[#8064B1]',
         bgHover: 'hover:bg-[#F5EBDD]/60',
         iconName: 'calendar'
       }

@@ -13,25 +13,25 @@ export interface WorkspaceShellProps {
 export const WorkspaceShell: React.FC<WorkspaceShellProps> = ({
   children,
   className = '',
-  maxWidth = '7xl'
+  maxWidth = 'full'
 }) => {
   const maxClass = {
-    '4xl': 'max-w-4xl',
-    '5xl': 'max-w-5xl',
-    '6xl': 'max-w-6xl',
-    '7xl': 'max-w-7xl',
-    'full': 'max-w-full'
+    '4xl': 'max-w-4xl mx-auto',
+    '5xl': 'max-w-5xl mx-auto',
+    '6xl': 'w-full',
+    '7xl': 'w-full',
+    'full': 'w-full'
   }[maxWidth];
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 14 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-      className={`min-h-[calc(100vh-72px)] py-8 sm:py-10 px-4 sm:px-6 lg:px-8 relative z-10 ${className}`}
+      exit={{ opacity: 0, y: -6 }}
+      transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+      className={`min-h-[calc(100vh-64px)] w-full py-4 sm:py-5 lg:py-6 px-3.5 sm:px-5 md:px-6 lg:px-8 xl:px-10 2xl:px-12 relative z-10 ${className}`}
     >
-      <div className={`mx-auto ${maxClass} space-y-8`}>
+      <div className={`w-full ${maxClass} space-y-4 sm:space-y-5 lg:space-y-6`}>
         {children}
       </div>
     </motion.div>
@@ -46,7 +46,7 @@ export interface WorkspaceHeroProps {
   title: string;
   subtitle?: string;
   rightActions?: React.ReactNode;
-  accent?: 'coral' | 'violet' | 'amber' | 'rose' | 'charcoal';
+  accent?: 'coral' | 'violet' | 'amber' | 'rose' | 'teal' | 'charcoal';
 }
 
 export const WorkspaceHero: React.FC<WorkspaceHeroProps> = ({
@@ -57,59 +57,50 @@ export const WorkspaceHero: React.FC<WorkspaceHeroProps> = ({
   accent = 'coral'
 }) => {
   const accentGradients = {
-    coral: 'from-[#FFFBF8] via-[#FCFAF6] to-[#FFF4F0] border-[#E58C72]/30 shadow-[0_4px_24px_-4px_rgba(229,140,114,0.12)]',
-    violet: 'from-[#FAF7FD] via-[#FCFAF6] to-[#F3EEFA] border-[#8064A9]/30 shadow-[0_4px_24px_-4px_rgba(128,100,169,0.12)]',
-    amber: 'from-[#FCFAF5] via-[#FCFAF6] to-[#FDF5E6] border-[#D99B43]/30 shadow-[0_4px_24px_-4px_rgba(217,155,67,0.12)]',
-    rose: 'from-[#FCF7F8] via-[#FCFAF6] to-[#FDEEF1] border-[#D78E9A]/30 shadow-[0_4px_24px_-4px_rgba(215,142,154,0.12)]',
-    charcoal: 'from-[#29302D] via-[#222725] to-[#1A1E1C] border-[#D99B43]/30 text-white shadow-[0_10px_30px_-6px_rgba(41,48,45,0.25)]'
+    coral: 'from-[#FFFBF8] via-[#FFFFFF] to-[#FFF0EB] border-[#E8795B]/30 shadow-[0_2px_14px_-2px_rgba(232,121,91,0.08)]',
+    violet: 'from-[#FAF8FD] via-[#FFFFFF] to-[#EAE3F4] border-[#8064B1]/30 shadow-[0_2px_14px_-2px_rgba(128,100,177,0.08)]',
+    amber: 'from-[#FCFAF6] via-[#FFFFFF] to-[#F8EBD0] border-[#E5A23B]/30 shadow-[0_2px_14px_-2px_rgba(229,162,59,0.08)]',
+    rose: 'from-[#FCF8F9] via-[#FFFFFF] to-[#F4D8D0] border-[#E8795B]/30 shadow-[0_2px_14px_-2px_rgba(232,121,91,0.08)]',
+    teal: 'from-[#F5FBFA] via-[#FFFFFF] to-[#E3F5F2] border-[#3B9C91]/30 shadow-[0_2px_14px_-2px_rgba(59,156,145,0.08)]',
+    charcoal: 'from-[#FFFBF8] via-[#FFFFFF] to-[#FFF0EB] border-[#E8795B]/30 shadow-[0_2px_14px_-2px_rgba(232,121,91,0.08)]'
   }[accent];
-
-  const isDark = accent === 'charcoal';
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className={`relative overflow-hidden rounded-3xl border bg-gradient-to-br ${accentGradients} p-6 sm:p-8 backdrop-blur-sm transition-all`}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br ${accentGradients} p-4 sm:p-5 lg:p-6 backdrop-blur-sm transition-all`}
     >
       {/* Subtle floating mesh decorative element */}
       <motion.div
         animate={{
           scale: [1, 1.08, 1],
-          opacity: [0.35, 0.5, 0.35]
+          opacity: [0.25, 0.4, 0.25]
         }}
         transition={{
           duration: 6,
           repeat: Infinity,
           ease: 'easeInOut'
         }}
-        className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-white/40 to-transparent rounded-full blur-2xl pointer-events-none"
+        className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-white/40 to-transparent rounded-full blur-2xl pointer-events-none"
       />
 
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
-        <div className="space-y-2 max-w-3xl">
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className={`space-y-1.5 sm:space-y-2 ${rightActions ? 'max-w-4xl lg:max-w-5xl' : 'w-full'}`}>
           {badge && <div className="flex flex-wrap items-center gap-2">{badge}</div>}
-          <h1
-            className={`text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight ${
-              isDark ? 'text-white' : 'text-[#29302D]'
-            }`}
-          >
+          <h1 className="text-xl sm:text-2xl lg:text-[28px] font-black tracking-tight text-[#51463F] leading-tight">
             {title}
           </h1>
           {subtitle && (
-            <p
-              className={`text-xs sm:text-sm leading-relaxed ${
-                isDark ? 'text-white/80' : 'text-[#77786E]'
-              }`}
-            >
+            <p className="text-xs sm:text-[13px] leading-relaxed text-[#5A4F47] font-medium max-w-5xl">
               {subtitle}
             </p>
           )}
         </div>
 
         {rightActions && (
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             {rightActions}
           </div>
         )}
@@ -122,7 +113,7 @@ export const WorkspaceHero: React.FC<WorkspaceHeroProps> = ({
 // 3. WORKSPACE CARD
 // ========================================================
 export interface WorkspaceCardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'coral' | 'violet' | 'amber' | 'rose' | 'charcoal' | 'glass';
+  variant?: 'default' | 'coral' | 'violet' | 'amber' | 'rose' | 'teal' | 'charcoal' | 'glass';
   hoverable?: boolean;
   padded?: boolean;
 }
@@ -136,20 +127,21 @@ export const WorkspaceCard: React.FC<WorkspaceCardProps> = ({
   ...props
 }) => {
   const variantStyles = {
-    default: 'bg-white/90 border-[#EADFCF] shadow-[0_4px_20px_-4px_rgba(41,48,45,0.05)] text-[#29302D]',
-    glass: 'bg-white/70 backdrop-blur-md border-[#EADFCF]/80 shadow-[0_4px_24px_-4px_rgba(41,48,45,0.04)] text-[#29302D]',
-    coral: 'bg-gradient-to-br from-white via-[#FFFBF9] to-[#FFF4F0] border-[#E58C72]/30 shadow-[0_4px_24px_-4px_rgba(229,140,114,0.1)] text-[#29302D]',
-    violet: 'bg-gradient-to-br from-white via-[#FAF8FD] to-[#F4EEFB] border-[#8064A9]/30 shadow-[0_4px_24px_-4px_rgba(128,100,169,0.1)] text-[#29302D]',
-    amber: 'bg-gradient-to-br from-white via-[#FCFAF6] to-[#FDF6E9] border-[#D99B43]/30 shadow-[0_4px_24px_-4px_rgba(217,155,67,0.1)] text-[#29302D]',
-    rose: 'bg-gradient-to-br from-white via-[#FCF8F9] to-[#FDEFF2] border-[#D78E9A]/30 shadow-[0_4px_24px_-4px_rgba(215,142,154,0.1)] text-[#29302D]',
-    charcoal: 'bg-gradient-to-br from-[#29302D] to-[#1E2422] border-[#D99B43]/30 shadow-[0_10px_30px_-6px_rgba(41,48,45,0.25)] text-white'
+    default: 'bg-white/95 border-[#EDE2D7] shadow-[0_2px_12px_-2px_rgba(81,70,63,0.04)] text-[#51463F]',
+    glass: 'bg-white/85 backdrop-blur-md border-[#EDE2D7]/90 shadow-[0_2px_12px_-2px_rgba(81,70,63,0.04)] text-[#51463F]',
+    coral: 'bg-gradient-to-br from-white via-[#FFFBF9] to-[#FFF0EB] border-[#E8795B]/30 shadow-[0_2px_12px_-2px_rgba(232,121,91,0.08)] text-[#51463F]',
+    violet: 'bg-gradient-to-br from-white via-[#FAF8FD] to-[#EAE3F4] border-[#8064B1]/30 shadow-[0_2px_12px_-2px_rgba(128,100,177,0.08)] text-[#51463F]',
+    amber: 'bg-gradient-to-br from-white via-[#FCFAF6] to-[#F8EBD0] border-[#E5A23B]/30 shadow-[0_2px_12px_-2px_rgba(229,162,59,0.08)] text-[#51463F]',
+    teal: 'bg-gradient-to-br from-white via-[#F5FBFA] to-[#E3F5F2] border-[#3B9C91]/30 shadow-[0_2px_12px_-2px_rgba(59,156,145,0.08)] text-[#51463F]',
+    rose: 'bg-gradient-to-br from-white via-[#FCF8F9] to-[#F4D8D0] border-[#E8795B]/30 shadow-[0_2px_12px_-2px_rgba(232,121,91,0.08)] text-[#51463F]',
+    charcoal: 'bg-gradient-to-br from-white via-[#F5FBFA] to-[#E3F5F2] border-[#3B9C91]/30 shadow-[0_2px_12px_-2px_rgba(59,156,145,0.08)] text-[#51463F]'
   }[variant];
 
   const hoverClass = hoverable
-    ? 'hover:-translate-y-1 hover:shadow-xl transition-all duration-300'
+    ? 'hover:-translate-y-0.5 hover:shadow-md transition-all duration-200'
     : '';
 
-  const paddingClass = padded ? 'p-6 sm:p-7' : '';
+  const paddingClass = padded ? 'p-4 sm:p-5' : '';
 
   return (
     <div
@@ -169,7 +161,7 @@ export interface WorkspaceKpiProps {
   value: string | number | React.ReactNode;
   subtitle?: string;
   icon?: React.ReactNode;
-  accent?: 'coral' | 'violet' | 'amber' | 'rose' | 'emerald';
+  accent?: 'coral' | 'violet' | 'amber' | 'rose' | 'teal' | 'emerald';
   trend?: string;
   onClick?: () => void;
 }
@@ -184,38 +176,40 @@ export const WorkspaceKpi: React.FC<WorkspaceKpiProps> = ({
   onClick
 }) => {
   const iconGradients = {
-    coral: 'from-[#C66B52] to-[#E58C72] text-white shadow-[#C66B52]/20',
-    violet: 'from-[#8064A9] to-[#9B7CC6] text-white shadow-[#8064A9]/20',
-    amber: 'from-[#D99B43] to-[#F5B453] text-white shadow-[#D99B43]/20',
-    rose: 'from-[#D78E9A] to-[#F0A8B5] text-white shadow-[#D78E9A]/20',
+    coral: 'from-[#E8795B] to-[#D96B4E] text-white shadow-[#E8795B]/20',
+    violet: 'from-[#8064B1] to-[#6E529F] text-white shadow-[#8064B1]/20',
+    amber: 'from-[#E5A23B] to-[#D08E27] text-white shadow-[#E5A23B]/20',
+    rose: 'from-[#D77B8B] to-[#C66879] text-white shadow-[#D77B8B]/20',
+    teal: 'from-[#3B9C91] to-[#2E847A] text-white shadow-[#3B9C91]/20',
     emerald: 'from-[#2E7D32] to-[#4CAF50] text-white shadow-[#2E7D32]/20'
   }[accent];
 
   const borderAccents = {
-    coral: 'hover:border-[#E58C72]/50',
-    violet: 'hover:border-[#8064A9]/50',
-    amber: 'hover:border-[#D99B43]/50',
-    rose: 'hover:border-[#D78E9A]/50',
+    coral: 'hover:border-[#E8795B]/50',
+    violet: 'hover:border-[#8064B1]/50',
+    amber: 'hover:border-[#E5A23B]/50',
+    rose: 'hover:border-[#D77B8B]/50',
+    teal: 'hover:border-[#3B9C91]/50',
     emerald: 'hover:border-[#4CAF50]/50'
   }[accent];
 
   return (
     <motion.div
-      whileHover={{ y: -4, scale: 1.01 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.99 }}
       transition={{ type: 'spring', stiffness: 350, damping: 25 }}
       onClick={onClick}
-      className={`bg-white/95 rounded-2xl border border-[#EADFCF] p-5 shadow-[0_4px_20px_-4px_rgba(41,48,45,0.04)] ${borderAccents} transition-all duration-300 ${
+      className={`bg-white/95 rounded-xl sm:rounded-2xl border border-[#EDE2D7] p-3.5 sm:p-4 shadow-[0_2px_10px_-2px_rgba(81,70,63,0.03)] ${borderAccents} transition-all duration-200 ${
         onClick ? 'cursor-pointer' : ''
       }`}
     >
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-[#77786E]">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <span className="text-[10.5px] sm:text-[11px] font-bold uppercase tracking-wider text-[#5A4F47] truncate">
           {title}
         </span>
         {icon && (
           <div
-            className={`w-9 h-9 rounded-xl bg-gradient-to-br ${iconGradients} flex items-center justify-center shadow-md`}
+            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br ${iconGradients} flex items-center justify-center shadow-xs shrink-0`}
           >
             {icon}
           </div>
@@ -223,18 +217,18 @@ export const WorkspaceKpi: React.FC<WorkspaceKpiProps> = ({
       </div>
 
       <div className="flex items-baseline justify-between gap-2">
-        <div className="text-2xl sm:text-3xl font-black text-[#29302D] tracking-tight">
+        <div className="text-xl sm:text-2xl font-black text-[#51463F] tracking-tight">
           {value}
         </div>
         {trend && (
-          <span className="text-[11px] font-bold text-[#C66B52] bg-[#C66B52]/10 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-black text-[#B34327] bg-[#FDECE7] border border-[#E8795B]/30 px-1.5 py-0.5 rounded-full">
             {trend}
           </span>
         )}
       </div>
 
       {subtitle && (
-        <div className="text-xs text-[#77786E] mt-1 font-medium">
+        <div className="text-[11px] text-[#5A4F47] mt-1 font-semibold truncate">
           {subtitle}
         </div>
       )}
@@ -246,7 +240,7 @@ export const WorkspaceKpi: React.FC<WorkspaceKpiProps> = ({
 // 5. WORKSPACE BUTTON
 // ========================================================
 export interface WorkspaceButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'violet' | 'amber' | 'charcoal' | 'outline' | 'ghost' | 'rose';
+  variant?: 'primary' | 'violet' | 'amber' | 'teal' | 'charcoal' | 'outline' | 'ghost' | 'rose';
   size?: 'sm' | 'md' | 'lg';
   icon?: React.ReactNode;
   loading?: boolean;
@@ -263,38 +257,40 @@ export const WorkspaceButton: React.FC<WorkspaceButtonProps> = ({
   ...props
 }) => {
   const sizeStyles = {
-    sm: 'px-3 py-1.5 text-xs rounded-xl gap-1.5',
-    md: 'px-4 py-2.5 text-xs sm:text-sm rounded-xl gap-2',
-    lg: 'px-6 py-3 text-sm sm:text-base rounded-2xl gap-2.5 font-bold'
+    sm: 'px-2.5 py-1 text-xs rounded-lg gap-1.5 font-bold',
+    md: 'px-3.5 py-1.5 sm:py-2 text-xs sm:text-[13px] rounded-xl gap-2 font-bold',
+    lg: 'px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm rounded-xl gap-2 font-bold'
   }[size];
 
   const variantStyles = {
     primary:
-      'bg-gradient-to-r from-[#C66B52] via-[#D87D63] to-[#E58C72] text-white font-bold shadow-md hover:shadow-lg hover:from-[#B85C43] hover:to-[#D87D63] border border-transparent',
+      'bg-gradient-to-r from-[#E8795B] via-[#E27052] to-[#D96B4E] text-white shadow-[0_2px_10px_rgba(232,121,91,0.22)] hover:shadow-md hover:from-[#D96B4E] hover:to-[#C85C3F] border border-transparent',
     violet:
-      'bg-gradient-to-r from-[#8064A9] via-[#8E72B7] to-[#9B7CC6] text-white font-bold shadow-md hover:shadow-lg hover:from-[#72549C] hover:to-[#8E72B7] border border-transparent',
+      'bg-gradient-to-r from-[#8064B1] via-[#7559A6] to-[#6E529F] text-white shadow-[0_2px_10px_rgba(128,100,177,0.22)] hover:shadow-md hover:from-[#6E529F] hover:to-[#5D428E] border border-transparent',
     amber:
-      'bg-gradient-to-r from-[#D99B43] via-[#E2A64E] to-[#F5B453] text-[#29302D] font-extrabold shadow-md hover:shadow-lg hover:from-[#C88A32] hover:to-[#E2A64E] border border-transparent',
+      'bg-gradient-to-r from-[#E5A23B] via-[#DB9831] to-[#D08E27] text-white shadow-[0_2px_10px_rgba(229,162,59,0.22)] hover:shadow-md hover:from-[#D08E27] hover:to-[#BD7D18] border border-transparent',
+    teal:
+      'bg-gradient-to-r from-[#3B9C91] via-[#348E84] to-[#2E847A] text-white shadow-[0_2px_10px_rgba(59,156,145,0.22)] hover:shadow-md hover:from-[#2E847A] hover:to-[#227269] border border-transparent',
     rose:
-      'bg-gradient-to-r from-[#D78E9A] via-[#E298A4] to-[#F0A8B5] text-white font-bold shadow-md hover:shadow-lg hover:from-[#C87F8B] hover:to-[#E298A4] border border-transparent',
+      'bg-gradient-to-r from-[#D77B8B] via-[#CE7282] to-[#C66879] text-white shadow-[0_2px_10px_rgba(215,123,139,0.22)] hover:shadow-md hover:from-[#C66879] hover:to-[#B55A6B] border border-transparent',
     charcoal:
-      'bg-[#29302D] text-[#FCFAF6] font-bold shadow-md hover:bg-[#1E2422] border border-[#D99B43]/30',
+      'bg-gradient-to-r from-[#8064B1] to-[#6E529F] text-white shadow-[0_2px_10px_rgba(128,100,177,0.22)] hover:from-[#6E529F] hover:to-[#5D428E] border border-transparent',
     outline:
-      'bg-white/80 hover:bg-white text-[#29302D] font-bold border border-[#EADFCF] hover:border-[#C66B52] shadow-xs',
+      'bg-white/90 hover:bg-[#FFF0EB] text-[#51463F] hover:text-[#E8795B] border border-[#EDE2D7] hover:border-[#E8795B] shadow-2xs',
     ghost:
-      'bg-transparent hover:bg-[#F5EBDD]/60 text-[#29302D] font-bold border border-transparent'
+      'bg-transparent hover:bg-[#FFF0EB] text-[#51463F] hover:text-[#E8795B] border border-transparent'
   }[variant];
 
   return (
     <motion.button
-      whileHover={{ y: -1 }}
+      whileHover={{ y: -0.5 }}
       whileTap={{ scale: 0.98 }}
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center transition-all duration-200 select-none disabled:opacity-50 disabled:pointer-events-none ${sizeStyles} ${variantStyles} ${className}`}
+      className={`inline-flex items-center justify-center transition-all duration-200 select-none disabled:opacity-50 disabled:pointer-events-none cursor-pointer ${sizeStyles} ${variantStyles} ${className}`}
       {...(props as any)}
     >
       {loading ? (
-        <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
+        <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin shrink-0" />
       ) : icon ? (
         <span className="shrink-0">{icon}</span>
       ) : null}
@@ -320,21 +316,21 @@ export const WorkspaceBadge: React.FC<WorkspaceBadgeProps> = ({
   size = 'md'
 }) => {
   const sizeStyles = {
-    sm: 'text-[10px] px-2 py-0.5 rounded-md font-bold',
-    md: 'text-xs px-2.5 py-1 rounded-lg font-bold'
+    sm: 'text-[9.5px] px-1.5 py-0.5 rounded-md font-bold',
+    md: 'text-[10.5px] px-2 py-0.5 rounded-lg font-bold'
   }[size];
 
   const variantStyles = {
-    active: 'bg-[#2E7D32]/12 text-[#1B5E20] border border-[#2E7D32]/30',
-    pending: 'bg-[#D99B43]/15 text-[#9C6818] border border-[#D99B43]/40',
-    proposal: 'bg-[#8064A9]/15 text-[#5B3E84] border border-[#8064A9]/40',
-    urgent: 'bg-[#C66B52]/15 text-[#A34A32] border border-[#C66B52]/40',
-    luxury: 'bg-gradient-to-r from-[#D99B43]/20 to-[#E58C72]/20 text-[#29302D] border border-[#D99B43]/50 font-black',
-    neutral: 'bg-[#FAF6F0] text-[#77786E] border border-[#EADFCF]'
+    active: 'bg-[#E0F4F0] text-[#1C6960] border border-[#2C857B]/45 font-bold',
+    pending: 'bg-[#FEF3DC] text-[#8F550A] border border-[#D99B43]/50 font-bold',
+    proposal: 'bg-[#EAE1F5] text-[#5B3F8C] border border-[#8064B1]/45 font-bold',
+    urgent: 'bg-[#FDECE7] text-[#B34327] border border-[#E8795B]/45 font-bold',
+    luxury: 'bg-gradient-to-r from-[#F8EBD0] to-[#FFF0EB] text-[#3D332D] border border-[#D99B43]/50 font-black',
+    neutral: 'bg-[#F3ECE2] text-[#4A3F37] border border-[#D5C7B7] font-bold'
   }[variant];
 
   return (
-    <span className={`inline-flex items-center gap-1.5 uppercase tracking-wide leading-none ${sizeStyles} ${variantStyles} ${className}`}>
+    <span className={`inline-flex items-center gap-1 uppercase tracking-wide leading-none ${sizeStyles} ${variantStyles} ${className}`}>
       {children}
     </span>
   );
@@ -349,7 +345,7 @@ export interface WorkspaceEmptyStateProps {
   description: string;
   actionText?: string;
   onAction?: () => void;
-  accent?: 'coral' | 'violet' | 'amber' | 'charcoal' | 'rose';
+  accent?: 'coral' | 'violet' | 'amber' | 'teal' | 'charcoal' | 'rose';
 }
 
 export const WorkspaceEmptyState: React.FC<WorkspaceEmptyStateProps> = ({
@@ -360,32 +356,35 @@ export const WorkspaceEmptyState: React.FC<WorkspaceEmptyStateProps> = ({
   onAction,
   accent = 'coral'
 }) => {
-  const iconGradients = {
-    coral: 'from-[#FFF4F0] to-[#FFE8E2] text-[#C66B52] border-[#E58C72]/30',
-    violet: 'from-[#F3EEFA] to-[#E9DFF5] text-[#8064A9] border-[#8064A9]/30',
-    amber: 'from-[#FDF6E9] to-[#FAEDD1] text-[#D99B43] border-[#D99B43]/30',
-    charcoal: 'from-[#FAF7F2] to-[#EADFCF] text-[#29302D] border-[#29302D]/30',
-    rose: 'from-[#FCF3F5] to-[#FADBE2] text-[#D78E9A] border-[#D78E9A]/30'
+  const iconColors = {
+    coral: 'bg-[#FFF0EB] text-[#E8795B] border-[#E8795B]/30',
+    violet: 'bg-[#EAE3F4] text-[#8064B1] border-[#8064B1]/30',
+    amber: 'bg-[#F8EBD0] text-[#E5A23B] border-[#E5A23B]/30',
+    teal: 'bg-[#E3F5F2] text-[#3B9C91] border-[#3B9C91]/30',
+    charcoal: 'bg-[#FAF7F2] text-[#51463F] border-[#EDE2D7]',
+    rose: 'bg-[#F4D8D0] text-[#E8795B] border-[#E8795B]/30'
   }[accent];
 
   return (
-    <div className="bg-white/80 rounded-2xl border border-dashed border-[#EADFCF] p-8 sm:p-12 text-center max-w-xl mx-auto space-y-4">
+    <div className="py-8 sm:py-10 px-4 text-center space-y-3">
       {icon && (
         <div
-          className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${iconGradients} border flex items-center justify-center mx-auto shadow-sm`}
+          className={`w-11 h-11 rounded-xl border ${iconColors} flex items-center justify-center mx-auto shadow-2xs`}
         >
           {icon}
         </div>
       )}
-      <div className="space-y-1">
-        <h3 className="text-base sm:text-lg font-black text-[#29302D]">{title}</h3>
-        <p className="text-xs sm:text-sm text-[#77786E] max-w-md mx-auto leading-relaxed">
-          {description}
-        </p>
+      <div className="space-y-1 max-w-sm mx-auto">
+        <h4 className="text-sm sm:text-base font-black text-[#51463F]">{title}</h4>
+        <p className="text-xs text-[#5A4F47] leading-relaxed font-medium">{description}</p>
       </div>
       {actionText && onAction && (
         <div className="pt-2">
-          <WorkspaceButton variant="primary" size="sm" onClick={onAction}>
+          <WorkspaceButton
+            variant={accent === 'violet' ? 'violet' : accent === 'amber' ? 'amber' : accent === 'teal' ? 'teal' : 'primary'}
+            size="sm"
+            onClick={onAction}
+          >
             {actionText}
           </WorkspaceButton>
         </div>

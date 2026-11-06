@@ -8,41 +8,119 @@ import {
   WorkspaceBadge,
   WorkspaceEmptyState
 } from '../components/workspace/WorkspaceComponents';
-import { AnimatedModal, AnimatedProgress, StaggerContainer, StaggerItem } from '../motion';
+import { AnimatedModal } from '../motion';
 import {
   LightbulbIcon,
   CheckCircleIcon,
   ArrowRightIcon,
-  SparklesIcon,
   ShieldCheckIcon,
   SearchIcon,
   ClockIcon,
-  AlertCircleIcon,
   FileTextIcon
 } from '../components/Icons';
 import { apiRequest, getStoredUser } from '../services/api';
 
 export interface BusinessIdeaRecord {
   id: string;
+  refNumber?: string;
   userId: string;
   title: string;
   description: string;
   targetMarket: string;
   stage: 'IDEA' | 'PROTOTYPE' | 'EARLY_TRACTION' | 'GROWTH';
-  supportNeeded: string[];
-  status: 'UNDER_REVIEW' | 'FEASIBILITY_ANALYSIS' | 'ADVISORY_SCHEDULED' | 'APPROVED_INCUBATION';
-  statusLabel: string;
+  supportRequired?: string;
+  supportNeeded?: string | string[];
+  status:
+  | 'SUBMITTED'
+  | 'UNDER_REVIEW'
+  | 'INFO_REQUIRED'
+  | 'ASSESSMENT_IN_PROGRESS'
+  | 'ADVISOR_ASSIGNED'
+  | 'MEETING_SCHEDULED'
+  | 'ACTION_PLAN_READY'
+  | 'APPROVED'
+  | 'ON_HOLD'
+  | 'CLOSED';
   submittedDate: string;
-  advisorName?: string;
-  advisorRole?: string;
-  feasibilityScore?: {
-    marketViability: number; // out of 100
-    techFeasibility: number;
-    commercialScalability: number;
-  };
-  reviewNotes?: string;
-  nextSteps?: string[];
+  latestFicUpdate?: string;
+  whatHappensNext?: string;
+  updateHistory?: {
+    date: string;
+    status: string;
+    update: string;
+    updatedBy?: string;
+  }[];
 }
+
+export const IDEA_STATUS_CONFIG: Record<
+  string,
+  { label: string; explanation: string; variant: 'pending' | 'proposal' | 'active' | 'luxury' | 'urgent' | 'neutral' }
+> = {
+  SUBMITTED: {
+    label: 'Submitted',
+    explanation: 'Your request has been received.',
+    variant: 'pending'
+  },
+  UNDER_REVIEW: {
+    label: 'Under Review',
+    explanation: 'FIC is reviewing your idea.',
+    variant: 'pending'
+  },
+  INFO_REQUIRED: {
+    label: 'Information Required',
+    explanation: 'FIC needs additional details from you.',
+    variant: 'urgent'
+  },
+  ASSESSMENT_IN_PROGRESS: {
+    label: 'Assessment in Progress',
+    explanation: 'Your idea is being evaluated by domain specialists.',
+    variant: 'luxury'
+  },
+  ADVISOR_ASSIGNED: {
+    label: 'Advisor Assigned',
+    explanation: 'An advisor has been assigned.',
+    variant: 'proposal'
+  },
+  MEETING_SCHEDULED: {
+    label: 'Meeting Scheduled',
+    explanation: 'Your advisory meeting has been scheduled.',
+    variant: 'proposal'
+  },
+  ACTION_PLAN_READY: {
+    label: 'Update Available',
+    explanation: 'FIC has shared an update and recommendations.',
+    variant: 'active'
+  },
+  APPROVED: {
+    label: 'Completed',
+    explanation: 'This request has been completed.',
+    variant: 'active'
+  },
+  ON_HOLD: {
+    label: 'On Hold',
+    explanation: 'The review is temporarily on hold.',
+    variant: 'urgent'
+  },
+  CLOSED: {
+    label: 'Closed',
+    explanation: 'This request has been closed.',
+    variant: 'neutral'
+  }
+};
+
+const getStageLabel = (stg?: string) => {
+  switch (stg) {
+    case 'PROTOTYPE':
+      return 'Prototype / MVP Ready';
+    case 'EARLY_TRACTION':
+      return 'Early Traction';
+    case 'GROWTH':
+      return 'Ready for Scale';
+    case 'IDEA':
+    default:
+      return 'Idea on Paper';
+  }
+};
 
 export const BusinessIdeasPage: React.FC = () => {
   const user = getStoredUser();
@@ -56,135 +134,111 @@ export const BusinessIdeasPage: React.FC = () => {
   const [description, setDescription] = useState('');
   const [targetMarket, setTargetMarket] = useState('');
   const [stage, setStage] = useState<'IDEA' | 'PROTOTYPE' | 'EARLY_TRACTION' | 'GROWTH'>('IDEA');
-  const [supportNeeded, setSupportNeeded] = useState<string[]>(['Idea Validation', 'Mentoring & Advisory']);
+  const [supportRequired, setSupportRequired] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedRef, setSubmittedRef] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   // Listing State
   const [ideasList, setIdeasList] = useState<BusinessIdeaRecord[]>([]);
-  const [filterStage, setFilterStage] = useState<string>('ALL');
-  const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedIdea, setSelectedIdea] = useState<BusinessIdeaRecord | null>(null);
 
   const storageKey = `fic_user_ideas_${userId}`;
 
-  // Initial Seed Data for Demo & Authentic Experience
-  const initialDemoIdeas: BusinessIdeaRecord[] = [
-    {
-      id: 'IDEA-2026-881',
-      userId,
-      title: 'AI Automated Quality Inspection for Knitted Fabrics',
-      description:
-        'An edge-computing computer vision camera rig mounted over weaving looms to detect fabric drop stitches, yarn unevenness, and oil marks in real time, reducing garment rejection by up to 35%.',
-      targetMarket: 'Tiruppur, Surat & Ludhiana textile manufacturing clusters (Tier-2 MSMEs)',
-      stage: 'PROTOTYPE',
-      supportNeeded: ['Technology & MVP Development', 'Mentoring & Advisory', 'Go-to-Market Strategy'],
-      status: 'ADVISORY_SCHEDULED',
-      statusLabel: 'Advisory Scheduled',
-      submittedDate: '28 Oct 2026',
-      advisorName: 'Dr. S. R. Natarajan',
-      advisorRole: 'FIC Chief Industrial Incubation Specialist',
-      feasibilityScore: {
-        marketViability: 88,
-        techFeasibility: 82,
-        commercialScalability: 91
-      },
-      reviewNotes:
-        'Strong industry problem statement with immediate payback period for Tier-2 spinning and knitting mills. FIC Incubation desk has prepared a preliminary patent review and recommended introducing this solution to verified garment associations in Tamil Nadu.',
-      nextSteps: [
-        'Exploratory pilot setup at partner factory unit in Tiruppur',
-        'Hardware BOM cost reduction advisory with electronics specialist',
-        'Facilitated session with FIC OEM distributors committee'
-      ]
-    },
-    {
-      id: 'IDEA-2026-742',
-      userId,
-      title: 'Decentralized Cold-Chain Telemetry for Agri-Fresh Produce',
-      description:
-        'Solar-powered IoT tracking nodes for refrigerated transport trucks monitoring real-time humidity, temperature, and vehicle shock to eliminate farm-to-shelf spoilage in dairy and horticulture.',
-      targetMarket: 'South India agricultural logistics, dairy cooperatives & export cold stores',
-      stage: 'IDEA',
-      supportNeeded: ['Idea Validation', 'Business Plan Preparation', 'Regulatory & Legal Setup'],
-      status: 'FEASIBILITY_ANALYSIS',
-      statusLabel: 'Feasibility Analysis',
-      submittedDate: '15 Oct 2026',
-      advisorName: 'K. Meenakshi Sundaram',
-      advisorRole: 'FIC Agri-Tech & Supply Chain Lead',
-      feasibilityScore: {
-        marketViability: 85,
-        techFeasibility: 79,
-        commercialScalability: 84
-      },
-      reviewNotes:
-        'Concept validated against NABARD and APEDA cold chain guidelines. Unit economics look favorable. Mentorship session scheduled to refine sensor manufacturing supply chain.',
-      nextSteps: [
-        'Complete NABARD subsidy eligibility assessment',
-        'Finalize cloud backend infrastructure architecture'
-      ]
-    }
-  ];
+  const initialDemoIdeas: BusinessIdeaRecord[] = [];
 
-  // Load from localStorage or seed
+  // Load from server and local storage
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        setIdeasList(JSON.parse(stored));
-      } else {
-        localStorage.setItem(storageKey, JSON.stringify(initialDemoIdeas));
-        setIdeasList(initialDemoIdeas);
+    const loadIdeas = async () => {
+      let merged: BusinessIdeaRecord[] = [];
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const parsed: BusinessIdeaRecord[] = JSON.parse(stored);
+          merged = [...parsed];
+        }
+      } catch (err) {
+        console.warn('LocalStorage load warning:', err);
       }
-    } catch {
-      setIdeasList(initialDemoIdeas);
-    }
+
+      try {
+        const res = await apiRequest('/business-ideas/me');
+        if (res && res.data && Array.isArray(res.data) && res.data.length > 0) {
+          const serverIdeas: BusinessIdeaRecord[] = res.data.map((item: any) => ({
+            id: item.refNumber || item._id,
+            refNumber: item.refNumber || item._id,
+            userId: item.userId,
+            title: item.title,
+            description: item.description,
+            targetMarket: item.targetMarket || 'General Market',
+            stage: item.stage || 'IDEA',
+            supportRequired: item.supportRequired || (Array.isArray(item.supportNeeded) ? item.supportNeeded.join(', ') : item.supportNeeded) || '',
+            supportNeeded: item.supportNeeded,
+            status: item.status || 'SUBMITTED',
+            submittedDate: item.createdAt
+              ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+              : 'Recently',
+            latestFicUpdate: item.latestFicUpdate || 'Your business idea has been received. Our team is currently reviewing it.',
+            whatHappensNext: item.whatHappensNext || 'FIC will complete the initial review and update you.',
+            updateHistory: item.updateHistory || [
+              {
+                date: item.createdAt
+                  ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+                  : 'Today',
+                status: 'Submitted',
+                update: 'Your business idea has been received. Our team is currently reviewing it.'
+              }
+            ]
+          }));
+
+          const serverIds = new Set(serverIdeas.map((s) => s.id));
+          const nonServer = merged.filter((m) => !serverIds.has(m.id));
+          merged = [...serverIdeas, ...nonServer];
+        }
+      } catch (err) {
+        console.warn('Backend fetch failed, using local seed:', err);
+      }
+
+      setIdeasList(merged);
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(merged));
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    loadIdeas();
   }, [storageKey]);
-
-  const supportOptions = [
-    'Idea Validation',
-    'Business Plan Preparation',
-    'Technology & MVP Development',
-    'Mentoring & Advisory',
-    'Regulatory & Legal Setup',
-    'Go-to-Market Strategy'
-  ];
-
-  const toggleSupport = (item: string) => {
-    if (supportNeeded.includes(item)) {
-      setSupportNeeded(supportNeeded.filter((s) => s !== item));
-    } else {
-      setSupportNeeded([...supportNeeded, item]);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
+    const generatedRef = `IDEA-2026-${Math.floor(100 + Math.random() * 900)}`;
+    const todayFormatted = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+
     const newIdeaRecord: BusinessIdeaRecord = {
-      id: `IDEA-2026-${Math.floor(100 + Math.random() * 900)}`,
+      id: generatedRef,
+      refNumber: generatedRef,
       userId,
       title: title.trim(),
       description: description.trim(),
       targetMarket: targetMarket.trim(),
       stage,
-      supportNeeded,
-      status: 'UNDER_REVIEW',
-      statusLabel: 'Under FIC Review',
-      submittedDate: 'Today',
-      advisorName: 'FIC Incubation Desk',
-      advisorRole: 'Sector Evaluation Committee',
-      feasibilityScore: {
-        marketViability: 75,
-        techFeasibility: 78,
-        commercialScalability: 70
-      },
-      reviewNotes:
-        'Your idea submission has been securely logged with the FIC Incubation Desk under strict non-disclosure. Initial preliminary scoring and sector matching are currently in progress.',
-      nextSteps: [
-        'Initial patentability and duplicate check by FIC Research Desk',
-        'Domain expert assigned for 1-on-1 strategic feasibility session'
+      supportRequired: supportRequired.trim(),
+      supportNeeded: supportRequired.trim(),
+      status: 'SUBMITTED',
+      submittedDate: todayFormatted,
+      latestFicUpdate: 'Your business idea has been received. Our team is currently reviewing it.',
+      whatHappensNext: 'FIC will complete the initial review and update you.',
+      updateHistory: [
+        {
+          date: todayFormatted,
+          status: 'Submitted',
+          update: 'Your business idea has been received. Our team is currently reviewing it.',
+          updatedBy: 'FIC Incubation Desk'
+        }
       ]
     };
 
@@ -192,15 +246,17 @@ export const BusinessIdeasPage: React.FC = () => {
       await apiRequest('/business-ideas', {
         method: 'POST',
         body: JSON.stringify({
-          title,
-          description,
-          targetMarket,
+          refNumber: generatedRef,
+          title: title.trim(),
+          description: description.trim(),
+          targetMarket: targetMarket.trim(),
           stage,
-          supportNeeded
+          supportRequired: supportRequired.trim(),
+          supportNeeded: supportRequired.trim()
         })
       });
     } catch {
-      // Graceful fallback to client-side persistence
+      // Graceful fallback to client persistence
     } finally {
       const updated = [newIdeaRecord, ...ideasList];
       setIdeasList(updated);
@@ -209,6 +265,7 @@ export const BusinessIdeasPage: React.FC = () => {
       } catch (e) {
         console.error(e);
       }
+      setSubmittedRef(generatedRef);
       setIsSubmitted(true);
       setIsLoading(false);
     }
@@ -216,88 +273,69 @@ export const BusinessIdeasPage: React.FC = () => {
 
   // Filtered Ideas
   const filteredIdeas = ideasList.filter((item) => {
-    if (filterStage !== 'ALL' && item.stage !== filterStage) return false;
-    if (filterStatus !== 'ALL' && item.status !== filterStatus) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchTitle = item.title.toLowerCase().includes(q);
       const matchDesc = item.description.toLowerCase().includes(q);
       const matchMarket = item.targetMarket.toLowerCase().includes(q);
-      if (!matchTitle && !matchDesc && !matchMarket) return false;
+      const matchRef = (item.refNumber || item.id).toLowerCase().includes(q);
+      if (!matchTitle && !matchDesc && !matchMarket && !matchRef) return false;
     }
     return true;
   });
 
-  const getStageBadge = (stg: string) => {
-    switch (stg) {
-      case 'IDEA':
-        return <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-800 border border-amber-200">Idea on Paper</span>;
-      case 'PROTOTYPE':
-        return <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-800 border border-indigo-200">Prototype / MVP</span>;
-      case 'EARLY_TRACTION':
-        return <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">Early Traction</span>;
-      case 'GROWTH':
-        return <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-800 border border-purple-200">Ready for Scale</span>;
-      default:
-        return null;
-    }
+  const getStatusBadge = (st: string) => {
+    const config = IDEA_STATUS_CONFIG[st] || { label: st, variant: 'pending' as const };
+    return <WorkspaceBadge variant={config.variant}>{config.label}</WorkspaceBadge>;
   };
 
-  const getStatusBadge = (st: string, label: string) => {
-    switch (st) {
-      case 'APPROVED_INCUBATION':
-        return <WorkspaceBadge variant="active">{label}</WorkspaceBadge>;
-      case 'ADVISORY_SCHEDULED':
-        return <WorkspaceBadge variant="proposal">{label}</WorkspaceBadge>;
-      case 'FEASIBILITY_ANALYSIS':
-        return <WorkspaceBadge variant="luxury">{label}</WorkspaceBadge>;
+  const getWhatHappensNext = (idea: BusinessIdeaRecord) => {
+    if (idea.whatHappensNext) return idea.whatHappensNext;
+    switch (idea.status) {
+      case 'INFO_REQUIRED':
+        return 'Please provide the requested information to continue.';
+      case 'ADVISOR_ASSIGNED':
+      case 'MEETING_SCHEDULED':
+        return 'Your advisor will contact you after the review is completed.';
+      case 'APPROVED':
+        return 'Your idea has been accepted for incubation. FIC will connect you with industry mentors.';
+      case 'UNDER_REVIEW':
+      case 'SUBMITTED':
       default:
-        return <WorkspaceBadge variant="pending">{label}</WorkspaceBadge>;
+        return 'FIC will complete the initial review and update you.';
     }
   };
 
   return (
-    <WorkspaceShell maxWidth="6xl">
+    <WorkspaceShell>
       {/* ========================================================
           1. HERO HEADER
          ======================================================== */}
       <WorkspaceHero
         accent="amber"
-        badge={
-          <div className="flex items-center gap-2">
-            <WorkspaceBadge variant="luxury">
-              <SparklesIcon size={12} className="text-[#D99B43]" />
-              FIC Incubation Desk
-            </WorkspaceBadge>
-            <span className="text-[11px] font-bold text-[#D99B43] bg-white/80 border border-[#D99B43]/30 px-2.5 py-0.5 rounded-lg">
-              Feasibility & Mentorship
-            </span>
-          </div>
-        }
         title="Business Ideas & Incubation Desk"
-        subtitle="Validate your concept, receive structured feasibility ratings from accredited mentors, and track institutional advisory notes under strict non-disclosure."
+        subtitle="Submit your business idea, receive guidance from verified FIC mentors, and track review updates easily under strict non-disclosure."
       />
 
       {/* ========================================================
-          2. TWO-TAB WORKSPACE SWITCHER WITH SHARED LAYOUT INDICATOR
+          2. TWO-TAB WORKSPACE SWITCHER
          ======================================================== */}
-      <div className="flex items-center gap-2 border-b border-[#EADFCF] pb-3 mb-6">
+      <div className="flex items-center gap-2 border-b border-[#EADFCF] pb-2.5 mb-5">
         <button
           type="button"
           onClick={() => setActiveTab('submit')}
-          className={`relative px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'submit' ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
-          }`}
+          className={`relative px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-[13px] transition-colors duration-200 flex items-center gap-2 cursor-pointer ${activeTab === 'submit' ? 'text-white' : 'text-[#453A33] hover:text-[#C65638] font-bold'
+            }`}
         >
           {activeTab === 'submit' && (
             <motion.div
               layoutId="ideasTabIndicator"
               transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-              className="absolute inset-0 bg-[#29302D] rounded-xl shadow-sm -z-0"
+              className="absolute inset-0 bg-gradient-to-r from-[#E5A23B] to-[#D08E27] rounded-xl shadow-[0_2px_8px_rgba(229,162,59,0.25)] -z-0"
             />
           )}
-          <span className="relative z-10 flex items-center gap-2">
-            <LightbulbIcon size={16} />
+          <span className="relative z-10 flex items-center gap-1.5">
+            <LightbulbIcon size={15} />
             <span>Submit New Idea</span>
           </span>
         </button>
@@ -305,24 +343,24 @@ export const BusinessIdeasPage: React.FC = () => {
         <button
           type="button"
           onClick={() => setActiveTab('my_ideas')}
-          className={`relative px-4 sm:px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'my_ideas' ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
-          }`}
+          className={`relative px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-[13px] transition-colors duration-200 flex items-center gap-2 cursor-pointer ${activeTab === 'my_ideas' ? 'text-white' : 'text-[#453A33] hover:text-[#C65638] font-bold'
+            }`}
         >
           {activeTab === 'my_ideas' && (
             <motion.div
               layoutId="ideasTabIndicator"
               transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-              className="absolute inset-0 bg-[#29302D] rounded-xl shadow-sm -z-0"
+              className="absolute inset-0 bg-gradient-to-r from-[#E5A23B] to-[#D08E27] rounded-xl shadow-[0_2px_8px_rgba(229,162,59,0.25)] -z-0"
             />
           )}
-          <span className="relative z-10 flex items-center gap-2">
-            <FileTextIcon size={16} />
+          <span className="relative z-10 flex items-center gap-1.5">
+            <FileTextIcon size={15} />
             <span>Track Submitted Ideas</span>
             <span
-              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                activeTab === 'my_ideas' ? 'bg-white/20 text-white' : 'bg-[#EADFCF] text-[#29302D]'
-              }`}
+              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${activeTab === 'my_ideas'
+                  ? 'bg-white/25 text-white'
+                  : 'bg-[#FAF7F2] text-[#453A33] border border-[#EDE2D7]'
+                }`}
             >
               {ideasList.length}
             </span>
@@ -331,39 +369,42 @@ export const BusinessIdeasPage: React.FC = () => {
       </div>
 
       {/* ========================================================
-          TAB 1: SUBMISSION FORM / SUCCESS CONFIRMATION
+          TAB 1: SUBMIT NEW IDEA FORM / SUCCESS BANNER
          ======================================================== */}
       {activeTab === 'submit' && (
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-3xl mx-auto">
           {isSubmitted ? (
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.96 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ type: 'spring', stiffness: 350, damping: 25 }}
             >
-              <WorkspaceCard variant="amber" className="text-center py-12 px-6 space-y-4">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                  className="w-16 h-16 rounded-3xl bg-gradient-to-br from-[#2E7D32] to-[#4CAF50] text-white flex items-center justify-center mx-auto shadow-lg"
-                >
-                  <CheckCircleIcon size={32} />
-                </motion.div>
-                <div className="space-y-1.5 max-w-lg mx-auto">
-                  <h3 className="text-xl font-black text-[#29302D]">Idea Submitted Successfully!</h3>
-                  <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed">
-                    Your business concept <strong className="text-[#29302D]">"{title}"</strong> has been securely logged with the FIC Incubation Desk. You can immediately monitor reviewer progress and feasibility analysis in the tracker tab.
+              <WorkspaceCard variant="amber" className="text-center py-8 px-6 space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#2E7D32] to-[#4CAF50] text-white flex items-center justify-center mx-auto shadow-md">
+                  <CheckCircleIcon size={28} />
+                </div>
+
+                <div className="space-y-2 max-w-lg mx-auto">
+                  <span className="inline-block px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-lg text-xs font-mono font-bold">
+                    Reference: {submittedRef}
+                  </span>
+                  <h3 className="text-xl font-black text-[#2E231C]">Idea Submitted Successfully!</h3>
+                  <p className="text-xs sm:text-sm text-[#453A33] leading-relaxed">
+                    Your business idea <strong className="text-[#2E231C]">"{title}"</strong> has been submitted successfully to the FIC Incubation Desk under strict non-disclosure.
+                  </p>
+                  <p className="text-xs text-[#6B5E55] leading-relaxed bg-white/70 p-3 rounded-xl border border-[#EDE2D7]">
+                    You can track its progress and latest updates anytime under <strong>"Track Submitted Ideas"</strong>.
                   </p>
                 </div>
-                <div className="pt-4 flex flex-wrap justify-center gap-3">
+
+                <div className="pt-2 flex flex-wrap justify-center gap-3">
                   <WorkspaceButton
-                    variant="primary"
+                    variant="amber"
                     size="md"
                     onClick={() => setActiveTab('my_ideas')}
                     icon={<ArrowRightIcon size={14} />}
                   >
-                    View in Submitted Ideas Tracker
+                    Track Submitted Ideas
                   </WorkspaceButton>
                   <WorkspaceButton
                     variant="outline"
@@ -372,7 +413,9 @@ export const BusinessIdeasPage: React.FC = () => {
                       setTitle('');
                       setDescription('');
                       setTargetMarket('');
+                      setSupportRequired('');
                       setIsSubmitted(false);
+                      setSubmittedRef('');
                     }}
                   >
                     Submit Another Idea
@@ -382,11 +425,11 @@ export const BusinessIdeasPage: React.FC = () => {
             </motion.div>
           ) : (
             <WorkspaceCard variant="default">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Idea Title */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black text-[#29302D] block">
-                    Business Idea Title <span className="text-[#C66B52]">*</span>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* 1. Business Idea Title */}
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-[#2E231C] block">
+                    Business Idea Title <span className="text-[#C65638]">*</span>
                   </label>
                   <input
                     type="text"
@@ -394,18 +437,18 @@ export const BusinessIdeasPage: React.FC = () => {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     required
-                    className="w-full text-xs sm:text-sm p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D99B43] bg-white text-[#29302D] placeholder-[#77786E]/60 shadow-2xs"
+                    className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E5A23B] bg-white text-[#2E231C] placeholder-[#82776E]/70 shadow-2xs"
                   />
                 </div>
 
-                {/* Concept Description */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black text-[#29302D] block">
-                    Detailed Concept Description <span className="text-[#C66B52]">*</span>
+                {/* 2. Detailed Idea Description */}
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-[#2E231C] block">
+                    Detailed Idea Description <span className="text-[#C65638]">*</span>
                   </label>
                   <textarea
                     rows={4}
-                    className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D99B43] bg-white text-[#29302D] placeholder-[#77786E]/60 shadow-2xs leading-relaxed"
+                    className="w-full text-xs sm:text-[13px] p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E5A23B] bg-white text-[#2E231C] placeholder-[#82776E]/70 shadow-2xs leading-relaxed"
                     placeholder="Explain what core problem your idea solves, how it works, target customers, and what makes it commercially unique..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -413,11 +456,11 @@ export const BusinessIdeasPage: React.FC = () => {
                   ></textarea>
                 </div>
 
-                {/* Target Market & Stage */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-black text-[#29302D] block">
-                      Target Market / Geography <span className="text-[#C66B52]">*</span>
+                {/* 3. Target Market & 4. Current Stage */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-[#2E231C] block">
+                      Target Market / Location <span className="text-[#C65638]">*</span>
                     </label>
                     <input
                       type="text"
@@ -425,16 +468,16 @@ export const BusinessIdeasPage: React.FC = () => {
                       value={targetMarket}
                       onChange={(e) => setTargetMarket(e.target.value)}
                       required
-                      className="w-full text-xs sm:text-sm p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D99B43] bg-white text-[#29302D] placeholder-[#77786E]/60 shadow-2xs"
+                      className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E5A23B] bg-white text-[#2E231C] placeholder-[#82776E]/70 shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-black text-[#29302D] block">
-                      Current Maturity Stage
+                  <div className="space-y-1">
+                    <label className="text-xs font-black text-[#2E231C] block">
+                      Current Development Stage
                     </label>
                     <select
-                      className="w-full text-xs sm:text-sm p-3.5 border border-[#EADFCF] rounded-2xl bg-white text-[#29302D] focus:outline-none focus:ring-2 focus:ring-[#D99B43] shadow-2xs font-semibold"
+                      className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] focus:outline-none focus:ring-2 focus:ring-[#E5A23B] shadow-2xs font-semibold"
                       value={stage}
                       onChange={(e) => setStage(e.target.value as any)}
                     >
@@ -446,40 +489,26 @@ export const BusinessIdeasPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Support Needed Multi-select Pills */}
-                <div className="space-y-2.5">
-                  <label className="text-xs font-black text-[#29302D] block">
-                    What Support Do You Need from FIC?
+                {/* 5. What Support Do You Need from FIC? (Simple Text Area) */}
+                <div className="space-y-1">
+                  <label className="text-xs font-black text-[#2E231C] block">
+                    What Support Do You Need from FIC? <span className="text-[11px] font-normal text-[#6B5E55]">(Optional)</span>
                   </label>
-                  <div className="flex flex-wrap gap-2">
-                    {supportOptions.map((opt, i) => {
-                      const isSelected = supportNeeded.includes(opt);
-                      return (
-                        <motion.button
-                          type="button"
-                          key={i}
-                          whileTap={{ scale: 0.94 }}
-                          onClick={() => toggleSupport(opt)}
-                          className={`text-xs px-3.5 py-2 rounded-xl border transition-all duration-200 cursor-pointer ${
-                            isSelected
-                              ? 'bg-gradient-to-r from-[#D99B43] to-[#B87A28] text-white border-transparent font-black shadow-xs'
-                              : 'bg-white text-[#77786E] border-[#EADFCF] hover:bg-[#FDF6E9]/60 hover:text-[#29302D] font-bold'
-                          }`}
-                        >
-                          {isSelected ? '✓ ' : '+ '}
-                          {opt}
-                        </motion.button>
-                      );
-                    })}
-                  </div>
+                  <textarea
+                    rows={3}
+                    value={supportRequired}
+                    onChange={(e) => setSupportRequired(e.target.value)}
+                    placeholder="Describe what support you need from FIC. For example: I need help validating my business idea, preparing a business plan, finding a mentor, developing an app, or planning my market entry."
+                    className="w-full text-xs sm:text-[13px] p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E5A23B] bg-white text-[#2E231C] placeholder-[#82776E]/70 shadow-2xs leading-relaxed"
+                  />
                 </div>
 
                 {/* Confidentiality Notice */}
-                <div className="p-4 rounded-2xl bg-[#FDF6E9] border border-[#D99B43]/30 text-xs text-[#29302D] flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-[#D99B43]/15 text-[#9C6818] flex items-center justify-center shrink-0">
-                    <ShieldCheckIcon size={16} />
+                <div className="p-3 rounded-xl bg-[#F8EBD0]/35 border border-[#E5A23B]/30 text-xs text-[#2E231C] flex items-center gap-2.5">
+                  <div className="w-7 h-7 rounded-lg bg-[#E5A23B]/15 text-[#BA7B1A] flex items-center justify-center shrink-0">
+                    <ShieldCheckIcon size={14} />
                   </div>
-                  <p className="text-[11px] text-[#77786E] leading-relaxed">
+                  <p className="text-[11px] text-[#453A33] leading-relaxed">
                     FIC guarantees proprietary IP protection. Your concept is handled strictly under non-disclosure protocol and is reviewed only by accredited FIC consultants.
                   </p>
                 </div>
@@ -491,7 +520,7 @@ export const BusinessIdeasPage: React.FC = () => {
                     size="md"
                     type="submit"
                     loading={isLoading}
-                    icon={<ArrowRightIcon size={15} />}
+                    icon={<ArrowRightIcon size={14} />}
                   >
                     Submit Idea for FIC Review
                   </WorkspaceButton>
@@ -503,145 +532,105 @@ export const BusinessIdeasPage: React.FC = () => {
       )}
 
       {/* ========================================================
-          TAB 2: MY SUBMITTED IDEAS & ADVISORY TRACKER
+          TAB 2: TRACK SUBMITTED IDEAS (SIMPLE CARDS ONLY)
          ======================================================== */}
       {activeTab === 'my_ideas' && (
-        <div className="space-y-5">
-          {/* Filters Bar */}
-          <WorkspaceCard variant="glass" padded={false} className="p-4">
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-              {/* Search */}
-              <div className="relative flex-1">
-                <SearchIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#77786E]" />
-                <input
-                  type="text"
-                  placeholder="Search submitted ideas by title, keyword, or market..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#EADFCF] rounded-xl text-xs sm:text-sm text-[#29302D] placeholder-[#77786E]/60 focus:outline-none focus:ring-2 focus:ring-[#D99B43]"
-                />
-              </div>
+        <div className="space-y-4 max-w-4xl mx-auto">
+          {/* Simple Search */}
+          <div className="relative">
+            <SearchIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#6B5E55]" />
+            <input
+              type="text"
+              placeholder="Search by idea title, reference number, or keywords..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-[#EDE2D7] rounded-xl text-xs sm:text-[13px] text-[#2E231C] placeholder-[#82776E]/70 focus:outline-none focus:ring-2 focus:ring-[#E5A23B]"
+            />
+          </div>
 
-              {/* Dropdowns */}
-              <div className="flex flex-wrap items-center gap-2">
-                <select
-                  value={filterStage}
-                  onChange={(e) => setFilterStage(e.target.value)}
-                  className="px-3 py-2 bg-white border border-[#EADFCF] rounded-xl text-xs text-[#29302D] font-bold focus:outline-none focus:ring-2 focus:ring-[#D99B43]"
-                >
-                  <option value="ALL">All Stages</option>
-                  <option value="IDEA">Idea on Paper</option>
-                  <option value="PROTOTYPE">Prototype / MVP</option>
-                  <option value="EARLY_TRACTION">Early Traction</option>
-                  <option value="GROWTH">Ready for Scale</option>
-                </select>
-
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-3 py-2 bg-white border border-[#EADFCF] rounded-xl text-xs text-[#29302D] font-bold focus:outline-none focus:ring-2 focus:ring-[#D99B43]"
-                >
-                  <option value="ALL">All Statuses</option>
-                  <option value="UNDER_REVIEW">Under Review</option>
-                  <option value="FEASIBILITY_ANALYSIS">Feasibility Analysis</option>
-                  <option value="ADVISORY_SCHEDULED">Advisory Scheduled</option>
-                  <option value="APPROVED_INCUBATION">Approved Incubation</option>
-                </select>
-              </div>
-            </div>
-          </WorkspaceCard>
-
-          {/* Idea Cards List (Animated Layout & Stagger) */}
-          <motion.div layout className="space-y-4">
+          {/* Simple Idea Cards List */}
+          <div className="space-y-3">
             <AnimatePresence mode="popLayout">
               {filteredIdeas.length === 0 ? (
                 <motion.div
                   key="empty-ideas"
-                  initial={{ opacity: 0, scale: 0.96 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.96 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                 >
                   <WorkspaceEmptyState
                     icon={<LightbulbIcon size={28} />}
-                    title="No ideas match your filters"
-                    description="You have not submitted any ideas matching this criteria, or your search query yielded no results."
+                    title="No ideas found"
+                    description="You haven't submitted any ideas yet or no records match your search."
                     actionText="Submit New Business Idea"
                     onAction={() => setActiveTab('submit')}
                     accent="amber"
                   />
                 </motion.div>
               ) : (
-                filteredIdeas.map((idea) => (
-                  <motion.div
-                    key={idea.id}
-                    layout
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    whileHover={{ y: -3 }}
-                    transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-                  >
-                    <WorkspaceCard variant="default" className="space-y-4 hover:border-[#D99B43]/50 transition-colors">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] text-[#77786E] font-mono font-bold tracking-wider">
-                              REF: {idea.id}
-                            </span>
-                            {getStageBadge(idea.stage)}
+                filteredIdeas.map((idea) => {
+                  return (
+                    <motion.div
+                      key={idea.id}
+                      layout
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <WorkspaceCard variant="default" className="space-y-3 p-4 sm:p-5">
+                        {/* Title & Status */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EDE2D7]/70 pb-3">
+                          <div>
+                            <h3 className="text-base sm:text-lg font-black text-[#2E231C]">
+                              {idea.title}
+                            </h3>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-[#6B5E55]">
+                              <span>
+                                <strong>Reference: </strong>
+                                <span className="font-mono font-bold text-[#2E231C]">{idea.refNumber || idea.id}</span>
+                              </span>
+                              <span>•</span>
+                              <span>
+                                <strong>Submitted: </strong>
+                                {idea.submittedDate}
+                              </span>
+                            </div>
                           </div>
-                          <h3 className="text-base sm:text-lg font-black text-[#29302D]">
-                            {idea.title}
-                          </h3>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-[#77786E] font-medium">{idea.submittedDate}</span>
-                          {getStatusBadge(idea.status, idea.statusLabel)}
-                        </div>
-                      </div>
-
-                      <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed line-clamp-2">
-                        {idea.description}
-                      </p>
-
-                      <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-[#EADFCF]/50">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-[11px] font-bold text-[#77786E]">Support Requested:</span>
-                          {idea.supportNeeded.slice(0, 3).map((item, idx) => (
-                            <span
-                              key={idx}
-                              className="text-[10px] bg-[#FAF7F2] border border-[#EADFCF] text-[#29302D] font-bold px-2 py-0.5 rounded-md"
-                            >
-                              {item}
-                            </span>
-                          ))}
-                          {idea.supportNeeded.length > 3 && (
-                            <span className="text-[10px] text-[#77786E] font-bold">
-                              +{idea.supportNeeded.length - 3} more
-                            </span>
-                          )}
+                          <div>{getStatusBadge(idea.status)}</div>
                         </div>
 
-                        <WorkspaceButton
-                          variant="amber"
-                          size="sm"
-                          onClick={() => setSelectedIdea(idea)}
-                          icon={<ArrowRightIcon size={13} />}
-                        >
-                          View Advisory Assessment & Details
-                        </WorkspaceButton>
-                      </div>
-                    </WorkspaceCard>
-                  </motion.div>
-                ))
+                        {/* Latest FIC Update (1 or 2 lines) */}
+                        <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] text-xs">
+                          <strong className="text-[#2E231C] block mb-0.5">Latest FIC Update:</strong>
+                          <p className="text-[#453A33] leading-relaxed">
+                            "{idea.latestFicUpdate || 'Your business idea has been received. Our team is currently reviewing it.'}"
+                          </p>
+                        </div>
+
+                        {/* Button: View Details */}
+                        <div className="flex justify-end pt-1">
+                          <WorkspaceButton
+                            variant="amber"
+                            size="sm"
+                            onClick={() => setSelectedIdea(idea)}
+                            icon={<ArrowRightIcon size={13} />}
+                          >
+                            View Details
+                          </WorkspaceButton>
+                        </div>
+                      </WorkspaceCard>
+                    </motion.div>
+                  );
+                })
               )}
             </AnimatePresence>
-          </motion.div>
+          </div>
         </div>
       )}
 
       {/* ========================================================
-          3. IDEA DETAILS & FEASIBILITY ASSESSMENT ANIMATED MODAL
+          3. VIEW DETAILS – SIMPLE MODAL (EXACT 5 SECTIONS)
          ======================================================== */}
       <AnimatedModal
         isOpen={!!selectedIdea}
@@ -651,13 +640,12 @@ export const BusinessIdeasPage: React.FC = () => {
           selectedIdea && (
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[11px] text-[#77786E] font-mono font-bold">
-                  {selectedIdea.id}
+                <span className="text-[11px] text-[#6B5E55] font-mono font-bold bg-stone-100 px-2 py-0.5 rounded">
+                  Reference: {selectedIdea.refNumber || selectedIdea.id}
                 </span>
-                {getStageBadge(selectedIdea.stage)}
-                {getStatusBadge(selectedIdea.status, selectedIdea.statusLabel)}
+                {getStatusBadge(selectedIdea.status)}
               </div>
-              <h3 className="text-lg sm:text-xl font-black text-[#29302D]">
+              <h3 className="text-lg sm:text-xl font-black text-[#2E231C]">
                 {selectedIdea.title}
               </h3>
             </div>
@@ -666,126 +654,127 @@ export const BusinessIdeasPage: React.FC = () => {
       >
         {selectedIdea && (
           <div className="space-y-5">
-            {/* Core Description */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-black text-[#29302D] uppercase tracking-wider block">
-                Concept & Target Market
-              </span>
-              <p className="text-xs sm:text-sm text-[#77786E] leading-relaxed bg-white p-3.5 rounded-2xl border border-[#EADFCF]">
-                {selectedIdea.description}
-              </p>
-              <div className="text-xs text-[#77786E] pt-1">
-                <strong className="text-[#29302D]">Target Geography: </strong>
-                {selectedIdea.targetMarket}
+            {/* ----------------------------------------------------
+                1. WHAT YOU SUBMITTED
+               ---------------------------------------------------- */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-black text-[#2E231C] uppercase tracking-wider">
+                1. What You Submitted
+              </h4>
+              <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] space-y-3 text-xs">
+                <div>
+                  <span className="text-[#6B5E55] font-bold block mb-0.5">Idea Title:</span>
+                  <p className="text-[#2E231C] font-black text-sm">{selectedIdea.title}</p>
+                </div>
+                <div>
+                  <span className="text-[#6B5E55] font-bold block mb-0.5">Idea Description:</span>
+                  <p className="text-[#453A33] leading-relaxed bg-white p-2.5 rounded-lg border border-[#EDE2D7]">
+                    {selectedIdea.description}
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <span className="text-[#6B5E55] font-bold block mb-0.5">Target Market / Location:</span>
+                    <p className="text-[#2E231C] font-semibold">{selectedIdea.targetMarket}</p>
+                  </div>
+                  <div>
+                    <span className="text-[#6B5E55] font-bold block mb-0.5">Development Stage:</span>
+                    <p className="text-[#2E231C] font-semibold">{getStageLabel(selectedIdea.stage)}</p>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[#6B5E55] font-bold block mb-0.5">Support Required:</span>
+                  <p className="text-[#453A33] leading-relaxed bg-white p-2.5 rounded-lg border border-[#EDE2D7]">
+                    {selectedIdea.supportRequired ||
+                      (Array.isArray(selectedIdea.supportNeeded)
+                        ? selectedIdea.supportNeeded.join(', ')
+                        : selectedIdea.supportNeeded) ||
+                      'General advisory and validation support.'}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* Feasibility Ratings with Animated Progress Movement */}
-            {selectedIdea.feasibilityScore && (
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#FFF9F0] to-[#F5EBDD] border border-[#D99B43]/30 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 font-black text-xs text-[#9C6818]">
-                    <SparklesIcon size={14} />
-                    FIC Feasibility Diagnostics
-                  </div>
-                  <span className="text-[10px] font-bold text-[#9C6818] uppercase tracking-wider">
-                    Assessed by Panel
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="bg-white p-3 rounded-xl border border-[#EADFCF] space-y-1.5">
-                    <span className="text-[10px] text-[#77786E] font-bold block">Market Viability</span>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-lg font-black text-[#29302D]">
-                        {selectedIdea.feasibilityScore.marketViability}%
-                      </span>
-                      <span className="text-[10px] text-emerald-600 font-bold">Strong</span>
-                    </div>
-                    <AnimatedProgress
-                      value={selectedIdea.feasibilityScore.marketViability}
-                      barColor="bg-emerald-500"
-                    />
-                  </div>
-
-                  <div className="bg-white p-3 rounded-xl border border-[#EADFCF] space-y-1.5">
-                    <span className="text-[10px] text-[#77786E] font-bold block">Tech Feasibility</span>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-lg font-black text-[#29302D]">
-                        {selectedIdea.feasibilityScore.techFeasibility}%
-                      </span>
-                      <span className="text-[10px] text-[#D99B43] font-bold">Viable</span>
-                    </div>
-                    <AnimatedProgress
-                      value={selectedIdea.feasibilityScore.techFeasibility}
-                      barColor="bg-[#D99B43]"
-                    />
-                  </div>
-
-                  <div className="bg-white p-3 rounded-xl border border-[#EADFCF] space-y-1.5">
-                    <span className="text-[10px] text-[#77786E] font-bold block">Commercial Scale</span>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-lg font-black text-[#29302D]">
-                        {selectedIdea.feasibilityScore.commercialScalability}%
-                      </span>
-                      <span className="text-[10px] text-purple-600 font-bold">High Potential</span>
-                    </div>
-                    <AnimatedProgress
-                      value={selectedIdea.feasibilityScore.commercialScalability}
-                      barColor="bg-purple-600"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Advisory Review Notes */}
-            {selectedIdea.reviewNotes && (
-              <div className="p-4 rounded-2xl bg-white border border-[#EADFCF] space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#29302D]">Advisory Panel Remarks</span>
-                  {selectedIdea.advisorName && (
-                    <span className="text-[11px] text-[#8064A9] font-bold">
-                      {selectedIdea.advisorName} ({selectedIdea.advisorRole})
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-[#77786E] leading-relaxed">
-                  {selectedIdea.reviewNotes}
+            {/* ----------------------------------------------------
+                2. FIC LATEST UPDATE
+               ---------------------------------------------------- */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-black text-[#2E231C] uppercase tracking-wider">
+                2. FIC Latest Update
+              </h4>
+              <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 text-xs">
+                <p className="text-amber-950 font-medium leading-relaxed">
+                  "{selectedIdea.latestFicUpdate || 'Your business idea has been received. Our team is currently reviewing it.'}"
                 </p>
               </div>
-            )}
+            </div>
 
-            {/* Next Steps Roadmap */}
-            {selectedIdea.nextSteps && selectedIdea.nextSteps.length > 0 && (
-              <div className="space-y-2">
-                <span className="text-xs font-black text-[#29302D] uppercase tracking-wider block">
-                  Recommended Action Roadmap
-                </span>
-                <div className="space-y-2">
-                  {selectedIdea.nextSteps.map((step, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 rounded-xl bg-white border border-[#EADFCF] flex items-center gap-3 text-xs text-[#29302D]"
-                    >
-                      <div className="w-6 h-6 rounded-lg bg-[#29302D] text-white flex items-center justify-center font-bold text-[10px] shrink-0">
-                        {idx + 1}
-                      </div>
-                      <span>{step}</span>
-                    </div>
-                  ))}
+            {/* ----------------------------------------------------
+                3. CURRENT STATUS
+               ---------------------------------------------------- */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-black text-[#2E231C] uppercase tracking-wider">
+                3. Current Status
+              </h4>
+              <div className="p-3.5 rounded-xl bg-white border border-[#EDE2D7] flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5">
+                  {getStatusBadge(selectedIdea.status)}
+                  <span className="text-[#453A33] font-medium">
+                    {IDEA_STATUS_CONFIG[selectedIdea.status]?.explanation || 'Your idea is being reviewed.'}
+                  </span>
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Modal Actions */}
-            <div className="pt-3 flex justify-end gap-3 border-t border-[#EADFCF]">
+            {/* ----------------------------------------------------
+                4. WHAT HAPPENS NEXT?
+               ---------------------------------------------------- */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-black text-[#2E231C] uppercase tracking-wider">
+                4. What Happens Next?
+              </h4>
+              <div className="p-3.5 rounded-xl bg-white border border-[#EDE2D7] text-xs">
+                <p className="text-[#453A33] leading-relaxed font-medium">
+                  {getWhatHappensNext(selectedIdea)}
+                </p>
+              </div>
+            </div>
+
+            {/* ----------------------------------------------------
+                5. UPDATE HISTORY
+               ---------------------------------------------------- */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-black text-[#2E231C] uppercase tracking-wider">
+                5. Update History
+              </h4>
+              <div className="p-3.5 rounded-xl bg-white border border-[#EDE2D7] text-xs space-y-2.5">
+                {selectedIdea.updateHistory && selectedIdea.updateHistory.length > 0 ? (
+                  selectedIdea.updateHistory.map((hist, idx) => (
+                    <div
+                      key={idx}
+                      className="border-b border-[#EDE2D7]/60 pb-2 last:border-b-0 last:pb-0"
+                    >
+                      <div className="flex items-center justify-between text-[11px] mb-0.5">
+                        <strong className="text-[#2E231C]">{hist.status}</strong>
+                        <span className="text-[#6B5E55] font-medium">{hist.date}</span>
+                      </div>
+                      <p className="text-[#453A33] text-[11px] leading-relaxed">{hist.update}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-[#6B5E55] text-xs">No previous updates recorded.</p>
+                )}
+              </div>
+            </div>
+
+            {/* Close */}
+            <div className="pt-2 flex justify-end border-t border-[#EDE2D7]">
               <WorkspaceButton
                 variant="outline"
                 size="sm"
                 onClick={() => setSelectedIdea(null)}
               >
-                Close Details
+                Close
               </WorkspaceButton>
             </div>
           </div>

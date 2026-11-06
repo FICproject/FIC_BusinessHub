@@ -99,7 +99,7 @@ export const ScrollReveal: React.FC<ScrollRevealProps> = ({
     <motion.div
       initial={{ opacity: 0, ...offset }}
       whileInView={{ opacity: 1, x: 0, y: 0 }}
-      viewport={{ once, margin: '-40px' }}
+      viewport={{ once: true, amount: 0 }}
       transition={{
         duration: motionDurations.slow,
         delay,
@@ -137,7 +137,6 @@ export const StaggerContainer: React.FC<StaggerContainerProps> = ({
       variants={staggerChildren(staggerDelay)}
       initial="initial"
       animate="animate"
-      exit="exit"
       className={className}
     >
       {children}
@@ -401,6 +400,26 @@ export const AnimatedModal: React.FC<AnimatedModalProps> = ({
   maxWidth = 'max-w-xl',
   className = ''
 }) => {
+  const resolvedMaxWidth = maxWidth.startsWith('max-w-') ? maxWidth : `max-w-${maxWidth}`;
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -418,15 +437,15 @@ export const AnimatedModal: React.FC<AnimatedModalProps> = ({
             animate="animate"
             exit="exit"
             onClick={(e) => e.stopPropagation()}
-            className={`bg-[#FAF7F2] border border-[#EADFCF] rounded-3xl ${maxWidth} w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto ${className}`}
+            className={`bg-[#FAF7F2] border border-[#EDE2D7] rounded-2xl ${resolvedMaxWidth} w-full p-4 sm:p-5 lg:p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto ${className}`}
           >
             {title && (
-              <div className="flex items-center justify-between border-b border-[#EADFCF] pb-3.5 mb-4">
-                <div className="font-black text-lg text-[#29302D]">{title}</div>
+              <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-3 mb-3.5">
+                <div className="font-black text-base sm:text-lg text-[#51463F]">{title}</div>
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-8 h-8 rounded-xl bg-white border border-[#EADFCF] text-[#77786E] hover:text-[#29302D] flex items-center justify-center font-bold text-sm cursor-pointer transition-colors"
+                  className="w-7 h-7 rounded-lg bg-white border border-[#EDE2D7] text-[#82776E] hover:text-[#51463F] flex items-center justify-center font-bold text-xs cursor-pointer transition-colors"
                 >
                   ✕
                 </button>
@@ -520,14 +539,14 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
             type="button"
             onClick={() => onChange(tab.id)}
             className={`relative px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-colors duration-200 flex items-center gap-2 shrink-0 cursor-pointer ${
-              isActive ? 'text-[#FCFAF6]' : 'text-[#77786E] hover:text-[#29302D]'
+              isActive ? 'text-white' : 'text-[#82776E] hover:text-[#51463F]'
             }`}
           >
             {isActive && (
               <motion.div
                 layoutId={layoutId}
                 transition={motionSprings.snappy}
-                className="absolute inset-0 bg-[#29302D] rounded-xl shadow-sm -z-0"
+                className="absolute inset-0 bg-gradient-to-r from-[#E8795B] to-[#D95F3F] rounded-xl shadow-[0_2px_8px_rgba(232,121,91,0.25)] -z-0"
               />
             )}
             <span className="relative z-10 flex items-center gap-1.5">
@@ -536,7 +555,7 @@ export const AnimatedTabs: React.FC<AnimatedTabsProps> = ({
               {tab.badge && (
                 <span
                   className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-[#EADFCF] text-[#29302D]'
+                    isActive ? 'bg-white/20 text-white' : 'bg-[#EDE2D7] text-[#51463F]'
                   }`}
                 >
                   {tab.badge}
@@ -711,3 +730,4 @@ export const AnimatedSVG: React.FC<AnimatedSVGProps> = ({
     </svg>
   );
 };
+

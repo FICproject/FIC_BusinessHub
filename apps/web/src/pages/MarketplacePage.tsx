@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { INITIAL_CATEGORIES_DATA } from '../services/mockData';
+import { INITIAL_CATEGORIES_DATA } from '../services/categoriesData';
 import {
   apiRequest,
   getStoredUser,
@@ -13,7 +13,6 @@ import {
   WorkspaceHero,
   WorkspaceCard,
   WorkspaceButton,
-  WorkspaceBadge,
   WorkspaceEmptyState
 } from '../components/workspace/WorkspaceComponents';
 import { AnimatedModal } from '../motion';
@@ -23,8 +22,7 @@ import {
   LockIcon,
   CheckCircleIcon,
   ArrowRightIcon,
-  BriefcaseIcon,
-  SparklesIcon
+  BriefcaseIcon
 } from '../components/Icons';
 
 export const MarketplacePage: React.FC = () => {
@@ -128,32 +126,21 @@ export const MarketplacePage: React.FC = () => {
   };
 
   return (
-    <WorkspaceShell maxWidth="7xl">
+    <WorkspaceShell>
       {/* ========================================================
           1. HERO HEADER
          ======================================================== */}
       <WorkspaceHero
         accent="violet"
-        badge={
-          <div className="flex items-center gap-2">
-            <WorkspaceBadge variant="luxury">
-              <SparklesIcon size={12} className="text-[#D99B43]" />
-              Universal Discovery
-            </WorkspaceBadge>
-            <span className="text-[11px] font-bold text-[#8064A9] bg-white/80 border border-[#8064A9]/30 px-2.5 py-0.5 rounded-lg">
-              10 Industry Sectors
-            </span>
-          </div>
-        }
         title="Universal Services Marketplace"
         subtitle="Browse verified capabilities across all 10 business sectors. In accordance with FIC governance, provider identity remains confidential; all requirements and proposals are coordinated directly by FIC to eliminate spam."
         rightActions={
-          <div className="p-4 bg-white/90 border border-[#8064A9]/30 rounded-2xl shadow-xs text-xs space-y-1 max-w-xs">
-            <div className="flex items-center gap-2 font-black text-[#29302D]">
-              <ShieldCheckIcon size={16} className="text-[#2E7D32]" />
+          <div className="p-3 bg-white/90 border border-[#8064B1]/30 rounded-xl shadow-xs text-xs space-y-0.5 max-w-xs">
+            <div className="flex items-center gap-1.5 font-black text-xs text-[#51463F]">
+              <ShieldCheckIcon size={14} className="text-[#3B9C91]" />
               Intermediary Guarantee
             </div>
-            <p className="text-[11px] text-[#77786E] leading-relaxed">
+            <p className="text-[10.5px] text-[#5A4F47] font-medium leading-relaxed">
               No direct unsolicited contacts. High-integrity verified technical proposals only.
             </p>
           </div>
@@ -163,29 +150,29 @@ export const MarketplacePage: React.FC = () => {
       {/* ========================================================
           2. SEARCH & SECTOR FILTER PILLS
          ======================================================== */}
-      <WorkspaceCard variant="glass" padded={false} className="p-5 space-y-4">
+      <WorkspaceCard variant="glass" padded={false} className="p-3.5 sm:p-4 space-y-3">
         <div className="relative">
           <input
             type="text"
             placeholder="Search services by keyword, skill, or industry tag (e.g. Textiles, GST, Cloud Architecture)..."
-            className="w-full text-xs sm:text-sm pl-11 pr-4 py-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white/90 hover:bg-white transition-all text-[#29302D] placeholder-[#77786E]/60 shadow-2xs"
+            className="w-full text-xs sm:text-sm pl-9 pr-4 py-2.5 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E8795B] bg-white/90 hover:bg-white transition-all text-[#51463F] placeholder-[#5A4F47]/70 font-medium shadow-2xs"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
-          <div className="absolute left-3.5 top-3.5 text-[#C66B52]">
-            <SearchIcon size={20} />
+          <div className="absolute left-3 top-2.5 text-[#E8795B]">
+            <SearchIcon size={17} />
           </div>
         </div>
 
         {/* Sector Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs no-scrollbar">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
           <motion.button
-            whileTap={{ scale: 0.95 }}
+            whileTap={{ scale: 0.96 }}
             onClick={() => setSelectedCategorySlug('all')}
-            className={`px-4 py-2 rounded-xl shrink-0 font-extrabold transition-all duration-200 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg shrink-0 font-bold transition-all duration-200 cursor-pointer ${
               selectedCategorySlug === 'all'
-                ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
-                : 'bg-white/80 text-[#77786E] border border-[#EADFCF] hover:bg-[#F5EBDD]/60 hover:text-[#29302D]'
+                ? 'bg-gradient-to-r from-[#E8795B] to-[#D96B4E] text-white shadow-[0_2px_6px_rgba(232,121,91,0.2)]'
+                : 'bg-white text-[#453A33] border border-[#EDE2D7] hover:border-[#E8795B]/40 hover:bg-[#FAF7F2] hover:text-[#51463F] font-bold'
             }`}
           >
             All Sectors ({services.length})
@@ -193,12 +180,12 @@ export const MarketplacePage: React.FC = () => {
           {INITIAL_CATEGORIES_DATA.map((cat) => (
             <motion.button
               key={cat.id}
-              whileTap={{ scale: 0.95 }}
+              whileTap={{ scale: 0.96 }}
               onClick={() => setSelectedCategorySlug(cat.slug)}
-              className={`px-4 py-2 rounded-xl shrink-0 font-bold transition-all duration-200 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg shrink-0 transition-all duration-200 cursor-pointer ${
                 selectedCategorySlug === cat.slug
-                  ? 'bg-[#29302D] text-[#FCFAF6] shadow-sm'
-                  : 'bg-white/80 text-[#77786E] border border-[#EADFCF] hover:bg-[#F5EBDD]/60 hover:text-[#29302D]'
+                  ? 'bg-gradient-to-r from-[#E8795B] to-[#D96B4E] text-white font-bold shadow-[0_2px_6px_rgba(232,121,91,0.2)]'
+                  : 'bg-white text-[#453A33] border border-[#EDE2D7] hover:border-[#E8795B]/40 hover:bg-[#FAF7F2] hover:text-[#51463F] font-semibold'
               }`}
             >
               {cat.name.split('&')[0]}
@@ -210,7 +197,7 @@ export const MarketplacePage: React.FC = () => {
       {/* ========================================================
           3. SERVICE CARDS GRID (ANIMATED LAYOUT & STAGGER)
          ======================================================== */}
-      <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-5">
         <AnimatePresence mode="popLayout">
           {filteredServices.length === 0 ? (
             <motion.div
@@ -237,52 +224,52 @@ export const MarketplacePage: React.FC = () => {
               <motion.div
                 key={service.id}
                 layout
-                initial={{ opacity: 0, scale: 0.94, y: 16 }}
+                initial={{ opacity: 0, scale: 0.95, y: 12 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.94, y: 10 }}
-                whileHover={{ y: -6, scale: 1.01 }}
+                exit={{ opacity: 0, scale: 0.95, y: 8 }}
+                whileHover={{ y: -3 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 25 }}
                 className="h-full"
               >
-                <div className="bg-white/95 rounded-3xl border border-[#EADFCF] shadow-[0_4px_20px_-4px_rgba(41,48,45,0.05)] hover:border-[#C66B52]/50 hover:shadow-xl transition-all duration-300 flex flex-col justify-between h-full p-6 sm:p-7 group">
+                <div className="bg-white/95 rounded-2xl border border-[#EDE2D7] shadow-[0_2px_12px_-2px_rgba(81,70,63,0.04)] hover:border-[#E8795B]/50 hover:shadow-md transition-all duration-200 flex flex-col justify-between h-full p-4 sm:p-5 group">
                   <div>
                     {/* Category Pill & Verification Badge */}
-                    <div className="flex items-center justify-between mb-3.5 gap-2">
-                      <span className="px-3 py-1 rounded-xl text-[11px] font-black bg-[#FFF4F0] text-[#C66B52] border border-[#E58C72]/30">
+                    <div className="flex items-center justify-between mb-2.5 gap-2">
+                      <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-[#FFF0EB] text-[#E8795B] border border-[#E8795B]/30">
                         {service.categoryName.split('&')[0]}
                       </span>
-                      <span className="text-[11px] text-[#2E7D32] font-black flex items-center gap-1.5 bg-[#2E7D32]/10 px-2.5 py-0.5 rounded-full border border-[#2E7D32]/20">
-                        <ShieldCheckIcon size={13} /> FIC Verified
+                      <span className="text-[10px] text-[#3B9C91] font-bold flex items-center gap-1 bg-[#E3F5F2] px-2 py-0.5 rounded-md border border-[#3B9C91]/30">
+                        <ShieldCheckIcon size={12} /> FIC Verified
                       </span>
                     </div>
 
                     {/* Subcategory Label */}
                     {service.subcategoryName && (
-                      <div className="text-[10px] uppercase font-black text-[#8064A9] tracking-wider mb-1.5">
+                      <div className="text-[9.5px] uppercase font-bold text-[#8064B1] tracking-wider mb-1">
                         {service.subcategoryName}
                       </div>
                     )}
 
                     {/* Title */}
-                    <h3 className="text-base font-black text-[#29302D] mb-2 leading-snug group-hover:text-[#C66B52] transition-colors">
+                    <h3 className="text-sm sm:text-[15px] font-black text-[#51463F] mb-1.5 leading-snug group-hover:text-[#E8795B] transition-colors">
                       {service.title}
                     </h3>
 
                     {/* Description */}
-                    <p className="text-xs text-[#77786E] leading-relaxed mb-4 line-clamp-3">
+                    <p className="text-xs text-[#5A4F47] font-medium leading-relaxed mb-3 line-clamp-2">
                       {service.shortDescription || service.description}
                     </p>
 
                     {/* Key Capabilities / Deliverables */}
                     {service.servicesOffered && service.servicesOffered.length > 0 && (
-                      <div className="mb-4 p-3 rounded-2xl bg-[#FAF7F2]/80 border border-[#EADFCF]/60">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-[#77786E] block mb-2">
+                      <div className="mb-3 p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+                        <span className="text-[9.5px] font-black uppercase tracking-wider text-[#5A4F47] block mb-1.5">
                           Key Deliverables
                         </span>
-                        <ul className="space-y-1.5">
+                        <ul className="space-y-1">
                           {service.servicesOffered.slice(0, 3).map((item, idx) => (
-                            <li key={idx} className="text-xs text-[#29302D] flex items-start gap-2">
-                              <span className="text-[#C66B52] font-black text-xs shrink-0">✓</span>
+                            <li key={idx} className="text-xs text-[#51463F] flex items-start gap-1.5">
+                              <span className="text-[#E8795B] font-bold text-xs shrink-0">✓</span>
                               <span className="line-clamp-1">{item}</span>
                             </li>
                           ))}
@@ -292,11 +279,11 @@ export const MarketplacePage: React.FC = () => {
 
                     {/* Tags */}
                     {service.tags && service.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-5">
+                      <div className="flex flex-wrap gap-1 mb-3">
                         {service.tags.slice(0, 4).map((tag, idx) => (
                           <span
                             key={idx}
-                            className="text-[10.5px] bg-[#FAF7F2] text-[#77786E] px-2.5 py-1 rounded-lg border border-[#EADFCF] font-semibold"
+                            className="text-[10px] bg-[#FAF7F2] text-[#453A33] px-2 py-0.5 rounded-md border border-[#EDE2D7] font-bold"
                           >
                             #{tag}
                           </span>
@@ -306,9 +293,9 @@ export const MarketplacePage: React.FC = () => {
                   </div>
 
                   {/* Card Bottom CTA */}
-                  <div className="pt-4 border-t border-[#EADFCF] flex items-center justify-between gap-3">
-                    <span className="text-[11px] text-[#77786E] font-medium flex items-center gap-1">
-                      <LockIcon size={12} className="text-[#8064A9]" />
+                  <div className="pt-3 border-t border-[#EDE2D7] flex items-center justify-between gap-2">
+                    <span className="text-[10.5px] text-[#5A4F47] font-bold flex items-center gap-1">
+                      <LockIcon size={11} className="text-[#8064B1]" />
                       FIC Facilitated
                     </span>
 
@@ -316,7 +303,7 @@ export const MarketplacePage: React.FC = () => {
                       variant="primary"
                       size="sm"
                       onClick={() => handleOpenRequestModal(service)}
-                      icon={<ArrowRightIcon size={13} />}
+                      icon={<ArrowRightIcon size={12} />}
                     >
                       Request via FIC
                     </WorkspaceButton>
@@ -344,40 +331,40 @@ export const MarketplacePage: React.FC = () => {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                  className="w-14 h-14 rounded-2xl bg-[#2E7D32]/12 text-[#2E7D32] border border-[#2E7D32]/30 flex items-center justify-center mx-auto shadow-sm"
+                  className="w-14 h-14 rounded-2xl bg-[#3B9C91]/15 text-[#3B9C91] border border-[#3B9C91]/30 flex items-center justify-center mx-auto shadow-sm"
                 >
                   <CheckCircleIcon size={28} />
                 </motion.div>
-                <h4 className="text-base font-black text-[#29302D]">Requirement Registered!</h4>
-                <p className="text-xs text-[#77786E] leading-relaxed max-w-md mx-auto">
+                <h4 className="text-base font-black text-[#51463F]">Requirement Registered!</h4>
+                <p className="text-xs text-[#82776E] leading-relaxed max-w-md mx-auto">
                   {successMessage}
                 </p>
                 <div className="pt-3">
-                  <WorkspaceButton variant="charcoal" size="sm" onClick={handleCloseModal}>
+                  <WorkspaceButton variant="outline" size="sm" onClick={handleCloseModal}>
                     Back to Marketplace
                   </WorkspaceButton>
                 </div>
               </div>
             ) : (
               <form onSubmit={handleConfirmRequest} className="space-y-4">
-                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EADFCF] space-y-1">
-                  <span className="text-[10px] text-[#77786E] block uppercase font-black tracking-wider">
+                <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#EDE2D7] space-y-1">
+                  <span className="text-[10px] text-[#82776E] block uppercase font-black tracking-wider">
                     Selected Service
                   </span>
-                  <div className="text-sm font-black text-[#29302D]">{selectedService.title}</div>
-                  <div className="text-xs text-[#C66B52] font-bold">
+                  <div className="text-sm font-black text-[#51463F]">{selectedService.title}</div>
+                  <div className="text-xs text-[#E8795B] font-bold">
                     {selectedService.categoryName}
                     {selectedService.subcategoryName ? ` • ${selectedService.subcategoryName}` : ''}
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-black text-[#29302D] block">
-                    Describe Your Requirement & Specifications <span className="text-[#C66B52]">*</span>
+                  <label className="text-xs font-black text-[#51463F] block">
+                    Describe Your Requirement & Specifications <span className="text-[#E8795B]">*</span>
                   </label>
                   <textarea
                     rows={4}
-                    className="w-full text-xs p-3.5 border border-[#EADFCF] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white text-[#29302D] placeholder-[#77786E]/60 shadow-2xs"
+                    className="w-full text-xs p-3.5 border border-[#EDE2D7] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#E8795B] bg-white text-[#51463F] placeholder-[#82776E]/60 shadow-2xs"
                     placeholder="Provide details such as requirement scope, volumes, expected outcomes, and technical parameters..."
                     value={requirementNotes}
                     onChange={(e) => setRequirementNotes(e.target.value)}
@@ -385,12 +372,12 @@ export const MarketplacePage: React.FC = () => {
                   ></textarea>
                 </div>
 
-                <div className="p-4 rounded-2xl bg-[#FFF4F0] border border-[#E58C72]/40 text-xs text-[#29302D] space-y-1">
-                  <div className="font-black text-[#C66B52] flex items-center gap-1.5">
+                <div className="p-4 rounded-2xl bg-[#FFF0EB] border border-[#E8795B]/30 text-xs text-[#51463F] space-y-1">
+                  <div className="font-black text-[#E8795B] flex items-center gap-1.5">
                     <ShieldCheckIcon size={16} />
                     FIC Intermediary Governance:
                   </div>
-                  <p className="text-[11px] leading-relaxed text-[#77786E]">
+                  <p className="text-[11px] leading-relaxed text-[#82776E]">
                     FIC protects member privacy and prevents unsolicited marketing. Our team verifies technical parameters and arranges bespoke quotation proposals directly.
                   </p>
                 </div>

@@ -4,6 +4,7 @@ import {
   adminApproveReferralReward,
   adminRejectReferralReward,
   adminAdjustWallet,
+  apiRequest,
   IReferral,
   IMemberWallet,
   IWalletTransaction
@@ -15,16 +16,152 @@ import {
   ClockIcon,
   SearchIcon,
   ArrowRightIcon,
-  UserIcon
+  UserIcon,
+  TrendingUpIcon
 } from '../components/Icons';
 
+export interface AdminFundingItem {
+  _id?: string;
+  id?: string;
+  refNumber: string;
+  userId: string;
+  businessName: string;
+  businessType: string;
+  industry: string;
+  location: {
+    country: string;
+    state: string;
+    district?: string;
+    city: string;
+  };
+  businessStage: string;
+  fundingAmount: number;
+  fundingPurpose: string[];
+  useOfFundsExplanation: string;
+  currentAnnualRevenue?: string;
+  businessDescription: string;
+  status: string;
+  submittedDate?: string;
+  createdAt?: string;
+  latestFicUpdate: string;
+  whatHappensNext: string;
+  updateHistory: {
+    date: string;
+    status: string;
+    update: string;
+    updatedBy?: string;
+  }[];
+  internalNotes?: {
+    note: string;
+    createdBy: string;
+    createdAt: string | Date;
+  }[];
+}
+
+export interface AdminInvestorItem {
+  _id?: string;
+  id?: string;
+  refNumber: string;
+  userId: string;
+  investorType: string;
+  investorName: string;
+  country: string;
+  stateCity: string;
+  investorProfile: string;
+  totalCapacity: string;
+  preferredTicketSize: string;
+  preferredSectors: string[];
+  preferredStages: string[];
+  investmentType: string;
+  investmentExperience?: string;
+  additionalPreferences?: string;
+  status: string;
+  submittedDate?: string;
+  createdAt?: string;
+  latestFicUpdate: string;
+  whatHappensNext: string;
+  updateHistory: {
+    date: string;
+    status: string;
+    update: string;
+    updatedBy?: string;
+  }[];
+  internalNotes?: {
+    note: string;
+    createdBy: string;
+    createdAt: string | Date;
+  }[];
+}
+
+const FUNDING_STATUS_OPTIONS = [
+  { value: 'SUBMITTED', label: 'Request Submitted' },
+  { value: 'UNDER_REVIEW', label: 'Under Review' },
+  { value: 'INFO_REQUIRED', label: 'Information Required' },
+  { value: 'VERIFICATION_IN_PROGRESS', label: 'Business Verification in Progress' },
+  { value: 'ASSESSMENT_IN_PROGRESS', label: 'Assessment in Progress' },
+  { value: 'REVIEW_COMPLETED', label: 'Review Completed' },
+  { value: 'DISCUSSION_REQUESTED', label: 'Discussion Requested' },
+  { value: 'ON_HOLD', label: 'On Hold' },
+  { value: 'CLOSED', label: 'Closed' }
+];
+
+const INVESTOR_STATUS_OPTIONS = [
+  { value: 'SUBMITTED', label: 'Profile Submitted' },
+  { value: 'VERIFICATION_IN_PROGRESS', label: 'Verification in Progress' },
+  { value: 'INFO_REQUIRED', label: 'Information Required' },
+  { value: 'VERIFICATION_COMPLETED', label: 'Verification Completed' },
+  { value: 'UNDER_REVIEW', label: 'Profile Under Review' },
+  { value: 'DISCUSSION_REQUESTED', label: 'Discussion Requested' },
+  { value: 'ON_HOLD', label: 'On Hold' },
+  { value: 'CLOSED', label: 'Closed' }
+];
+
+const formatINRShort = (amount: number): string => {
+  if (!amount || isNaN(amount)) return '₹0';
+  if (amount >= 10000000) {
+    const cr = (amount / 10000000).toFixed(2).replace(/\.00$/, '');
+    return `₹${cr} Cr`;
+  }
+  if (amount >= 100000) {
+    const lk = (amount / 100000).toFixed(2).replace(/\.00$/, '');
+    return `₹${lk} Lakhs`;
+  }
+  return `₹${amount.toLocaleString('en-IN')}`;
+};
+
+const INITIAL_ADMIN_FUNDING: AdminFundingItem[] = [];
+
+const INITIAL_ADMIN_INVESTORS: AdminInvestorItem[] = [];
+
 export const AdminDashboardPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'referrals' | 'wallets' | 'renewals'>('referrals');
+  const [activeTab, setActiveTab] = useState<'referrals' | 'wallets' | 'renewals' | 'investment'>('referrals');
 
   // Live Admin Data
   const [wallets, setWallets] = useState<IMemberWallet[]>([]);
   const [transactions, setTransactions] = useState<IWalletTransaction[]>([]);
   const [referrals, setReferrals] = useState<IReferral[]>([]);
+
+  // Investment State
+  const [investSubTab, setInvestSubTab] = useState<'funding' | 'investor'>('funding');
+  const [fundingRequests, setFundingRequests] = useState<AdminFundingItem[]>([]);
+  const [investorProfiles, setInvestorProfiles] = useState<AdminInvestorItem[]>([]);
+  const [fundingStatusFilter, setFundingStatusFilter] = useState<string>('ALL');
+  const [fundingIndustryFilter, setFundingIndustryFilter] = useState<string>('ALL');
+  const [fundingSearch, setFundingSearch] = useState<string>('');
+  const [investorStatusFilter, setInvestorStatusFilter] = useState<string>('ALL');
+  const [investorTypeFilter, setInvestorTypeFilter] = useState<string>('ALL');
+  const [investorSearch, setInvestorSearch] = useState<string>('');
+
+  // Editing Investment Item Modal
+  const [editingInvestment, setEditingInvestment] = useState<{
+    type: 'FUNDING' | 'INVESTOR';
+    item: AdminFundingItem | AdminInvestorItem;
+  } | null>(null);
+  const [editStatus, setEditStatus] = useState<string>('');
+  const [editLatestUpdate, setEditLatestUpdate] = useState<string>('');
+  const [editWhatNext, setEditWhatNext] = useState<string>('');
+  const [newInternalNote, setNewInternalNote] = useState<string>('');
+  const [isSavingInvestment, setIsSavingInvestment] = useState<boolean>(false);
 
   // Filters
   const [referralSourceFilter, setReferralSourceFilter] = useState<'ALL' | 'REFERRED' | 'ORGANIC'>('ALL');
@@ -38,11 +175,40 @@ export const AdminDashboardPage: React.FC = () => {
   const [adjustReason, setAdjustReason] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string>('');
 
-  const reloadData = () => {
+  const reloadData = async () => {
     const data = getAdminWalletsData();
     setWallets(data.wallets);
     setTransactions(data.transactions);
     setReferrals(data.referrals);
+
+    // Load Investment Data from Backend or localStorage
+    try {
+      const fundResp = await apiRequest('/investment/admin/funding');
+      if (fundResp?.success && Array.isArray(fundResp.data) && fundResp.data.length > 0) {
+        setFundingRequests(fundResp.data);
+        localStorage.setItem('fic_admin_funding_requests', JSON.stringify(fundResp.data));
+      } else {
+        const local = localStorage.getItem('fic_admin_funding_requests');
+        setFundingRequests(local ? JSON.parse(local) : INITIAL_ADMIN_FUNDING);
+      }
+    } catch {
+      const local = localStorage.getItem('fic_admin_funding_requests');
+      setFundingRequests(local ? JSON.parse(local) : INITIAL_ADMIN_FUNDING);
+    }
+
+    try {
+      const invResp = await apiRequest('/investment/admin/investor');
+      if (invResp?.success && Array.isArray(invResp.data) && invResp.data.length > 0) {
+        setInvestorProfiles(invResp.data);
+        localStorage.setItem('fic_admin_investor_profiles', JSON.stringify(invResp.data));
+      } else {
+        const local = localStorage.getItem('fic_admin_investor_profiles');
+        setInvestorProfiles(local ? JSON.parse(local) : INITIAL_ADMIN_INVESTORS);
+      }
+    } catch {
+      const local = localStorage.getItem('fic_admin_investor_profiles');
+      setInvestorProfiles(local ? JSON.parse(local) : INITIAL_ADMIN_INVESTORS);
+    }
   };
 
   useEffect(() => {
@@ -121,6 +287,157 @@ export const AdminDashboardPage: React.FC = () => {
     (t) => t.transactionType === 'MEMBERSHIP_RENEWAL'
   );
 
+  // Investment Handlers
+  const handleOpenInvestmentModal = (
+    type: 'FUNDING' | 'INVESTOR',
+    item: AdminFundingItem | AdminInvestorItem
+  ) => {
+    setEditingInvestment({ type, item });
+    setEditStatus(item.status);
+    setEditLatestUpdate(item.latestFicUpdate || '');
+    setEditWhatNext(item.whatHappensNext || '');
+    setNewInternalNote('');
+  };
+
+  const handleSaveInvestmentUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingInvestment) return;
+    setIsSavingInvestment(true);
+
+    const { type, item } = editingInvestment;
+    const targetId = item._id || item.refNumber;
+    const endpoint =
+      type === 'FUNDING'
+        ? `/investment/admin/funding/${targetId}/status`
+        : `/investment/admin/investor/${targetId}/status`;
+
+    const payload = {
+      status: editStatus,
+      latestFicUpdate: editLatestUpdate,
+      whatHappensNext: editWhatNext,
+      internalNote: newInternalNote.trim() ? newInternalNote.trim() : undefined
+    };
+
+    const todayFormatted = new Date().toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    try {
+      await apiRequest(endpoint, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+    } catch {
+      // offline fallback
+    }
+
+    if (type === 'FUNDING') {
+      const updated = fundingRequests.map((f) => {
+        if (f.refNumber === item.refNumber || f._id === item._id) {
+          const notes = [...(f.internalNotes || [])];
+          if (newInternalNote.trim()) {
+            notes.push({
+              note: newInternalNote.trim(),
+              createdBy: 'FIC Admin Staff',
+              createdAt: new Date().toISOString()
+            });
+          }
+          const history = [...(f.updateHistory || [])];
+          if (editLatestUpdate || editStatus !== f.status) {
+            history.unshift({
+              date: todayFormatted,
+              status: editStatus,
+              update: editLatestUpdate || f.latestFicUpdate,
+              updatedBy: 'FIC Deal Desk'
+            });
+          }
+          return {
+            ...f,
+            status: editStatus,
+            latestFicUpdate: editLatestUpdate || f.latestFicUpdate,
+            whatHappensNext: editWhatNext || f.whatHappensNext,
+            updateHistory: history,
+            internalNotes: notes
+          };
+        }
+        return f;
+      });
+      setFundingRequests(updated);
+      localStorage.setItem('fic_admin_funding_requests', JSON.stringify(updated));
+    } else {
+      const updated = investorProfiles.map((inv) => {
+        if (inv.refNumber === item.refNumber || inv._id === item._id) {
+          const notes = [...(inv.internalNotes || [])];
+          if (newInternalNote.trim()) {
+            notes.push({
+              note: newInternalNote.trim(),
+              createdBy: 'FIC Admin Staff',
+              createdAt: new Date().toISOString()
+            });
+          }
+          const history = [...(inv.updateHistory || [])];
+          if (editLatestUpdate || editStatus !== inv.status) {
+            history.unshift({
+              date: todayFormatted,
+              status: editStatus,
+              update: editLatestUpdate || inv.latestFicUpdate,
+              updatedBy: 'FIC Investment Desk'
+            });
+          }
+          return {
+            ...inv,
+            status: editStatus,
+            latestFicUpdate: editLatestUpdate || inv.latestFicUpdate,
+            whatHappensNext: editWhatNext || inv.whatHappensNext,
+            updateHistory: history,
+            internalNotes: notes
+          };
+        }
+        return inv;
+      });
+      setInvestorProfiles(updated);
+      localStorage.setItem('fic_admin_investor_profiles', JSON.stringify(updated));
+    }
+
+    setIsSavingInvestment(false);
+    setEditingInvestment(null);
+    showToast(
+      type === 'FUNDING'
+        ? `Funding request ${item.refNumber} status updated.`
+        : `Investor profile ${item.refNumber} status updated.`
+    );
+  };
+
+  // Filtered Funding Requests
+  const filteredFundingRequests = fundingRequests.filter((f) => {
+    if (fundingStatusFilter !== 'ALL' && f.status !== fundingStatusFilter) return false;
+    if (fundingIndustryFilter !== 'ALL' && f.industry !== fundingIndustryFilter) return false;
+    if (fundingSearch.trim()) {
+      const q = fundingSearch.toLowerCase();
+      const matchRef = f.refNumber.toLowerCase().includes(q);
+      const matchName = f.businessName.toLowerCase().includes(q);
+      const matchCity = (f.location?.city || '').toLowerCase().includes(q);
+      if (!matchRef && !matchName && !matchCity) return false;
+    }
+    return true;
+  });
+
+  // Filtered Investor Profiles
+  const filteredInvestorProfiles = investorProfiles.filter((inv) => {
+    if (investorStatusFilter !== 'ALL' && inv.status !== investorStatusFilter) return false;
+    if (investorTypeFilter !== 'ALL' && inv.investorType !== investorTypeFilter) return false;
+    if (investorSearch.trim()) {
+      const q = investorSearch.toLowerCase();
+      const matchRef = inv.refNumber.toLowerCase().includes(q);
+      const matchName = inv.investorName.toLowerCase().includes(q);
+      const matchCity = (inv.stateCity || '').toLowerCase().includes(q);
+      if (!matchRef && !matchName && !matchCity) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="space-y-6 max-w-[1440px] mx-auto text-[#FCFAF6]">
       {/* Toast */}
@@ -176,6 +493,16 @@ export const AdminDashboardPage: React.FC = () => {
             }`}
           >
             Membership Renewals
+          </button>
+          <button
+            onClick={() => setActiveTab('investment')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'investment'
+                ? 'bg-[#D99B43] text-[#1E2421]'
+                : 'text-slate-300 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            Investment & Funding
           </button>
         </div>
       </div>
@@ -536,6 +863,326 @@ export const AdminDashboardPage: React.FC = () => {
       )}
 
       {/* ========================================================
+          TAB 4: INVESTMENT & FUNDING MANAGEMENT
+         ======================================================== */}
+      {activeTab === 'investment' && (
+        <div className="space-y-5">
+          {/* Sub-view switcher & KPI pills */}
+          <div className="bg-[#29302D] border border-white/10 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setInvestSubTab('funding')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  investSubTab === 'funding'
+                    ? 'bg-[#1C6960] text-white shadow-sm'
+                    : 'bg-[#1E2421] text-slate-300 hover:text-white'
+                }`}
+              >
+                <span>Funding Requests (Seekers)</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-[11px] font-black">
+                  {fundingRequests.length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setInvestSubTab('investor')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                  investSubTab === 'investor'
+                    ? 'bg-[#8064A9] text-white shadow-sm'
+                    : 'bg-[#1E2421] text-slate-300 hover:text-white'
+                }`}
+              >
+                <span>Investor Profiles</span>
+                <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-[11px] font-black">
+                  {investorProfiles.length}
+                </span>
+              </button>
+            </div>
+
+            {/* Quick summary notes */}
+            <div className="text-xs text-slate-400 text-right hidden lg:block">
+              <span className="text-[#D99B43] font-bold">Intermediary Governance:</span> All status updates are directly published to member tracking with confidential internal notes preserved.
+            </div>
+          </div>
+
+          {/* Sub-view 1: Funding Requests */}
+          {investSubTab === 'funding' && (
+            <div className="space-y-4">
+              {/* Filters */}
+              <div className="bg-[#29302D] border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row gap-3 justify-between items-center">
+                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                  <select
+                    value={fundingStatusFilter}
+                    onChange={(e) => setFundingStatusFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1E2421] text-slate-200 border border-white/10"
+                  >
+                    <option value="ALL">All Statuses ({fundingRequests.length})</option>
+                    {FUNDING_STATUS_OPTIONS.map((st) => (
+                      <option key={st.value} value={st.value}>
+                        {st.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={fundingIndustryFilter}
+                    onChange={(e) => setFundingIndustryFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1E2421] text-slate-200 border border-white/10"
+                  >
+                    <option value="ALL">All Industries</option>
+                    <option value="Manufacturing">Manufacturing</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Agri-Tech">Agri-Tech</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Retail & Franchise">Retail & Franchise</option>
+                    <option value="Renewables">Renewables</option>
+                    <option value="Logistics & Warehousing">Logistics & Warehousing</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div className="relative w-full md:w-80">
+                  <SearchIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by ref, business name, city..."
+                    value={fundingSearch}
+                    onChange={(e) => setFundingSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-[#1E2421] border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-[#D99B43]"
+                  />
+                </div>
+              </div>
+
+              {/* Funding Requests Table */}
+              <div className="bg-[#29302D] border border-white/10 rounded-2xl overflow-hidden shadow-md">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left text-slate-200">
+                    <thead className="bg-[#1E2421] border-b border-white/10 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
+                      <tr>
+                        <th className="px-4 py-3.5">Reference & Date</th>
+                        <th className="px-4 py-3.5">Business & Stage</th>
+                        <th className="px-4 py-3.5">Industry & Location</th>
+                        <th className="px-4 py-3.5">Funding Required</th>
+                        <th className="px-4 py-3.5">Current Status</th>
+                        <th className="px-4 py-3.5">Latest Member Update</th>
+                        <th className="px-4 py-3.5 text-center">Internal Notes</th>
+                        <th className="px-4 py-3.5 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {filteredFundingRequests.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                            No funding requests match the selected filters.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredFundingRequests.map((f) => {
+                          const statusMatch = FUNDING_STATUS_OPTIONS.find((s) => s.value === f.status);
+                          const statusLabel = statusMatch ? statusMatch.label : f.status;
+                          const notesCount = f.internalNotes?.length || 0;
+
+                          return (
+                            <tr key={f.refNumber} className="hover:bg-white/5 transition-colors">
+                              <td className="px-4 py-3.5 font-mono">
+                                <div className="font-bold text-[#FCFAF6]">{f.refNumber}</div>
+                                <div className="text-[10.5px] text-slate-400">{f.submittedDate || 'Today'}</div>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <div className="font-bold text-white text-[13px]">{f.businessName}</div>
+                                <div className="text-[11px] text-slate-400">{f.businessType} • {f.businessStage}</div>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <div className="text-white font-medium">{f.industry}</div>
+                                <div className="text-[11px] text-slate-400">{f.location?.city}, {f.location?.state}</div>
+                              </td>
+                              <td className="px-4 py-3.5 font-bold text-emerald-400 text-sm">
+                                {formatINRShort(f.fundingAmount)}
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <span className="inline-block px-2.5 py-1 rounded-md text-[10.5px] font-bold border bg-teal-950/70 text-teal-300 border-teal-500/30">
+                                  {statusLabel}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5 max-w-[240px]">
+                                <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">
+                                  {f.latestFicUpdate}
+                                </p>
+                              </td>
+                              <td className="px-4 py-3.5 text-center">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold ${
+                                  notesCount > 0 ? 'bg-[#D99B43]/20 text-[#D99B43]' : 'bg-white/5 text-slate-400'
+                                }`}>
+                                  {notesCount} {notesCount === 1 ? 'Note' : 'Notes'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenInvestmentModal('FUNDING', f)}
+                                  className="px-3 py-1.5 rounded-lg bg-[#1C6960] hover:bg-[#15544d] text-white font-bold text-xs transition-colors"
+                                >
+                                  Review & Update
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Sub-view 2: Investor Profiles */}
+          {investSubTab === 'investor' && (
+            <div className="space-y-4">
+              {/* Filters */}
+              <div className="bg-[#29302D] border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row gap-3 justify-between items-center">
+                <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                  <select
+                    value={investorStatusFilter}
+                    onChange={(e) => setInvestorStatusFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1E2421] text-slate-200 border border-white/10"
+                  >
+                    <option value="ALL">All Statuses ({investorProfiles.length})</option>
+                    {INVESTOR_STATUS_OPTIONS.map((st) => (
+                      <option key={st.value} value={st.value}>
+                        {st.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={investorTypeFilter}
+                    onChange={(e) => setInvestorTypeFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1E2421] text-slate-200 border border-white/10"
+                  >
+                    <option value="ALL">All Investor Types</option>
+                    <option value="Individual Investor">Individual Investor</option>
+                    <option value="Company / Corporate Investor">Company / Corporate Investor</option>
+                    <option value="Investment Firm">Investment Firm</option>
+                    <option value="Family Office">Family Office</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div className="relative w-full md:w-80">
+                  <SearchIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by ref, investor name, city..."
+                    value={investorSearch}
+                    onChange={(e) => setInvestorSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs bg-[#1E2421] border border-white/10 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-[#D99B43]"
+                  />
+                </div>
+              </div>
+
+              {/* Investor Profiles Table */}
+              <div className="bg-[#29302D] border border-white/10 rounded-2xl overflow-hidden shadow-md">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left text-slate-200">
+                    <thead className="bg-[#1E2421] border-b border-white/10 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
+                      <tr>
+                        <th className="px-4 py-3.5">Reference & Date</th>
+                        <th className="px-4 py-3.5">Investor / Firm & Type</th>
+                        <th className="px-4 py-3.5">Location</th>
+                        <th className="px-4 py-3.5">Capacity & Preferred Ticket</th>
+                        <th className="px-4 py-3.5">Preferred Sectors</th>
+                        <th className="px-4 py-3.5">Current Status</th>
+                        <th className="px-4 py-3.5">Latest Member Update</th>
+                        <th className="px-4 py-3.5 text-center">Internal Notes</th>
+                        <th className="px-4 py-3.5 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {filteredInvestorProfiles.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="px-4 py-8 text-center text-slate-400">
+                            No investor profiles match the selected filters.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredInvestorProfiles.map((inv) => {
+                          const statusMatch = INVESTOR_STATUS_OPTIONS.find((s) => s.value === inv.status);
+                          const statusLabel = statusMatch ? statusMatch.label : inv.status;
+                          const notesCount = inv.internalNotes?.length || 0;
+
+                          return (
+                            <tr key={inv.refNumber} className="hover:bg-white/5 transition-colors">
+                              <td className="px-4 py-3.5 font-mono">
+                                <div className="font-bold text-[#FCFAF6]">{inv.refNumber}</div>
+                                <div className="text-[10.5px] text-slate-400">{inv.submittedDate || 'Today'}</div>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <div className="font-bold text-white text-[13px]">{inv.investorName}</div>
+                                <div className="text-[11px] text-[#D99B43]">{inv.investorType}</div>
+                              </td>
+                              <td className="px-4 py-3.5 text-slate-300">
+                                {inv.stateCity}, {inv.country}
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <div className="font-bold text-purple-300">{inv.totalCapacity}</div>
+                                <div className="text-[11px] text-slate-400">Ticket: {inv.preferredTicketSize}</div>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <div className="flex flex-wrap gap-1 max-w-[180px]">
+                                  {inv.preferredSectors?.slice(0, 2).map((s) => (
+                                    <span key={s} className="px-1.5 py-0.5 rounded bg-white/10 text-[10px] text-slate-300">
+                                      {s}
+                                    </span>
+                                  ))}
+                                  {(inv.preferredSectors?.length || 0) > 2 && (
+                                    <span className="text-[10px] text-slate-400">
+                                      +{(inv.preferredSectors?.length || 0) - 2} more
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3.5">
+                                <span className="inline-block px-2.5 py-1 rounded-md text-[10.5px] font-bold border bg-purple-950/70 text-purple-300 border-purple-500/30">
+                                  {statusLabel}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5 max-w-[200px]">
+                                <p className="text-[11px] text-slate-300 line-clamp-2 leading-relaxed">
+                                  {inv.latestFicUpdate}
+                                </p>
+                              </td>
+                              <td className="px-4 py-3.5 text-center">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] font-bold ${
+                                  notesCount > 0 ? 'bg-[#D99B43]/20 text-[#D99B43]' : 'bg-white/5 text-slate-400'
+                                }`}>
+                                  {notesCount} {notesCount === 1 ? 'Note' : 'Notes'}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3.5 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenInvestmentModal('INVESTOR', inv)}
+                                  className="px-3 py-1.5 rounded-lg bg-[#8064A9] hover:bg-[#6c5490] text-white font-bold text-xs transition-colors"
+                                >
+                                  Review & Update
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================
           MODAL: MANUAL WALLET ADJUSTMENT (SECTION 12)
          ======================================================== */}
       {adjustTarget && (
@@ -613,6 +1260,170 @@ export const AdminDashboardPage: React.FC = () => {
                   className="px-4 py-2 bg-[#29302D] hover:bg-[#8064A9] text-white font-bold rounded-xl"
                 >
                   Execute Adjustment
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL: INVESTMENT STATUS & GOVERNANCE NOTES UPDATE
+         ======================================================== */}
+      {editingInvestment && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-[#29302D]">
+          <div className="bg-[#FFF9F0] border-2 border-[#D99B43] rounded-2xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl relative max-h-[92vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-[#E8DBC8]">
+              <div>
+                <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-[#29302D] text-[#D99B43] text-[10.5px] font-black uppercase tracking-wider mb-1">
+                  <span>
+                    {editingInvestment.type === 'FUNDING' ? 'Funding Request Review' : 'Investor Profile Verification'}
+                  </span>
+                  <span>•</span>
+                  <span>{editingInvestment.item.refNumber}</span>
+                </div>
+                <h3 className="text-lg font-black text-[#29302D]">
+                  {editingInvestment.type === 'FUNDING'
+                    ? (editingInvestment.item as AdminFundingItem).businessName
+                    : (editingInvestment.item as AdminInvestorItem).investorName}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingInvestment(null)}
+                className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 flex items-center justify-center text-slate-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSaveInvestmentUpdate} className="space-y-4 pt-4 text-xs sm:text-sm">
+              {/* Status Select */}
+              <div>
+                <label className="block font-bold text-[#29302D] mb-1">
+                  Change Status *
+                </label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  required
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#E8DBC8] rounded-xl text-[#29302D] font-bold focus:outline-none focus:border-[#D99B43]"
+                >
+                  {editingInvestment.type === 'FUNDING'
+                    ? FUNDING_STATUS_OPTIONS.map((st) => (
+                        <option key={st.value} value={st.value}>
+                          {st.label} ({st.value})
+                        </option>
+                      ))
+                    : INVESTOR_STATUS_OPTIONS.map((st) => (
+                        <option key={st.value} value={st.value}>
+                          {st.label} ({st.value})
+                        </option>
+                      ))}
+                </select>
+              </div>
+
+              {/* Latest FIC Update (Member Visible) */}
+              <div>
+                <label className="block font-bold text-[#29302D] mb-1">
+                  Latest FIC Update (Visible to Member) *
+                </label>
+                <textarea
+                  rows={2}
+                  value={editLatestUpdate}
+                  onChange={(e) => setEditLatestUpdate(e.target.value)}
+                  placeholder="Explain current progress directly to the member in simple words..."
+                  required
+                  className="w-full px-3.5 py-2 bg-white border border-[#E8DBC8] rounded-xl text-[#29302D] focus:outline-none focus:border-[#D99B43]"
+                />
+                <p className="text-[11px] text-[#77786E] mt-0.5">
+                  This message appears on the member's portal under <strong>Latest FIC Update</strong> and in their Update History.
+                </p>
+              </div>
+
+              {/* What Happens Next (Member Visible) */}
+              <div>
+                <label className="block font-bold text-[#29302D] mb-1">
+                  What Happens Next? (Visible to Member) *
+                </label>
+                <textarea
+                  rows={2}
+                  value={editWhatNext}
+                  onChange={(e) => setEditWhatNext(e.target.value)}
+                  placeholder="Explain the immediate next step or action required..."
+                  required
+                  className="w-full px-3.5 py-2 bg-white border border-[#E8DBC8] rounded-xl text-[#29302D] focus:outline-none focus:border-[#D99B43]"
+                />
+                <p className="text-[11px] text-[#77786E] mt-0.5">
+                  Displayed in the member's View Details modal under Section 4.
+                </p>
+              </div>
+
+              {/* Confidential Internal Notes (Admin-Only) */}
+              <div className="bg-[#FAF3E7] p-3.5 rounded-xl border border-[#D99B43]/40">
+                <label className="block font-bold text-[#29302D] mb-1 flex items-center justify-between">
+                  <span>Add Confidential Internal Note (Admin Staff Only)</span>
+                  <span className="text-[10px] uppercase font-black tracking-wider text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded">
+                    Strictly Confidential
+                  </span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={newInternalNote}
+                  onChange={(e) => setNewInternalNote(e.target.value)}
+                  placeholder="Internal evaluation notes, financial cross-checks, risk observations (never shown to member)..."
+                  className="w-full px-3.5 py-2 bg-white border border-[#E8DBC8] rounded-xl text-[#29302D] focus:outline-none focus:border-[#D99B43]"
+                />
+                <p className="text-[11px] text-[#77786E] mt-1">
+                  🔒 Stripped by the backend API and NEVER exposed to members. Used only for internal coordination and deal review.
+                </p>
+              </div>
+
+              {/* Existing Internal Notes Log */}
+              {editingInvestment.item.internalNotes && editingInvestment.item.internalNotes.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  <h4 className="text-xs font-black uppercase text-[#77786E] tracking-wider">
+                    Internal Notes History ({editingInvestment.item.internalNotes.length})
+                  </h4>
+                  <div className="max-h-36 overflow-y-auto space-y-2 pr-1">
+                    {editingInvestment.item.internalNotes.map((noteItem, idx) => (
+                      <div key={idx} className="p-2.5 rounded-lg bg-white border border-[#E8DBC8] text-xs">
+                        <div className="flex items-center justify-between text-[10.5px] text-[#77786E] mb-1 font-bold">
+                          <span>{noteItem.createdBy || 'FIC Staff'}</span>
+                          <span>
+                            {noteItem.createdAt
+                              ? new Date(noteItem.createdAt).toLocaleDateString('en-GB', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric'
+                                })
+                              : 'Earlier'}
+                          </span>
+                        </div>
+                        <p className="text-[#29302D] font-medium leading-relaxed">{noteItem.note}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Footer Actions */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E8DBC8]">
+                <button
+                  type="button"
+                  onClick={() => setEditingInvestment(null)}
+                  className="px-4 py-2 font-bold text-slate-600 hover:text-slate-900 text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingInvestment}
+                  className="px-5 py-2.5 bg-[#29302D] hover:bg-[#1E2421] text-[#D99B43] hover:text-white font-black rounded-xl text-xs shadow-md transition-all flex items-center gap-2"
+                >
+                  {isSavingInvestment ? 'Saving...' : 'Save & Publish Update'}
                 </button>
               </div>
             </form>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button, Input, Card, Badge } from '@fic/ui';
-import { INITIAL_CATEGORIES_DATA } from '../services/mockData';
+import { INITIAL_CATEGORIES_DATA } from '../services/categoriesData';
 import { getSubcategoryFormConfig } from '../services/subcategoryForms';
 import { getIndianStates, getDistrictsForState, validateIndianPinCode } from '../services/indianLocations';
 import {
