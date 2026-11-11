@@ -18,7 +18,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { getStoredUser } from '../services/api';
 
-const API_BASE = 'http://localhost:5000/api/admin/support';
+const API_BASE = `${(import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace(/\/api\/v1\/?$/, '')}/api/admin/support`;
 
 export const SupportHelpdeskPage: React.FC = () => {
   const user = getStoredUser();

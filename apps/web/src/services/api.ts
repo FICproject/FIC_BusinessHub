@@ -679,7 +679,8 @@ export const getMemberServices = (userId: string): ServiceListing[] => {
 const syncServiceWithAdminBackend = async (service: ServiceListing) => {
   try {
     const user = getStoredUser();
-    await fetch('http://localhost:5000/api/admin/services/sync', {
+    const backendBase = BASE_URL.replace(/\/api\/v1\/?$/, '');
+    await fetch(`${backendBase}/api/admin/services/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

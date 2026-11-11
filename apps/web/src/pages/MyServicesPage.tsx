@@ -466,7 +466,8 @@ export const MyServicesPage: React.FC = () => {
     try {
       const email = user.email;
       if (email) {
-        const res = await fetch(`http://localhost:5000/api/admin/services/member-sync?email=${encodeURIComponent(email)}`);
+        const backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace(/\/api\/v1\/?$/, '');
+        const res = await fetch(`${backendBase}/api/admin/services/member-sync?email=${encodeURIComponent(email)}`);
         if (res.ok) {
           const json = await res.json();
           if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
