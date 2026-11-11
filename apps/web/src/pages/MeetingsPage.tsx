@@ -20,7 +20,8 @@ import {
   respondToReschedule,
   completeMentorshipSession,
   IMentorshipRequest,
-  IMentorDirectoryItem
+  IMentorDirectoryItem,
+  apiRequest
 } from '../services/api';
 import {
   WorkspaceShell,
@@ -115,13 +116,40 @@ export const MeetingsPage: React.FC = () => {
   const [newAgenda, setNewAgenda] = useState('');
   const [formError, setFormError] = useState('');
   const [toastMessage, setToastMessage] = useState('');
+  const [isSubmittingMeeting, setIsSubmittingMeeting] = useState(false);
 
   // Reschedule Form state
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleTime, setRescheduleTime] = useState('11:00 AM - 11:45 AM IST');
 
   // Load meetings & mentoring data
-  const reloadMeetings = () => {
+  const reloadMeetings = async () => {
+    try {
+      const res = await apiRequest('/investment/my-meetings');
+      if (res && res.success && Array.isArray(res.data)) {
+        const backendMeetings: MeetingItem[] = res.data.map((m: any) => ({
+          id: m._id,
+          userId,
+          title: m.title,
+          category: m.meetingType === 'FUNDING_PITCH' ? 'Funding Pitch & Diligence' : (m.externalParticipants?.[0]?.roleOrCompany || 'Consultation'),
+          scheduledDate: m.scheduledAt ? new Date(m.scheduledAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          scheduledTime: m.scheduledAt ? new Date(m.scheduledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '11:00 AM',
+          mode: 'VIRTUAL_MEET',
+          modeLabel: m.meetingLink && m.meetingLink.includes('meet.google') ? 'Google Meet (Encrypted Video)' : (m.status === 'PENDING_COORDINATION' ? 'Awaiting Coordinator Setup' : 'FIC Facilitated Room'),
+          locationOrUrl: m.meetingLink || undefined,
+          facilitatorName: m.hostAdminId?.name || (m.status === 'PENDING_COORDINATION' ? 'FIC Coordinator Review' : 'FIC Assigned Coordinator'),
+          facilitatorRole: m.status === 'PENDING_COORDINATION' ? 'Assigning Specialist...' : 'Verified FIC Coordinator',
+          agenda: m.description || 'Consultation session with FIC coordinator regarding verified service requirements.',
+          status: (m.status || 'PENDING_COORDINATION') as MeetingStatus,
+          createdAt: m.createdAt ? new Date(m.createdAt).toLocaleDateString() : 'Today'
+        }));
+
+        setMeetings(backendMeetings);
+        return;
+      }
+    } catch (_err) {
+      // Fallback to local
+    }
     const list = getUserMeetings(userId);
     setMeetings(list);
   };
@@ -331,30 +359,57 @@ export const MeetingsPage: React.FC = () => {
     return true;
   });
 
-  const handleScheduleSubmit = (e: React.FormEvent) => {
+  const handleScheduleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmittingMeeting) return;
+
     if (!newTitle.trim() || !newDate || !newAgenda.trim()) {
       setFormError('Please fill in all mandatory fields.');
       return;
     }
 
     setFormError('');
+    setIsSubmittingMeeting(true);
 
-    scheduleMeeting(userId, {
-      title: newTitle.trim(),
-      category: newCategory,
-      scheduledDate: newDate,
-      scheduledTime: newTime,
-      mode: newMode,
-      agenda: newAgenda.trim()
-    });
-
-    setIsScheduleModalOpen(false);
-    setNewTitle('');
-    setNewAgenda('');
-    setNewDate('');
-    reloadMeetings();
-    showToast('Consultation request submitted! FIC Coordinator assigned.');
+    try {
+      await apiRequest('/meetings/schedule', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: newTitle.trim(),
+          category: newCategory,
+          scheduledDate: newDate,
+          scheduledTime: newTime,
+          mode: newMode,
+          agenda: newAgenda.trim()
+        })
+      });
+      // Clear localStorage cache to avoid stale mock duplicates
+      localStorage.removeItem('fic_member_meetings_db');
+      setIsScheduleModalOpen(false);
+      setNewTitle('');
+      setNewAgenda('');
+      setNewDate('');
+      await reloadMeetings();
+      showToast('Consultation request submitted! Awaiting coordinator confirmation.');
+    } catch (_apiErr: any) {
+      // Local fallback only if network completely unavailable
+      scheduleMeeting(userId, {
+        title: newTitle.trim(),
+        category: newCategory,
+        scheduledDate: newDate,
+        scheduledTime: newTime,
+        mode: newMode,
+        agenda: newAgenda.trim()
+      });
+      setIsScheduleModalOpen(false);
+      setNewTitle('');
+      setNewAgenda('');
+      setNewDate('');
+      await reloadMeetings();
+      showToast('Consultation request saved offline. Awaiting coordinator review.');
+    } finally {
+      setIsSubmittingMeeting(false);
+    }
   };
 
   const handleRescheduleSubmit = (e: React.FormEvent) => {
@@ -934,7 +989,7 @@ export const MeetingsPage: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Mode */}
+                        {/* Mode & Link */}
                         <div className="flex items-center gap-2 bg-[#FAF7F2] px-3 py-2 rounded-xl border border-[#EDE2D7]">
                           {meeting.mode === 'VIRTUAL_MEET' && (
                             <VideoIcon size={16} className="text-[#3B9C91] shrink-0" />
@@ -948,7 +1003,11 @@ export const MeetingsPage: React.FC = () => {
                           <div>
                             <span className="font-bold text-[#51463F] block">{meeting.modeLabel}</span>
                             <span className="text-[11px] text-[#82776E] truncate block max-w-[160px]">
-                              {meeting.locationOrUrl}
+                              {isScheduled && meeting.locationOrUrl
+                                ? meeting.locationOrUrl
+                                : isPending
+                                ? 'Awaiting coordinator invite link'
+                                : (meeting.locationOrUrl || 'Virtual Session')}
                             </span>
                           </div>
                         </div>
@@ -984,9 +1043,16 @@ export const MeetingsPage: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {isScheduled && (
+                        {isPending && (
+                          <span className="px-3 py-1.5 bg-[#FAF7F2] text-[#8064B1] font-bold text-xs rounded-xl border border-[#EDE2D7] flex items-center gap-1.5 shadow-2xs">
+                            <ClockIcon size={13} className="text-[#8064B1]" />
+                            <span>Awaiting Admin Confirmation</span>
+                          </span>
+                        )}
+
+                        {isScheduled && meeting.locationOrUrl && (
                           <a
-                            href={meeting.locationOrUrl || '#'}
+                            href={meeting.locationOrUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="px-4 py-2 bg-[#2E7D32] hover:bg-[#1B5E20] text-white font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
@@ -1155,11 +1221,23 @@ export const MeetingsPage: React.FC = () => {
             </div>
 
             <div className="pt-3 flex justify-end gap-3 border-t border-[#EDE2D7]">
-              <WorkspaceButton variant="outline" size="sm" type="button" onClick={() => setIsScheduleModalOpen(false)}>
+              <WorkspaceButton
+                variant="outline"
+                size="sm"
+                type="button"
+                disabled={isSubmittingMeeting}
+                onClick={() => setIsScheduleModalOpen(false)}
+              >
                 Cancel
               </WorkspaceButton>
-              <WorkspaceButton variant="violet" size="sm" type="submit">
-                Confirm Consultation Request
+              <WorkspaceButton
+                variant="violet"
+                size="sm"
+                type="submit"
+                loading={isSubmittingMeeting}
+                disabled={isSubmittingMeeting}
+              >
+                {isSubmittingMeeting ? 'Submitting Request...' : 'Confirm Consultation Request'}
               </WorkspaceButton>
             </div>
           </form>

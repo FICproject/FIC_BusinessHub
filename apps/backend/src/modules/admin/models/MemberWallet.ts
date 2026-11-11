@@ -51,4 +51,5 @@ const MemberWalletSchema = new Schema<IMemberWallet>(
   { timestamps: true }
 );
 
-export const MemberWalletModel = (mongoose.models.MemberWallet as mongoose.Model<IMemberWallet>) || mongoose.model<IMemberWallet>('MemberWallet', MemberWalletSchema);
+export const AdminMemberWalletModel = (mongoose.models.AdminMemberWallet as mongoose.Model<IMemberWallet>) || mongoose.model<IMemberWallet>('AdminMemberWallet', MemberWalletSchema);
+export const MemberWalletModel = AdminMemberWalletModel;

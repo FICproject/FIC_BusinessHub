@@ -50,7 +50,7 @@ const MemberWalletSchema = new Schema<IMemberWalletDocument>(
   { timestamps: true }
 );
 
-export const MemberWalletModel = mongoose.model<IMemberWalletDocument>(
+export const MemberWalletModel = (mongoose.models.MemberWallet as mongoose.Model<IMemberWalletDocument>) || mongoose.model<IMemberWalletDocument>(
   'MemberWallet',
   MemberWalletSchema
 );

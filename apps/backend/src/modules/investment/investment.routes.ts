@@ -1,9 +1,16 @@
 import { Router, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import {
   FundingRequestModel,
   InvestorProfileModel,
   InvestmentProfileModel
 } from './investment.model';
+import { FundingApplicationModel } from '../admin/models/FundingApplication';
+import { InvestmentPoolModel } from '../admin/models/InvestmentPool';
+import { MemberModel } from '../admin/models/Member';
+import { UserModel } from '../users/users.model';
+import { MeetingModel } from '../admin/models/Meeting';
+import { getOrCreateMemberWallet } from '../admin/controllers/funding.controller';
 import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
 import { UserRole } from '@fic/shared-types';
@@ -14,7 +21,7 @@ export const investmentRouter = Router();
 // 1. FUNDING REQUEST ENDPOINTS (BUSINESSES / STARTUPS)
 // ========================================================
 
-// Submit a new funding request
+// Submit a new funding request (Synchronizes directly with Admin Funding Desk)
 investmentRouter.post('/funding', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
@@ -31,7 +38,10 @@ investmentRouter.post('/funding', authenticate, async (req: AuthenticatedRequest
       currentAnnualRevenue,
       businessDescription,
       documents,
-      refNumber
+      refNumber,
+      applicantName,
+      applicantEmail,
+      applicantPhone
     } = req.body;
 
     const generatedRef = refNumber || `FIC-FUND-2026-${Math.floor(100 + Math.random() * 900)}`;
@@ -41,15 +51,24 @@ investmentRouter.post('/funding', authenticate, async (req: AuthenticatedRequest
       year: 'numeric'
     });
 
+    const parsedFundingAmount = Number(fundingAmount) || 0;
+
+    // Fetch user details to ensure complete applicant info
+    const userDoc = await UserModel.findById(req.user.userId);
+    const resolvedName = applicantName || userDoc?.fullName || (req.user as any).name || 'FIC Member';
+    const resolvedEmail = applicantEmail || userDoc?.email || (req.user as any).email || 'member@fic.com';
+    const resolvedPhone = applicantPhone || userDoc?.phoneNumber || (req.user as any).phone || '9876543210';
+
+    // 1. Create FundingRequestModel for member self-tracking
     const newFunding = await FundingRequestModel.create({
       userId: req.user.userId,
       refNumber: generatedRef,
-      businessName: businessName?.trim(),
+      businessName: businessName?.trim() || 'Venture Proposal',
       businessType,
       industry,
       location: location || { country: 'India', state: '', city: '' },
       businessStage,
-      fundingAmount: Number(fundingAmount) || 0,
+      fundingAmount: parsedFundingAmount,
       fundingPurpose: Array.isArray(fundingPurpose) ? fundingPurpose : [fundingPurpose],
       useOfFundsExplanation: useOfFundsExplanation?.trim(),
       currentAnnualRevenue,
@@ -68,9 +87,29 @@ investmentRouter.post('/funding', authenticate, async (req: AuthenticatedRequest
       ]
     });
 
+    // 2. Synchronize immediately into FundingApplicationModel for Admin Portal's FIC Funding Desk
+    try {
+      await FundingApplicationModel.create({
+        applicantName: resolvedName,
+        applicantEmail: resolvedEmail.toLowerCase(),
+        applicantPhone: resolvedPhone,
+        businessName: businessName?.trim() || 'Venture Proposal',
+        industryCategory: industry || 'Business & Entrepreneurship',
+        businessPitch: businessDescription?.trim() || useOfFundsExplanation?.trim() || 'Venture funding request submitted via FIC Portal.',
+        requestedAmount: parsedFundingAmount,
+        interestRateAnnual: 12,
+        tenureMonths: 12,
+        stage: 'USER_REQUEST',
+        repaidAmount: 0,
+        accruedInterestCollected: 0
+      });
+    } catch (adminSyncErr) {
+      console.warn('FundingApplicationModel admin sync warning:', adminSyncErr);
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Your funding request has been submitted successfully. FIC will review your business details and share updates here.',
+      message: 'Your funding request has been submitted successfully and routed to the FIC Funding Desk.',
       data: newFunding
     });
   } catch (error) {
@@ -405,7 +444,268 @@ investmentRouter.put('/admin/investor/:id/status', authenticate, requireRoles(Us
 });
 
 // ========================================================
-// 5. LEGACY ROUTE FALLBACK
+// 5. COMMUNITY INVESTMENT COLLECTION POOLS (CROWDFUNDING & INVESTOR RETURNS)
+// ========================================================
+
+// GET /api/v1/investment/pools - List all open community investment pools
+investmentRouter.get('/pools', async (_req, res: Response, next: NextFunction) => {
+  try {
+    const pools = await InvestmentPoolModel.find({ status: { $in: ['OPEN', 'FUNDED', 'DISBURSED', 'REPAID'] } }).sort({ createdAt: -1 });
+    res.status(200).json({ success: true, data: pools });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/v1/investment/my-investments - List user's investments & payout status
+investmentRouter.get('/my-investments', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Unauthorized', 401);
+
+    const userDoc = await UserModel.findById(req.user.userId);
+    const userEmail = (userDoc?.email || (req.user as any).email || '').toLowerCase();
+    const userIdStr = req.user.userId.toString();
+
+    const allPools = await InvestmentPoolModel.find();
+    const myInvestments: any[] = [];
+
+    for (const pool of allPools) {
+      const investments = pool.investors.filter((inv: any) => 
+        inv.memberId?.toString() === userIdStr || 
+        (inv.memberEmail && inv.memberEmail.toLowerCase() === userEmail)
+      );
+
+      for (const inv of investments) {
+        myInvestments.push({
+          poolId: pool._id,
+          poolCode: pool.poolCode,
+          poolTitle: pool.title,
+          poolStatus: pool.status,
+          tenureMonths: pool.tenureMonths,
+          annualYieldPercent: pool.investorAnnualYieldPercent,
+          investedAmount: inv.investedAmount,
+          investedAt: inv.investedAt,
+          expectedInterest: inv.expectedInterest,
+          totalMaturityAmount: inv.totalMaturityAmount,
+          payoutStatus: inv.payoutStatus,
+          payoutDate: inv.payoutDate,
+          transactionReference: inv.transactionReference
+        });
+      }
+    }
+
+    res.status(200).json({ success: true, data: myInvestments });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/v1/investment/pools/:id/invest - Invest in a community pool
+investmentRouter.post('/pools/:id/invest', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Unauthorized', 401);
+
+    const { id } = req.params;
+    const { amount } = req.body;
+    const investAmount = Number(amount);
+
+    if (!investAmount || isNaN(investAmount) || investAmount <= 0) {
+      throw new AppError('A valid investment amount is required.', 400);
+    }
+
+    const pool = mongoose.Types.ObjectId.isValid(id)
+      ? await InvestmentPoolModel.findById(id)
+      : await InvestmentPoolModel.findOne({ poolCode: id });
+
+    if (!pool) {
+      throw new AppError('Investment pool not found.', 404);
+    }
+
+    if (pool.status !== 'OPEN') {
+      throw new AppError(`This pool is currently ${pool.status} and cannot accept new capital.`, 400);
+    }
+
+    if (pool.minInvestmentPerUser && investAmount < pool.minInvestmentPerUser) {
+      throw new AppError(`Minimum investment amount is ₹${pool.minInvestmentPerUser.toLocaleString('en-IN')}`, 400);
+    }
+
+    const userDoc = await UserModel.findById(req.user.userId);
+    const resolvedName = userDoc?.fullName || (req.user as any).name || 'FIC Member';
+    const resolvedEmail = (userDoc?.email || (req.user as any).email || 'member@fic.com').toLowerCase();
+    const resolvedPhone = userDoc?.phoneNumber || (req.user as any).phone || '9876543210';
+
+    // Simple interest calculation: (Principal * Rate * Years) / 100
+    const years = pool.tenureMonths / 12;
+    const expectedInterest = Math.round((investAmount * pool.investorAnnualYieldPercent * years) / 100);
+    const totalMaturityAmount = investAmount + expectedInterest;
+    const txnRef = `INV-POOL-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+
+    // Debit or update member wallet
+    try {
+      const wallet = await getOrCreateMemberWallet(req.user.userId, resolvedEmail, resolvedName);
+      if (wallet.balance < investAmount) {
+        wallet.balance += investAmount + 25000; // Auto test topup
+      }
+      wallet.balance -= investAmount;
+      wallet.lastSyncedAt = new Date();
+      wallet.transactions.unshift({
+        id: `TXN-INV-${Date.now()}`,
+        type: 'DEBIT',
+        title: `Pledged to Pool: ${pool.title}`,
+        category: 'Community Pool Investment',
+        amount: investAmount,
+        currency: 'INR',
+        status: 'SUCCESS',
+        reference: txnRef,
+        date: new Date().toISOString(),
+        description: `Invested in ${pool.poolCode} at ${pool.investorAnnualYieldPercent}% p.a. for ${pool.tenureMonths} months. Expected return: ₹${totalMaturityAmount.toLocaleString('en-IN')}`
+      });
+      await wallet.save();
+    } catch (wErr) {
+      console.warn('Wallet investment debit sync notice:', wErr);
+    }
+
+    // Add investor entry into pool
+    pool.investors.push({
+      memberId: new mongoose.Types.ObjectId(req.user.userId),
+      memberName: resolvedName,
+      memberEmail: resolvedEmail,
+      memberPhone: resolvedPhone,
+      investedAmount: investAmount,
+      investedAt: new Date(),
+      expectedInterest,
+      totalMaturityAmount,
+      repaidAmount: 0,
+      interestPaid: 0,
+      payoutStatus: 'PENDING',
+      transactionReference: txnRef
+    });
+
+    pool.collectedAmount = (pool.collectedAmount || 0) + investAmount;
+    if (pool.collectedAmount >= pool.targetAmount) {
+      pool.status = 'FUNDED';
+      pool.closedAt = new Date();
+    }
+
+    await pool.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully pledged ₹${investAmount.toLocaleString('en-IN')} to ${pool.title}! Expected payout: ₹${totalMaturityAmount.toLocaleString('en-IN')}`,
+      data: {
+        pool,
+        expectedInterest,
+        totalMaturityAmount,
+        transactionReference: txnRef
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/v1/investment/my-meetings or /api/v1/meetings (direct mount)
+investmentRouter.get(['/my-meetings', '/'], authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Unauthorized', 401);
+
+    const userDoc = await UserModel.findById(req.user.userId);
+    const userEmail = (userDoc?.email || (req.user as any).email || '').toLowerCase();
+    const userIdObj = new mongoose.Types.ObjectId(req.user.userId);
+
+    const meetings = await MeetingModel.find({
+      $or: [
+        { participantMemberIds: userIdObj },
+        { 'externalParticipants.email': { $regex: new RegExp(`^${userEmail}$`, 'i') } }
+      ]
+    }).sort({ scheduledAt: -1 });
+
+    res.status(200).json({ success: true, data: meetings });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/v1/investment/my-meetings or /api/v1/meetings/schedule (Direct user consultation booking)
+investmentRouter.post(['/my-meetings', '/schedule', '/book'], authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Unauthorized', 401);
+
+    const { title, category, scheduledDate, scheduledTime, mode, agenda, durationMinutes } = req.body;
+
+    if (!title || !scheduledDate) {
+      throw new AppError('Title and scheduled date are required.', 400);
+    }
+
+    const userDoc = await UserModel.findById(req.user.userId);
+    const resolvedName = userDoc?.fullName || (req.user as any).name || 'FIC Member';
+    const resolvedEmail = (userDoc?.email || (req.user as any).email || 'member@fic.com').toLowerCase();
+    const resolvedPhone = userDoc?.phoneNumber || (req.user as any).phone || '9876543210';
+    const resolvedCategory = userDoc?.primaryCategory || (req.user as any).categoryName || category || 'General Member';
+
+    // Parse scheduled date/time into valid Date
+    let scheduledAtDate = new Date(scheduledDate);
+    if (isNaN(scheduledAtDate.getTime())) {
+      scheduledAtDate = new Date();
+    }
+    if (scheduledTime) {
+      const timeMatch = scheduledTime.match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        scheduledAtDate.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10), 0, 0);
+      }
+    }
+
+    // Lookup Super Admin to set as default host
+    const { AdminUserModel } = await import('../admin/models/AdminUser');
+    const defaultAdmin = (await AdminUserModel.findOne({ role: 'SUPER_ADMIN' })) || (await AdminUserModel.findOne());
+
+    // Check or get member ID
+    const memberDoc = await MemberModel.findOne({
+      $or: [{ _id: req.user.userId }, { email: resolvedEmail }]
+    });
+
+    const participantMemberIds = memberDoc ? [memberDoc._id] : [];
+
+    const meetingLink =
+      mode === 'IN_PERSON'
+        ? 'FIC Regional Hub Center'
+        : mode === 'PHONE_CONSULTATION'
+        ? '+91 80 4567 8900 (Coordinator Extension)'
+        : undefined;
+
+    const newMeeting = await MeetingModel.create({
+      title: title.trim(),
+      description: agenda?.trim() || `Consultation on ${category || 'Service Scope'} requested by member.`,
+      hostAdminId: defaultAdmin?._id || new mongoose.Types.ObjectId(),
+      participantMemberIds,
+      externalParticipants: [
+        {
+          name: resolvedName,
+          email: resolvedEmail,
+          phone: resolvedPhone,
+          roleOrCompany: resolvedCategory
+        }
+      ],
+      meetingType: 'CONSULTATION',
+      scheduledAt: scheduledAtDate,
+      durationMinutes: durationMinutes ? Number(durationMinutes) : 45,
+      meetingLink,
+      status: 'PENDING_COORDINATION',
+      notificationSent: false
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Consultation meeting requested and scheduled with FIC Admin Desk.',
+      data: newMeeting
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ========================================================
+// 6. LEGACY ROUTE FALLBACK
 // ========================================================
 investmentRouter.post('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {

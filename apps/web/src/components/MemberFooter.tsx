@@ -14,14 +14,14 @@ export const MemberFooter: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-5 text-xs font-medium text-[#82776E]">
-          <a
-            href="mailto:support@ficapp.in"
-            className="hover:text-[#E8795B] transition-colors"
+          <Link
+            to="/support"
+            className="hover:text-[#E8795B] font-semibold text-[#8064B1] transition-colors flex items-center gap-1"
             title="Desk Support"
           >
             Help & Support
-          </a>
-          <Link to="/contact" className="hover:text-[#E8795B] transition-colors">
+          </Link>
+          <Link to="/support" className="hover:text-[#E8795B] transition-colors">
             Contact Support
           </Link>
           <Link to="/privacy-policy" className="hover:text-[#E8795B] transition-colors">

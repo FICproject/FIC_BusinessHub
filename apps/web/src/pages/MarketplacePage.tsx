@@ -36,11 +36,51 @@ export const MarketplacePage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string>('');
 
-  // Load approved marketplace services from the centralized service catalog
+  // Load approved marketplace services from backend API & catalog
   useEffect(() => {
-    const loadServices = () => {
-      const liveServices = getMarketplaceServices();
-      setServices(liveServices);
+    const loadServices = async () => {
+      const localApproved = getMarketplaceServices();
+      try {
+        const res = await apiRequest('/marketplace/services');
+        if (res?.success && res?.data?.items && Array.isArray(res.data.items)) {
+          // Normalize server items to ServiceListing structure
+          const remoteApproved: ServiceListing[] = res.data.items.map((item: any) => ({
+            id: item._id,
+            ownerUserId: item.providerId || item.providerEmail || '',
+            ownerName: item.providerPrivateName || 'FIC Verified Provider',
+            ownerEmail: item.providerEmail,
+            categoryId: typeof item.categoryId === 'object' ? item.categoryId?._id : item.categoryId,
+            categoryName: item.categoryName || (typeof item.categoryId === 'object' ? item.categoryId?.name : 'Business & Entrepreneurship'),
+            categorySlug: item.categorySlug || (typeof item.categoryId === 'object' ? item.categoryId?.slug : 'business-entrepreneurship'),
+            subcategoryId: typeof item.subcategoryId === 'object' ? item.subcategoryId?._id : item.subcategoryId,
+            subcategoryName: item.subcategoryName || (typeof item.subcategoryId === 'object' ? item.subcategoryId?.name : 'Business Owner'),
+            title: item.title,
+            shortDescription: item.shortDescription || item.description?.substring(0, 140) || '',
+            description: item.description,
+            servicesOffered: item.servicesOffered || [],
+            skills: item.skills || [],
+            tags: item.tags || [],
+            coverageArea: item.coverageArea || 'Pan India',
+            deliveryMode: item.deliveryMode || 'IN_PERSON',
+            status: 'APPROVED',
+            createdAt: new Date(item.createdAt || Date.now()).toLocaleDateString('en-GB'),
+            updatedAt: new Date(item.updatedAt || Date.now()).toLocaleDateString('en-GB')
+          }));
+
+          // Merge without duplicates
+          const combined = [...remoteApproved];
+          localApproved.forEach((loc) => {
+            if (!combined.some((r) => r.id === loc.id || r.title.toLowerCase() === loc.title.toLowerCase())) {
+              combined.push(loc);
+            }
+          });
+          setServices(combined);
+          return;
+        }
+      } catch (_err) {
+        // Fallback to local catalog
+      }
+      setServices(localApproved);
     };
 
     loadServices();
@@ -63,7 +103,21 @@ export const MarketplacePage: React.FC = () => {
     return matchCategory && matchSearch;
   });
 
+  const currentUser = getStoredUser();
+  const currentUserId = currentUser?.id || currentUser?.userId || '';
+  const currentUserEmail = (currentUser?.email || '').toLowerCase().trim();
+
+  const isOwnService = (service: ServiceListing) => {
+    if (!currentUser) return false;
+    const sOwnerId = String(service.ownerUserId || '').trim();
+    const sOwnerEmail = String((service as any).ownerEmail || '').toLowerCase().trim();
+    if (currentUserId && sOwnerId && (sOwnerId === currentUserId || sOwnerId === currentUser.id)) return true;
+    if (currentUserEmail && sOwnerEmail && sOwnerEmail === currentUserEmail) return true;
+    return false;
+  };
+
   const handleOpenRequestModal = (service: ServiceListing) => {
+    if (isOwnService(service)) return;
     setSelectedService(service);
     setRequirementNotes('');
     setSuccessMessage('');
@@ -82,23 +136,27 @@ export const MarketplacePage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      await apiRequest('/connections', {
+      const res = await apiRequest('/connections', {
         method: 'POST',
         body: JSON.stringify({
           serviceId: selectedService.id,
           providerUserId: selectedService.ownerUserId || 'FIC_OFFICER',
-          requirementNotes
+          requirementNotes,
+          serviceTitle: selectedService.title,
+          categoryName: selectedService.categoryName
         })
       });
 
       const user = getStoredUser();
       if (user) {
         saveUserRequest(user.id || user.userId, {
+          id: res?.data?.id || `req-${Date.now()}`,
           serviceTitle: selectedService.title,
           category: selectedService.categoryName,
           notes: requirementNotes,
-          statusText: 'FIC Review',
-          status: 'SUBMITTED'
+          statusText: 'Under FIC Review',
+          status: 'SUBMITTED',
+          ficRemark: 'Request received. Assigned to FIC Coordinator for requirement validation.'
         });
       }
 
@@ -112,8 +170,9 @@ export const MarketplacePage: React.FC = () => {
           serviceTitle: selectedService.title,
           category: selectedService.categoryName,
           notes: requirementNotes,
-          statusText: 'FIC Review',
-          status: 'SUBMITTED'
+          statusText: 'Under FIC Review',
+          status: 'SUBMITTED',
+          ficRemark: 'Requirement securely logged with FIC Intermediary Coordinator.'
         });
       }
 
@@ -299,14 +358,20 @@ export const MarketplacePage: React.FC = () => {
                       FIC Facilitated
                     </span>
 
-                    <WorkspaceButton
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleOpenRequestModal(service)}
-                      icon={<ArrowRightIcon size={12} />}
-                    >
-                      Request via FIC
-                    </WorkspaceButton>
+                    {isOwnService(service) ? (
+                      <span className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed">
+                        Your Service Listing
+                      </span>
+                    ) : (
+                      <WorkspaceButton
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleOpenRequestModal(service)}
+                        icon={<ArrowRightIcon size={12} />}
+                      >
+                        Request via FIC
+                      </WorkspaceButton>
+                    )}
                   </div>
                 </div>
               </motion.div>

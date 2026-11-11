@@ -24,6 +24,12 @@ export const apiRouter = Router();
 // Healthcheck
 apiRouter.use(healthRouter);
 
+// User Profile routes alias for /users/me and /auth/me
+apiRouter.get('/users/me', (req, res, next) => {
+  req.url = '/me';
+  authRouter(req, res, next);
+});
+
 // Domain Routes
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/categories', categoriesRouter);
@@ -44,3 +50,4 @@ apiRouter.use('/dashboard', dashboardRouter);
 apiRouter.use('/wallet', walletRouter);
 apiRouter.use('/referrals', referralsRouter);
 apiRouter.use('/mentoring', mentoringRouter);
+apiRouter.use('/meetings', investmentRouter); // Mounts /meetings/my-meetings directly

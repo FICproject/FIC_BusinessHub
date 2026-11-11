@@ -42,7 +42,7 @@ export const Navbar: React.FC = () => {
       <div className="w-full max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
         {/* Brand Logo - Charcoal & Amber Gold Accent */}
         <Link
-          to={user ? "/dashboard" : "/"}
+          to="/"
           className="flex items-center gap-3 shrink-0 group focus:outline-none"
           onClick={closeMenu}
         >
@@ -87,46 +87,24 @@ export const Navbar: React.FC = () => {
           </a>
         </nav>
 
-        {/* Action Buttons: Visitor vs Authenticated Member */}
+        {/* Action Buttons: Sign In / Become a Member */}
         <div className="hidden sm:flex items-center gap-3 shrink-0">
-          {user ? (
-            <div className="flex items-center gap-3">
-              <Link to="/dashboard">
-                <button
-                  type="button"
-                  className="px-4 py-2 rounded-xl text-[13px] font-bold bg-[#29302D] text-[#FCFAF6] hover:bg-[#8064A9] transition-colors shadow-xs"
-                >
-                  Go to Member Dashboard &rarr;
-                </button>
-              </Link>
-              <button
-                onClick={handleLogout}
-                type="button"
-                className="text-[13px] text-[#77786E] hover:text-[#C66B52] font-semibold px-3 py-1.5 rounded-lg border border-[#E8DBC8] hover:border-[#C66B52]/40 transition-colors"
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Link to="/login">
-                <button
-                  type="button"
-                  className="px-4 py-2 rounded-xl text-[13px] font-bold text-[#29302D] border border-[#29302D]/30 hover:bg-[#FFF9F0] hover:border-[#29302D] transition-colors"
-                >
-                  Sign In
-                </button>
-              </Link>
-              <Link to="/get-started">
-                <button
-                  type="button"
-                  className="px-4 py-2 rounded-xl text-[13px] font-bold bg-[#C66B52] hover:bg-[#D99B43] text-white shadow-md shadow-[#C66B52]/20 transition-all hover:scale-105"
-                >
-                  Become a Member
-                </button>
-              </Link>
-            </div>
-          )}
+          <Link to="/login">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-xl text-[13px] font-bold text-[#29302D] border border-[#29302D]/30 hover:bg-[#FFF9F0] hover:border-[#29302D] transition-colors"
+            >
+              Sign In
+            </button>
+          </Link>
+          <Link to="/get-started">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-xl text-[13px] font-bold bg-[#C66B52] hover:bg-[#D99B43] text-white shadow-md shadow-[#C66B52]/20 transition-all hover:scale-105"
+            >
+              Become a Member
+            </button>
+          </Link>
         </div>
 
         {/* Mobile Hamburger Button */}

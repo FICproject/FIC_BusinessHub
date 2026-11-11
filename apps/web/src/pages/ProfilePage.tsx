@@ -93,6 +93,9 @@ export const ProfilePage: React.FC = () => {
   // Bank Account State
   const [bankAccount, setBankAccount] = useState<IMemberBankAccount | null>(null);
 
+  // Community Pool Investments & Yield Returns State
+  const [myInvestments, setMyInvestments] = useState<any[]>([]);
+
   // Modals State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -150,7 +153,7 @@ export const ProfilePage: React.FC = () => {
   const [passwordError, setPasswordError] = useState('');
 
   // Load User & Financial Ledgers
-  const refreshFinancialData = (uid: string) => {
+  const refreshFinancialData = async (uid: string) => {
     const w = getUserWallet(uid);
     setWallet(w);
     const allTxs = getUserWalletTransactions(uid);
@@ -165,6 +168,27 @@ export const ProfilePage: React.FC = () => {
     setReferralData(refs);
     const bank = getUserBankAccount(uid);
     setBankAccount(bank);
+
+    // Fetch live user pool investments and payouts
+    try {
+      const invRes = await (await import('../services/api')).apiRequest('/investment/my-investments');
+      if (invRes && invRes.success && Array.isArray(invRes.data)) {
+        setMyInvestments(invRes.data);
+      }
+    } catch (_e) {}
+
+    // Fetch live user referrals from backend and sync with state
+    try {
+      const refRes = await (await import('../services/api')).apiRequest('/referrals/my-referrals');
+      if (refRes && refRes.success && refRes.data) {
+        setReferralData({
+          referralCode: refRes.data.referralCode || refs.referralCode,
+          referralLink: refRes.data.referralLink || refs.referralLink,
+          summary: refRes.data.summary || refs.summary,
+          referrals: refRes.data.referrals || refs.referrals
+        });
+      }
+    } catch (_refErr) {}
   };
 
   useEffect(() => {
@@ -788,6 +812,67 @@ export const ProfilePage: React.FC = () => {
             </strong>
           </div>
         </div>
+
+        {/* Community Investment Pools & Fixed Interest Returns Card */}
+        {myInvestments.length > 0 && (
+          <div className="pt-3 border-t border-[#EDE2D7] space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUpIcon size={16} className="text-[#2C857B]" />
+                <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#51463F]">
+                  Community Investment Portfolio & Payouts
+                </h3>
+              </div>
+              <span className="text-[11px] font-bold text-[#1C6960] bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                {myInvestments.length} Active Positions
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {myInvestments.map((inv, idx) => (
+                <div key={idx} className="p-3.5 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-mono font-bold text-[#82776E]">{inv.poolCode}</span>
+                      <h4 className="text-xs font-black text-[#51463F] line-clamp-1">{inv.poolTitle}</h4>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                        inv.payoutStatus === 'COMPLETED'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                          : inv.payoutStatus === 'DISBURSED'
+                          ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                          : 'bg-amber-100 text-amber-800 border border-amber-300'
+                      }`}
+                    >
+                      {inv.payoutStatus === 'COMPLETED' ? '✓ Yield Settled' : `Payout: ${inv.payoutStatus}`}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5 p-2 rounded-lg bg-white border border-[#EDE2D7]/80 text-center text-xs">
+                    <div>
+                      <span className="text-[9px] text-[#82776E] block font-semibold uppercase">Principal</span>
+                      <span className="font-bold text-[#51463F]">₹{inv.investedAmount?.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-[#82776E] block font-semibold uppercase">Yield ({inv.annualYieldPercent}%)</span>
+                      <span className="font-bold text-[#2C857B]">+₹{inv.expectedInterest?.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-[#82776E] block font-semibold uppercase">Total Payout</span>
+                      <span className="font-black text-[#1C6960]">₹{inv.totalMaturityAmount?.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10.5px] text-[#82776E] pt-1">
+                    <span>Tenure: {inv.tenureMonths} Months</span>
+                    <span className="font-mono">{inv.transactionReference}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================================

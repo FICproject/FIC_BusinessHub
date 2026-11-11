@@ -42,8 +42,20 @@ export const LoginPage: React.FC = () => {
         });
 
         if (response?.success && response?.data) {
+          const authUser = response.data.user;
           setAuthToken(response.data.token);
-          setStoredUser(response.data.user);
+          setStoredUser(authUser);
+
+          const isApproved = Boolean(
+            authUser.isKycApproved === true ||
+            (authUser.status === 'ACTIVE' && authUser.kycStatus === 'APPROVED')
+          );
+
+          if (!isApproved) {
+            navigate('/kyc-pending', { replace: true });
+            return;
+          }
+
           navigate(targetPath, { replace: true });
           return;
         }
@@ -60,57 +72,36 @@ export const LoginPage: React.FC = () => {
       // 2. Client-side Account Registry Authentication (offline/local fallback)
       let matched = findRegisteredAccount(cleanId);
 
-      // If account was registered by another developer on another device/browser
-      // or not found in current local storage, auto-provision it with verified active status:
-      if (!matched) {
-        const generatedName = cleanId.includes('@')
-          ? cleanId
-              .split('@')[0]
-              .replace(/[._\d]+/g, ' ')
-              .trim()
-              .split(' ')
-              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-              .join(' ') || 'Member'
-          : 'Member';
-
-        matched = saveRegisteredAccount({
-          id: `usr_${Date.now()}`,
-          userId: `usr_${Date.now()}`,
-          fullName: generatedName,
-          email: cleanId.includes('@') ? cleanId : `${cleanId}@ficapp.in`,
-          phoneNumber: cleanId.includes('@') ? '9840129988' : cleanId,
-          mobileNumber: cleanId.includes('@') ? '9840129988' : cleanId,
-          password: password || 'password123',
-          primaryCategory: 'Technology & Digital',
-          categoryName: 'Technology & Digital',
-          primaryCategoryId: 'cat-3',
-          subcategories: ['Freelance Software Developer', 'Cloud Architecture'],
-          subCategory: 'Freelance Software Developer',
-          subcategoryIds: ['Web Apps', 'Cloud Architecture'],
-          accountStatus: 'ACTIVE',
-          kycStatus: 'VERIFIED',
-          isKycApproved: true,
-          membershipStatus: 'ACTIVE',
-          isMembershipActive: true,
-          membershipPlan: 'First-Year Introductory Membership',
-          membershipAmountPaid: '₹99',
-          membershipStartDate: 'Active from Registration',
-          membershipExpiryDate: 'Valid for 365 Days',
-          renewalInfo: 'Annual renewal available at ₹5,999/yr for Year 2+'
-        });
-      }
-
-      // In local dev/offline fallback, sync the password if the developer entered a custom one
+      // If account was registered locally, strictly check password
       if (matched && password) {
-        if (!matched.password || matched.password !== password) {
-          matched.password = password;
-          saveRegisteredAccount(matched);
+        if (matched.password && matched.password !== password) {
+          setErrorMessage('Invalid email/mobile or password.');
+          setIsLoading(false);
+          return;
         }
       }
 
-      // Authenticate as the exact verified matched user
+      if (!matched) {
+        setErrorMessage('Account not found. Please register first or verify your credentials.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Strict KYC Check: If user KYC is not approved, block portal access
+      const isApproved = Boolean(
+        matched.isKycApproved === true ||
+        (matched.accountStatus === 'ACTIVE' && matched.kycStatus === 'VERIFIED')
+      );
+
+      // Authenticate matched user
       setAuthToken(`fic_token_${matched.userId}`);
       setStoredUser(matched);
+
+      if (!isApproved) {
+        navigate('/kyc-pending', { replace: true });
+        return;
+      }
+
       navigate(targetPath, { replace: true });
     } catch {
       setErrorMessage('Authentication error. Please check your credentials and try again.');

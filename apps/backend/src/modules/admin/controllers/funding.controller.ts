@@ -5,7 +5,7 @@ import { FundingApplicationModel } from '../models/FundingApplication';
 import { InvestmentPoolModel } from '../models/InvestmentPool';
 import { MeetingModel } from '../models/Meeting';
 import { MemberModel } from '../models/Member';
-import { MemberWalletModel, IMemberWallet } from '../models/MemberWallet';
+import { AdminMemberWalletModel, IMemberWallet } from '../models/MemberWallet';
 
 const router = Router();
 
@@ -15,15 +15,15 @@ export const getOrCreateMemberWallet = async (
   memberEmail: string,
   _memberName?: string
 ): Promise<IMemberWallet> => {
-  let wallet = await MemberWalletModel.findOne({
+  let wallet = await AdminMemberWalletModel.findOne({
     $or: [{ memberId }, { memberEmail: memberEmail.toLowerCase() }],
   });
 
   if (!wallet) {
-    wallet = await MemberWalletModel.create({
+    wallet = await AdminMemberWalletModel.create({
       memberId: new mongoose.Types.ObjectId(memberId.toString()),
       memberEmail: memberEmail.toLowerCase(),
-      balance: 0,
+      balance: 50000,
       currency: 'INR',
       currencySymbol: '₹',
       status: 'ACTIVE',

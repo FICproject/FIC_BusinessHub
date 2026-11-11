@@ -12,6 +12,7 @@ import {
   respondToReschedule,
   completeMentorshipSession,
   cancelMentorshipRequest,
+  apiRequest,
   IMentorshipRequest
 } from '../services/api';
 import {
@@ -174,21 +175,38 @@ export const MyRequestsPage: React.FC = () => {
   // Initial load
   useEffect(() => {
     if (user) {
-      // 1. Services
-      const userRequests = getUserRequests(userId);
-      setServices(
-        userRequests.map((r, i) => ({
-          id: r.id || `REQ-0${i + 1}`,
-          title: r.serviceTitle || r.title,
-          status: r.status || 'SUBMITTED',
-          statusLabel: r.statusText || r.statusLabel || 'FIC Review',
-          notes: r.requirementNotes || r.notes || 'Verified requirement submitted via FIC Business Hub.',
-          ficRemark:
-            r.ficRemark ||
-            'FIC Coordinator assigned. Evaluating verified providers and preparing confidential proposals.',
-          date: r.date || 'Today'
-        }))
-      );
+      // 1. Services: Fetch live requests from backend and merge with local
+      const loadServiceRequests = async () => {
+        try {
+          const res = await apiRequest('/connections/me');
+          if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+            setServices(res.data);
+            return;
+          }
+        } catch {
+          // Fallback to local
+        }
+
+        const userRequests = getUserRequests(userId);
+        setServices(
+          userRequests.map((r, i) => ({
+            id: r.id || `REQ-0${i + 1}`,
+            title: r.serviceTitle || r.title,
+            status: r.status || 'SUBMITTED',
+            statusLabel: r.statusText || r.statusLabel || 'Under FIC Review',
+            notes: r.requirementNotes || r.notes || 'Verified requirement submitted via FIC Business Hub.',
+            ficRemark:
+              r.ficRemark ||
+              'FIC Coordinator assigned. Evaluating verified providers and preparing confidential proposals.',
+            date: r.date || 'Today'
+          }))
+        );
+      };
+
+      loadServiceRequests();
+
+      // Poll every 5s to keep customer live when admin updates statuses or adds notes
+      const pollTimer = setInterval(loadServiceRequests, 5000);
 
       // 2. Ideas from localStorage or seed
       try {
@@ -242,6 +260,10 @@ export const MyRequestsPage: React.FC = () => {
       if (isMentor || isStudent) {
         fetchMentorshipData();
       }
+
+      return () => {
+        clearInterval(pollTimer);
+      };
     }
   }, [user?.id, user?.userId, userId, isMentor, isStudent]);
 
@@ -1128,6 +1150,46 @@ export const MyRequestsPage: React.FC = () => {
                           </strong>
                           <p className="text-[#82776E] leading-relaxed">{req.notes}</p>
                         </div>
+
+                        {req.targetProvider && (
+                          <div className="p-3 rounded-xl bg-[#EAF7F2] border border-emerald-300 space-y-1">
+                            <div className="flex items-center gap-1.5 font-bold text-emerald-800 text-xs">
+                              <ShieldCheckIcon size={14} className="text-emerald-600" />
+                              Matched Service Provider:
+                            </div>
+                            <div className="text-xs text-[#51463F] font-bold">
+                              {req.targetProvider.name}
+                              {req.targetProvider.category ? ` (${req.targetProvider.category})` : ''}
+                            </div>
+                          </div>
+                        )}
+
+                        {req.scheduledMeeting && (
+                          <div className="p-3.5 rounded-xl bg-[#F4EEFB] border border-[#8064B1] space-y-2 text-xs">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <span className="font-bold text-[#8064B1] flex items-center gap-1.5">
+                                <VideoIcon size={14} />
+                                Diligence & Scope Meeting Scheduled:
+                              </span>
+                              <span className="text-[11px] font-semibold text-[#51463F] bg-white px-2 py-0.5 rounded border border-[#8064B1]/30">
+                                {new Date(req.scheduledMeeting.scheduledAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} at {new Date(req.scheduledMeeting.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            {req.scheduledMeeting.meetingLink && (
+                              <div className="pt-1">
+                                <a
+                                  href={req.scheduledMeeting.meetingLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#8064B1] hover:bg-[#6E529F] px-3.5 py-1.5 rounded-xl transition-all shadow-sm"
+                                >
+                                  <VideoIcon size={13} />
+                                  Join Video Conference
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        )}
 
                         <div className="p-3 rounded-xl bg-[#F4EEFB] border border-[#8064B1]/30 space-y-1">
                           <div className="flex items-center gap-1.5 font-bold text-[#8064B1] text-xs">

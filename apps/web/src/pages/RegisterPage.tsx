@@ -41,6 +41,7 @@ import {
   EyeIcon,
   EyeOffIcon
 } from '../components/Icons';
+import { RazorpayCheckoutModal } from '../components/RazorpayCheckoutModal';
 
 interface CustomDoc {
   id: string;
@@ -130,10 +131,51 @@ export const RegisterPage: React.FC = () => {
   };
 
   // Step 2: Category & Strictly Single Subcategory Role
+  const [categoriesList, setCategoriesList] = useState<any[]>(INITIAL_CATEGORIES_DATA);
   const [selectedCategory, setSelectedCategory] = useState(INITIAL_CATEGORIES_DATA[0]);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>(
     INITIAL_CATEGORIES_DATA[0].subcategories[0]
   );
+
+  // Load dynamically updated categories from the shared database
+  useEffect(() => {
+    const fetchLiveCategories = async () => {
+      try {
+        const res = await apiRequest('/categories');
+        const categoriesData = Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : null);
+        if (categoriesData && categoriesData.length > 0) {
+          const mapped = categoriesData.map((cat: any, index: number) => ({
+            id: cat.id || cat._id || `cat-${index}`,
+            name: cat.name,
+            slug: cat.slug,
+            description: cat.description || '',
+            iconName: cat.iconName || cat.icon || 'Briefcase',
+            subcategories: (cat.subcategories || []).map((s: any) =>
+              typeof s === 'string' ? s : (s.name || 'General')
+            ).filter(Boolean)
+          }));
+          setCategoriesList(mapped);
+          // Keep current category selection or fallback to first live category
+          setSelectedCategory((prevSelected) => {
+            const found = mapped.find(
+              (m: any) => m.slug === prevSelected?.slug || m.name === prevSelected?.name || m.id === prevSelected?.id
+            );
+            const targetCat = found || mapped[0];
+            if (targetCat.subcategories && targetCat.subcategories.length > 0) {
+              setSelectedSubcategory((prevSub) =>
+                targetCat.subcategories.includes(prevSub) ? prevSub : targetCat.subcategories[0]
+              );
+            }
+            return targetCat;
+          });
+        }
+      } catch (err) {
+        // Fall back to INITIAL_CATEGORIES_DATA gracefully
+        console.warn('Live categories lookup notice:', err);
+      }
+    };
+    fetchLiveCategories();
+  }, []);
 
   // Resolved dynamic configuration for the active subcategory
   const subcategoryConfig = getSubcategoryFormConfig(selectedCategory.name, selectedSubcategory);
@@ -163,8 +205,9 @@ export const RegisterPage: React.FC = () => {
   >({});
   const [customDocs, setCustomDocs] = useState<CustomDoc[]>([]);
 
-  // Step 5: Payment simulation
+  // Step 5: Payment
   const [paymentDone, setPaymentDone] = useState(false);
+  const [showRazorpayModal, setShowRazorpayModal] = useState(false);
 
   // Stepper metadata (Updated to show KYC at Step 4 and Membership at Step 5)
   const stepsInfo = [
@@ -216,7 +259,7 @@ export const RegisterPage: React.FC = () => {
     }
   };
 
-  // File attach handler
+  // File attach handler - read as persistent Base64 Data URL so images show across origins and ports
   const handleFileChange = (docKey: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -225,14 +268,19 @@ export const RegisterPage: React.FC = () => {
           ? (file.size / (1024 * 1024)).toFixed(2) + ' MB'
           : (file.size / 1024).toFixed(1) + ' KB';
 
-      setAttachedFiles((prev) => ({
-        ...prev,
-        [docKey]: {
-          name: file.name,
-          size: sizeStr,
-          fileUrl: URL.createObjectURL(file)
-        }
-      }));
+      const reader = new FileReader();
+      reader.onload = () => {
+        const resultUrl = reader.result as string;
+        setAttachedFiles((prev) => ({
+          ...prev,
+          [docKey]: {
+            name: file.name,
+            size: sizeStr,
+            fileUrl: resultUrl
+          }
+        }));
+      };
+      reader.readAsDataURL(file);
       setErrorMessage('');
     }
   };
@@ -309,9 +357,11 @@ export const RegisterPage: React.FC = () => {
   };
 
   // Step 2 Category Selection & Single Subcategory Role
-  const handleCategorySelect = (cat: typeof INITIAL_CATEGORIES_DATA[0]) => {
+  const handleCategorySelect = (cat: any) => {
     setSelectedCategory(cat);
-    setSelectedSubcategory(cat.subcategories[0]);
+    if (cat.subcategories && cat.subcategories.length > 0) {
+      setSelectedSubcategory(cat.subcategories[0]);
+    }
     setDynamicAnswers({});
   };
 
@@ -405,8 +455,19 @@ export const RegisterPage: React.FC = () => {
     setStep(5);
   };
 
-  // Step 5 Payment Simulation (₹99 First-Year Intro) & Application Finalization
-  const handleSimulatePayment = async () => {
+  // Step 5 Trigger Razorpay Modal
+  const handleInitiateRazorpay = () => {
+    setShowRazorpayModal(true);
+  };
+
+  // Callback once Razorpay payment is authorized
+  const handleRazorpaySuccess = async (paymentResult: {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+    method: string;
+  }) => {
+    setShowRazorpayModal(false);
     setIsLoading(true);
     setErrorMessage('');
 
@@ -510,12 +571,12 @@ export const RegisterPage: React.FC = () => {
       setStoredUser(user);
       saveRegisteredAccount(user);
 
-      // 2. Confirm ₹99 Payment
+      // 2. Confirm ₹99 Razorpay Payment in backend
       await apiRequest('/payments/membership/confirm', {
         method: 'POST',
         body: JSON.stringify({
-          orderId: `ORD_${Date.now()}`,
-          transactionId: `TXN_UPI_${Date.now()}`
+          orderId: paymentResult.razorpay_order_id,
+          transactionId: paymentResult.razorpay_payment_id
         })
       });
 
@@ -538,12 +599,22 @@ export const RegisterPage: React.FC = () => {
 
       const allDocItems = [...defaultDocItems, ...customDocItems];
 
-      // Submit KYC documents to backend
+      // Submit KYC documents AND Razorpay details to backend for admin inspection
       await apiRequest('/kyc/submit', {
         method: 'POST',
         body: JSON.stringify({
           categoryId: selectedCategory.id,
-          documents: allDocItems
+          documents: allDocItems,
+          paymentDetails: {
+            orderId: paymentResult.razorpay_order_id,
+            paymentId: paymentResult.razorpay_payment_id,
+            signature: paymentResult.razorpay_signature,
+            method: paymentResult.method,
+            amount: 99,
+            currency: 'INR',
+            paidAt: new Date().toISOString(),
+            status: 'CAPTURED'
+          }
         })
       });
 
@@ -551,16 +622,17 @@ export const RegisterPage: React.FC = () => {
       user.isKycApproved = false;
       user.kycStatus = 'PENDING';
       user.uploadedDocumentsCount = allDocItems.length;
+      user.paymentDetails = {
+        paymentId: paymentResult.razorpay_payment_id,
+        orderId: paymentResult.razorpay_order_id,
+        amount: 99
+      };
       user.submittedDocuments = allDocItems.map((doc) => ({
         type: doc.documentType,
         name: doc.documentName,
         status: 'PENDING',
         uploadedAt: 'On Registration'
       }));
-      user.personalInfo = {
-        ...(user.personalInfo || {}),
-        dob: formattedDob
-      };
       setStoredUser(user);
 
       setPaymentDone(true);
@@ -673,7 +745,7 @@ export const RegisterPage: React.FC = () => {
                   label="Full Legal Name"
                   placeholder="e.g. S. Moorthy"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e: any) => setFullName(e.target.value)}
                   required
                 />
 
@@ -683,7 +755,7 @@ export const RegisterPage: React.FC = () => {
                     type="email"
                     placeholder="name@company.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e: any) => setEmail(e.target.value)}
                     required
                   />
 
@@ -692,7 +764,7 @@ export const RegisterPage: React.FC = () => {
                     placeholder="9876543210"
                     value={phoneNumber}
                     maxLength={10}
-                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e: any) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
                     required
                   />
                 </div>
@@ -860,7 +932,7 @@ export const RegisterPage: React.FC = () => {
               <div className="space-y-6">
                 {/* 10 Core Indian Sectors Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
-                  {INITIAL_CATEGORIES_DATA.map((cat) => {
+                  {categoriesList.map((cat) => {
                     const isSelected = selectedCategory.id === cat.id;
                     return (
                       <div
@@ -1664,7 +1736,7 @@ export const RegisterPage: React.FC = () => {
 
                 <div className="flex items-center gap-2 text-xs text-[#77786E]">
                   <ShieldCheckIcon size={16} className="text-[#D99B43] shrink-0" />
-                  <span>Simulated instant UPI / Gateway payment with immediate server-side validation.</span>
+                  <span>Secured by Razorpay • Instant UPI, Cards, NetBanking with 256-bit encryption.</span>
                 </div>
 
                 <div className="pt-2 flex justify-between items-center border-t border-[#E8DBC8]">
@@ -1676,9 +1748,9 @@ export const RegisterPage: React.FC = () => {
                     type="button"
                     isLoading={isLoading}
                     className="bg-[#C66B52] hover:bg-[#D99B43] text-white"
-                    onClick={handleSimulatePayment}
+                    onClick={handleInitiateRazorpay}
                   >
-                    Pay ₹99 & Submit Application
+                    Pay ₹99 via Razorpay & Submit
                     <ArrowRightIcon className="ml-2" size={16} />
                   </Button>
                 </div>
@@ -1758,36 +1830,14 @@ export const RegisterPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Dev Simulation Shortcut */}
-                <div className="p-4 rounded-xl bg-[#FFF9F0] border border-[#D99B43]/30 text-left space-y-2.5">
-                  <div className="text-xs font-bold text-[#29302D] flex items-center gap-1.5">
-                    <span>⚡ Instant Testing Shortcut:</span>
-                  </div>
-                  <p className="text-[11px] text-[#77786E] leading-relaxed">
-                    You can simulate instant KYC approval to test the live Member Dashboard right now without waiting for admin review:
-                  </p>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="w-full bg-[#C66B52] hover:bg-[#D99B43] text-white font-bold"
-                    onClick={() => {
-                      const u = getStoredUser();
-                      if (u) {
-                        u.isKycApproved = true;
-                        u.isMembershipActive = true;
-                        u.kycStatus = 'VERIFIED';
-                        setStoredUser(u);
-                      }
-                      navigate('/dashboard');
-                    }}
-                  >
-                    Simulate KYC Approval & Open Dashboard →
-                  </Button>
-                </div>
-
                 <div className="pt-2">
+                  <Link to="/kyc-pending">
+                    <Button variant="primary" size="sm" className="w-full bg-[#C66B52] hover:bg-[#D99B43] text-white font-bold mb-2">
+                      View Verification Review Status →
+                    </Button>
+                  </Link>
                   <Link to="/">
-                    <Button variant="outline" size="sm" className="border-[#E8DBC8] text-[#29302D]">
+                    <Button variant="outline" size="sm" className="w-full border-[#E8DBC8] text-[#29302D]">
                       Return to Homepage
                     </Button>
                   </Link>
@@ -1797,6 +1847,17 @@ export const RegisterPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Razorpay Payment Gateway Modal */}
+      <RazorpayCheckoutModal
+        isOpen={showRazorpayModal}
+        amount={99}
+        userName={fullName || 'Applicant'}
+        userEmail={email || 'applicant@ficapp.in'}
+        userPhone={phoneNumber || '9840129988'}
+        onSuccess={handleRazorpaySuccess}
+        onClose={() => setShowRazorpayModal(false)}
+      />
     </div>
   );
 };

@@ -458,15 +458,81 @@ export const MyServicesPage: React.FC = () => {
     }
   };
 
-  const loadUserServices = () => {
+  const loadUserServices = async () => {
     if (!user) return;
-    const list = getMemberServices(user.id || user.userId);
-    setServices(list);
+    const localList = getMemberServices(user.id || user.userId);
+
+    // Sync live admin moderation decision from backend
+    try {
+      const email = user.email;
+      if (email) {
+        const res = await fetch(`http://localhost:5000/api/admin/services/member-sync?email=${encodeURIComponent(email)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
+            // Merge live server moderation status into local list
+            const merged = localList.map((srv) => {
+              const remote = json.data.find(
+                (r: any) => r.title.toLowerCase() === srv.title.toLowerCase() || r.id === srv.id || r._id === srv.id
+              );
+              if (remote) {
+                return {
+                  ...srv,
+                  status: remote.status,
+                  adminFeedback: remote.rejectionReason || srv.adminFeedback,
+                  approvedAt: remote.approvedAt ? 'Approved by Admin' : srv.approvedAt
+                };
+              }
+              return srv;
+            });
+
+            // Also include any remote services that might not be in local list
+            json.data.forEach((remote: any) => {
+              const exists = merged.some(
+                (m) => m.title.toLowerCase() === remote.title.toLowerCase() || m.id === remote._id
+              );
+              if (!exists) {
+                merged.unshift({
+                  id: remote._id,
+                  ownerUserId: user.id || user.userId,
+                  ownerName: remote.providerPrivateName || user.fullName,
+                  categoryId: remote.categoryId || 'cat-1',
+                  categoryName: remote.categoryName || 'Business & Entrepreneurship',
+                  categorySlug: remote.categorySlug || 'business-entrepreneurship',
+                  subcategoryName: remote.subcategoryName || user.subCategory,
+                  title: remote.title,
+                  description: remote.description,
+                  servicesOffered: remote.servicesOffered || [],
+                  skills: remote.skills || [],
+                  tags: remote.tags || [],
+                  coverageArea: remote.coverageArea || 'Pan India',
+                  deliveryMode: remote.deliveryMode || 'ONLINE',
+                  status: remote.status,
+                  adminFeedback: remote.rejectionReason,
+                  createdAt: new Date(remote.createdAt || Date.now()).toLocaleDateString('en-GB'),
+                  updatedAt: new Date(remote.updatedAt || Date.now()).toLocaleDateString('en-GB')
+                });
+              }
+            });
+
+            setServices(merged);
+            return;
+          }
+        }
+      }
+    } catch (_e) {
+      // Fallback to local
+    }
+
+    setServices(localList);
   };
 
   useEffect(() => {
     loadUserServices();
-  }, [user?.id, user?.userId]);
+    // Auto-poll every 6 seconds to reflect Admin's approval or rejection immediately
+    const interval = setInterval(loadUserServices, 6000);
+    return () => clearInterval(interval);
+  }, [user?.id, user?.userId, user?.email]);
 
   const showToast = (text: string, type: 'success' | 'info' = 'success') => {
     setToastMessage({ type, text });
@@ -1264,34 +1330,17 @@ export const MyServicesPage: React.FC = () => {
                           </div>
                         )}
 
-                        {/* SIMULATED ADMIN REVIEW BAR */}
+                        {/* REAL ADMIN REVIEW NOTICE */}
                         {service.status === 'PENDING_APPROVAL' && (
-                          <div className="p-3 rounded-xl bg-[#FDF6E9] border border-[#D99B43]/30 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                          <div className="p-3.5 rounded-xl bg-[#FDF6E9] border border-[#D99B43]/30 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                             <div className="space-y-0.5">
-                              <div className="font-black text-[#9C6818] flex items-center gap-1.5">
+                              <div className="font-bold text-[#9C6818] flex items-center gap-1.5">
                                 <ShieldCheckIcon size={15} />
-                                FIC Admin Approval Simulation:
+                                Awaiting FIC Operations Moderation:
                               </div>
                               <p className="text-[11px] text-[#77786E]">
-                                Test the full workflow: Approve this service to publish it live to the Universal Marketplace, or Reject it with revision notes.
+                                Submitted for compliance verification. Once reviewed and approved by the admin team, your capability will automatically go live across the Universal Marketplace.
                               </p>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleSimulateApprove(service.id)}
-                                className="px-3.5 py-2 bg-[#2E7D32] hover:bg-[#1B5E20] text-white rounded-xl text-xs font-black transition-colors shadow-xs cursor-pointer"
-                              >
-                                Simulate Approval & Publish
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenRejectModal(service.id)}
-                                className="px-3.5 py-2 bg-[#C66B52] hover:bg-[#A34A32] text-white rounded-xl text-xs font-black transition-colors shadow-xs cursor-pointer"
-                              >
-                                Simulate Rejection
-                              </button>
                             </div>
                           </div>
                         )}

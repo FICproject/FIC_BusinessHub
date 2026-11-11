@@ -20,6 +20,7 @@ import {
   EditIcon,
   LogOutIcon
 } from './Icons';
+import { LifeBuoy } from 'lucide-react';
 
 export const MemberHeader: React.FC = () => {
   const navigate = useNavigate();
@@ -50,8 +51,19 @@ export const MemberHeader: React.FC = () => {
 
   useEffect(() => {
     reloadNotifications();
-    const interval = setInterval(reloadNotifications, 5000);
-    return () => clearInterval(interval);
+    // Live polling every 2.5 seconds so unread badge & notification list update in real-time
+    const interval = setInterval(reloadNotifications, 2500);
+
+    // Cross-tab and immediate same-window event listener for instant updates
+    const handleStorageChange = () => reloadNotifications();
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('fic_notifications_updated', handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('fic_notifications_updated', handleStorageChange);
+    };
   }, [userId]);
 
   // Click outside to close notification dropdown
@@ -435,6 +447,28 @@ export const MemberHeader: React.FC = () => {
                         </span>
                         <span className="text-[10px] text-[#82776E] block mt-0.5">
                           Update contact, address & bio details
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* Option 3: Help & Support Live Desk */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        navigate('/support');
+                      }}
+                      className="w-full p-2.5 rounded-xl hover:bg-[#FAF7F2] text-left transition-colors flex items-center gap-3 cursor-pointer group"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-[#8064B1]/10 text-[#8064B1] flex items-center justify-center shrink-0 group-hover:bg-[#8064B1] group-hover:text-white transition-colors">
+                        <LifeBuoy className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-xs font-bold text-[#51463F] block leading-tight">
+                          Help & Support Desk
+                        </span>
+                        <span className="text-[10px] text-[#82776E] block mt-0.5">
+                          Live chat with Admin & raise inquiries
                         </span>
                       </div>
                     </button>

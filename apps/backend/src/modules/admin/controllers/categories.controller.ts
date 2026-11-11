@@ -69,6 +69,66 @@ router.put('/:id', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async
   }
 });
 
+// POST /api/admin/categories/:id/subcategories - Add a subcategory
+router.post('/:id/subcategories', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { name, slug, description } = req.body;
+
+    if (!name) {
+      res.status(400).json({ success: false, error: 'Subcategory name is required' });
+      return;
+    }
+
+    const subSlug = (slug || name).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const category = await CategoryModel.findById(id);
+    if (!category) {
+      res.status(404).json({ success: false, error: 'Category not found' });
+      return;
+    }
+
+    // Check if subcategory already exists
+    const exists = category.subcategories?.some((s: any) => s.slug === subSlug || s.name.toLowerCase() === name.toLowerCase());
+    if (exists) {
+      res.status(400).json({ success: false, error: 'Subcategory with this name already exists' });
+      return;
+    }
+
+    category.subcategories.push({
+      name,
+      slug: subSlug,
+      description: description || '',
+      isActive: true
+    } as any);
+
+    await category.save();
+    await logAdminAction(req, 'ADD_SUBCATEGORY', 'Category', id, { subcategoryName: name });
+    res.json({ success: true, data: category });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /api/admin/categories/:id/subcategories/:subSlug - Remove or delete a subcategory
+router.delete('/:id/subcategories/:subSlug', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+  try {
+    const { id, subSlug } = req.params;
+    const category = await CategoryModel.findById(id);
+    if (!category) {
+      res.status(404).json({ success: false, error: 'Category not found' });
+      return;
+    }
+
+    category.subcategories = category.subcategories.filter((s: any) => s.slug !== subSlug && s._id?.toString() !== subSlug);
+    await category.save();
+
+    await logAdminAction(req, 'DELETE_SUBCATEGORY', 'Category', id, { subSlug });
+    res.json({ success: true, message: 'Subcategory removed successfully', data: category });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // DELETE /api/admin/categories/:id - Deactivate category
 router.delete('/:id', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {

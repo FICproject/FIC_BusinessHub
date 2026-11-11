@@ -50,8 +50,8 @@ const MeetingSchema = new Schema<IMeeting>(
     meetingLink: { type: String, trim: true },
     status: {
       type: String,
-      enum: ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
-      default: 'SCHEDULED',
+      enum: ['PENDING_COORDINATION', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+      default: 'PENDING_COORDINATION',
       required: true,
     },
     notificationSent: { type: Boolean, default: false },

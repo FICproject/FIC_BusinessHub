@@ -21,6 +21,7 @@ import { TermsPage } from './pages/TermsPage';
 import { GetStartedPage } from './pages/GetStartedPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { LoginPage } from './pages/LoginPage';
+import { KycPendingPage } from './pages/KycPendingPage';
 
 // Member Portal Pages
 import { DashboardPage } from './pages/DashboardPage';
@@ -33,6 +34,7 @@ import { MyRequestsPage } from './pages/MyRequestsPage';
 import { MyServicesPage } from './pages/MyServicesPage';
 import { SkillDevelopmentPage } from './pages/SkillDevelopmentPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { SupportHelpdeskPage } from './pages/SupportHelpdeskPage';
 
 export const App: React.FC = () => {
   return (
@@ -59,6 +61,7 @@ export const App: React.FC = () => {
           <Route path="/get-started" element={<GetStartedPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/kyc-pending" element={<KycPendingPage />} />
         </Route>
 
         {/* ========================================================
@@ -85,6 +88,8 @@ export const App: React.FC = () => {
           <Route path="/my-services" element={<MyServicesPage />} />
           <Route path="/skill-development" element={<SkillDevelopmentPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/support" element={<SupportHelpdeskPage />} />
+          <Route path="/help-and-support" element={<Navigate to="/support" replace />} />
         </Route>
 
         {/* Fallback unknown routes */}

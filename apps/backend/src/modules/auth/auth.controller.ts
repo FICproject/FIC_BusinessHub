@@ -155,19 +155,20 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       isMembershipActive: false
     });
 
-    // Synchronize to Admin Portal members collection in Atlas
+    // Synchronize to Admin Portal members collection in shared database with matching _id
     try {
       await mongoose.connection.collection('members').updateOne(
         { email: newUser.email.toLowerCase() },
         {
           $set: {
+            _id: newUser._id,
             name: newUser.fullName,
             email: newUser.email.toLowerCase(),
             phone: newUser.phoneNumber,
             primaryCategory: newUser.primaryCategoryId,
             primaryCategoryName: newUser.primaryCategoryName || '',
             subcategories: [newUser.subCategory || 'Member'],
-            status: 'ACTIVE',
+            status: 'PENDING_KYC',
             membershipPlan: 'FIRST_YEAR_INTRO',
             membershipFeePaid: 99,
             paymentStatus: 'PAID',
@@ -182,7 +183,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       console.warn('Admin member sync warning:', adminSyncErr);
     }
 
-    // If referred, create attributed Referral record
+    // If referred, create attributed Referral record for customer and admin portals
     if (referrerUserId) {
       try {
         const { ReferralModel } = await import('../referrals/referral.model');
@@ -198,8 +199,73 @@ export const register = async (req: Request, res: Response, next: NextFunction):
           accountStatus: 'ACTIVE',
           referralStatus: 'ELIGIBLE',
           rewardAmount: 500,
-          rewardStatus: 'PENDING_APPROVAL'
+          rewardStatus: 'CREDITED',
+          approvedBy: 'System Auto-Credit',
+          approvedAt: new Date(),
+          creditedAt: new Date()
         });
+
+        // Also create / upsert Admin ReferralRecordModel for Admin Referral Bonus Desk
+        const referrerUser = await UserModel.findById(referrerUserId);
+        if (referrerUser) {
+          const { ReferralRecordModel } = await import('../admin/models/Referral');
+          await ReferralRecordModel.findOneAndUpdate(
+            { referredMemberId: newUser._id },
+            {
+              referrerMemberId: referrerUser._id,
+              referrerName: referrerUser.fullName,
+              referrerEmail: referrerUser.email,
+              referredMemberId: newUser._id,
+              referredName: newUser.fullName,
+              referredEmail: newUser.email,
+              bonusAmount: 500,
+              status: 'PAID',
+              payoutDate: new Date(),
+              payoutReference: `REF-TXN-${referrerUser._id.toString().slice(-4).toUpperCase()}${newUser._id.toString().slice(-4).toUpperCase()}`,
+              notes: `Referral bonus automatically attributed to ${referrerUser.fullName} for onboarding member ${newUser.fullName}`
+            },
+            { upsert: true, new: true }
+          );
+
+          // Credit referrer's admin wallet
+          const { MemberWalletModel } = await import('../admin/models/MemberWallet');
+          let rWallet = await MemberWalletModel.findOne({
+            $or: [{ memberId: referrerUser._id }, { memberEmail: referrerUser.email.toLowerCase() }]
+          });
+
+          const bonusTx = {
+            id: `TXN-REF-${newUser._id.toString().slice(-6)}`,
+            type: 'CREDIT',
+            title: `Referral Bonus Reward (${newUser.fullName})`,
+            category: 'Referral Bonus',
+            amount: 500,
+            currency: 'INR',
+            status: 'SUCCESS',
+            reference: `REF-TXN-${newUser._id.toString().slice(-6).toUpperCase()}`,
+            date: new Date().toISOString(),
+            description: `Referral reward credited for onboarding member ${newUser.fullName} (${newUser.email})`
+          };
+
+          if (rWallet) {
+            rWallet.balance = (rWallet.balance || 0) + 500;
+            const rTxs = rWallet.transactions || [];
+            rTxs.unshift(bonusTx as any);
+            rWallet.transactions = rTxs;
+            rWallet.lastSyncedAt = new Date();
+            await rWallet.save();
+          } else {
+            await MemberWalletModel.create({
+              memberId: referrerUser._id,
+              memberEmail: referrerUser.email.toLowerCase(),
+              balance: 50500,
+              currency: 'INR',
+              currencySymbol: '₹',
+              status: 'ACTIVE',
+              lastSyncedAt: new Date(),
+              transactions: [bonusTx]
+            });
+          }
+        }
       } catch (err: any) {
         console.warn('Referral creation warning:', err?.message);
       }

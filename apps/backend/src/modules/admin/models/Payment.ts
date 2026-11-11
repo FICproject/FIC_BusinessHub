@@ -38,4 +38,5 @@ const PaymentSchema = new Schema<IPayment>(
   { timestamps: true }
 );
 
-export const PaymentModel = (mongoose.models.Payment as mongoose.Model<IPayment>) || mongoose.model<IPayment>('Payment', PaymentSchema);
+export const AdminPaymentModel = (mongoose.models.AdminPayment as mongoose.Model<IPayment>) || mongoose.model<IPayment>('AdminPayment', PaymentSchema);
+export const PaymentModel = AdminPaymentModel;

@@ -32,32 +32,18 @@ export type {
 const BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1').replace(/\/+$/, '');
 const ACCOUNTS_STORAGE_KEY = 'fic_registered_accounts';
 
-// Auto-purge legacy mock data cache once in browser
+// Auto-purge all legacy mock data and user caches from browser localStorage
 if (typeof window !== 'undefined') {
-  const PURGE_KEY = 'fic_mock_cache_purged_final_v6';
+  const PURGE_KEY = 'fic_live_production_clean_v1';
   if (!localStorage.getItem(PURGE_KEY)) {
-    const keysToPurge = [
-      'fic_services_catalog',
-      'fic_member_meetings_db',
-      'fic_member_wallets_db',
-      'fic_wallet_transactions_db',
-      'fic_member_referrals_db',
-      'fic_member_bank_accounts_db',
-      'fic_member_notifications_db',
-      'fic_mentoring_teaching_services',
-      'fic_mentoring_videos',
-      'fic_mentorship_requests',
-      'fic_admin_funding_requests',
-      'fic_admin_investor_profiles'
-    ];
     try {
+      const keysToPreserve = new Set(['fic_admin_token', 'fic_admin_user']);
       for (let i = localStorage.length - 1; i >= 0; i--) {
         const k = localStorage.key(i);
-        if (k && (k.startsWith('fic_user_ideas_') || k.startsWith('fic_user_scaling_') || k.startsWith('fic_user_deals_') || k.startsWith('fic_user_requests_'))) {
-          keysToPurge.push(k);
+        if (k && !keysToPreserve.has(k)) {
+          localStorage.removeItem(k);
         }
       }
-      keysToPurge.forEach((k) => localStorage.removeItem(k));
       localStorage.setItem(PURGE_KEY, 'true');
     } catch (_e) {}
   }
@@ -355,73 +341,13 @@ export const setStoredUser = (user: AuthenticatedUser | any): void => {
 export const getRegisteredAccounts = (): AuthenticatedUser[] => {
   const data = localStorage.getItem(ACCOUNTS_STORAGE_KEY);
   if (!data) {
-    localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(INITIAL_SEED_ACCOUNTS));
-    return INITIAL_SEED_ACCOUNTS;
+    return [];
   }
   try {
     const parsed = JSON.parse(data);
-    if (Array.isArray(parsed) && parsed.length > 0) {
-      // Ensure existing accounts have latest subcategories, dob and submittedDocuments schema
-      const updated = parsed.map((acc: AuthenticatedUser) => {
-        const seed = INITIAL_SEED_ACCOUNTS.find((s) => s.userId === acc.userId || s.email === acc.email);
-        const mergedDob =
-          acc.personalInfo?.dob ||
-          seed?.personalInfo?.dob ||
-          (acc.email?.toLowerCase() === 'kathir@gmail.com' ? '15 Aug 1996' : undefined);
-
-        const mergedPersonalInfo = {
-          ...(seed?.personalInfo || {}),
-          ...(acc.personalInfo || {}),
-          ...(mergedDob ? { dob: mergedDob } : {})
-        };
-
-        // Resolve accurate subcategories - Never force 'Freelance Specialist'
-        let resolvedSubcat = acc.subCategory;
-        let resolvedSubcats = acc.subcategories && acc.subcategories.length > 0 ? acc.subcategories : [];
-
-        // Correct corrupted accounts that previously fell back to Freelance Specialist despite having different category or name
-        if (
-          (acc.fullName?.toLowerCase().includes('abdul') || acc.primaryCategory?.toLowerCase().includes('business')) &&
-          (resolvedSubcat === 'Freelance Specialist' || (resolvedSubcats.length === 1 && resolvedSubcats[0] === 'Freelance Specialist'))
-        ) {
-          resolvedSubcat = 'Business Owner';
-          resolvedSubcats = ['Business Owner'];
-        }
-
-        if (!resolvedSubcat) {
-          resolvedSubcat =
-            resolvedSubcats.length > 0
-              ? resolvedSubcats[0]
-              : seed?.subCategory ||
-                (acc.primaryCategory ? `${acc.primaryCategory} Member` : 'Verified Member');
-        }
-
-        if (!resolvedSubcats.length) {
-          resolvedSubcats = [resolvedSubcat];
-        }
-
-        // If documents are generic or missing, use seed documents
-        const currentDocs = acc.submittedDocuments || [];
-        const isGeneric = currentDocs.length === 1 && currentDocs[0].name?.includes('Proprietor Identity Proof');
-        const resolvedDocs = (!currentDocs.length || isGeneric) && seed?.submittedDocuments ? seed.submittedDocuments : currentDocs;
-
-        return {
-          ...acc,
-          password: acc.password || seed?.password || 'password123',
-          subcategories: resolvedSubcats,
-          subCategory: resolvedSubcat,
-          submittedDocuments: resolvedDocs,
-          uploadedDocumentsCount: resolvedDocs.length,
-          personalInfo: mergedPersonalInfo
-        };
-      });
-      return updated;
-    }
-    localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(INITIAL_SEED_ACCOUNTS));
-    return INITIAL_SEED_ACCOUNTS;
+    return Array.isArray(parsed) ? parsed : [];
   } catch {
-    localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(INITIAL_SEED_ACCOUNTS));
-    return INITIAL_SEED_ACCOUNTS;
+    return [];
   }
 };
 
@@ -749,6 +675,39 @@ export const getMemberServices = (userId: string): ServiceListing[] => {
   return all.filter((s) => s.ownerUserId === userId && s.status !== 'ARCHIVED');
 };
 
+// Sync member service with persistent backend for admin desk review
+const syncServiceWithAdminBackend = async (service: ServiceListing) => {
+  try {
+    const user = getStoredUser();
+    await fetch('http://localhost:5000/api/admin/services/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: service.id,
+        title: service.title,
+        description: service.description,
+        categoryId: service.categoryId,
+        categoryName: service.categoryName,
+        categorySlug: service.categorySlug,
+        subcategoryId: service.subcategoryId,
+        subcategoryName: service.subcategoryName,
+        providerId: service.ownerUserId,
+        providerPrivateName: service.ownerName || user?.fullName || 'FIC Member',
+        providerEmail: user?.email || 'member@ficapp.in',
+        pricingEstimate: 'Custom Quote',
+        servicesOffered: service.servicesOffered || [],
+        skills: service.skills || [],
+        tags: service.tags || [],
+        coverageArea: service.coverageArea || 'Pan India',
+        deliveryMode: service.deliveryMode || 'ONLINE',
+        status: service.status
+      })
+    });
+  } catch (_e) {
+    // Non-blocking sync
+  }
+};
+
 // 3. Create a new service listing for the member
 export const createMemberService = (
   userId: string,
@@ -785,6 +744,10 @@ export const createMemberService = (
 
   all.unshift(newService);
   saveCatalogServices(all);
+
+  // Sync to database
+  syncServiceWithAdminBackend(newService);
+
   return newService;
 };
 
@@ -805,6 +768,10 @@ export const updateMemberService = (
 
   all[index] = updated;
   saveCatalogServices(all);
+
+  // Sync update to backend
+  syncServiceWithAdminBackend(updated);
+
   return updated;
 };
 
@@ -930,12 +897,12 @@ export const scheduleMeeting = (
         : 'FIC Coordinator Direct Phone Line',
     locationOrUrl:
       data.mode === 'VIRTUAL_MEET'
-        ? `https://meet.google.com/fic-mtg-${Math.floor(100 + Math.random() * 900)}`
+        ? undefined
         : data.mode === 'IN_PERSON'
         ? 'FIC Regional Hub Center'
         : '+91 80 4567 8900 (Coordinator Extension)',
-    facilitatorName: 'FIC Assigned Coordinator',
-    facilitatorRole: 'Designated FIC Specialist',
+    facilitatorName: 'FIC Desk Coordinator',
+    facilitatorRole: 'Reviewing Request',
     agenda: data.agenda,
     status: 'PENDING_COORDINATION',
     coordinatorNotes: 'Request received. FIC Desk coordinator is assigning specialist and confirming schedule.',
@@ -944,6 +911,7 @@ export const scheduleMeeting = (
 
   all.unshift(newMeeting);
   saveAllMeetings(all);
+
   return newMeeting;
 };
 
@@ -1009,12 +977,11 @@ const getStoredWallets = (): Record<string, IMemberWallet> => {
   try {
     const raw = localStorage.getItem(WALLETS_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(WALLETS_STORAGE_KEY, JSON.stringify(INITIAL_SEED_WALLETS));
-      return { ...INITIAL_SEED_WALLETS };
+      return {};
     }
     return JSON.parse(raw);
   } catch {
-    return { ...INITIAL_SEED_WALLETS };
+    return {};
   }
 };
 
@@ -1030,12 +997,11 @@ const getAllTransactions = (): IWalletTransaction[] => {
   try {
     const raw = localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(INITIAL_SEED_TRANSACTIONS));
-      return [...INITIAL_SEED_TRANSACTIONS];
+      return [];
     }
     return JSON.parse(raw);
   } catch {
-    return [...INITIAL_SEED_TRANSACTIONS];
+    return [];
   }
 };
 
@@ -1050,25 +1016,12 @@ const saveAllTransactions = (txs: IWalletTransaction[]) => {
 const getAllReferrals = (): IReferral[] => {
   try {
     const raw = localStorage.getItem(REFERRALS_STORAGE_KEY);
-    let list: IReferral[] = [];
     if (!raw) {
-      localStorage.setItem(REFERRALS_STORAGE_KEY, JSON.stringify(INITIAL_SEED_REFERRALS));
-      list = [...INITIAL_SEED_REFERRALS];
-    } else {
-      list = JSON.parse(raw);
+      return [];
     }
-    return list.map((item) => {
-      const match = INITIAL_SEED_REFERRALS.find((s) => s.referralId === item.referralId);
-      return {
-        ...item,
-        referredMemberName: item.referredMemberName || item.referredName || match?.referredMemberName || 'Registered Member',
-        referredMemberId: item.referredMemberId || match?.referredMemberId || (item.referredUserId ? `FIC-${item.referredUserId.slice(-4).toUpperCase()}` : `FIC-${item.referralId}`),
-        categoryName: item.categoryName || match?.categoryName || 'Business & Entrepreneurship',
-        subCategory: item.subCategory || match?.subCategory || 'Registered Member'
-      };
-    });
+    return JSON.parse(raw);
   } catch {
-    return [...INITIAL_SEED_REFERRALS];
+    return [];
   }
 };
 
@@ -1505,6 +1458,9 @@ export const markNotificationAsRead = (userId: string, notificationId: string): 
   if (item) {
     item.isRead = true;
     saveAllNotifications(notifs);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('fic_notifications_updated'));
+    }
   }
 };
 
@@ -1513,6 +1469,9 @@ export const markAllNotificationsAsRead = (userId: string): void => {
   const list = notifs[userId] || [];
   list.forEach((n) => (n.isRead = true));
   saveAllNotifications(notifs);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('fic_notifications_updated'));
+  }
 };
 
 // -------------------------------------------------------------

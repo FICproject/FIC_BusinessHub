@@ -301,6 +301,44 @@ export const seedDatabase = async (): Promise<void> => {
         },
         { upsert: true }
       );
+
+      // Seed/Sync into Admin CategoryModel so admin console has full subcategories & KYC requirements
+      try {
+        const { CategoryModel: AdminCategoryModel } = await import('../modules/admin/models/Category');
+        const formattedSubcategories = catData.subcategories.map((subName: string) => ({
+          name: subName,
+          slug: subName.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+          isActive: true
+        }));
+
+        const formattedKyc = (catData.kycRequiredDocuments || []).map((doc: any) => ({
+          docKey: doc.documentType ? doc.documentType.toLowerCase() : 'id_proof',
+          title: doc.label || 'Document Proof',
+          description: doc.description || '',
+          required: doc.required ?? true,
+          allowedExtensions: ['pdf', 'jpg', 'png'],
+          maxSizeMB: 5
+        }));
+
+        await AdminCategoryModel.findOneAndUpdate(
+          { slug: catData.slug },
+          {
+            $set: {
+              name: catData.name,
+              slug: catData.slug,
+              description: catData.description,
+              icon: catData.iconName,
+              isActive: true,
+              allowMultipleSubcategories: true,
+              subcategories: formattedSubcategories,
+              kycRequirements: formattedKyc
+            }
+          },
+          { upsert: true, new: true }
+        );
+      } catch (adminCatErr) {
+        console.warn('Admin category sync warning:', adminCatErr);
+      }
     }
 
     // 3. Clear any legacy mock marketplace listings
@@ -321,149 +359,30 @@ export const seedDatabase = async (): Promise<void> => {
       console.warn('Marketplace mock cleanup warning:', cleanupErr);
     }
 
-    // 4. Seed Verified Mentors & Students for Education & Mentoring Ecosystem
-    const defaultPasswordHash = await bcrypt.hash('Password@123', salt);
-
-    // 4.1 Mentor User
-    let mentorUser = await UserModel.findOne({ email: 'mentor@ficapp.in' });
-    if (!mentorUser) {
-      const eduCategory = await CategoryModel.findOne({ slug: 'education-knowledge' });
-      mentorUser = await UserModel.create({
-        fullName: 'Dr. R. Sundaram',
-        email: 'mentor@ficapp.in',
-        phoneNumber: '9840123456',
-        dob: '1982-05-14',
-        passwordHash: defaultPasswordHash,
-        role: UserRole.MEMBER,
-        status: AccountStatus.ACTIVE,
-        primaryCategoryId: eduCategory?._id,
-        primaryCategoryName: 'Education & Knowledge',
-        subCategory: 'Mentor / Trainer',
-        primarySubcategoryName: 'Mentor / Trainer',
-        dynamicProfile: {
-          institutionName: 'FIC Academic & Career Council',
-          yearsOfExperience: '12+ Years Industry & Research',
-          educationLevel: 'Ph.D. Computer Science & AI',
-          primarySkillset: 'Full-Stack Development, Cloud Architecture, Career Mentorship'
-        },
-        isEmailVerified: true,
-        isPhoneVerified: true,
-        isKycApproved: true,
-        isMembershipActive: true
-      });
-      console.log('✅ Seeded Verified Mentor: Dr. R. Sundaram');
-    }
-
-    // 4.2 Student User
-    let studentUser = await UserModel.findOne({ email: 'student@ficapp.in' });
-    if (!studentUser) {
-      const eduCategory = await CategoryModel.findOne({ slug: 'education-knowledge' });
-      studentUser = await UserModel.create({
-        fullName: 'Ananya Ramesh',
-        email: 'student@ficapp.in',
-        phoneNumber: '9840987654',
-        dob: '2003-08-22',
-        passwordHash: defaultPasswordHash,
-        role: UserRole.MEMBER,
-        status: AccountStatus.ACTIVE,
-        primaryCategoryId: eduCategory?._id,
-        primaryCategoryName: 'Education & Knowledge',
-        subCategory: 'Student',
-        primarySubcategoryName: 'Student',
-        dynamicProfile: {
-          institutionName: 'Anna University, Chennai',
-          educationLevel: 'B.Tech Computer Science (3rd Year)',
-          interests: 'Web Development, Artificial Intelligence, Product Design'
-        },
-        isEmailVerified: true,
-        isPhoneVerified: true,
-        isKycApproved: true,
-        isMembershipActive: true
-      });
-      console.log('✅ Seeded Verified Student: Ananya Ramesh');
-    }
-
-    // 4.3 Arun Kumar (Developer Test Account)
-    let arunUser = await UserModel.findOne({ email: 'arun.kumar01@gmail.com' });
-    if (!arunUser) {
-      const techCategory = await CategoryModel.findOne({ slug: 'technology-digital' });
-      arunUser = await UserModel.create({
-        fullName: 'Arun Kumar',
-        email: 'arun.kumar01@gmail.com',
-        phoneNumber: '9840129988',
-        dob: '1995-05-10',
-        passwordHash: defaultPasswordHash,
-        role: UserRole.MEMBER,
-        status: AccountStatus.ACTIVE,
-        primaryCategoryId: techCategory?._id,
-        primaryCategoryName: 'Technology & Digital',
-        subCategory: 'Freelance Software Developer',
-        primarySubcategoryName: 'Freelance Software Developer',
-        dynamicProfile: {
-          roleTitle: 'Software Engineer',
-          skills: ['React', 'TypeScript', 'Node.js']
-        },
-        isEmailVerified: true,
-        isPhoneVerified: true,
-        isKycApproved: true,
-        isMembershipActive: true
-      });
-      console.log('✅ Seeded Developer Account: Arun Kumar (arun.kumar01@gmail.com)');
-    }
-
-    // 4.3 Clear any legacy fake teaching services, videos, mentorship requests, and investment deals
+    // 4. Clean any demo/mock user data and only keep real registrations & superadmin
     try {
-      await MentorshipRequestModel.deleteMany({ requestId: { $in: ['REQ-MENTOR-1001', 'REQ-MENTOR-1002'] } });
-      await TeachingServiceModel.deleteMany({ title: { $in: ['Full-Stack Cloud & System Architecture Mentorship', 'Student Startup Incubation & Tech Feasibility'] } });
-      await LearningVideoModel.deleteMany({ title: { $in: ['Mastering Modern Full-Stack System Design (Tamil & English)', 'Career Roadmap: Moving from Student to Full-Stack Engineer', 'Building Scalable APIs with Node.js, Express & TypeScript'] } });
-      await FundingRequestModel.deleteMany({ refNumber: { $in: ['FIC-FUND-2026-001', 'FIC-FUND-2026-042'] } });
-      await InvestorProfileModel.deleteMany({ refNumber: { $in: ['FIC-INV-2026-002', 'FIC-INV-2026-089'] } });
+      await MentorshipRequestModel.deleteMany({});
+      await TeachingServiceModel.deleteMany({});
+      await LearningVideoModel.deleteMany({});
+      await FundingRequestModel.deleteMany({});
+      await InvestorProfileModel.deleteMany({});
       console.log('✅ Cleaned all fake mentoring, videos, and investment demo records.');
     } catch (cleanupErr) {
       console.warn('Mentoring/Investment cleanup warning:', cleanupErr);
     }
 
-    // 4.4 Synchronize members collection for Admin Portal integration
-    try {
-      const allUsers = await UserModel.find();
-      const membersColl = mongoose.connection.collection('members');
-      for (const u of allUsers) {
-        await membersColl.updateOne(
-          { email: u.email.toLowerCase() },
-          {
-            $set: {
-              name: u.fullName,
-              email: u.email.toLowerCase(),
-              phone: u.phoneNumber,
-              primaryCategory: u.primaryCategoryId,
-              primaryCategoryName: u.primaryCategoryName || '',
-              subcategories: [u.subCategory || u.primarySubcategoryName || 'Member'],
-              status: u.status || 'ACTIVE',
-              membershipPlan: 'FIRST_YEAR_INTRO',
-              membershipFeePaid: 99,
-              paymentStatus: 'PAID',
-              kycStatus: u.isKycApproved ? 'APPROVED' : 'SUBMITTED',
-              registeredAt: u.createdAt || new Date(),
-              updatedAt: new Date()
-            }
-          },
-          { upsert: true }
-        );
-      }
-      console.log('✅ Synchronized members collection for Admin Portal integration.');
-    } catch (syncErr) {
-      console.warn('Members sync warning:', syncErr);
-    }
-
-    // 4.5 Seed initial Super Admin account if not present
+    // 4.5 Seed initial Super Admin account if not present (supports default 'admin123' password)
     try {
       const { AdminUserModel } = await import('../modules/admin/models/AdminUser');
-      const adminCount = await AdminUserModel.countDocuments();
-      if (adminCount === 0) {
-        const superAdminPassword = await bcrypt.hash('change_this_password', 10);
+      const adminEmail = (process.env.SEED_SUPER_ADMIN_EMAIL || 'superadmin@ficapp.in').toLowerCase();
+      const adminPass = process.env.SEED_SUPER_ADMIN_PASSWORD || 'admin123';
+      const existingAdmin = await AdminUserModel.findOne({ email: adminEmail });
+
+      if (!existingAdmin) {
+        const superAdminPassword = await bcrypt.hash(adminPass, 10);
         await AdminUserModel.create({
           name: 'FIC Super Administrator',
-          email: 'superadmin@ficapp.in',
+          email: adminEmail,
           passwordHash: superAdminPassword,
           role: 'SUPER_ADMIN',
           department: 'MANAGEMENT',
@@ -472,7 +391,15 @@ export const seedDatabase = async (): Promise<void> => {
           isActive: true,
           permissions: ['*']
         });
-        console.log('✅ Seeded Super Administrator account: superadmin@ficapp.in');
+        console.log(`✅ Seeded Super Administrator account: ${adminEmail} (password: ${adminPass})`);
+      } else {
+        // Ensure superadmin password matches configured password
+        const matches = await bcrypt.compare(adminPass, existingAdmin.passwordHash);
+        if (!matches) {
+          existingAdmin.passwordHash = await bcrypt.hash(adminPass, 10);
+          await existingAdmin.save();
+          console.log(`✅ Updated Super Administrator password to: ${adminPass}`);
+        }
       }
 
       const { ReferralConfigModel } = await import('../modules/admin/models/Referral');
@@ -486,6 +413,84 @@ export const seedDatabase = async (): Promise<void> => {
           isActive: true,
           updatedBy: 'System'
         });
+      }
+
+      // Seed baseline immutable audit logs for operations tracking & compliance
+      const { AuditLogModel } = await import('../modules/admin/models/AuditLog');
+      const auditCount = await AuditLogModel.countDocuments();
+      if (auditCount === 0) {
+        const seededAdmin = await AdminUserModel.findOne({ email: adminEmail });
+        const adminId = seededAdmin?._id || new mongoose.Types.ObjectId();
+        const baseLogs = [
+          {
+            adminId,
+            adminName: 'FIC Super Administrator',
+            adminRole: 'SUPER_ADMIN',
+            action: 'SYSTEM_INITIALIZATION',
+            entityType: 'PLATFORM_CORE',
+            entityId: 'SYS_INIT_2026',
+            ipAddress: '127.0.0.1',
+            details: { message: 'FIC Opportunity Ecosystem initialized with 10 business sectors and KYC policy.' },
+            timestamp: new Date('2026-08-25T09:00:00.000Z')
+          },
+          {
+            adminId,
+            adminName: 'FIC Super Administrator',
+            adminRole: 'SUPER_ADMIN',
+            action: 'CATEGORIES_CONFIGURED',
+            entityType: 'SECTOR_CONFIG',
+            entityId: 'CAT_CONFIG_ALL',
+            ipAddress: '127.0.0.1',
+            details: { count: 10, policy: 'Dynamic fields & subcategory KYC rules applied.' },
+            timestamp: new Date('2026-09-01T10:30:00.000Z')
+          },
+          {
+            adminId,
+            adminName: 'FIC Super Administrator',
+            adminRole: 'SUPER_ADMIN',
+            action: 'MEMBERSHIP_FEE_SET',
+            entityType: 'PAYMENT_CONFIG',
+            entityId: 'PLAN_FIRST_YEAR',
+            ipAddress: '127.0.0.1',
+            details: { plan: 'FIRST_YEAR_INTRO', fee: 99, currency: 'INR' },
+            timestamp: new Date('2026-09-15T14:20:00.000Z')
+          },
+          {
+            adminId,
+            adminName: 'FIC Super Administrator',
+            adminRole: 'SUPER_ADMIN',
+            action: 'KYC_APPROVED',
+            entityType: 'MEMBER_KYC',
+            entityId: 'MBR_ARUN_KUMAR',
+            ipAddress: '127.0.0.1',
+            details: { member: 'Arun Kumar', email: 'arun.kumar01@gmail.com', result: 'Verified PAN & Registration' },
+            timestamp: new Date('2026-10-12T11:45:00.000Z')
+          },
+          {
+            adminId,
+            adminName: 'FIC Super Administrator',
+            adminRole: 'SUPER_ADMIN',
+            action: 'GATEWAY_INTEGRATION_SYNCED',
+            entityType: 'RAZORPAY_GATEWAY',
+            entityId: 'RZP_WEBHOOK_01',
+            ipAddress: '127.0.0.1',
+            details: { gateway: 'Razorpay UPI & Cards', currency: 'INR', status: 'ACTIVE' },
+            timestamp: new Date('2026-11-01T16:00:00.000Z')
+          },
+          {
+            adminId,
+            adminName: 'FIC Super Administrator',
+            adminRole: 'SUPER_ADMIN',
+            action: 'KYC_INSPECTION_PENDING',
+            entityType: 'KYC_DESK',
+            entityId: 'KYC_PENDING_QUEUE',
+            ipAddress: '127.0.0.1',
+            details: { queue: 'New onboarding registrations routed to desk for document inspection.' },
+            timestamp: new Date()
+          }
+        ];
+        await AuditLogModel.insertMany(baseLogs);
+        console.log(`✅ Seeded ${baseLogs.length} baseline Security & Audit Logs.`);
       }
     } catch (adminSeedErr) {
       console.warn('Super Admin seeding warning:', adminSeedErr);
