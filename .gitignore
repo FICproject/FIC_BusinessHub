@@ -36,3 +36,5 @@ Thumbs.db
 coverage/
 .nyc_output/
 
+
+apps/backend/data/
