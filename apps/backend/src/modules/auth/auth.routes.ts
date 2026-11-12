@@ -19,7 +19,9 @@ authRouter.get('/check-status', async (req, res) => {
       return;
     }
 
-    const user = await UserModel.findOne({ email: email.toLowerCase() }).select('-passwordHash').lean();
+    const user = await UserModel.findOne({ email: email.toLowerCase() })
+      .select('isKycApproved status')
+      .lean() as { isKycApproved?: boolean; status?: string } | null;
     if (!user) {
       res.status(404).json({ success: false, error: 'User not found' });
       return;
@@ -28,8 +30,8 @@ authRouter.get('/check-status', async (req, res) => {
     res.json({
       success: true,
       data: {
-        ...user,
-        kycStatus: user.isKycApproved ? 'APPROVED' : (user.kycStatus || 'SUBMITTED'),
+        isKycApproved: Boolean(user.isKycApproved),
+        kycStatus: user.isKycApproved ? 'APPROVED' : 'SUBMITTED',
         status: user.isKycApproved ? 'ACTIVE' : user.status
       }
     });

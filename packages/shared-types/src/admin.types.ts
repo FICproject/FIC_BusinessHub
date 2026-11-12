@@ -168,7 +168,7 @@ export interface AuditLogEntry {
 }
 
 // Meetings & Customer Calls
-export type MeetingStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+export type MeetingStatus = 'PENDING_COORDINATION' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
 export interface Meeting {
   id: string;

@@ -116,17 +116,6 @@ router.get('/', authenticateAdmin, async (_req, res) => {
         isRead: false,
       });
     });
-      notifications.push({
-        id: `notif_ticket_${t._id}`,
-        type: 'NEW_TICKET',
-        title: `Support Ticket Raised: #${t.ticketNumber}`,
-        message: `${t.subject} (From: ${(t.memberId as any)?.name || 'Member'})`,
-        timestamp: t.createdAt ? t.createdAt.toISOString() : now.toISOString(),
-        link: '/support',
-        priority: t.priority === 'URGENT' || t.priority === 'HIGH' ? 'HIGH' : 'MEDIUM',
-        isRead: false,
-      });
-    });
 
     // 3. Check for Meetings scheduled to start within 10 minutes (or upcoming today)
     const tenMinutesFromNow = new Date(now.getTime() + 10 * 60 * 1000);

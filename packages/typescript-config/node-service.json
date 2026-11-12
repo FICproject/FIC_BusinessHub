@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "./base.json",
   "compilerOptions": {
-    "module": "CommonJS",
+    "module": "Preserve",
     "target": "ES2022",
     "outDir": "./dist",
     "rootDir": "./src",

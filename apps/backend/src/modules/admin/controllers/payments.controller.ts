@@ -14,7 +14,7 @@ router.get('/', authenticateAdmin, async (req, res) => {
     const filter: any = {};
     if (status && status !== 'ALL') filter.status = status;
 
-    let payments = await AdminPaymentModel.find(filter)
+    let payments: any[] = await AdminPaymentModel.find(filter)
       .populate('memberId', 'name email phone primaryCategoryName')
       .sort({ createdAt: -1 })
       .lean();

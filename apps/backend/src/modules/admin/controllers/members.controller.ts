@@ -123,8 +123,8 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       accountNumber: paymentInfo ? `•••• •••• ${member.phone.slice(-4)}` : 'Verified on File',
       ifscCode: 'SBIN0001244',
       accountType: 'Savings Account',
-      branchName: (member.address && typeof member.address === 'object' && (member.address as any).city)
-        ? `${(member.address as any).city} Main Branch`
+      branchName: ((member.address || user?.address) && typeof (member.address || user?.address) === 'object' && (member.address?.city || user?.address?.city))
+        ? `${member.address?.city || user?.address?.city} Main Branch`
         : 'Metro Main Branch',
       upiId: upiHandle,
       verificationStatus: member.kycStatus === 'APPROVED' ? 'VERIFIED' : 'PENDING',
@@ -170,12 +170,12 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
         const regDateStr = member.registeredAt ? new Date(member.registeredAt).toISOString() : new Date().toISOString();
         const initTx = {
           id: `TXN-INIT-${member._id.toString().slice(-6)}`,
-          type: 'CREDIT',
+          type: 'CREDIT' as const,
           title: 'Welcome Ecosystem Grant Credit',
           category: 'Promotional Credit',
           amount: 50000,
           currency: 'INR',
-          status: 'SUCCESS',
+          status: 'SUCCESS' as const,
           reference: `GRANT-FIC-${member._id.toString().slice(-6).toUpperCase()}`,
           date: regDateStr,
           description: 'Initial opportunity activation allowance credited to member ledger'

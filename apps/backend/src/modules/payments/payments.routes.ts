@@ -1,4 +1,5 @@
 import { Router, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { PaymentModel } from './payments.model';
 import { MembershipModel } from '../membership/membership.model';
 import { UserModel } from '../users/users.model';
@@ -53,6 +54,9 @@ paymentsRouter.post('/membership/confirm', authenticate, async (req: Authenticat
 
     // Upsert customer payment document
     let payment = await PaymentModel.findOne({ orderId, userId: req.user.userId });
+    if (payment && payment.status === PaymentStatus.SUCCESS) {
+      throw new AppError('Payment has already been processed and activated.', 400);
+    }
     if (!payment) {
       payment = await PaymentModel.create({
         userId: req.user.userId,

@@ -15,6 +15,7 @@ export enum AccountStatus {
 export interface JWTPayload {
   userId: string;
   role: UserRole;
+  email?: string;
   primaryCategoryId?: string;
   isKycApproved: boolean;
   isMembershipActive: boolean;

@@ -8,6 +8,7 @@ export interface IMember extends Document {
   primaryCategory: mongoose.Types.ObjectId;
   primaryCategoryName: string;
   subcategories: string[];
+  address?: Record<string, any>;
   status: MemberStatus;
   membershipPlan: 'FIRST_YEAR_INTRO' | 'STANDARD_ANNUAL';
   membershipFeePaid: number;

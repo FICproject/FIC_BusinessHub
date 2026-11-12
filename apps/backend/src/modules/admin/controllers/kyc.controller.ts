@@ -150,7 +150,7 @@ router.patch('/:id/review', authenticateAdmin, async (req: AuthenticatedAdminReq
       { $or: [{ userId: submission.memberId }, { userId: member?._id }] },
       {
         $set: {
-          status: isApproved ? KYCStatus.APPROVED : (decision === 'REJECTED' ? KYCStatus.REJECTED : KYCStatus.RESUBMISSION_REQUESTED),
+          status: isApproved ? KYCStatus.APPROVED : (decision === 'REJECTED' ? KYCStatus.REJECTED : KYCStatus.RESUBMIT_REQUIRED),
           rejectionReason: rejectionReason || undefined,
           reviewedAt: new Date()
         }

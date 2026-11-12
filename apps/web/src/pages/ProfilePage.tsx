@@ -25,6 +25,7 @@ import {
   getUserReferrals,
   getUserBankAccount,
   saveUserBankAccount,
+  apiRequest,
   AuthenticatedUser,
   UserAddress,
   IMemberWallet,
@@ -171,7 +172,7 @@ export const ProfilePage: React.FC = () => {
 
     // Fetch live user pool investments and payouts
     try {
-      const invRes = await (await import('../services/api')).apiRequest('/investment/my-investments');
+      const invRes = await apiRequest('/investment/my-investments');
       if (invRes && invRes.success && Array.isArray(invRes.data)) {
         setMyInvestments(invRes.data);
       }
@@ -179,7 +180,7 @@ export const ProfilePage: React.FC = () => {
 
     // Fetch live user referrals from backend and sync with state
     try {
-      const refRes = await (await import('../services/api')).apiRequest('/referrals/my-referrals');
+      const refRes = await apiRequest('/referrals/my-referrals');
       if (refRes && refRes.success && refRes.data) {
         setReferralData({
           referralCode: refRes.data.referralCode || refs.referralCode,
