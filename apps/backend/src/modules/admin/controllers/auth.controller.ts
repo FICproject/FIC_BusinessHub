@@ -6,7 +6,7 @@ import { authenticateAdmin, requireRole, AuthenticatedAdminRequest, logAdminActi
 import { config } from '../../../config';
 
 const router = Router();
-const JWT_SECRET = config.jwt ? config.jwt.accessSecret : (config as any).jwtSecret;
+const JWT_SECRET = process.env.JWT_ADMIN_SECRET || process.env.JWT_SECRET || config.jwt.accessSecret;
 
 // POST /api/admin/auth/login
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
