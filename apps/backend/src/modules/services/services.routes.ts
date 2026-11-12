@@ -80,6 +80,41 @@ servicesRouter.post('/', authenticate, async (req: AuthenticatedRequest, res: Re
       isActive: true
     });
 
+    // Also synchronize into Admin ServiceListing collection so it immediately appears in Admin Service Moderation Desk & KPI
+    try {
+      const { ServiceListingModel: AdminServiceListingModel } = await import('../admin/models/ServiceListing');
+      const { UserModel } = await import('../users/users.model');
+      const user = await UserModel.findById(userId);
+      await AdminServiceListingModel.findOneAndUpdate(
+        { _id: newService._id },
+        {
+          $set: {
+            _id: newService._id,
+            title,
+            description,
+            categoryId: categoryId || undefined,
+            categoryName: categoryName || user?.primaryCategoryName || 'General Sector',
+            categorySlug: categorySlug || '',
+            subcategoryId: subcategoryId || undefined,
+            subcategoryName: subcategoryName || '',
+            providerId: userId,
+            providerPrivateName: user?.fullName || 'FIC Member',
+            providerEmail: user?.email || '',
+            pricingEstimate: 'Custom Quote',
+            servicesOffered: servicesOffered || [],
+            skills: skills || [],
+            tags: tags || [],
+            coverageArea: coverageArea || 'Pan India',
+            deliveryMode: deliveryMode || 'ONLINE',
+            status: submitNow ? 'PENDING_APPROVAL' : 'DRAFT'
+          }
+        },
+        { upsert: true, new: true }
+      );
+    } catch (syncErr) {
+      console.warn('Admin service sync error:', syncErr);
+    }
+
     res.status(201).json({
       success: true,
       message: submitNow
