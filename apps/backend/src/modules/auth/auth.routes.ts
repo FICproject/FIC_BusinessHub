@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { register, login, getMe, updateProfile } from './auth.controller';
+import { register, login, getMe, updateProfile, resolveUserKycSnapshot } from './auth.controller';
 import { authenticate } from '../../common/middleware/auth.middleware';
 import { UserModel } from '../users/users.model';
 
@@ -10,7 +10,7 @@ authRouter.post('/login', login);
 authRouter.get('/me', authenticate, getMe);
 authRouter.patch('/profile', authenticate, updateProfile);
 
-// Public check-status endpoint for live KYC approval polling without session mismatch
+// Public check-status endpoint for live KYC approval/decision polling without session mismatch
 authRouter.get('/check-status', async (req, res) => {
   try {
     const email = req.query.email as string;
@@ -20,23 +20,28 @@ authRouter.get('/check-status', async (req, res) => {
     }
 
     const user = await UserModel.findOne({ email: email.toLowerCase() })
-      .select('isKycApproved status')
-      .lean() as { isKycApproved?: boolean; status?: string } | null;
+      .select('_id email isKycApproved status')
+      .lean() as { _id: any; email?: string; isKycApproved?: boolean; status?: string } | null;
     if (!user) {
       res.status(404).json({ success: false, error: 'User not found' });
       return;
     }
 
+    const kycSnapshot = await resolveUserKycSnapshot(user);
+
     res.json({
       success: true,
       data: {
-        isKycApproved: Boolean(user.isKycApproved),
-        kycStatus: user.isKycApproved ? 'APPROVED' : 'SUBMITTED',
-        status: user.isKycApproved ? 'ACTIVE' : user.status
+        isKycApproved: kycSnapshot.isKycApproved,
+        kycStatus: kycSnapshot.kycStatus,
+        rejectionReason: kycSnapshot.rejectionReason,
+        reviewerNotes: kycSnapshot.reviewerNotes,
+        reviewedAt: kycSnapshot.reviewedAt,
+        submittedAt: kycSnapshot.submittedAt,
+        status: kycSnapshot.isKycApproved ? 'ACTIVE' : user.status
       }
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
-

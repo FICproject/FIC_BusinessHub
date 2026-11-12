@@ -5,7 +5,7 @@ import { KycSubmissionModel } from '../models/KycSubmission';
 import { ServiceListingModel } from '../models/ServiceListing';
 import { FicRequestModel } from '../models/FicRequest';
 import { AuditLogModel } from '../models/AuditLog';
-import { PaymentModel } from '../models/Payment';
+import { collectUnifiedPayments } from './payments.controller';
 import { authenticateAdmin } from '../middleware/admin-auth.middleware';
 
 const router = Router();
@@ -41,29 +41,97 @@ router.get('/stats', authenticateAdmin, async (_req, res) => {
   }
 });
 
-// GET /api/admin/dashboard/financial-stats
-router.get('/financial-stats', authenticateAdmin, async (_req, res) => {
-  try {
-    const successfulPayments = await PaymentModel.find({ status: 'SUCCESS' });
-    const pendingPayments = await PaymentModel.find({ status: 'PENDING' });
+function formatMonthMeta(dateInput: Date | string): { monthKey: string; label: string; shortLabel: string } {
+  const date = new Date(dateInput);
+  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+  }).formatToParts(safeDate);
+  const year = parts.find((p) => p.type === 'year')?.value || String(safeDate.getUTCFullYear());
+  const month = parts.find((p) => p.type === 'month')?.value || String(safeDate.getUTCMonth() + 1).padStart(2, '0');
+  const label = new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    month: 'long',
+    year: 'numeric',
+  }).format(safeDate);
+  const shortLabel = new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    month: 'short',
+    year: 'numeric',
+  }).format(safeDate);
 
-    let totalRevenue = successfulPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
+  return { monthKey: `${year}-${month}`, label, shortLabel };
+}
+
+// GET /api/admin/dashboard/financial-stats
+router.get('/financial-stats', authenticateAdmin, async (req, res) => {
+  try {
+    const unifiedPayments = await collectUnifiedPayments();
+
+    // Only include verified successful/captured transactions; exclude failed, cancelled, pending, refunded
+    const successfulPayments = unifiedPayments.filter((p) => {
+      if (p.status !== 'SUCCESS') return false;
+      const isGatewayOrigin = Boolean(p.razorpayOrderId || p.internalOrderId);
+      if (isGatewayOrigin && p.rawStatus === 'AUTHORIZED') return false;
+      return typeof p.amount === 'number' && p.amount > 0;
+    });
+
+    const pendingPayments = unifiedPayments.filter((p) => p.status === 'PENDING');
+
+    const totalRevenue = successfulPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
     const pendingAmount = pendingPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
 
-    // If zero revenue from payments, check if any paid members exist
-    if (totalRevenue === 0) {
-      const members = await MemberModel.find({ paymentStatus: 'PAID' });
-      totalRevenue = members.reduce((acc, m) => acc + (m.membershipFeePaid || 0), 0);
+    const monthBuckets = new Map<
+      string,
+      { monthKey: string; label: string; shortLabel: string; revenue: number; transactionCount: number }
+    >();
+
+    for (const payment of successfulPayments) {
+      const effectiveDate = payment.verifiedAt || payment.createdAt || payment.updatedAt;
+      if (!effectiveDate) continue;
+      const meta = formatMonthMeta(effectiveDate);
+      const existing = monthBuckets.get(meta.monthKey) || {
+        monthKey: meta.monthKey,
+        label: meta.label,
+        shortLabel: meta.shortLabel,
+        revenue: 0,
+        transactionCount: 0,
+      };
+      existing.revenue += payment.amount || 0;
+      existing.transactionCount += 1;
+      monthBuckets.set(meta.monthKey, existing);
     }
 
-    // Monthly recurring (based strictly on real recorded payments)
-    const mrr = totalRevenue > 0 ? Math.round(totalRevenue * 0.22) : 0;
+    const monthlyBreakdown = Array.from(monthBuckets.values()).sort((a, b) =>
+      b.monthKey.localeCompare(a.monthKey)
+    );
+
+    const currentMeta = formatMonthMeta(new Date());
+    const requestedMonthKey =
+      typeof req.query.month === 'string' && /^\d{4}-\d{2}$/.test(req.query.month)
+        ? req.query.month
+        : currentMeta.monthKey;
+
+    const selectedMonthStats = monthBuckets.get(requestedMonthKey);
+    const monthlyRevenue = selectedMonthStats ? selectedMonthStats.revenue : 0;
+    const monthlyTransactionCount = selectedMonthStats ? selectedMonthStats.transactionCount : 0;
+    const selectedMonthLabel =
+      selectedMonthStats?.label ||
+      (requestedMonthKey === currentMeta.monthKey ? currentMeta.label : requestedMonthKey);
 
     res.json({
       success: true,
       data: {
         totalRevenue,
-        mrr,
+        monthlyRevenue,
+        monthlyTransactionCount,
+        currentMonthKey: requestedMonthKey,
+        currentMonthLabel: selectedMonthLabel,
+        hasMonthlyData: monthlyTransactionCount > 0,
+        hasHistoricalData: monthlyBreakdown.length > 0,
+        monthlyBreakdown,
         pendingPaymentsCount: pendingPayments.length,
         pendingAmount,
       },

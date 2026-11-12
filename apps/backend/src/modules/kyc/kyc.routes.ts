@@ -138,23 +138,30 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
     const submission = await KYCSubmissionModel.findOneAndUpdate(
       { userId: req.user.userId },
       {
-        userId: req.user.userId,
-        categoryId: resolvedCategoryId,
-        status: KYCStatus.PENDING,
-        documents: verifiedDocs.map((doc) => ({
-          ...(doc.documentId ? { documentId: doc.documentId } : {}),
-          documentType: doc.documentType || 'ID_PROOF',
-          documentNumber: doc.documentNumber || '',
-          originalFileName: doc.fileName,
-          originalMimeType: doc.originalMimeType,
-          originalFileSize: doc.originalFileSize,
-          checksum: doc.checksum,
-          hasOptimizedPreview: doc.hasOptimizedPreview,
-          hasThumbnail: doc.hasThumbnail,
-          fileUrl: doc.fileUrl,
-          verificationStatus: KYCStatus.PENDING,
-          uploadedAt: new Date(doc.uploadedAt)
-        }))
+        $set: {
+          userId: req.user.userId,
+          categoryId: resolvedCategoryId,
+          status: KYCStatus.PENDING,
+          documents: verifiedDocs.map((doc) => ({
+            ...(doc.documentId ? { documentId: doc.documentId } : {}),
+            documentType: doc.documentType || 'ID_PROOF',
+            documentNumber: doc.documentNumber || '',
+            originalFileName: doc.fileName,
+            originalMimeType: doc.originalMimeType,
+            originalFileSize: doc.originalFileSize,
+            checksum: doc.checksum,
+            hasOptimizedPreview: doc.hasOptimizedPreview,
+            hasThumbnail: doc.hasThumbnail,
+            fileUrl: doc.fileUrl,
+            verificationStatus: KYCStatus.PENDING,
+            uploadedAt: new Date(doc.uploadedAt)
+          }))
+        },
+        $unset: {
+          rejectionReason: 1,
+          reviewedAt: 1,
+          reviewedBy: 1
+        }
       },
       { upsert: true, new: true }
     );
@@ -163,42 +170,58 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
     await AdminKycSubmissionModel.findOneAndUpdate(
       { $or: [{ memberId: user._id }, { memberEmail: user.email.toLowerCase() }] },
       {
-        memberId: user._id,
-        memberName: user.fullName,
-        memberEmail: user.email.toLowerCase(),
-        memberPhone: user.phoneNumber,
-        memberDob: user.dob,
-        subCategory: user.subCategory || user.primarySubcategoryName || '',
-        address: user.address,
-        dynamicProfile: user.dynamicProfile,
-        ...(verifiedPaymentDetails ? { paymentDetails: verifiedPaymentDetails } : {}),
-        categoryId: resolvedCategoryId,
-        categoryName,
-        status: 'SUBMITTED',
-        documents: formattedAdminDocs,
-        submittedAt: new Date()
+        $set: {
+          memberId: user._id,
+          memberName: user.fullName,
+          memberEmail: user.email.toLowerCase(),
+          memberPhone: user.phoneNumber,
+          memberDob: user.dob,
+          subCategory: user.subCategory || user.primarySubcategoryName || '',
+          address: user.address,
+          dynamicProfile: user.dynamicProfile,
+          ...(verifiedPaymentDetails ? { paymentDetails: verifiedPaymentDetails } : {}),
+          categoryId: resolvedCategoryId,
+          categoryName,
+          status: 'SUBMITTED',
+          documents: formattedAdminDocs,
+          submittedAt: new Date()
+        },
+        $unset: {
+          rejectionReason: 1,
+          verifiedAt: 1
+        }
       },
       { upsert: true, new: true }
     );
 
-    // 3. Keep Member record in sync with PENDING_KYC / UNDER_REVIEW status
-    await MemberModel.findByIdAndUpdate(
-      user._id,
+    // 3. Keep Member record in sync cleanly without overwriting existing _id
+    await MemberModel.findOneAndUpdate(
+      { $or: [{ _id: user._id }, { email: user.email.toLowerCase() }] },
       {
-        name: user.fullName,
-        email: user.email.toLowerCase(),
-        phone: user.phoneNumber,
-        primaryCategory: resolvedCategoryId,
-        primaryCategoryName: categoryName,
-        kycStatus: 'SUBMITTED',
-        status: 'UNDER_REVIEW',
-        paymentStatus: verifiedPayment ? 'PAID' : 'PENDING'
+        $setOnInsert: {
+          _id: user._id,
+          registeredAt: user.createdAt || new Date()
+        },
+        $set: {
+          name: user.fullName,
+          email: user.email.toLowerCase(),
+          phone: user.phoneNumber,
+          primaryCategory: resolvedCategoryId,
+          primaryCategoryName: categoryName,
+          subcategories: [user.subCategory || user.primarySubcategoryName || 'Member'].filter(Boolean),
+          kycStatus: 'SUBMITTED',
+          status: 'UNDER_REVIEW',
+          membershipPlan: verifiedPayment?.purpose === 'MEMBERSHIP_RENEWAL' ? 'ANNUAL_RENEWAL' : 'FIRST_YEAR_INTRO',
+          membershipFeePaid: verifiedPayment ? verifiedPayment.amount : 0,
+          paymentStatus: verifiedPayment ? 'PAID' : 'PENDING'
+        }
       },
       { upsert: true }
     );
 
     await UserModel.findByIdAndUpdate(req.user.userId, {
-      activeKycSubmissionId: submission._id
+      activeKycSubmissionId: submission._id,
+      isKycApproved: false
     });
 
     res.status(200).json({
@@ -211,22 +234,60 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
   }
 });
 
-// Get user's own KYC status along with private document metadata
+// Get user's own KYC status along with private document metadata & latest Admin decision
 kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
-    const submission = await KYCSubmissionModel.findOne({ userId: req.user.userId }).lean();
-    const privateDocs = await DocumentAssetModel.find({
-      ownerId: req.user.userId,
-      entityType: 'KYC',
-      isDeleted: { $ne: true }
-    }).sort({ createdAt: -1 });
+    const user = await UserModel.findById(req.user.userId).select('email isKycApproved status').lean() as any;
+    const email = user?.email?.toLowerCase();
 
+    const [submission, adminSubmission, memberRecord, privateDocs] = await Promise.all([
+      KYCSubmissionModel.findOne({ userId: req.user.userId }).sort({ updatedAt: -1 }).lean() as Promise<any>,
+      AdminKycSubmissionModel.findOne({
+        $or: [{ memberId: req.user.userId }, ...(email ? [{ memberEmail: email }] : [])]
+      })
+        .sort({ updatedAt: -1, submittedAt: -1 })
+        .lean() as Promise<any>,
+      MemberModel.findOne({
+        $or: [{ _id: req.user.userId }, ...(email ? [{ email }] : [])]
+      }).lean() as Promise<any>,
+      DocumentAssetModel.find({
+        ownerId: req.user.userId,
+        entityType: 'KYC',
+        isDeleted: { $ne: true }
+      }).sort({ createdAt: -1 })
+    ]);
+
+    let resolvedStatus: string = 'NOT_SUBMITTED';
+    if (adminSubmission?.status) {
+      resolvedStatus =
+        adminSubmission.status === 'RESUBMIT_REQUIRED' ? 'RESUBMISSION_REQUESTED' : adminSubmission.status;
+    } else if (submission?.status) {
+      const s = String(submission.status);
+      resolvedStatus = s === 'PENDING' ? 'SUBMITTED' : s === 'RESUBMIT_REQUIRED' ? 'RESUBMISSION_REQUESTED' : s;
+    } else if (memberRecord?.kycStatus) {
+      resolvedStatus =
+        memberRecord.kycStatus === 'RESUBMIT_REQUIRED'
+          ? 'RESUBMISSION_REQUESTED'
+          : String(memberRecord.kycStatus);
+    } else if (user?.isKycApproved) {
+      resolvedStatus = 'APPROVED';
+    }
+
+    const basePayload = submission || {};
     res.status(200).json({
       success: true,
       data: {
-        ...(submission || { status: KYCStatus.NOT_SUBMITTED }),
+        ...basePayload,
+        status: resolvedStatus,
+        kycStatus: resolvedStatus,
+        isKycApproved: resolvedStatus === 'APPROVED',
+        rejectionReason: adminSubmission?.rejectionReason || submission?.rejectionReason || undefined,
+        reviewerNotes: adminSubmission?.reviewerNotes || undefined,
+        reviewedAt: adminSubmission?.verifiedAt || adminSubmission?.updatedAt || submission?.reviewedAt || undefined,
+        submittedAt: adminSubmission?.submittedAt || submission?.createdAt || undefined,
+        adminDocuments: adminSubmission?.documents || [],
         documentAssets: privateDocs.map((d) => toSafeDocumentDto(d, 'member'))
       }
     });

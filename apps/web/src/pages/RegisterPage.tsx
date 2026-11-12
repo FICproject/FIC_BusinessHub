@@ -490,22 +490,53 @@ export const RegisterPage: React.FC = () => {
     };
 
     if (!registeredSessionRef.current) {
-      const { token, user: serverUser } = await registerAccountStrict({
-        fullName,
-        email,
-        phoneNumber,
-        dob: formattedDob || dob,
-        password,
-        primaryCategoryId: selectedCategory.id,
-        primaryCategoryName: selectedCategory.name,
-        subCategory: selectedSubcategory,
-        primarySubcategoryName: selectedSubcategory,
-        subcategoryIds: [selectedSubcategory],
-        dynamicProfile: dynamicAnswers,
-        address: userAddress,
-        ageConfirmed,
-        termsAccepted
-      });
+      let token = '';
+      let serverUser: any = null;
+
+      try {
+        const regResult = await registerAccountStrict({
+          fullName,
+          email,
+          phoneNumber,
+          dob: formattedDob || dob,
+          password,
+          primaryCategoryId: selectedCategory.id,
+          primaryCategoryName: selectedCategory.name,
+          subCategory: selectedSubcategory,
+          primarySubcategoryName: selectedSubcategory,
+          subcategoryIds: [selectedSubcategory],
+          dynamicProfile: dynamicAnswers,
+          address: userAddress,
+          ageConfirmed,
+          termsAccepted
+        });
+        token = regResult.token;
+        serverUser = regResult.user;
+      } catch (regErr: any) {
+        const msg = String(regErr?.message || '').toLowerCase();
+        // Idempotent retry handling: if the account was created in a prior interrupted attempt,
+        // authenticate with the supplied password instead of failing or duplicating records.
+        if (msg.includes('already exists') || msg.includes('already registered')) {
+          try {
+            const loginRes = await apiRequest('/auth/login', {
+              method: 'POST',
+              body: JSON.stringify({ identifier: email.trim(), password })
+            });
+            if (loginRes?.success && loginRes?.data?.token) {
+              token = loginRes.data.token;
+              serverUser = loginRes.data.user;
+            } else {
+              throw new Error('An account with this email or mobile number already exists. Please log in to continue.');
+            }
+          } catch {
+            throw new Error(
+              'An account with this email or mobile number already exists. Please sign in on the Login page or enter your existing password.'
+            );
+          }
+        } else {
+          throw regErr;
+        }
+      }
 
       const isReferred = referrerInfo?.valid;
       const newRefCode = `FIC-${fullName.toUpperCase().replace(/\s+/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
