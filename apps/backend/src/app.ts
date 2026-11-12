@@ -7,6 +7,8 @@ import fs from 'fs';
 import { config } from './config';
 import { apiRouter } from './routes';
 import { adminRouter } from './modules/admin';
+import { paymentsRouter } from './modules/payments/payments.routes';
+import { documentsRouter } from './modules/documents/documents.routes';
 import { errorHandler } from './common/middleware/error.middleware';
 
 export const createApp = (): Application => {
@@ -28,13 +30,21 @@ export const createApp = (): Application => {
   app.use(
     cors({
       origin: config.cors.allowedOrigins,
-      credentials: true
+      credentials: true,
+      exposedHeaders: ['Content-Disposition', 'X-Document-Id', 'X-Original-Checksum-Sha256', 'X-Document-Variant']
     })
   );
-  app.use(express.json({ limit: '50mb' }));
+  app.use(
+    express.json({
+      limit: '50mb',
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf;
+      }
+    })
+  );
   app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-  // Serve static uploaded files (videos, thumbnails)
+  // Serve static uploaded files (videos, thumbnails) — private documents are NEVER served here
   app.use('/uploads', express.static(uploadsDir));
 
   if (config.env !== 'test') {
@@ -43,6 +53,8 @@ export const createApp = (): Application => {
 
   // Member API Routes
   app.use('/api/v1', apiRouter);
+  app.use('/api/payments', paymentsRouter);
+  app.use('/api/documents', documentsRouter);
 
   // Consolidated Admin API Routes (accessible via /api/admin or /api/v1/admin)
   app.use('/api/admin', adminRouter);

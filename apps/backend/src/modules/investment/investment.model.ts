@@ -45,8 +45,12 @@ export interface IFundingRequestDocument extends Document {
   currentAnnualRevenue?: string;
   businessDescription: string;
   documents?: {
+    documentId?: string;
     name: string;
     fileUrl: string;
+    originalMimeType?: string;
+    originalFileSize?: number;
+    checksum?: string;
     fileType?: string;
     uploadedAt: string;
     status: 'PENDING' | 'VERIFIED' | 'REJECTED';
@@ -112,7 +116,11 @@ const FundingRequestSchema = new Schema<IFundingRequestDocument>(
     businessDescription: { type: String, required: true },
     documents: [
       {
+        documentId: { type: String },
         name: { type: String },
+        originalMimeType: { type: String },
+        originalFileSize: { type: Number },
+        checksum: { type: String },
         fileUrl: { type: String },
         fileType: { type: String },
         uploadedAt: { type: String },
@@ -206,8 +214,12 @@ export interface IInvestorProfileDocument extends Document {
   investmentExperience?: string;
   additionalPreferences?: string;
   documents?: {
+    documentId?: string;
     name: string;
     fileUrl: string;
+    originalMimeType?: string;
+    originalFileSize?: number;
+    checksum?: string;
     fileType?: string;
     uploadedAt: string;
     status: 'PENDING' | 'VERIFIED' | 'REJECTED';
@@ -268,7 +280,11 @@ const InvestorProfileSchema = new Schema<IInvestorProfileDocument>(
     additionalPreferences: { type: String },
     documents: [
       {
+        documentId: { type: String },
         name: { type: String },
+        originalMimeType: { type: String },
+        originalFileSize: { type: Number },
+        checksum: { type: String },
         fileUrl: { type: String },
         fileType: { type: String },
         uploadedAt: { type: String },

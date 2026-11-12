@@ -20,7 +20,14 @@ import {
   AlertCircleIcon,
   PlusIcon
 } from '../components/Icons';
-import { apiRequest, getStoredUser } from '../services/api';
+import {
+  apiRequest,
+  getStoredUser,
+  uploadDocumentFile,
+  downloadOriginalDocument,
+  UploadedDocumentAsset
+} from '../services/api';
+import { DocumentViewerModal } from '../components/DocumentViewerModal';
 
 // HandCoins SVG Icon for Funding Seeker
 const HandCoinsIcon: React.FC<{ size?: number; className?: string }> = ({ size = 20, className = '' }) => (
@@ -268,6 +275,9 @@ export const InvestmentPage: React.FC = () => {
   const [fundingRevenue, setFundingRevenue] = useState('₹50 Lakhs–₹1 Crore');
   const [fundingDescription, setFundingDescription] = useState('');
   const [fundingDocName, setFundingDocName] = useState('');
+  const [fundingUploadedDocs, setFundingUploadedDocs] = useState<UploadedDocumentAsset[]>([]);
+  const [isUploadingFundingDoc, setIsUploadingFundingDoc] = useState(false);
+  const [viewerAsset, setViewerAsset] = useState<UploadedDocumentAsset | null>(null);
 
   // ----------------------------------------------------
   // Form State: Investor
@@ -285,6 +295,8 @@ export const InvestmentPage: React.FC = () => {
   const [invExperience, setInvExperience] = useState('');
   const [invAdditionalPreferences, setInvAdditionalPreferences] = useState('');
   const [invDocName, setInvDocName] = useState('');
+  const [invUploadedDocs, setInvUploadedDocs] = useState<UploadedDocumentAsset[]>([]);
+  const [isUploadingInvDoc, setIsUploadingInvDoc] = useState(false);
 
   // Loading & Submission Confirmation State
   const [isLoading, setIsLoading] = useState(false);
@@ -577,17 +589,22 @@ export const InvestmentPage: React.FC = () => {
       useOfFundsExplanation: fundingUseExplanation.trim(),
       currentAnnualRevenue: fundingRevenue,
       businessDescription: fundingDescription.trim(),
-      documents: fundingDocName.trim()
-        ? [
-            {
-              name: fundingDocName.trim(),
-              fileUrl: '#',
-              fileType: 'Document',
-              uploadedAt: todayFormatted,
+      documents:
+        fundingUploadedDocs.length > 0
+          ? fundingUploadedDocs.map((d) => ({
+              documentId: d.documentId,
+              name: d.originalFileName,
+              fileUrl: d.viewUrl,
+              originalMimeType: d.originalMimeType,
+              originalFileSize: d.originalFileSize,
+              checksum: d.checksum,
+              fileType: d.originalFileExtension,
+              uploadedAt: d.createdAt,
               status: 'PENDING'
-            }
-          ]
-        : [],
+            }))
+          : fundingDocName.trim()
+          ? [{ name: fundingDocName.trim(), fileUrl: '#', uploadedAt: new Date().toLocaleDateString(), status: 'PENDING' }]
+          : [],
       status: 'SUBMITTED',
       submittedDate: todayFormatted,
       latestFicUpdate: 'Your funding request has been received. Our team is reviewing your business details.',
@@ -657,17 +674,22 @@ export const InvestmentPage: React.FC = () => {
       investmentType: invInvestmentType,
       investmentExperience: invExperience.trim(),
       additionalPreferences: invAdditionalPreferences.trim(),
-      documents: invDocName.trim()
-        ? [
-            {
-              name: invDocName.trim(),
-              fileUrl: '#',
-              fileType: 'Document',
-              uploadedAt: todayFormatted,
+      documents:
+        invUploadedDocs.length > 0
+          ? invUploadedDocs.map((d) => ({
+              documentId: d.documentId,
+              name: d.originalFileName,
+              fileUrl: d.viewUrl,
+              originalMimeType: d.originalMimeType,
+              originalFileSize: d.originalFileSize,
+              checksum: d.checksum,
+              fileType: d.originalFileExtension,
+              uploadedAt: d.createdAt,
               status: 'PENDING'
-            }
-          ]
-        : [],
+            }))
+          : invDocName.trim()
+          ? [{ name: invDocName.trim(), fileUrl: '#', uploadedAt: new Date().toLocaleDateString(), status: 'PENDING' }]
+          : [],
       status: 'SUBMITTED',
       submittedDate: todayFormatted,
       latestFicUpdate: 'Your investor profile is currently being verified.',
@@ -1410,15 +1432,73 @@ export const InvestmentPage: React.FC = () => {
                         Section C – Supporting Documents (Optional Initially)
                       </span>
                       <p className="text-[11px] text-[#6B5E55]">
-                        Allowed file types: PDF, PNG, JPG (max 10MB). Examples: Business Registration Certificate, Company Profile, Business Plan, or Financial Statements.
+                        Allowed: PDF, JPG, JPEG, PNG, WEBP, DOC/DOCX, XLS/XLSX, PPT/PPTX, TXT (max 15MB). Original files are preserved intact; images get optimized previews.
                       </p>
-                      <input
-                        type="text"
-                        placeholder="e.g. Business_Plan_2026.pdf (Document Reference / Filename)"
-                        value={fundingDocName}
-                        onChange={(e) => setFundingDocName(e.target.value)}
-                        className="w-full text-xs p-2.5 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C]"
-                      />
+                      <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                          disabled={isUploadingFundingDoc}
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            setIsUploadingFundingDoc(true);
+                            try {
+                              const uploaded = await uploadDocumentFile(f, {
+                                entityType: 'INVESTMENT',
+                                documentCategory: 'FUNDING_PITCH',
+                                documentLabel: f.name
+                              });
+                              setFundingUploadedDocs((prev) => [...prev, uploaded]);
+                            } catch (err: any) {
+                              alert(err?.message || 'Document upload failed.');
+                            } finally {
+                              setIsUploadingFundingDoc(false);
+                              e.target.value = '';
+                            }
+                          }}
+                          className="w-full text-xs p-2 border border-dashed border-[#2C857B]/50 rounded-xl bg-white text-[#2E231C] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#2C857B]/10 file:text-[#1C6960]"
+                        />
+                        {isUploadingFundingDoc && (
+                          <span className="text-[11px] font-bold text-[#1C6960] shrink-0">Uploading...</span>
+                        )}
+                      </div>
+                      {fundingUploadedDocs.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          {fundingUploadedDocs.map((doc) => (
+                            <div
+                              key={doc.documentId}
+                              className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[#F4FBF9] border border-[#2C857B]/25 text-xs"
+                            >
+                              <div className="min-w-0">
+                                <div className="font-bold text-[#2E231C] truncate">{doc.originalFileName}</div>
+                                <div className="text-[10px] text-[#6B5E55]">
+                                  {(doc.originalFileSize / 1024).toFixed(1)} KB
+                                  {doc.compressionRatio && doc.compressionRatio > 0
+                                    ? ` · Preview optimized (${doc.compressionRatio}% smaller)`
+                                    : ' · Exact original preserved'}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setViewerAsset(doc)}
+                                  className="px-2.5 py-1 rounded-lg bg-white border border-[#EDE2D7] text-[#1C6960] font-bold text-[11px]"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => downloadOriginalDocument(doc.documentId, doc.originalFileName)}
+                                  className="px-2.5 py-1 rounded-lg bg-[#1C6960] text-white font-bold text-[11px]"
+                                >
+                                  Download
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Submit CTA */}
@@ -1710,13 +1790,68 @@ export const InvestmentPage: React.FC = () => {
                       <p className="text-[11px] text-[#6B5E55]">
                         Allowed file types: PDF, PNG, JPG (max 10MB). Examples: Entity Identity Verification, Registration Documents, Authorized Proof.
                       </p>
-                      <input
-                        type="text"
-                        placeholder="e.g. Entity_Proof_Certificate.pdf (Document Reference / Filename)"
-                        value={invDocName}
-                        onChange={(e) => setInvDocName(e.target.value)}
-                        className="w-full text-xs p-2.5 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C]"
-                      />
+                      <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                          disabled={isUploadingInvDoc}
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            setIsUploadingInvDoc(true);
+                            try {
+                              const uploaded = await uploadDocumentFile(f, {
+                                entityType: 'INVESTMENT',
+                                documentCategory: 'INVESTMENT_DOC',
+                                documentLabel: f.name
+                              });
+                              setInvUploadedDocs((prev) => [...prev, uploaded]);
+                            } catch (err: any) {
+                              alert(err?.message || 'Document upload failed.');
+                            } finally {
+                              setIsUploadingInvDoc(false);
+                              e.target.value = '';
+                            }
+                          }}
+                          className="w-full text-xs p-2 border border-dashed border-[#2C857B]/50 rounded-xl bg-white text-[#2E231C] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#2C857B]/10 file:text-[#1C6960]"
+                        />
+                        {isUploadingInvDoc && (
+                          <span className="text-[11px] font-bold text-[#1C6960] shrink-0">Uploading...</span>
+                        )}
+                      </div>
+                      {invUploadedDocs.length > 0 && (
+                        <div className="space-y-1.5 pt-1">
+                          {invUploadedDocs.map((doc) => (
+                            <div
+                              key={doc.documentId}
+                              className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[#F4FBF9] border border-[#2C857B]/25 text-xs"
+                            >
+                              <div className="min-w-0">
+                                <div className="font-bold text-[#2E231C] truncate">{doc.originalFileName}</div>
+                                <div className="text-[10px] text-[#6B5E55]">
+                                  {(doc.originalFileSize / 1024).toFixed(1)} KB · Original preserved
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setViewerAsset(doc)}
+                                  className="px-2.5 py-1 rounded-lg bg-white border border-[#EDE2D7] text-[#1C6960] font-bold text-[11px]"
+                                >
+                                  View
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => downloadOriginalDocument(doc.documentId, doc.originalFileName)}
+                                  className="px-2.5 py-1 rounded-lg bg-[#1C6960] text-white font-bold text-[11px]"
+                                >
+                                  Download
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Submit CTA */}
@@ -2333,6 +2468,18 @@ export const InvestmentPage: React.FC = () => {
           </form>
         )}
       </AnimatedModal>
+          {viewerAsset && (
+        <DocumentViewerModal
+          isOpen={true}
+          onClose={() => setViewerAsset(null)}
+          documentId={viewerAsset.documentId}
+          documentLabel={viewerAsset.documentLabel}
+          originalFileName={viewerAsset.originalFileName}
+          originalMimeType={viewerAsset.originalMimeType}
+          originalFileSize={viewerAsset.originalFileSize}
+          checksum={viewerAsset.checksum}
+        />
+      )}
     </WorkspaceShell>
   );
 };

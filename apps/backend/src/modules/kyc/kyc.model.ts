@@ -2,8 +2,15 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { KYCStatus } from '@fic/shared-types';
 
 export interface IKYCDocumentItem {
+  documentId?: string;
   documentType: string;
   documentNumber?: string;
+  originalFileName?: string;
+  originalMimeType?: string;
+  originalFileSize?: number;
+  checksum?: string;
+  hasOptimizedPreview?: boolean;
+  hasThumbnail?: boolean;
   fileUrl: string;
   uploadedAt: Date;
   verificationStatus: KYCStatus;
@@ -23,8 +30,15 @@ export interface IKYCSubmissionDocument extends Document {
 }
 
 const KYCDocumentItemSchema = new Schema<IKYCDocumentItem>({
+  documentId: { type: String, index: true },
   documentType: { type: String, required: true },
   documentNumber: { type: String },
+  originalFileName: { type: String },
+  originalMimeType: { type: String },
+  originalFileSize: { type: Number },
+  checksum: { type: String },
+  hasOptimizedPreview: { type: Boolean },
+  hasThumbnail: { type: Boolean },
   fileUrl: { type: String, required: true },
   uploadedAt: { type: Date, default: Date.now },
   verificationStatus: {
@@ -53,4 +67,3 @@ const KYCSubmissionSchema = new Schema<IKYCSubmissionDocument>(
 );
 
 export const KYCSubmissionModel = mongoose.model<IKYCSubmissionDocument>('KYCSubmission', KYCSubmissionSchema);
-

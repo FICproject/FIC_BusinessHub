@@ -21,6 +21,8 @@ out/
 # Local database and media storage
 apps/backend/data/
 data/
+apps/backend/storage/
+storage/
 uploads/
 *.sqlite
 *.sqlite3

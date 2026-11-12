@@ -5,18 +5,20 @@ import { UserModel } from '../users/users.model';
 import { MemberModel } from '../admin/models/Member';
 import { KycSubmissionModel as AdminKycSubmissionModel } from '../admin/models/KycSubmission';
 import { CategoryModel as AdminCategoryModel } from '../admin/models/Category';
+import { DocumentAssetModel, toSafeDocumentDto } from '../documents/documents.model';
+import { PaymentModel } from '../payments/payments.model';
 import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
 import { KYCStatus, UserRole } from '@fic/shared-types';
 
 export const kycRouter = Router();
 
-// Submit KYC documents
+// Submit KYC documents (linked to private DocumentAsset uploads)
 kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
-    const { categoryId, documents, paymentDetails } = req.body;
+    const { categoryId, documents } = req.body;
 
     if (!documents || !Array.isArray(documents) || documents.length === 0) {
       throw new AppError('Please provide at least one required KYC document.', 400);
@@ -25,11 +27,11 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
     const user = await UserModel.findById(req.user.userId);
     if (!user) throw new AppError('User account not found.', 404);
 
-    const resolvedCategoryId = (categoryId && mongoose.isValidObjectId(categoryId))
-      ? new mongoose.Types.ObjectId(categoryId)
-      : (user.primaryCategoryId || new mongoose.Types.ObjectId());
+    const resolvedCategoryId =
+      categoryId && mongoose.isValidObjectId(categoryId)
+        ? new mongoose.Types.ObjectId(categoryId)
+        : user.primaryCategoryId || new mongoose.Types.ObjectId();
 
-    // Resolve category name
     let categoryName = user.primaryCategoryName || 'General Business';
     try {
       const foundCat = await AdminCategoryModel.findById(resolvedCategoryId);
@@ -38,16 +40,99 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
       // Keep existing name
     }
 
-    // Standardize documents for admin review display
-    const formattedDocs = documents.map((doc: any, index: number) => ({
-      docKey: doc.documentType || `doc_${index}`,
-      title: doc.documentName || doc.title || doc.documentType || `Document ${index + 1}`,
-      fileUrl: doc.fileUrl || '',
-      fileName: doc.fileName || doc.documentName || `Document_${index + 1}.png`,
+    const verifiedDocs = await Promise.all(
+      documents.map(async (doc: any, index: number) => {
+        if (doc.documentId) {
+          const asset = await DocumentAssetModel.findOne({
+            documentId: String(doc.documentId),
+            ownerId: req.user!.userId,
+            isDeleted: { $ne: true }
+          });
+          if (!asset) {
+            throw new AppError(
+              `Referenced KYC document "${doc.documentId}" was not found or belongs to another user.`,
+              403,
+              'INVALID_DOCUMENT_REFERENCE'
+            );
+          }
+
+          asset.documentStatus = 'PENDING_REVIEW';
+          asset.entityType = 'KYC';
+          await asset.save();
+
+          return {
+            documentId: asset.documentId,
+            documentType: doc.documentType || `doc_${index}`,
+            title: doc.documentName || doc.title || asset.documentLabel || doc.documentType || `Document ${index + 1}`,
+            fileUrl: `/api/v1/documents/${asset.documentId}/view`,
+            fileName: asset.originalFileName,
+            originalMimeType: asset.originalMimeType,
+            originalFileSize: asset.originalFileSize,
+            checksum: asset.checksum,
+            hasOptimizedPreview: Boolean(asset.optimizedStorageKey),
+            hasThumbnail: Boolean(asset.thumbnailStorageKey),
+            documentNumber: doc.documentNumber || asset.documentNumber || '',
+            uploadedAt: asset.createdAt.toISOString()
+          };
+        }
+
+        // Legacy URL-only metadata (strictly disallow unvalidated large base64 payloads inside MongoDB)
+        const rawUrl = String(doc.fileUrl || '');
+        if (rawUrl.startsWith('data:')) {
+          throw new AppError(
+            'Raw base64 KYC payloads are no longer accepted. Please upload files using POST /api/v1/documents/upload first.',
+            400,
+            'DIRECT_MULTIPART_UPLOAD_REQUIRED'
+          );
+        }
+
+        return {
+          documentId: undefined,
+          documentType: doc.documentType || `doc_${index}`,
+          title: doc.documentName || doc.title || doc.documentType || `Document ${index + 1}`,
+          fileUrl: rawUrl,
+          fileName: doc.fileName || doc.documentName || `Document_${index + 1}`,
+          documentNumber: doc.documentNumber || '',
+          uploadedAt: new Date().toISOString()
+        };
+      })
+    );
+
+    const formattedAdminDocs = verifiedDocs.map((doc) => ({
+      ...(doc.documentId ? { documentId: doc.documentId } : {}),
+      docKey: doc.documentType,
+      title: doc.title,
+      fileUrl: doc.documentId ? `/api/admin/documents/${doc.documentId}/view` : doc.fileUrl,
+      fileName: doc.fileName,
+      originalMimeType: doc.originalMimeType,
+      originalFileSize: doc.originalFileSize,
+      checksum: doc.checksum,
+      hasOptimizedPreview: doc.hasOptimizedPreview,
+      hasThumbnail: doc.hasThumbnail,
       documentNumber: doc.documentNumber || '',
-      uploadedAt: new Date().toISOString(),
+      uploadedAt: doc.uploadedAt,
       status: 'PENDING'
     }));
+
+    // Lookup genuine verified Razorpay payment record (never synthesize fake payment IDs)
+    const verifiedPayment = await PaymentModel.findOne({
+      userId: req.user.userId,
+      status: 'SUCCESS'
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const verifiedPaymentDetails = verifiedPayment
+      ? {
+          orderId: verifiedPayment.razorpayOrderId || verifiedPayment.internalOrderId,
+          paymentId: verifiedPayment.razorpayPaymentId || verifiedPayment.paymentId,
+          amount: verifiedPayment.amount,
+          currency: verifiedPayment.currency || 'INR',
+          method: verifiedPayment.paymentMethod || 'RAZORPAY',
+          paidAt: verifiedPayment.verifiedAt || verifiedPayment.updatedAt,
+          status: 'CAPTURED'
+        }
+      : undefined;
 
     // 1. Save / Update in customer KYC submission collection
     const submission = await KYCSubmissionModel.findOneAndUpdate(
@@ -56,18 +141,25 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
         userId: req.user.userId,
         categoryId: resolvedCategoryId,
         status: KYCStatus.PENDING,
-        documents: documents.map((doc: any) => ({
+        documents: verifiedDocs.map((doc) => ({
+          ...(doc.documentId ? { documentId: doc.documentId } : {}),
           documentType: doc.documentType || 'ID_PROOF',
           documentNumber: doc.documentNumber || '',
-          fileUrl: doc.fileUrl || '',
+          originalFileName: doc.fileName,
+          originalMimeType: doc.originalMimeType,
+          originalFileSize: doc.originalFileSize,
+          checksum: doc.checksum,
+          hasOptimizedPreview: doc.hasOptimizedPreview,
+          hasThumbnail: doc.hasThumbnail,
+          fileUrl: doc.fileUrl,
           verificationStatus: KYCStatus.PENDING,
-          uploadedAt: new Date()
+          uploadedAt: new Date(doc.uploadedAt)
         }))
       },
       { upsert: true, new: true }
     );
 
-    // 2. Synchronize to Admin KYC Submission collection for Admin KYC Verification Tab
+    // 2. Synchronize to Admin KYC Submission collection
     await AdminKycSubmissionModel.findOneAndUpdate(
       { $or: [{ memberId: user._id }, { memberEmail: user.email.toLowerCase() }] },
       {
@@ -79,25 +171,17 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
         subCategory: user.subCategory || user.primarySubcategoryName || '',
         address: user.address,
         dynamicProfile: user.dynamicProfile,
-        paymentDetails: paymentDetails || {
-          orderId: `order_rp_${Date.now()}`,
-          paymentId: `pay_rp_${Date.now()}`,
-          amount: 99,
-          currency: 'INR',
-          method: 'RAZORPAY_UPI',
-          paidAt: new Date(),
-          status: 'CAPTURED'
-        },
+        ...(verifiedPaymentDetails ? { paymentDetails: verifiedPaymentDetails } : {}),
         categoryId: resolvedCategoryId,
-        categoryName: categoryName,
+        categoryName,
         status: 'SUBMITTED',
-        documents: formattedDocs,
+        documents: formattedAdminDocs,
         submittedAt: new Date()
       },
       { upsert: true, new: true }
     );
 
-    // 3. Keep Member record in sync with PENDING_KYC status
+    // 3. Keep Member record in sync with PENDING_KYC / UNDER_REVIEW status
     await MemberModel.findByIdAndUpdate(
       user._id,
       {
@@ -107,7 +191,8 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
         primaryCategory: resolvedCategoryId,
         primaryCategoryName: categoryName,
         kycStatus: 'SUBMITTED',
-        status: 'UNDER_REVIEW'
+        status: 'UNDER_REVIEW',
+        paymentStatus: verifiedPayment ? 'PAID' : 'PENDING'
       },
       { upsert: true }
     );
@@ -126,15 +211,24 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
   }
 });
 
-// Get user's own KYC status
+// Get user's own KYC status along with private document metadata
 kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
-    const submission = await KYCSubmissionModel.findOne({ userId: req.user.userId });
+    const submission = await KYCSubmissionModel.findOne({ userId: req.user.userId }).lean();
+    const privateDocs = await DocumentAssetModel.find({
+      ownerId: req.user.userId,
+      entityType: 'KYC',
+      isDeleted: { $ne: true }
+    }).sort({ createdAt: -1 });
+
     res.status(200).json({
       success: true,
-      data: submission || { status: KYCStatus.NOT_SUBMITTED }
+      data: {
+        ...(submission || { status: KYCStatus.NOT_SUBMITTED }),
+        documentAssets: privateDocs.map((d) => toSafeDocumentDto(d, 'member'))
+      }
     });
   } catch (error) {
     next(error);
@@ -169,5 +263,3 @@ kycRouter.post('/dev-approve-me', authenticate, requireRoles(UserRole.ADMIN, Use
     next(error);
   }
 });
-
-

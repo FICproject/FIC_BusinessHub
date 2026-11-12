@@ -13,9 +13,45 @@ import { MeetingModel } from '../admin/models/Meeting';
 import { getOrCreateMemberWallet } from '../admin/controllers/funding.controller';
 import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
+import { DocumentAssetModel } from '../documents/documents.model';
 import { UserRole } from '@fic/shared-types';
 
 export const investmentRouter = Router();
+
+async function resolveOwnedInvestmentDocuments(userId: string, docs: any[], entityId?: string) {
+  if (!Array.isArray(docs) || docs.length === 0) return [];
+  const resolved = [];
+  for (const d of docs) {
+    if (d && d.documentId) {
+      const asset = await DocumentAssetModel.findOne({
+        documentId: String(d.documentId),
+        ownerId: userId,
+        isDeleted: { $ne: true }
+      });
+      if (!asset) {
+        throw new AppError(`Referenced document "${d.documentId}" not found or access denied.`, 403, 'INVALID_DOCUMENT_REFERENCE');
+      }
+      asset.entityType = 'INVESTMENT';
+      if (entityId) asset.entityId = entityId;
+      await asset.save();
+      resolved.push({
+        documentId: asset.documentId,
+        name: d.name || asset.originalFileName,
+        fileUrl: `/api/v1/documents/${asset.documentId}/view`,
+        originalMimeType: asset.originalMimeType,
+        originalFileSize: asset.originalFileSize,
+        checksum: asset.checksum,
+        fileType: d.fileType || asset.originalFileExtension,
+        uploadedAt: d.uploadedAt || asset.createdAt.toISOString(),
+        status: d.status || 'PENDING'
+      });
+    } else if (d) {
+      resolved.push(d);
+    }
+  }
+  return resolved;
+}
+
 
 // ========================================================
 // 1. FUNDING REQUEST ENDPOINTS (BUSINESSES / STARTUPS)
@@ -73,7 +109,7 @@ investmentRouter.post('/funding', authenticate, async (req: AuthenticatedRequest
       useOfFundsExplanation: useOfFundsExplanation?.trim(),
       currentAnnualRevenue,
       businessDescription: businessDescription?.trim(),
-      documents: documents || [],
+      documents: await resolveOwnedInvestmentDocuments(req.user.userId, documents || [], generatedRef),
       status: 'SUBMITTED',
       latestFicUpdate: 'Your funding request has been received. Our team is reviewing your business details.',
       whatHappensNext: 'FIC will review your submitted information and coordinate preliminary verification.',
@@ -203,7 +239,7 @@ investmentRouter.post('/investor', authenticate, async (req: AuthenticatedReques
       investmentType,
       investmentExperience: investmentExperience?.trim(),
       additionalPreferences: additionalPreferences?.trim(),
-      documents: documents || [],
+      documents: await resolveOwnedInvestmentDocuments(req.user.userId, documents || [], generatedRef),
       status: 'SUBMITTED',
       latestFicUpdate: 'Your investor profile is currently being verified.',
       whatHappensNext: 'Your profile verification is in progress.',

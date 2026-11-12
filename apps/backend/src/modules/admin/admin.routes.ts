@@ -12,6 +12,7 @@ import supportRoutes from './controllers/support.controller';
 import notificationRoutes from './controllers/notifications.controller';
 import referralRoutes from './controllers/referrals.controller';
 import fundingRoutes from './controllers/funding.controller';
+import { adminDocumentsRouter } from './controllers/documents.controller';
 
 export const adminRouter = Router();
 
@@ -28,4 +29,5 @@ adminRouter.use('/support', supportRoutes);
 adminRouter.use('/notifications', notificationRoutes);
 adminRouter.use('/referrals', referralRoutes);
 adminRouter.use('/funding', fundingRoutes);
+adminRouter.use('/documents', adminDocumentsRouter);
 

@@ -83,77 +83,37 @@ walletRouter.get('/transactions', authenticate, async (req: AuthenticatedRequest
   }
 });
 
-// 3. POST /api/v1/wallet/add-funds - Top up wallet funds
+// 3. POST /api/v1/wallet/add-funds - Strictly requires verified Razorpay payment signature
 walletRouter.post('/add-funds', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
-    const { amount, paymentMethod = 'UPI', idempotencyKey } = req.body;
-    const numericAmount = Number(amount);
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, paymentMethod } = req.body || {};
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      throw new AppError(
+        'Direct unverified wallet top-up is disabled. Complete Razorpay checkout via /api/v1/payments/create-order and /api/v1/payments/verify.',
+        400,
+        'RAZORPAY_VERIFICATION_REQUIRED'
+      );
+    }
 
-    if (!numericAmount || numericAmount < 100) {
-      throw new AppError('Minimum deposit amount is ₹100.', 400);
-    }
-    if (numericAmount > 200000) {
-      throw new AppError('Maximum deposit amount per transaction is ₹2,00,000.', 400);
-    }
-
-    if (process.env.NODE_ENV === 'production' && req.user.role === UserRole.MEMBER && !req.body.gatewaySignature) {
-      throw new AppError('Direct wallet top-up requires verified payment gateway signature.', 403, 'GATEWAY_VERIFICATION_REQUIRED');
-    }
+    const { verifyCheckoutPaymentForUser } = await import('../payments/payments.service');
+    const verified = await verifyCheckoutPaymentForUser({
+      userId: req.user.userId,
+      razorpayOrderId: String(razorpay_order_id),
+      razorpayPaymentId: String(razorpay_payment_id),
+      razorpaySignature: String(razorpay_signature),
+      paymentMethod: paymentMethod ? String(paymentMethod) : undefined
+    });
 
     const wallet = await getOrCreateWallet(req.user.userId);
 
-    // Create funding audit record
-    const fundingId = `FND_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
-    const paymentOrderId = `ORD_TOPUP_${Date.now()}`;
-
-    const funding = await WalletFundingModel.create({
-      fundingId,
-      userId: req.user.userId,
-      walletId: wallet._id,
-      amount: numericAmount,
-      currency: 'INR',
-      paymentProvider: paymentMethod,
-      paymentOrderId,
-      gatewayTransactionId: `TXN_GATEWAY_${Date.now()}`,
-      paymentStatus: 'SUCCESS',
-      settlementStatus: 'SETTLED'
-    });
-
-    // Atomically credit wallet ledger
-    const balanceAfter = wallet.availableBalance + numericAmount;
-    wallet.availableBalance += numericAmount;
-    wallet.totalBalance += numericAmount;
-    wallet.withdrawalEligibleBalance += numericAmount;
-    wallet.membershipEligibleBalance += numericAmount;
-    wallet.totalAdded += numericAmount;
-    await wallet.save();
-
-    // Create immutable transaction ledger record
-    const transactionId = `TXN_CR_${Date.now()}`;
-    const transaction = await WalletTransactionModel.create({
-      transactionId,
-      walletId: wallet._id,
-      userId: req.user.userId,
-      transactionType: WalletTransactionType.ADD_FUNDS,
-      direction: 'CREDIT',
-      amount: numericAmount,
-      currency: 'INR',
-      description: `Wallet top-up via ${paymentMethod} (${fundingId})`,
-      status: WalletTransactionStatus.COMPLETED,
-      idempotencyKey: idempotencyKey || fundingId,
-      balanceAfter,
-      sourceReferenceId: funding.fundingId
-    });
-
     res.status(200).json({
       success: true,
-      message: `₹${numericAmount.toLocaleString('en-IN')} added to your FIC Wallet successfully.`,
+      message: `₹${verified.payment.amount.toLocaleString('en-IN')} added to your FIC Wallet successfully.`,
       data: {
         wallet,
-        transaction,
-        funding
+        payment: verified.payment
       }
     });
   } catch (error) {

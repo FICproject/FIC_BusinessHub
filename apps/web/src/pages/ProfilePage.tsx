@@ -13,6 +13,7 @@ import {
 } from '../components/workspace/WorkspaceComponents';
 import {
   getStoredUser,
+  setStoredUser,
   updateUserProfile,
   removeAuthToken,
   calculateAgeFromDob,
@@ -34,7 +35,17 @@ import {
   IMemberBankAccount,
   WalletTransactionType,
   WalletTransactionStatus
+,
+  listMyDocuments,
+  uploadDocumentFile,
+  downloadOriginalDocument,
+  fetchLiveWalletSummary,
+  fetchLiveWalletTransactions,
+  getMyPaymentHistory,
+  UploadedDocumentAsset
 } from '../services/api';
+import { RazorpayCheckoutModal } from '../components/RazorpayCheckoutModal';
+import { DocumentViewerModal } from '../components/DocumentViewerModal';
 import { getIndianStates, getDistrictsForState, validateIndianPinCode } from '../services/indianLocations';
 import {
   UserIcon,
@@ -66,6 +77,17 @@ export const ProfilePage: React.FC = () => {
 
   // Live Wallet & Financial State
   const [wallet, setWallet] = useState<IMemberWallet | null>(null);
+  const [privateDocuments, setPrivateDocuments] = useState<UploadedDocumentAsset[]>([]);
+  const [viewerDocument, setViewerDocument] = useState<UploadedDocumentAsset | null>(null);
+  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
+  const [razorpayModalConfig, setRazorpayModalConfig] = useState<{
+    isOpen: boolean;
+    purpose: 'WALLET_TOPUP' | 'MEMBERSHIP_RENEWAL';
+    amount: number;
+    title: string;
+    subtitle: string;
+  } | null>(null);
   const [transactions, setTransactions] = useState<IWalletTransaction[]>([]);
   const [allUserTransactions, setAllUserTransactions] = useState<IWalletTransaction[]>([]);
   const [txTypeFilter, setTxTypeFilter] = useState<string>('ALL');
@@ -167,29 +189,27 @@ export const ProfilePage: React.FC = () => {
     setTransactions(txs);
     const refs = getUserReferrals(uid);
     setReferralData(refs);
-    const bank = getUserBankAccount(uid);
-    setBankAccount(bank);
+    const bnk = getUserBankAccount(uid);
+    setBankAccount(bnk);
 
-    // Fetch live user pool investments and payouts
+    // Sync real backend MongoDB wallet, private documents, and Razorpay payment history
     try {
-      const invRes = await apiRequest('/investment/my-investments');
-      if (invRes && invRes.success && Array.isArray(invRes.data)) {
-        setMyInvestments(invRes.data);
+      const [liveWallet, liveTxs, docs, payments] = await Promise.all([
+        fetchLiveWalletSummary(),
+        fetchLiveWalletTransactions(),
+        listMyDocuments(),
+        getMyPaymentHistory()
+      ]);
+      if (liveWallet) setWallet(liveWallet);
+      if (liveTxs && liveTxs.length > 0) {
+        setAllUserTransactions(liveTxs);
+        setTransactions(liveTxs);
       }
-    } catch (_e) {}
-
-    // Fetch live user referrals from backend and sync with state
-    try {
-      const refRes = await apiRequest('/referrals/my-referrals');
-      if (refRes && refRes.success && refRes.data) {
-        setReferralData({
-          referralCode: refRes.data.referralCode || refs.referralCode,
-          referralLink: refRes.data.referralLink || refs.referralLink,
-          summary: refRes.data.summary || refs.summary,
-          referrals: refRes.data.referrals || refs.referrals
-        });
-      }
-    } catch (_refErr) {}
+      if (docs) setPrivateDocuments(docs);
+      if (payments) setPaymentHistory(payments);
+    } catch {
+      // Keep non-fatal fallback if user session has no backend JWT yet
+    }
   };
 
   useEffect(() => {
@@ -312,23 +332,22 @@ export const ProfilePage: React.FC = () => {
   // Add Funds Handler
   const handleAddFundsSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const finalAmount = customTopUp ? Number(customTopUp) : topUpAmount;
-    if (!finalAmount || finalAmount < 100) {
-      showToast('Minimum deposit amount is ₹100.');
+    const finalAmt = customTopUp ? Number(customTopUp) : topUpAmount;
+    if (!finalAmt || finalAmt < 100 || finalAmt > 200000) {
+      showToast('Please enter an amount between ₹100 and ₹2,00,000.');
       return;
     }
-    setIsProcessingPayment(true);
-    setTimeout(() => {
-      addWalletFunds(userId, finalAmount, paymentMethod);
-      setIsProcessingPayment(false);
-      setIsAddFundsModalOpen(false);
-      setCustomTopUp('');
-      refreshFinancialData(userId);
-      showToast(`₹${finalAmount.toLocaleString('en-IN')} added to your wallet successfully!`);
-    }, 700);
+
+    setIsAddFundsModalOpen(false);
+    setRazorpayModalConfig({
+      isOpen: true,
+      purpose: 'WALLET_TOPUP',
+      amount: finalAmt,
+      title: 'FIC WALLET TOP-UP',
+      subtitle: `Wallet Credit · ₹${finalAmt.toLocaleString('en-IN')}`
+    });
   };
 
-  // Withdraw Handler
   const handleWithdrawSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const num = Number(withdrawAmount);
@@ -1220,6 +1239,63 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
+      {paymentHistory.length > 0 && (
+        <div className="bg-white/95 rounded-2xl border border-[#EDE2D7] p-5 sm:p-6 shadow-xs mb-6">
+          <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-3 mb-4">
+            <h3 className="text-sm sm:text-base font-black text-[#51463F]">
+              Verified Razorpay Payments
+            </h3>
+            <span className="text-[11px] font-bold text-[#3B9C91]">
+              {paymentHistory.length} Record(s)
+            </span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-[#EDE2D7] text-[#82776E]">
+                  <th className="py-2 pr-3">Payment / Razorpay ID</th>
+                  <th className="py-2 pr-3">Purpose</th>
+                  <th className="py-2 pr-3">Method</th>
+                  <th className="py-2 pr-3">Amount</th>
+                  <th className="py-2">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#EDE2D7]/60">
+                {paymentHistory.slice(0, 6).map((p: any) => (
+                  <tr key={p.paymentId || p._id}>
+                    <td className="py-2.5 pr-3 font-mono text-[11px] text-[#51463F]">
+                      {p.razorpayPaymentId || p.internalOrderId || p.paymentId}
+                    </td>
+                    <td className="py-2.5 pr-3 font-semibold text-[#51463F]">
+                      {String(p.purpose || '').replace(/_/g, ' ')}
+                    </td>
+                    <td className="py-2.5 pr-3 text-[#82776E]">
+                      {p.paymentMethod || p.preferredMethod || 'RAZORPAY'}
+                    </td>
+                    <td className="py-2.5 pr-3 font-bold text-[#51463F]">
+                      ₹{Number(p.amount || 0).toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-2.5">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                          p.status === 'SUCCESS'
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : p.status === 'FAILED'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}
+                      >
+                        {p.status}
+                        {p.signatureVerified ? ' ✓' : ''}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       {/* ========================================================
           G. KYC VERIFICATION & COMPLIANCE FILES (SIMPLIFIED)
          ======================================================== */}
@@ -1231,12 +1307,93 @@ export const ProfilePage: React.FC = () => {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-[#82776E] font-medium">Overall Status:</span>
-            {renderKycBadge(user.isKycApproved ? 'VERIFIED' : 'PENDING')}
+            <div className="flex items-center gap-2 flex-wrap">
+              <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#3B9C91] hover:bg-[#2E847A] text-white text-xs font-bold transition-colors shadow-xs">
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                  disabled={isUploadingDocument}
+                  onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    setIsUploadingDocument(true);
+                    try {
+                      const uploaded = await uploadDocumentFile(f, {
+                        entityType: 'PROFILE',
+                        documentCategory: 'PROFILE_DOC',
+                        documentLabel: f.name
+                      });
+                      setPrivateDocuments((prev) => [uploaded, ...prev]);
+                      showToast(`Uploaded "${uploaded.originalFileName}" securely (original preserved).`);
+                    } catch (err: any) {
+                      showToast(err?.message || 'Document upload failed.');
+                    } finally {
+                      setIsUploadingDocument(false);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+                <span>{isUploadingDocument ? 'Uploading...' : '+ Upload Document'}</span>
+              </label>
+              {renderKycBadge(user.isKycApproved ? 'VERIFIED' : 'PENDING')}
+            </div>
           </div>
         </div>
 
         <div className="divide-y divide-[#EDE2D7]/70">
-          {(user.submittedDocuments && user.submittedDocuments.length > 0
+          {privateDocuments.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              {privateDocuments.map((doc) => (
+                <div
+                  key={doc.documentId}
+                  className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EDE2D7] flex flex-col justify-between gap-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#3B9C91]">
+                        {doc.documentCategory.replace(/_/g, ' ')} · {doc.originalFileExtension.toUpperCase()}
+                      </span>
+                      <div className="text-xs sm:text-sm font-bold text-[#51463F] truncate">
+                        {doc.documentLabel || doc.originalFileName}
+                      </div>
+                      <div className="text-[11px] text-[#82776E] truncate">
+                        {doc.originalFileName} · {(doc.originalFileSize / 1024).toFixed(1)} KB
+                        {doc.compressionRatio && doc.compressionRatio > 0
+                          ? ` · Preview -${doc.compressionRatio}%`
+                          : ''}
+                      </div>
+                    </div>
+                    {renderKycBadge(doc.documentStatus === 'VERIFIED' ? 'VERIFIED' : doc.documentStatus === 'REJECTED' ? 'REJECTED' : 'PENDING')}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#EDE2D7]/70">
+                    <span className="text-[10px] text-emerald-700 font-semibold">
+                      Original Preserved
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setViewerDocument(doc)}
+                        className="px-2.5 py-1 rounded-lg bg-white border border-[#EDE2D7] hover:border-[#3B9C91] text-[#51463F] text-xs font-bold cursor-pointer"
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => downloadOriginalDocument(doc.documentId, doc.originalFileName)}
+                        className="px-2.5 py-1 rounded-lg bg-[#0A1D37] hover:bg-[#132E52] text-white text-xs font-bold cursor-pointer"
+                      >
+                        Download Original
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {privateDocuments.length === 0 && (user.submittedDocuments && user.submittedDocuments.length > 0
             ? user.submittedDocuments
             : [
                 { name: 'Aadhaar Card', status: 'VERIFIED' },
@@ -2266,7 +2423,7 @@ export const ProfilePage: React.FC = () => {
                   <span className="font-bold text-[#3B9C91]">₹{availableBal.toLocaleString('en-IN')}</span>
                 </div>
 
-                {isRenewalSufficient ? (
+                                {isRenewalSufficient ? (
                   <div className="flex justify-between border-t border-[#EDE2D7] pt-2 font-bold text-[#51463F]">
                     <span>Remaining Balance After Renewal:</span>
                     <span>₹{(availableBal - 5999).toLocaleString('en-IN')}</span>
@@ -2285,6 +2442,22 @@ export const ProfilePage: React.FC = () => {
                   className="px-4 py-2 text-xs font-bold text-[#82776E] hover:text-[#51463F]"
                 >
                   Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsRenewModalOpen(false);
+                    setRazorpayModalConfig({
+                      isOpen: true,
+                      purpose: 'MEMBERSHIP_RENEWAL',
+                      amount: 5999,
+                      title: 'ANNUAL MEMBERSHIP RENEWAL',
+                      subtitle: 'FIC Business Hub · 1 Year Renewal Pass'
+                    });
+                  }}
+                  className="px-4 py-2 bg-[#0A1D37] hover:bg-[#132E52] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
+                >
+                  Pay ₹5,999 via Razorpay
                 </button>
                 {isRenewalSufficient ? (
                   <button
@@ -2824,6 +2997,42 @@ export const ProfilePage: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+      {razorpayModalConfig && (
+        <RazorpayCheckoutModal
+          isOpen={razorpayModalConfig.isOpen}
+          amount={razorpayModalConfig.amount}
+          purpose={razorpayModalConfig.purpose}
+          orderLabel={razorpayModalConfig.title}
+          orderSubtitle={razorpayModalConfig.subtitle}
+          userName={user?.fullName || 'FIC Member'}
+          userEmail={user?.email || ''}
+          userPhone={user?.phoneNumber || ''}
+          onSuccess={async (verified) => {
+            setRazorpayModalConfig(null);
+            await refreshFinancialData(userId);
+            if (verified.purpose === 'MEMBERSHIP_RENEWAL') {
+              if (user) { const updated = { ...user, isMembershipActive: true };
+              setStoredUser(updated);
+              setUser(updated); }
+            }
+            showToast(`Payment verified (${verified.razorpayPaymentId})! ₹${verified.amount.toLocaleString('en-IN')} processed successfully.`);
+          }}
+          onClose={() => setRazorpayModalConfig(null)}
+        />
+      )}
+
+      {viewerDocument && (
+        <DocumentViewerModal
+          isOpen={true}
+          onClose={() => setViewerDocument(null)}
+          documentId={viewerDocument.documentId}
+          documentLabel={viewerDocument.documentLabel}
+          originalFileName={viewerDocument.originalFileName}
+          originalMimeType={viewerDocument.originalMimeType}
+          originalFileSize={viewerDocument.originalFileSize}
+          checksum={viewerDocument.checksum}
+        />
+      )}
     </WorkspaceShell>
   );
 };

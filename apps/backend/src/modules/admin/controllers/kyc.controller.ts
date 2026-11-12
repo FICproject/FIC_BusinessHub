@@ -3,6 +3,7 @@ import { KycSubmissionModel } from '../models/KycSubmission';
 import { MemberModel } from '../models/Member';
 import { UserModel } from '../../users/users.model';
 import { KYCSubmissionModel } from '../../kyc/kyc.model';
+import { DocumentAssetModel, toSafeDocumentDto } from '../../documents/documents.model';
 import { KYCStatus } from '@fic/shared-types';
 import { authenticateAdmin, AuthenticatedAdminRequest, logAdminAction } from '../middleware/admin-auth.middleware';
 
@@ -90,6 +91,32 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       }
     }
 
+    const ownerUser = await UserModel.findOne({
+      $or: [{ _id: subObj.memberId?._id || subObj.memberId }, { email: subObj.memberEmail?.toLowerCase() }]
+    }).select('_id').lean<{ _id?: any }>();
+    const privateAssets = await DocumentAssetModel.find({
+      $or: [
+        ...(ownerUser?._id ? [{ ownerId: ownerUser._id }] : []),
+        ...(subObj.memberId ? [{ memberId: subObj.memberId?._id || subObj.memberId }] : [])
+      ],
+      entityType: 'KYC',
+      isDeleted: { $ne: true }
+    }).sort({ createdAt: -1 });
+    subObj.documentAssets = privateAssets.map((a) => toSafeDocumentDto(a, 'admin'));
+
+    if (!subObj.memberPhone || !subObj.memberDob || !subObj.address || !subObj.subCategory) {
+      const user = await UserModel.findOne({
+        $or: [{ _id: subObj.memberId }, { email: subObj.memberEmail?.toLowerCase() }]
+      }).lean() as any;
+
+      if (user) {
+        subObj.memberPhone = subObj.memberPhone || user.phoneNumber;
+        subObj.memberDob = subObj.memberDob || user.dob;
+        subObj.subCategory = subObj.subCategory || user.subCategory || user.primarySubcategoryName;
+        subObj.address = subObj.address || user.address;
+        subObj.dynamicProfile = subObj.dynamicProfile || user.dynamicProfile;
+      }
+    }
     res.json({ success: true, data: subObj });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -155,6 +182,18 @@ router.patch('/:id/review', authenticateAdmin, async (req: AuthenticatedAdminReq
           reviewedAt: new Date()
         }
       }
+    );
+
+    // 4. Update DocumentAsset statuses for uploaded KYC docs
+    const linkedDocIds = (submission.documents || []).map((d: any) => d.documentId).filter(Boolean);
+    await DocumentAssetModel.updateMany(
+      {
+        $or: [
+          ...(linkedDocIds.length ? [{ documentId: { $in: linkedDocIds } }] : []),
+          { ownerId: submission.memberId, entityType: 'KYC' }
+        ]
+      },
+      { $set: { documentStatus: isApproved ? 'VERIFIED' : 'REJECTED' } }
     );
 
     await logAdminAction(req, `KYC_${decision}`, 'KycSubmission', id, {

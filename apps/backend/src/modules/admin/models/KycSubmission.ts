@@ -32,10 +32,16 @@ export interface IKycSubmission extends Document {
   categoryName: string;
   status: KycStatus;
   documents: Array<{
+    documentId?: string;
     docKey: string;
     title: string;
     fileUrl: string;
     fileName: string;
+    originalMimeType?: string;
+    originalFileSize?: number;
+    checksum?: string;
+    hasOptimizedPreview?: boolean;
+    hasThumbnail?: boolean;
     documentNumber?: string;
     uploadedAt: string;
     status: string;
@@ -54,6 +60,12 @@ const KycDocumentItemSchema = new Schema(
     title: { type: String, required: true },
     fileUrl: { type: String, required: true },
     fileName: { type: String, required: true },
+    documentId: { type: String },
+    originalMimeType: { type: String },
+    originalFileSize: { type: Number },
+    checksum: { type: String },
+    hasOptimizedPreview: { type: Boolean },
+    hasThumbnail: { type: Boolean },
     documentNumber: { type: String },
     uploadedAt: { type: String, required: true },
     status: { type: String, enum: ['PENDING', 'VERIFIED', 'REJECTED'], default: 'PENDING' },

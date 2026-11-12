@@ -6,6 +6,7 @@ import { ServiceListingModel } from '../models/ServiceListing';
 import { KycSubmissionModel } from '../models/KycSubmission';
 import { MemberWalletModel } from '../models/MemberWallet';
 import { AdminPaymentModel } from '../models/Payment';
+import { DocumentAssetModel, toSafeDocumentDto } from '../../documents/documents.model';
 import { authenticateAdmin, AuthenticatedAdminRequest, logAdminAction } from '../middleware/admin-auth.middleware';
 import { getOrCreateMemberWallet } from './funding.controller';
 
@@ -107,6 +108,17 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       } as any;
     }
 
+    // Private document assets uploaded by this member
+    const rawAssets = await DocumentAssetModel.find({
+      $or: [
+        ...(user?._id ? [{ ownerId: user._id }] : []),
+        { ownerId: member._id },
+        { memberId: member._id }
+      ],
+      isDeleted: { $ne: true }
+    }).sort({ createdAt: -1 });
+    const documentAssets = rawAssets.map((a) => toSafeDocumentDto(a, 'admin'));
+
     // Member Bank Details (provided by user or verified via payment gateway)
     const razorpayTxn = await AdminPaymentModel.findOne({
       $or: [{ memberId: member._id }, { memberEmail: member.email.toLowerCase() }]
@@ -132,10 +144,14 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       membershipPayment: member.paymentStatus === 'PAID' ? {
         amount: member.membershipFeePaid || 99,
         currency: 'INR',
-        paymentMethod: 'Net Banking / UPI Direct Debit',
         paidFrom: 'Bank Account / Verified UPI',
         status: 'PAID',
-        referenceId: razorpayTxn?.gatewayTransactionId || (kycSubmission as any)?.paymentDetails?.paymentId || `PAY-BANK-${member._id.toString().slice(-6)}`,
+        referenceId: razorpayTxn?.razorpayPaymentId || razorpayTxn?.gatewayTransactionId || (kycSubmission as any)?.paymentDetails?.paymentId || 'UNAVAILABLE',
+        razorpayOrderId: razorpayTxn?.razorpayOrderId || (kycSubmission as any)?.paymentDetails?.orderId,
+        razorpayPaymentId: razorpayTxn?.razorpayPaymentId || razorpayTxn?.gatewayTransactionId,
+        paymentMethod: razorpayTxn?.paymentMethod || 'Online / Razorpay',
+        signatureVerified: Boolean(razorpayTxn?.signatureVerified),
+        webhookVerified: Boolean(razorpayTxn?.webhookVerified),
         invoiceUrl: razorpayTxn?.invoiceUrl,
         paidAt: member.registeredAt || new Date()
       } : undefined
@@ -239,6 +255,7 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
         member: enrichedMember,
         services,
         kycSubmission,
+        documentAssets,
         wallet,
         bankDetails,
       },

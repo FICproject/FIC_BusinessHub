@@ -2523,3 +2523,415 @@ export const cancelMentorshipRequest = async (
   }
   return null;
 };
+
+
+// =============================================================
+// Secure Document Storage & Optimization API (Module 1)
+// =============================================================
+export interface UploadedDocumentAsset {
+  documentId: string;
+  ownerId: string;
+  entityType: string;
+  entityId?: string;
+  originalFileName: string;
+  originalFileExtension: string;
+  originalMimeType: string;
+  originalFileSize: number;
+  optimizedMimeType?: string;
+  optimizedFileSize?: number;
+  thumbnailMimeType?: string;
+  thumbnailFileSize?: number;
+  storageProvider: 's3' | 'local';
+  checksum: string;
+  compressionRatio?: number;
+  hasOptimizedPreview: boolean;
+  hasThumbnail: boolean;
+  documentCategory: string;
+  documentLabel: string;
+  documentNumber?: string;
+  documentStatus: string;
+  viewUrl: string;
+  thumbnailUrl?: string;
+  downloadUrl: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const ALLOWED_DOCUMENT_EXTENSIONS = new Set([
+  'pdf',
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'ppt',
+  'pptx',
+  'txt'
+]);
+
+export const validateClientFileBeforeUpload = (file: File, maxBytes = 15 * 1024 * 1024): void => {
+  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  if (!ALLOWED_DOCUMENT_EXTENSIONS.has(ext)) {
+    throw new Error(
+      `Unsupported format ".${ext}". Allowed: PDF, JPG, JPEG, PNG, WEBP, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT.`
+    );
+  }
+  if (file.size <= 0) {
+    throw new Error('Selected file is empty.');
+  }
+  if (file.size > maxBytes) {
+    throw new Error(`File size exceeds ${Math.round(maxBytes / (1024 * 1024))} MB limit.`);
+  }
+};
+
+export const uploadDocumentFile = async (
+  file: File,
+  options?: {
+    documentCategory?: string;
+    documentLabel?: string;
+    documentNumber?: string;
+    entityType?: 'KYC' | 'PROFILE' | 'INVESTMENT' | 'SERVICE' | 'GENERAL';
+    entityId?: string;
+    tokenOverride?: string;
+  }
+): Promise<UploadedDocumentAsset> => {
+  validateClientFileBeforeUpload(file);
+  const token = options?.tokenOverride || getAuthToken();
+  if (!token) {
+    throw new Error('Authentication token is required to upload private documents.');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  if (options?.documentCategory) formData.append('documentCategory', options.documentCategory);
+  if (options?.documentLabel) formData.append('documentLabel', options.documentLabel);
+  if (options?.documentNumber) formData.append('documentNumber', options.documentNumber);
+  if (options?.entityType) formData.append('entityType', options.entityType);
+  if (options?.entityId) formData.append('entityId', options.entityId);
+
+  const response = await fetch(`${BASE_URL}/documents/upload`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.message || payload?.error || `Document upload failed (HTTP ${response.status})`);
+  }
+  return payload.data as UploadedDocumentAsset;
+};
+
+export const listMyDocuments = async (entityType?: string): Promise<UploadedDocumentAsset[]> => {
+  const token = getAuthToken();
+  if (!token) return [];
+  const query = entityType ? `?entityType=${encodeURIComponent(entityType)}` : '';
+  const response = await fetch(`${BASE_URL}/documents/my${query}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) return [];
+  const payload = await response.json().catch(() => ({}));
+  return Array.isArray(payload?.data) ? payload.data : [];
+};
+
+const parseFilenameFromDisposition = (disposition: string | null, fallback: string): string => {
+  if (!disposition) return fallback;
+  const utf8Match = disposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      return utf8Match[1];
+    }
+  }
+  const simpleMatch = disposition.match(/filename="?([^";\r\n]+)"?/i);
+  return simpleMatch?.[1] || fallback;
+};
+
+export const fetchAuthenticatedDocumentBlob = async (
+  documentId: string,
+  options?: {
+    variant?: 'preview' | 'thumbnail' | 'original';
+    action?: 'view' | 'download';
+    tokenOverride?: string;
+  }
+): Promise<{
+  blobUrl: string;
+  blob: Blob;
+  mimeType: string;
+  fileName: string;
+  checksum: string | null;
+  variantServed: string | null;
+}> => {
+  const token = options?.tokenOverride || getAuthToken();
+  if (!token) {
+    throw new Error('Authentication required to access private documents.');
+  }
+
+  const action = options?.action || 'view';
+  const variantQuery =
+    action === 'view' ? `?variant=${encodeURIComponent(options?.variant || 'preview')}` : '';
+  const response = await fetch(`${BASE_URL}/documents/${encodeURIComponent(documentId)}/${action}${variantQuery}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  if (!response.ok) {
+    const errPayload = await response.json().catch(() => ({}));
+    throw new Error(errPayload?.message || `Failed to load document (HTTP ${response.status})`);
+  }
+
+  const blob = await response.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const fileName = parseFilenameFromDisposition(
+    response.headers.get('Content-Disposition'),
+    `${documentId}`
+  );
+  return {
+    blobUrl,
+    blob,
+    mimeType: response.headers.get('Content-Type') || blob.type || 'application/octet-stream',
+    fileName,
+    checksum: response.headers.get('X-Original-Checksum-Sha256'),
+    variantServed: response.headers.get('X-Document-Variant')
+  };
+};
+
+export const downloadOriginalDocument = async (
+  documentId: string,
+  fallbackFileName?: string
+): Promise<void> => {
+  const result = await fetchAuthenticatedDocumentBlob(documentId, { action: 'download' });
+  const a = document.createElement('a');
+  a.href = result.blobUrl;
+  a.download = fallbackFileName || result.fileName || `${documentId}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(result.blobUrl), 15000);
+};
+
+// =============================================================
+// Real Razorpay Payment Gateway API (Module 2)
+// =============================================================
+export type RazorpayOrderPurpose =
+  | 'MEMBERSHIP_FIRST_YEAR'
+  | 'MEMBERSHIP_RENEWAL'
+  | 'WALLET_TOPUP'
+  | 'SERVICE_ORDER';
+
+export interface RazorpayCreateOrderResponse {
+  paymentId: string;
+  internalOrderId: string;
+  razorpayOrderId: string;
+  amount: number;
+  amountInPaise: number;
+  currency: string;
+  keyId: string;
+  mode: 'TEST' | 'LIVE';
+  purpose: RazorpayOrderPurpose;
+  description: string;
+  prefill: {
+    name: string;
+    email: string;
+    contact: string;
+  };
+}
+
+export interface RazorpayVerifyResponse {
+  paymentId: string;
+  internalOrderId: string;
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  amount: number;
+  currency: string;
+  status: string;
+  purpose: string;
+  paymentMethod?: string;
+  signatureVerified: boolean;
+  webhookVerified: boolean;
+  verifiedAt?: string;
+  alreadyFulfilled?: boolean;
+  newBalance?: number;
+  membershipActivated?: boolean;
+  validUntil?: string;
+}
+
+export const createRazorpayPaymentOrder = async (params: {
+  purpose: RazorpayOrderPurpose;
+  amount?: number;
+  serviceId?: string;
+  preferredMethod?: string;
+  notes?: Record<string, string>;
+  tokenOverride?: string;
+}): Promise<RazorpayCreateOrderResponse> => {
+  const token = params.tokenOverride || getAuthToken();
+  if (!token) {
+    throw new Error('Authentication required to initiate payment.');
+  }
+
+  const response = await fetch(`${BASE_URL}/payments/create-order`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      purpose: params.purpose,
+      ...(params.amount !== undefined ? { amount: params.amount } : {}),
+      ...(params.serviceId ? { serviceId: params.serviceId } : {}),
+      ...(params.preferredMethod ? { preferredMethod: params.preferredMethod } : {}),
+      ...(params.notes ? { notes: params.notes } : {})
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.message || payload?.error || `Failed to create payment order (HTTP ${response.status})`);
+  }
+  return payload.data as RazorpayCreateOrderResponse;
+};
+
+export const verifyRazorpayPayment = async (params: {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  paymentMethod?: string;
+  tokenOverride?: string;
+}): Promise<RazorpayVerifyResponse> => {
+  const token = params.tokenOverride || getAuthToken();
+  if (!token) {
+    throw new Error('Authentication required to verify payment.');
+  }
+
+  const response = await fetch(`${BASE_URL}/payments/verify`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      razorpay_order_id: params.razorpay_order_id,
+      razorpay_payment_id: params.razorpay_payment_id,
+      razorpay_signature: params.razorpay_signature,
+      ...(params.paymentMethod ? { paymentMethod: params.paymentMethod } : {})
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.message || payload?.error || `Payment verification failed (HTTP ${response.status})`);
+  }
+  return payload.data as RazorpayVerifyResponse;
+};
+
+export const recordRazorpayFailure = async (params: {
+  paymentId: string;
+  razorpay_order_id?: string;
+  razorpay_payment_id?: string;
+  status: 'FAILED' | 'CANCELLED';
+  reason?: string;
+  tokenOverride?: string;
+}): Promise<void> => {
+  const token = params.tokenOverride || getAuthToken();
+  if (!token) return;
+
+  await fetch(`${BASE_URL}/payments/${encodeURIComponent(params.paymentId)}/failure`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      razorpay_order_id: params.razorpay_order_id,
+      razorpay_payment_id: params.razorpay_payment_id,
+      status: params.status,
+      reason: params.reason
+    })
+  }).catch(() => {});
+};
+
+export const getPaymentStatus = async (paymentIdOrOrderId: string): Promise<any> => {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required.');
+  const response = await fetch(`${BASE_URL}/payments/${encodeURIComponent(paymentIdOrOrderId)}/status`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.message || 'Unable to fetch payment status.');
+  }
+  return payload.data;
+};
+
+export const getMyPaymentHistory = async (): Promise<any[]> => {
+  const token = getAuthToken();
+  if (!token) return [];
+  const response = await fetch(`${BASE_URL}/payments/my-history`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) return [];
+  const payload = await response.json().catch(() => ({}));
+  return Array.isArray(payload?.data) ? payload.data : [];
+};
+
+export const fetchLiveWalletSummary = async (): Promise<IMemberWallet | null> => {
+  const token = getAuthToken();
+  if (!token) return null;
+  const response = await fetch(`${BASE_URL}/wallet`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) return null;
+  const payload = await response.json().catch(() => ({}));
+  return payload?.data || null;
+};
+
+export const fetchLiveWalletTransactions = async (): Promise<IWalletTransaction[]> => {
+  const token = getAuthToken();
+  if (!token) return [];
+  const response = await fetch(`${BASE_URL}/wallet/transactions`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) return [];
+  const payload = await response.json().catch(() => ({}));
+  return Array.isArray(payload?.data) ? payload.data : [];
+};
+
+
+export const registerAccountStrict = async (body: Record<string, any>): Promise<{ token: string; user: any }> => {
+  const response = await fetch(`${BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success || !payload?.data?.token) {
+    throw new Error(payload?.message || payload?.error || `Registration failed (HTTP ${response.status})`);
+  }
+  return { token: payload.data.token, user: payload.data.user };
+};
+
+export const submitKycApplicationStrict = async (
+  body: Record<string, any>,
+  tokenOverride?: string
+): Promise<any> => {
+  const token = tokenOverride || getAuthToken();
+  if (!token) throw new Error('Authentication required to submit KYC application.');
+  const response = await fetch(`${BASE_URL}/kyc/submit`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(body)
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.message || payload?.error || `KYC submission failed (HTTP ${response.status})`);
+  }
+  return payload.data;
+};

@@ -194,20 +194,29 @@ export interface Meeting {
 }
 
 // Payments & Transactions
-export type PaymentType = 'INTRO_FEE' | 'ANNUAL_RENEWAL' | 'MANUAL_OVERRIDE';
+export type PaymentType = 'INTRO_FEE' | 'ANNUAL_RENEWAL' | 'MANUAL_OVERRIDE' | 'WALLET_TOPUP' | 'SERVICE_ORDER';
 export type AdminPaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
 
 export interface PaymentRecord {
   id: string;
+  paymentId?: string;
+  internalOrderId?: string;
   memberId: string;
   memberName?: string;
   memberEmail?: string;
   amount: number;
   currency: string;
   paymentType: PaymentType;
+  purpose?: string;
   status: AdminPaymentStatus;
   gatewayProvider: string;
   gatewayTransactionId: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  paymentMethod?: string;
+  signatureVerified?: boolean;
+  webhookVerified?: boolean;
+  failureReason?: string;
   invoiceUrl?: string;
   createdAt: string;
 }

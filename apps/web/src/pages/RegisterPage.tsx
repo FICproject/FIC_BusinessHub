@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button, Input, Card, Badge } from '@fic/ui';
 import { INITIAL_CATEGORIES_DATA } from '../services/categoriesData';
@@ -14,7 +14,12 @@ import {
   formatDisplayDob,
   validateReferralCode,
   saveRegisteredAccount,
-  UserAddress
+  UserAddress,
+  uploadDocumentFile,
+  validateClientFileBeforeUpload,
+  registerAccountStrict,
+  submitKycApplicationStrict,
+  UploadedDocumentAsset
 } from '../services/api';
 import {
   ShieldCheckIcon,
@@ -201,8 +206,10 @@ export const RegisterPage: React.FC = () => {
   // Step 4: Real Document Attachment state (Default + Custom)
   const [docNumbers, setDocNumbers] = useState<Record<string, string>>({});
   const [attachedFiles, setAttachedFiles] = useState<
-    Record<string, { name: string; size: string; fileUrl: string }>
+    Record<string, { file?: File; name: string; size: string; mimeType?: string; fileUrl: string; documentId?: string }>
   >({});
+  const registeredSessionRef = useRef<{ token: string; user: any } | null>(null);
+  const uploadedAssetsRef = useRef<Record<string, UploadedDocumentAsset>>({});
   const [customDocs, setCustomDocs] = useState<CustomDoc[]>([]);
 
   // Step 5: Payment
@@ -259,30 +266,37 @@ export const RegisterPage: React.FC = () => {
     }
   };
 
-  // File attach handler - read as persistent Base64 Data URL so images show across origins and ports
+  // File attach handler - validates client constraints and retains real File object for multipart upload
   const handleFileChange = (docKey: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const sizeStr =
-        file.size > 1024 * 1024
-          ? (file.size / (1024 * 1024)).toFixed(2) + ' MB'
-          : (file.size / 1024).toFixed(1) + ' KB';
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const resultUrl = reader.result as string;
-        setAttachedFiles((prev) => ({
-          ...prev,
-          [docKey]: {
-            name: file.name,
-            size: sizeStr,
-            fileUrl: resultUrl
-          }
-        }));
-      };
-      reader.readAsDataURL(file);
-      setErrorMessage('');
+    if (!file) return;
+    try {
+      validateClientFileBeforeUpload(file);
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Unsupported or oversized file selected.');
+      e.target.value = '';
+      return;
     }
+
+    const sizeStr =
+      file.size > 1024 * 1024
+        ? (file.size / (1024 * 1024)).toFixed(2) + ' MB'
+        : (file.size / 1024).toFixed(1) + ' KB';
+
+    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : '';
+    delete uploadedAssetsRef.current[docKey];
+
+    setAttachedFiles((prev) => ({
+      ...prev,
+      [docKey]: {
+        file,
+        name: file.name,
+        size: sizeStr,
+        mimeType: file.type,
+        fileUrl: previewUrl
+      }
+    }));
+    setErrorMessage('');
   };
 
   const handleRemoveFile = (docKey: string) => {
@@ -460,19 +474,9 @@ export const RegisterPage: React.FC = () => {
     setShowRazorpayModal(true);
   };
 
-  // Callback once Razorpay payment is authorized
-  const handleRazorpaySuccess = async (paymentResult: {
-    razorpay_payment_id: string;
-    razorpay_order_id: string;
-    razorpay_signature: string;
-    method: string;
-  }) => {
-    setShowRazorpayModal(false);
-    setIsLoading(true);
-    setErrorMessage('');
-
+  // Ensure account is registered and KYC documents are securely uploaded BEFORE Razorpay order creation
+  const ensureRegistrationSessionAndUploadDocs = async (): Promise<string> => {
     const formattedDob = formatDisplayDob(dob);
-
     const userAddress: UserAddress = {
       addressLine1: addressLine1.trim(),
       addressLine2: addressLine2.trim() || undefined,
@@ -485,49 +489,38 @@ export const RegisterPage: React.FC = () => {
       addressType: addressType || 'Residential'
     };
 
-    try {
-      // 1. Register Account
-      const regResponse = await apiRequest('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({
-          fullName,
-          email,
-          phoneNumber,
-          dob: formattedDob || dob,
-          password,
-          primaryCategoryId: selectedCategory.id,
-          primaryCategoryName: selectedCategory.name,
-          subCategory: selectedSubcategory,
-          primarySubcategoryName: selectedSubcategory,
-          subcategoryIds: [selectedSubcategory],
-          dynamicProfile: dynamicAnswers,
-          address: userAddress,
-          ageConfirmed,
-          termsAccepted
-        })
-      });
-
-      const token = regResponse?.data?.token || `mock_jwt_token_${Date.now()}`;
-      const isReferred = referrerInfo?.valid;
-      const newRefCode = `FIC-${fullName.toUpperCase().replace(/\s+/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-      const user = regResponse?.data?.user || {
-        id: `usr_${Date.now()}`,
+    if (!registeredSessionRef.current) {
+      const { token, user: serverUser } = await registerAccountStrict({
         fullName,
         email,
         phoneNumber,
+        dob: formattedDob || dob,
+        password,
         primaryCategoryId: selectedCategory.id,
-        categoryName: selectedCategory.name,
+        primaryCategoryName: selectedCategory.name,
+        subCategory: selectedSubcategory,
+        primarySubcategoryName: selectedSubcategory,
+        subcategoryIds: [selectedSubcategory],
+        dynamicProfile: dynamicAnswers,
+        address: userAddress,
+        ageConfirmed,
+        termsAccepted
+      });
+
+      const isReferred = referrerInfo?.valid;
+      const newRefCode = `FIC-${fullName.toUpperCase().replace(/\s+/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const enrichedUser = {
+        ...(serverUser || {}),
         primaryCategory: selectedCategory.name,
+        categoryName: selectedCategory.name,
         subCategory: selectedSubcategory,
         primarySubcategoryName: selectedSubcategory,
         subcategories: [selectedSubcategory],
         subcategoryIds: [selectedSubcategory],
         dynamicProfile: dynamicAnswers,
         address: userAddress,
-        isMembershipActive: true,
-        isKycApproved: false,
         personalInfo: {
+          ...((serverUser && serverUser.personalInfo) || {}),
           dob: formattedDob || dob,
           address: `${userAddress.addressLine1}${userAddress.addressLine2 ? ', ' + userAddress.addressLine2 : ''}`,
           city: userAddress.city,
@@ -536,112 +529,137 @@ export const RegisterPage: React.FC = () => {
           pincode: userAddress.pinCode
         },
         professionalInfo: {
+          ...((serverUser && serverUser.professionalInfo) || {}),
           roleTitle: selectedSubcategory
-        }
+        },
+        referralCode: newRefCode,
+        referralSource: isReferred ? 'REFERRED' : 'ORGANIC',
+        referredByCode: isReferred ? referralCode : undefined,
+        referrerUserId: isReferred ? referrerInfo.referrerUserId : undefined
       };
-
-      user.password = password;
-      user.primaryCategory = selectedCategory.name;
-      user.categoryName = selectedCategory.name;
-      user.subCategory = selectedSubcategory;
-      user.primarySubcategoryName = selectedSubcategory;
-      user.subcategories = [selectedSubcategory];
-      user.subcategoryIds = [selectedSubcategory];
-      user.dynamicProfile = dynamicAnswers;
-      user.address = userAddress;
-      user.personalInfo = {
-        ...(user.personalInfo || {}),
-        dob: formattedDob || dob,
-        address: `${userAddress.addressLine1}${userAddress.addressLine2 ? ', ' + userAddress.addressLine2 : ''}`,
-        city: userAddress.city,
-        district: userAddress.district,
-        state: userAddress.state,
-        pincode: userAddress.pinCode
-      };
-      user.professionalInfo = {
-        ...(user.professionalInfo || {}),
-        roleTitle: selectedSubcategory
-      };
-      user.referralCode = newRefCode;
-      user.referralSource = isReferred ? 'REFERRED' : 'ORGANIC';
-      user.referredByCode = isReferred ? referralCode : undefined;
-      user.referrerUserId = isReferred ? referrerInfo.referrerUserId : undefined;
 
       setAuthToken(token);
-      setStoredUser(user);
-      saveRegisteredAccount(user);
+      setStoredUser(enrichedUser);
+      saveRegisteredAccount(enrichedUser);
+      registeredSessionRef.current = { token, user: enrichedUser };
+    }
 
-      // 2. Confirm ₹99 Razorpay Payment in backend
-      await apiRequest('/payments/membership/confirm', {
-        method: 'POST',
-        body: JSON.stringify({
-          orderId: paymentResult.razorpay_order_id,
-          transactionId: paymentResult.razorpay_payment_id
-        })
+    const activeToken = registeredSessionRef.current.token;
+
+    for (const doc of subcategoryConfig.kycDocuments) {
+      const slot = attachedFiles[doc.type];
+      if (slot?.file && !uploadedAssetsRef.current[doc.type]) {
+        const asset = await uploadDocumentFile(slot.file, {
+          entityType: 'KYC',
+          documentCategory: 'KYC_IDENTITY',
+          documentLabel: doc.label,
+          documentNumber: docNumbers[doc.type] || '',
+          tokenOverride: activeToken
+        });
+        uploadedAssetsRef.current[doc.type] = asset;
+      }
+    }
+
+    for (const cDoc of customDocs) {
+      const slot = attachedFiles[cDoc.id];
+      if (slot?.file && !uploadedAssetsRef.current[cDoc.id]) {
+        const asset = await uploadDocumentFile(slot.file, {
+          entityType: 'KYC',
+          documentCategory: 'KYC_BUSINESS',
+          documentLabel: cDoc.label,
+          documentNumber: cDoc.documentNumber || '',
+          tokenOverride: activeToken
+        });
+        uploadedAssetsRef.current[cDoc.id] = asset;
+      }
+    }
+
+    return activeToken;
+  };
+
+  // Executed ONLY after backend HMAC-SHA256 verification succeeds
+  const handleRazorpaySuccess = async (paymentResult: {
+    paymentId: string;
+    razorpayPaymentId: string;
+    razorpayOrderId: string;
+    method: string;
+  }) => {
+    setShowRazorpayModal(false);
+    setIsLoading(true);
+    setErrorMessage('');
+
+    try {
+      const session = registeredSessionRef.current;
+      const token = session?.token;
+
+      const defaultDocItems = subcategoryConfig.kycDocuments.map((doc) => {
+        const uploaded = uploadedAssetsRef.current[doc.type];
+        return {
+          documentId: uploaded?.documentId,
+          documentType: doc.type,
+          documentName: doc.label,
+          documentNumber: docNumbers[doc.type] || '',
+          fileName: uploaded?.originalFileName || attachedFiles[doc.type]?.name || '',
+          fileUrl: uploaded?.viewUrl || ''
+        };
       });
 
-      // 3. Compile all documents (Default Role Docs + Custom Docs)
-      const defaultDocItems = subcategoryConfig.kycDocuments.map((doc) => ({
-        documentType: doc.type,
-        documentName: doc.label,
-        documentNumber: docNumbers[doc.type] || '',
-        fileName: attachedFiles[doc.type]?.name || '',
-        fileUrl: attachedFiles[doc.type]?.fileUrl || 'https://ficapp.in/uploads/mock-id.pdf'
-      }));
-
-      const customDocItems = customDocs.map((cDoc) => ({
-        documentType: 'ADDITIONAL_PROOF',
-        documentName: cDoc.label,
-        documentNumber: cDoc.documentNumber,
-        fileName: attachedFiles[cDoc.id]?.name || '',
-        fileUrl: attachedFiles[cDoc.id]?.fileUrl || 'https://ficapp.in/uploads/mock-doc.pdf'
-      }));
+      const customDocItems = customDocs.map((cDoc) => {
+        const uploaded = uploadedAssetsRef.current[cDoc.id];
+        return {
+          documentId: uploaded?.documentId,
+          documentType: 'ADDITIONAL_PROOF',
+          documentName: cDoc.label,
+          documentNumber: cDoc.documentNumber,
+          fileName: uploaded?.originalFileName || attachedFiles[cDoc.id]?.name || '',
+          fileUrl: uploaded?.viewUrl || ''
+        };
+      });
 
       const allDocItems = [...defaultDocItems, ...customDocItems];
 
-      // Submit KYC documents AND Razorpay details to backend for admin inspection
-      await apiRequest('/kyc/submit', {
-        method: 'POST',
-        body: JSON.stringify({
+      await submitKycApplicationStrict(
+        {
           categoryId: selectedCategory.id,
-          documents: allDocItems,
+          documents: allDocItems
+        },
+        token
+      );
+
+      if (session?.user) {
+        const updatedUser = {
+          ...session.user,
+          isMembershipActive: true,
+          isKycApproved: false,
+          kycStatus: 'PENDING',
+          uploadedDocumentsCount: allDocItems.length,
           paymentDetails: {
-            orderId: paymentResult.razorpay_order_id,
-            paymentId: paymentResult.razorpay_payment_id,
-            signature: paymentResult.razorpay_signature,
-            method: paymentResult.method,
+            paymentId: paymentResult.razorpayPaymentId || paymentResult.paymentId,
+            orderId: paymentResult.razorpayOrderId,
             amount: 99,
-            currency: 'INR',
-            paidAt: new Date().toISOString(),
-            status: 'CAPTURED'
-          }
-        })
-      });
-
-      user.isMembershipActive = true;
-      user.isKycApproved = false;
-      user.kycStatus = 'PENDING';
-      user.uploadedDocumentsCount = allDocItems.length;
-      user.paymentDetails = {
-        paymentId: paymentResult.razorpay_payment_id,
-        orderId: paymentResult.razorpay_order_id,
-        amount: 99
-      };
-      user.submittedDocuments = allDocItems.map((doc) => ({
-        type: doc.documentType,
-        name: doc.documentName,
-        status: 'PENDING',
-        uploadedAt: 'On Registration'
-      }));
-      setStoredUser(user);
+            method: paymentResult.method
+          },
+          submittedDocuments: allDocItems.map((doc) => ({
+            documentId: doc.documentId,
+            type: doc.documentType,
+            name: doc.documentName,
+            fileName: doc.fileName,
+            status: 'PENDING',
+            uploadedAt: 'On Registration'
+          }))
+        };
+        setStoredUser(updatedUser);
+      }
 
       setPaymentDone(true);
       setIsLoading(false);
       setStep(6);
-    } catch {
-      setPaymentDone(true);
+    } catch (err: any) {
       setIsLoading(false);
-      setStep(6);
+      setErrorMessage(
+        err?.message ||
+          'Payment succeeded, but KYC submission encountered an error. Please retry submitting.'
+      );
     }
   };
 
@@ -1430,7 +1448,7 @@ export const RegisterPage: React.FC = () => {
                                   Change
                                   <input
                                     type="file"
-                                    accept=".pdf,.png,.jpg,.jpeg"
+                                    accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
                                     className="hidden"
                                     onChange={(e) => handleFileChange(doc.type, e)}
                                   />
@@ -1465,7 +1483,7 @@ export const RegisterPage: React.FC = () => {
                               </span>
                               <input
                                 type="file"
-                                accept=".pdf,.png,.jpg,.jpeg"
+                                accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
                                 className="hidden"
                                 onChange={(e) => handleFileChange(doc.type, e)}
                               />
@@ -1572,7 +1590,7 @@ export const RegisterPage: React.FC = () => {
                                     Change
                                     <input
                                       type="file"
-                                      accept=".pdf,.png,.jpg,.jpeg"
+                                      accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
                                       className="hidden"
                                       onChange={(e) => handleFileChange(cDoc.id, e)}
                                     />
@@ -1606,7 +1624,7 @@ export const RegisterPage: React.FC = () => {
                                 </span>
                                 <input
                                   type="file"
-                                  accept=".pdf,.png,.jpg,.jpeg"
+                                  accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
                                   className="hidden"
                                   onChange={(e) => handleFileChange(cDoc.id, e)}
                                 />
@@ -1852,9 +1870,13 @@ export const RegisterPage: React.FC = () => {
       <RazorpayCheckoutModal
         isOpen={showRazorpayModal}
         amount={99}
+        purpose="MEMBERSHIP_FIRST_YEAR"
+        orderLabel="MEMBERSHIP ACTIVATION"
+        orderSubtitle={`1st Year FIC Business Pass · ${selectedCategory.name}`}
         userName={fullName || 'Applicant'}
-        userEmail={email || 'applicant@ficapp.in'}
-        userPhone={phoneNumber || '9840129988'}
+        userEmail={email || ''}
+        userPhone={phoneNumber || ''}
+        ensureAuthToken={ensureRegistrationSessionAndUploadDocs}
         onSuccess={handleRazorpaySuccess}
         onClose={() => setShowRazorpayModal(false)}
       />

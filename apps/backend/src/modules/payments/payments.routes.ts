@@ -1,164 +1,345 @@
-import { Router, Response, NextFunction } from 'express';
-import mongoose from 'mongoose';
-import { PaymentModel } from './payments.model';
-import { MembershipModel } from '../membership/membership.model';
-import { UserModel } from '../users/users.model';
-import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { Router, Request, Response, NextFunction } from 'express';
 import { AppError } from '../../common/errors/app-error';
-import { MembershipStatus, PaymentStatus } from '@fic/shared-types';
+import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { PaymentModel } from './payments.model';
+import {
+  createRazorpayOrderForUser,
+  processRazorpayWebhookEvent,
+  recordCheckoutFailureOrCancel,
+  verifyCheckoutPaymentForUser
+} from './payments.service';
 
 export const paymentsRouter = Router();
 
-// Create Membership Payment Order (₹99 First-Year)
-paymentsRouter.post('/membership/order', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    if (!req.user) throw new AppError('Unauthorized', 401);
-
-    const amount = 99; // ₹99 introductory pricing as per blueprint
-    const orderId = `ORD_FIC_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-
-    const payment = await PaymentModel.create({
-      userId: req.user.userId,
-      orderId,
-      amount,
-      currency: 'INR',
-      status: PaymentStatus.INITIATED,
-      purpose: 'MEMBERSHIP_FIRST_YEAR',
-      provider: 'MOCK_GATEWAY'
-    });
-
-    res.status(200).json({
-      success: true,
-      message: 'Payment order generated successfully.',
-      data: {
-        orderId: payment.orderId,
-        amount: payment.amount,
-        currency: payment.currency,
-        purpose: payment.purpose
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Verify & Confirm Payment (Instant activation for membership)
-paymentsRouter.post('/membership/confirm', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    if (!req.user) throw new AppError('Unauthorized', 401);
-    const { orderId, transactionId } = req.body;
-
-    if (!orderId) {
-      throw new AppError('Order ID is required.', 400);
-    }
-
-    // Upsert customer payment document
-    let payment = await PaymentModel.findOne({ orderId, userId: req.user.userId });
-    if (payment && payment.status === PaymentStatus.SUCCESS) {
-      throw new AppError('Payment has already been processed and activated.', 400);
-    }
-    if (!payment) {
-      payment = await PaymentModel.create({
-        userId: req.user.userId,
-        orderId,
-        transactionId: transactionId || `TXN_RZP_${Date.now()}`,
-        amount: 99,
-        currency: 'INR',
-        status: PaymentStatus.SUCCESS,
-        purpose: 'MEMBERSHIP_FIRST_YEAR',
-        provider: 'RAZORPAY',
-        paymentDetails: {
-          paidAt: new Date(),
-          method: 'RAZORPAY_UPI',
-          transactionId: transactionId || `TXN_RZP_${Date.now()}`
-        }
-      });
-    } else {
-      payment.status = PaymentStatus.SUCCESS;
-      payment.transactionId = transactionId || payment.transactionId || `TXN_RZP_${Date.now()}`;
-      await payment.save();
-    }
-
-    // 2. Synchronize to Admin Payment Collection for Admin "Payments & Fees" Tab
+/**
+ * POST /api/v1/payments/create-order (and /api/payments/create-order)
+ * Authoritatively computes price in INR on the server and creates a real Razorpay Test Mode order.
+ */
+paymentsRouter.post(
+  '/create-order',
+  authenticate,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { AdminPaymentModel } = await import('../admin/models/Payment');
-      const { MemberModel } = await import('../admin/models/Member');
-      const user = await UserModel.findById(req.user.userId);
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new AppError('Authentication required.', 401, 'UNAUTHORIZED');
+      }
 
-      if (user) {
-        // Ensure member record exists
-        let member = await MemberModel.findOne({
-          $or: [{ _id: user._id }, { email: user.email.toLowerCase() }]
-        });
+      const { purpose, amount, serviceId, preferredMethod, notes } = req.body || {};
+      if (!purpose) {
+        throw new AppError('Payment purpose is required.', 400, 'PURPOSE_REQUIRED');
+      }
 
-        if (!member) {
-          member = await MemberModel.create({
-            _id: user._id,
-            name: user.fullName,
-            email: user.email.toLowerCase(),
-            phone: user.phoneNumber,
-            primaryCategory: user.primaryCategoryId || new mongoose.Types.ObjectId(),
-            primaryCategoryName: user.primaryCategoryName || 'General',
-            subcategories: user.subCategory ? [user.subCategory] : [],
-            status: 'UNDER_REVIEW',
-            membershipPlan: 'FIRST_YEAR_INTRO',
-            membershipFeePaid: 99,
-            paymentStatus: 'PAID',
-            kycStatus: 'SUBMITTED',
-            registeredAt: new Date()
-          });
-        }
+      const orderPayload = await createRazorpayOrderForUser({
+        userId,
+        purpose,
+        amount,
+        serviceId,
+        preferredMethod,
+        notes
+      });
 
-        await AdminPaymentModel.findOneAndUpdate(
-          { gatewayTransactionId: payment.transactionId },
-          {
-            memberId: member._id,
-            amount: 99,
-            currency: 'INR',
-            paymentType: 'INTRO_FEE',
-            status: 'SUCCESS',
-            gatewayProvider: 'RAZORPAY',
-            gatewayTransactionId: payment.transactionId,
-            invoiceUrl: `https://ficapp.in/invoices/inv_${orderId}.pdf`
-          },
-          { upsert: true, new: true }
+      res.status(201).json({
+        success: true,
+        message: 'Razorpay payment order created successfully.',
+        data: orderPayload
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/v1/payments/verify (and /api/payments/verify)
+ * Cryptographically verifies HMAC-SHA256 Razorpay signature and idempotently fulfills order.
+ */
+paymentsRouter.post(
+  '/verify',
+  authenticate,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new AppError('Authentication required.', 401, 'UNAUTHORIZED');
+      }
+
+      const {
+        razorpay_order_id,
+        razorpay_payment_id,
+        razorpay_signature,
+        paymentMethod
+      } = req.body || {};
+
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        throw new AppError(
+          'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required for verification.',
+          400,
+          'MISSING_SIGNATURE_FIELDS'
         );
       }
-    } catch (syncErr: any) {
-      console.warn('Admin payment sync warning:', syncErr?.message);
+
+      const result = await verifyCheckoutPaymentForUser({
+        userId,
+        razorpayOrderId: String(razorpay_order_id),
+        razorpayPaymentId: String(razorpay_payment_id),
+        razorpaySignature: String(razorpay_signature),
+        paymentMethod: paymentMethod ? String(paymentMethod) : undefined
+      });
+
+      res.json({
+        success: true,
+        message: result.alreadyFulfilled
+          ? 'Payment was already verified and fulfilled.'
+          : 'Payment verified and fulfilled successfully.',
+        data: {
+          paymentId: result.payment.paymentId,
+          internalOrderId: result.payment.internalOrderId,
+          razorpayOrderId: result.payment.razorpayOrderId,
+          razorpayPaymentId: result.payment.razorpayPaymentId,
+          amount: result.payment.amount,
+          currency: result.payment.currency,
+          status: result.payment.status,
+          purpose: result.payment.purpose,
+          paymentMethod: result.payment.paymentMethod,
+          signatureVerified: result.payment.signatureVerified,
+          webhookVerified: result.payment.webhookVerified,
+          verifiedAt: result.payment.verifiedAt,
+          alreadyFulfilled: result.alreadyFulfilled,
+          ...result.fulfillmentDetails
+        }
+      });
+    } catch (error) {
+      next(error);
     }
-
-    // Create / activate membership for 1 year
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setFullYear(startDate.getFullYear() + 1);
-
-    const membership = await MembershipModel.create({
-      userId: req.user.userId,
-      status: MembershipStatus.ACTIVE,
-      planType: 'FIRST_YEAR_INTRO',
-      amount: payment.amount,
-      startDate,
-      endDate,
-      paymentId: payment._id
-    });
-
-    // Update user record
-    await UserModel.findByIdAndUpdate(req.user.userId, {
-      isMembershipActive: true,
-      activeMembershipId: membership._id
-    });
-
-    res.status(200).json({
-      success: true,
-      message: '₹99 Membership payment confirmed via Razorpay. Membership recorded.',
-      data: {
-        membership,
-        payment
-      }
-    });
-  } catch (error) {
-    next(error);
   }
-});
+);
 
+/**
+ * POST /api/v1/payments/webhook (and /api/payments/webhook)
+ * Razorpay server-to-server webhook endpoint using raw request buffer for X-Razorpay-Signature HMAC validation.
+ */
+paymentsRouter.post(
+  '/webhook',
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const signature = req.headers['x-razorpay-signature'] as string;
+      const eventId = req.headers['x-razorpay-event-id'] as string | undefined;
+      if (!signature) {
+        throw new AppError('Missing X-Razorpay-Signature header.', 400, 'MISSING_WEBHOOK_SIGNATURE');
+      }
+
+      const rawBody: Buffer | string =
+        (req as any).rawBody || (Buffer.isBuffer(req.body) ? req.body : JSON.stringify(req.body || {}));
+
+      const result = await processRazorpayWebhookEvent({
+        rawBody,
+        signatureHeader: signature,
+        eventIdHeader: eventId,
+        payload: req.body
+      });
+
+      res.json({
+        success: true,
+        ...result
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/v1/payments/:paymentId/failure
+ * Records checkout dismissal or gateway failure cleanly (never marks payment as paid).
+ */
+paymentsRouter.post(
+  '/:paymentId/failure',
+  authenticate,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new AppError('Authentication required.', 401, 'UNAUTHORIZED');
+      }
+
+      const { razorpay_order_id, razorpay_payment_id, reason, status } = req.body || {};
+      const updated = await recordCheckoutFailureOrCancel({
+        userId,
+        paymentId: req.params.paymentId,
+        razorpayOrderId: razorpay_order_id,
+        razorpayPaymentId: razorpay_payment_id,
+        status: status === 'CANCELLED' ? 'CANCELLED' : 'FAILED',
+        reason
+      });
+
+      res.json({
+        success: true,
+        data: {
+          paymentId: updated.paymentId,
+          internalOrderId: updated.internalOrderId,
+          razorpayOrderId: updated.razorpayOrderId,
+          status: updated.status,
+          failureReason: updated.failureReason
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/v1/payments/my-history
+ * Lists authenticated member's own Razorpay payment transactions.
+ */
+paymentsRouter.get(
+  '/my-history',
+  authenticate,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new AppError('Authentication required.', 401, 'UNAUTHORIZED');
+      }
+
+      const payments = await PaymentModel.find({ userId })
+        .select('-razorpaySignature -webhookEventIds')
+        .sort({ createdAt: -1 })
+        .limit(50);
+
+      res.json({ success: true, data: payments });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/v1/payments/:paymentId/status
+ * Authoritative server-side payment status lookup restricted to payment owner.
+ */
+paymentsRouter.get(
+  '/:paymentId/status',
+  authenticate,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new AppError('Authentication required.', 401, 'UNAUTHORIZED');
+      }
+
+      const identifier = req.params.paymentId;
+      const payment = await PaymentModel.findOne({
+        $or: [
+          { paymentId: identifier },
+          { internalOrderId: identifier },
+          { razorpayOrderId: identifier },
+          { orderId: identifier }
+        ]
+      }).select('-razorpaySignature');
+
+      if (!payment) {
+        throw new AppError('Payment record not found.', 404, 'PAYMENT_NOT_FOUND');
+      }
+
+      if (payment.userId.toString() !== userId.toString()) {
+        throw new AppError('Forbidden. You cannot inspect another user’s payment.', 403, 'FORBIDDEN');
+      }
+
+      res.json({
+        success: true,
+        data: {
+          paymentId: payment.paymentId,
+          internalOrderId: payment.internalOrderId,
+          razorpayOrderId: payment.razorpayOrderId,
+          razorpayPaymentId: payment.razorpayPaymentId,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status,
+          purpose: payment.purpose,
+          paymentMethod: payment.paymentMethod,
+          mode: payment.mode,
+          signatureVerified: payment.signatureVerified,
+          webhookVerified: payment.webhookVerified,
+          fulfilled: payment.fulfilled,
+          failureReason: payment.failureReason,
+          verifiedAt: payment.verifiedAt,
+          createdAt: payment.createdAt
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * Legacy compatibility: POST /api/v1/payments/membership/order -> delegates to real Razorpay create-order.
+ */
+paymentsRouter.post(
+  '/membership/order',
+  authenticate,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new AppError('Authentication required.', 401, 'UNAUTHORIZED');
+      }
+      const orderPayload = await createRazorpayOrderForUser({
+        userId,
+        purpose: 'MEMBERSHIP_FIRST_YEAR'
+      });
+      res.status(201).json({
+        success: true,
+        data: {
+          ...orderPayload,
+          orderId: orderPayload.razorpayOrderId
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * Legacy compatibility: POST /api/v1/payments/membership/confirm
+ * Rejects unsigned/mock confirmations; only verifies genuine Razorpay signatures.
+ */
+paymentsRouter.post(
+  '/membership/confirm',
+  authenticate,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new AppError('Authentication required.', 401, 'UNAUTHORIZED');
+      }
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature, paymentMethod } = req.body || {};
+      if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+        throw new AppError(
+          'Unsigned payment confirmation is rejected. Valid Razorpay signature verification is required.',
+          400,
+          'INVALID_PAYMENT_SIGNATURE'
+        );
+      }
+
+      const result = await verifyCheckoutPaymentForUser({
+        userId,
+        razorpayOrderId: String(razorpay_order_id),
+        razorpayPaymentId: String(razorpay_payment_id),
+        razorpaySignature: String(razorpay_signature),
+        paymentMethod: paymentMethod ? String(paymentMethod) : undefined
+      });
+
+      res.json({
+        success: true,
+        message: 'Membership payment verified and activated.',
+        data: result.payment
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
