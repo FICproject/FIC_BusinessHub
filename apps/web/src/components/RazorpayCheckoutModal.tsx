@@ -18,6 +18,8 @@ import {
 import {
   createRazorpayPaymentOrder,
   extractApiErrorMessage,
+  fetchRazorpayCheckoutConfig,
+  RazorpayEnabledMethods,
   RazorpayOrderPurpose,
   RazorpayVerifyResponse,
   recordRazorpayFailure,
@@ -110,19 +112,37 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
   onSuccess,
   onClose
 }) => {
-  const [selectedMethod, setSelectedMethod] = useState<PaymentMethodKey>('upi');
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethodKey>('card');
   const [upiMode, setUpiMode] = useState<'vpa' | 'qr'>('vpa');
   const [upiId, setUpiId] = useState('');
+  const [enabledMethods, setEnabledMethods] = useState<RazorpayEnabledMethods | null>(null);
+  const [checkoutMode, setCheckoutMode] = useState<'TEST' | 'LIVE'>('TEST');
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
+    let active = true;
     if (isOpen) {
       setErrorMessage(null);
       setStatusMessage(null);
       setIsProcessing(false);
+      fetchRazorpayCheckoutConfig().then((cfg) => {
+        if (!active || !cfg) return;
+        setCheckoutMode(cfg.mode);
+        setEnabledMethods(cfg.methods);
+        setSelectedMethod((prev) => {
+          if (cfg.methods[prev === 'card' ? 'card' : prev]) return prev;
+          if (cfg.methods.upi) return 'upi';
+          if (cfg.methods.card) return 'card';
+          if (cfg.methods.netbanking) return 'netbanking';
+          return 'wallet';
+        });
+      });
     }
+    return () => {
+      active = false;
+    };
   }, [isOpen, amount, purpose]);
 
   if (!isOpen) return null;
@@ -179,6 +199,35 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
         tokenOverride: activeToken
       });
 
+      if (order.mode) setCheckoutMode(order.mode);
+      if (order.enabledMethods) setEnabledMethods(order.enabledMethods);
+
+      const methodEnabledMap = order.enabledMethods || enabledMethods;
+      const isSelectedMethodEnabled =
+        !methodEnabledMap ||
+        (selectedMethod === 'upi'
+          ? methodEnabledMap.upi
+          : selectedMethod === 'card'
+          ? methodEnabledMap.card
+          : selectedMethod === 'netbanking'
+          ? methodEnabledMap.netbanking
+          : methodEnabledMap.wallet);
+
+      if (!isSelectedMethodEnabled) {
+        const fallbackMethod: PaymentMethodKey = methodEnabledMap?.card
+          ? 'card'
+          : methodEnabledMap?.netbanking
+          ? 'netbanking'
+          : 'wallet';
+        setSelectedMethod(fallbackMethod);
+        setIsProcessing(false);
+        setStatusMessage(null);
+        setErrorMessage(
+          `Selected payment method (${selectedMethod.toUpperCase()}) is disabled on this Razorpay merchant key. Switched to ${fallbackMethod.toUpperCase()} — click Pay to continue.`
+        );
+        return;
+      }
+
       createdOrderId = order.razorpayOrderId;
       internalPaymentId = order.paymentId;
 
@@ -212,7 +261,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
             },
             sequence: ['block.preferred'],
             preferences: {
-              show_default_blocks: true
+              show_default_blocks: false
             }
           }
         },
@@ -333,7 +382,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
                   Razorpay Payment
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-[#DC2626] text-[10px] font-extrabold uppercase tracking-wider text-white">
-                  TEST MODE
+                  {checkoutMode} MODE
                 </span>
               </div>
               <p className="text-xs text-slate-300 font-medium mt-0.5 flex items-center gap-1.5">
@@ -412,6 +461,12 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
               ] as const
             ).map(({ id, label, icon: Icon }) => {
               const active = selectedMethod === id;
+              const isDisabledMethod =
+                enabledMethods !== null &&
+                ((id === 'upi' && !enabledMethods.upi) ||
+                  (id === 'card' && !enabledMethods.card) ||
+                  (id === 'netbanking' && !enabledMethods.netbanking) ||
+                  (id === 'wallet' && !enabledMethods.wallet));
               return (
                 <button
                   key={id}
@@ -421,13 +476,20 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
                     setSelectedMethod(id);
                     setErrorMessage(null);
                   }}
-                  className={`flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-2xl border transition-all ${
+                  className={`relative flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-2xl border transition-all ${
                     active
                       ? 'bg-[#EEF5FF] border-blue-500 text-blue-700 shadow-sm'
+                      : isDisabledMethod
+                      ? 'bg-slate-50 border-slate-200 text-slate-400 opacity-75 hover:opacity-100'
                       : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
                   }`}
                 >
-                  <Icon className={`w-5 h-5 ${active ? 'text-blue-600' : 'text-slate-600'}`} />
+                  {isDisabledMethod && (
+                    <span className="absolute -top-2 right-1.5 px-1.5 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-[8px] font-extrabold uppercase tracking-wider text-amber-800">
+                      Off
+                    </span>
+                  )}
+                  <Icon className={`w-5 h-5 ${active ? 'text-blue-600' : isDisabledMethod ? 'text-slate-400' : 'text-slate-600'}`} />
                   <span className="text-xs font-bold">{label}</span>
                 </button>
               );
@@ -437,6 +499,50 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
           {/* Method Detail Panel */}
           <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 space-y-3">
             {selectedMethod === 'upi' && (
+              enabledMethods && !enabledMethods.upi ? (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">
+                      UPI Collect / QR Unavailable on Current Key
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-[10px] font-extrabold text-amber-700">
+                      MERCHANT SETTING
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    UPI is disabled on the active Razorpay merchant key ({checkoutMode} Mode). Enable UPI in Razorpay Dashboard under Settings → Payment Methods, or pay immediately using Cards, Banking, or Wallet:
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {enabledMethods.card && (
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedMethod('card'); setErrorMessage(null); }}
+                        className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700"
+                      >
+                        Use Cards
+                      </button>
+                    )}
+                    {enabledMethods.netbanking && (
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedMethod('netbanking'); setErrorMessage(null); }}
+                        className="px-3 py-1.5 rounded-lg bg-slate-800 text-white text-xs font-bold hover:bg-slate-900"
+                      >
+                        Use Banking
+                      </button>
+                    )}
+                    {enabledMethods.wallet && (
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedMethod('wallet'); setErrorMessage(null); }}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700"
+                      >
+                        Use Wallet
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
               <>
                 <div className="grid grid-cols-2 bg-slate-200/70 p-1 rounded-xl">
                   <button
@@ -508,6 +614,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
                   </div>
                 )}
               </>
+              )
             )}
 
             {selectedMethod === 'card' && (
@@ -587,7 +694,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
           {/* Primary Pay Button */}
           <button
             type="button"
-            disabled={isProcessing}
+            disabled={isProcessing || (selectedMethod === 'upi' && Boolean(enabledMethods && !enabledMethods.upi))}
             onClick={handleLaunchCheckout}
             className="w-full py-4 px-5 rounded-2xl bg-[#0A1D37] hover:bg-[#0F2A4D] disabled:opacity-60 text-white font-extrabold text-sm tracking-wide uppercase shadow-lg shadow-slate-900/20 flex items-center justify-center gap-2 transition-all"
           >

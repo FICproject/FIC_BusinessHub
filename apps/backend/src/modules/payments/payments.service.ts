@@ -199,6 +199,66 @@ export async function syncAdminPaymentRecord(
   );
 }
 
+export interface RazorpayEnabledMethods {
+  upi: boolean;
+  card: boolean;
+  netbanking: boolean;
+  wallet: boolean;
+}
+
+const checkoutMethodsCache = new Map<string, { methods: RazorpayEnabledMethods; expiresAt: number }>();
+
+export async function getRazorpayCheckoutConfig(): Promise<{
+  keyId: string;
+  mode: 'TEST' | 'LIVE';
+  methods: RazorpayEnabledMethods;
+}> {
+  const { keyId, mode } = paymentProvider.assertConfigured();
+  const cached = checkoutMethodsCache.get(keyId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { keyId, mode, methods: cached.methods };
+  }
+
+  let methods: RazorpayEnabledMethods = {
+    upi: true,
+    card: true,
+    netbanking: true,
+    wallet: true
+  };
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3500);
+    const resp = await fetch(
+      `https://api.razorpay.com/v1/methods?key_id=${encodeURIComponent(keyId)}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timer);
+    if (resp.ok) {
+      const data: any = await resp.json().catch(() => null);
+      if (data && typeof data === 'object') {
+        const hasNetbanking =
+          Boolean(data.netbanking) &&
+          (typeof data.netbanking !== 'object' || Object.keys(data.netbanking).length > 0);
+        const hasWallet =
+          Boolean(data.wallet) &&
+          (typeof data.wallet !== 'object' || Object.values(data.wallet).some(Boolean));
+        methods = {
+          upi: Boolean(data.upi),
+          card: Boolean(data.card),
+          netbanking: hasNetbanking,
+          wallet: hasWallet
+        };
+      }
+    }
+  } catch {
+    // Keep safe defaults if Razorpay methods probe times out
+  }
+
+  checkoutMethodsCache.set(keyId, { methods, expiresAt: Date.now() + 5 * 60 * 1000 });
+  return { keyId, mode, methods };
+}
+
 export async function createRazorpayOrderForUser(params: {
   userId: string;
   purpose: string;
@@ -217,6 +277,7 @@ export async function createRazorpayOrderForUser(params: {
   mode: 'TEST' | 'LIVE';
   purpose: CanonicalPaymentPurpose;
   description: string;
+  enabledMethods: RazorpayEnabledMethods;
   prefill: { name: string; email: string; contact: string };
 }> {
   if ((params.preferredMethod || '').trim().toUpperCase() === 'COD') {
@@ -232,7 +293,8 @@ export async function createRazorpayOrderForUser(params: {
     throw new AppError('User account not found.', 404, 'USER_NOT_FOUND');
   }
 
-  const { keyId, mode } = paymentProvider.assertConfigured();
+  const checkoutConfig = await getRazorpayCheckoutConfig();
+  const { keyId, mode, methods: enabledMethods } = checkoutConfig;
   const canonicalPurpose = normalizePaymentPurpose(params.purpose);
   const { amountInr, amountInPaise, description, extraDetails } = await calculateAuthoritativeAmount({
     purpose: canonicalPurpose,
@@ -296,6 +358,7 @@ export async function createRazorpayOrderForUser(params: {
     mode,
     purpose: canonicalPurpose,
     description,
+    enabledMethods,
     prefill: {
       name: user.fullName || '',
       email: user.email || '',

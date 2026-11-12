@@ -4,12 +4,29 @@ import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth
 import { PaymentModel } from './payments.model';
 import {
   createRazorpayOrderForUser,
+  getRazorpayCheckoutConfig,
   processRazorpayWebhookEvent,
   recordCheckoutFailureOrCancel,
   verifyCheckoutPaymentForUser
 } from './payments.service';
 
 export const paymentsRouter = Router();
+
+/**
+ * GET /api/v1/payments/checkout-config
+ * Returns active Razorpay public key, mode, and merchant-enabled checkout instruments.
+ */
+paymentsRouter.get(
+  '/checkout-config',
+  async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const cfg = await getRazorpayCheckoutConfig();
+      res.json({ success: true, data: cfg });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 /**
  * POST /api/v1/payments/create-order (and /api/payments/create-order)

@@ -2742,6 +2742,30 @@ export type RazorpayOrderPurpose =
   | 'WALLET_TOPUP'
   | 'SERVICE_ORDER';
 
+export interface RazorpayEnabledMethods {
+  upi: boolean;
+  card: boolean;
+  netbanking: boolean;
+  wallet: boolean;
+}
+
+export interface RazorpayCheckoutConfig {
+  keyId: string;
+  mode: 'TEST' | 'LIVE';
+  methods: RazorpayEnabledMethods;
+}
+
+export const fetchRazorpayCheckoutConfig = async (): Promise<RazorpayCheckoutConfig | null> => {
+  try {
+    const response = await fetch(`${BASE_URL}/payments/checkout-config`);
+    if (!response.ok) return null;
+    const payload = await response.json().catch(() => null);
+    return payload?.success && payload?.data ? (payload.data as RazorpayCheckoutConfig) : null;
+  } catch {
+    return null;
+  }
+};
+
 export interface RazorpayCreateOrderResponse {
   paymentId: string;
   internalOrderId: string;
@@ -2753,6 +2777,7 @@ export interface RazorpayCreateOrderResponse {
   mode: 'TEST' | 'LIVE';
   purpose: RazorpayOrderPurpose;
   description: string;
+  enabledMethods?: RazorpayEnabledMethods;
   prefill: {
     name: string;
     email: string;
