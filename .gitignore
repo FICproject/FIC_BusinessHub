@@ -2,8 +2,9 @@
 node_modules/
 .pnpm-store/
 
-# Turbo Cache
+# Turbo Cache & build tools
 .turbo/
+.parcel-cache/
 
 # Build outputs
 dist/
@@ -11,13 +12,22 @@ build/
 .next/
 out/
 
-# Environment files
+# Environment files and secrets (NEVER commit live keys/passwords!)
 .env
-.env.local
-.env.*.local
+.env.*
 !.env.example
+*.env
+
+# Local database and media storage
+apps/backend/data/
+data/
+uploads/
+*.sqlite
+*.sqlite3
+*.db
 
 # Logs
+logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -36,5 +46,5 @@ Thumbs.db
 coverage/
 .nyc_output/
 
-
-apps/backend/data/
+# Vercel / deployment caches
+.vercel/
