@@ -3,6 +3,7 @@ import { AppError } from '../../common/errors/app-error';
 import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { PaymentModel } from './payments.model';
 import {
+  completeTestModeCheckoutForUser,
   createRazorpayOrderForUser,
   getRazorpayCheckoutConfig,
   processRazorpayWebhookEvent,
@@ -109,6 +110,65 @@ paymentsRouter.post(
         message: result.alreadyFulfilled
           ? 'Payment was already verified and fulfilled.'
           : 'Payment verified and fulfilled successfully.',
+        data: {
+          paymentId: result.payment.paymentId,
+          internalOrderId: result.payment.internalOrderId,
+          razorpayOrderId: result.payment.razorpayOrderId,
+          razorpayPaymentId: result.payment.razorpayPaymentId,
+          amount: result.payment.amount,
+          currency: result.payment.currency,
+          status: result.payment.status,
+          purpose: result.payment.purpose,
+          paymentMethod: result.payment.paymentMethod,
+          signatureVerified: result.payment.signatureVerified,
+          webhookVerified: result.payment.webhookVerified,
+          verifiedAt: result.payment.verifiedAt,
+          alreadyFulfilled: result.alreadyFulfilled,
+          ...result.fulfillmentDetails
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/v1/payments/test-mode/complete
+ * Strictly limited to Razorpay Test Mode (rzp_test_*). Executes HMAC-SHA256 verification
+ * and idempotent order fulfillment for Test Mode UPI / QR and Test Card simulations.
+ */
+paymentsRouter.post(
+  '/test-mode/complete',
+  authenticate,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        throw new AppError('Authentication required.', 401, 'UNAUTHORIZED');
+      }
+
+      const { razorpay_order_id, method, vpa, outcome } = req.body || {};
+      if (!razorpay_order_id) {
+        throw new AppError('razorpay_order_id is required.', 400, 'ORDER_ID_REQUIRED');
+      }
+
+      const normalizedMethod = String(method || '').trim().toUpperCase();
+      if (normalizedMethod !== 'UPI' && normalizedMethod !== 'CARD') {
+        throw new AppError('Test Mode completion only supports UPI or CARD methods.', 400, 'INVALID_METHOD');
+      }
+
+      const result = await completeTestModeCheckoutForUser({
+        userId,
+        razorpayOrderId: String(razorpay_order_id),
+        method: normalizedMethod as 'UPI' | 'CARD',
+        vpa: typeof vpa === 'string' ? vpa : undefined,
+        outcome: outcome === 'failure' ? 'failure' : 'success'
+      });
+
+      res.json({
+        success: true,
+        message: 'Razorpay Test Mode payment verified and fulfilled successfully.',
         data: {
           paymentId: result.payment.paymentId,
           internalOrderId: result.payment.internalOrderId,

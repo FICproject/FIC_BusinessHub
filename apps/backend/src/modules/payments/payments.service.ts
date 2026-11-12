@@ -206,21 +206,30 @@ export interface RazorpayEnabledMethods {
   wallet: boolean;
 }
 
-const checkoutMethodsCache = new Map<string, { methods: RazorpayEnabledMethods; expiresAt: number }>();
+export interface RazorpayGatewayMethods extends RazorpayEnabledMethods {
+  upiIntent: boolean;
+}
+
+const checkoutMethodsCache = new Map<
+  string,
+  { methods: RazorpayEnabledMethods; gatewayMethods: RazorpayGatewayMethods; expiresAt: number }
+>();
 
 export async function getRazorpayCheckoutConfig(): Promise<{
   keyId: string;
   mode: 'TEST' | 'LIVE';
   methods: RazorpayEnabledMethods;
+  gatewayMethods: RazorpayGatewayMethods;
 }> {
   const { keyId, mode } = paymentProvider.assertConfigured();
   const cached = checkoutMethodsCache.get(keyId);
   if (cached && cached.expiresAt > Date.now()) {
-    return { keyId, mode, methods: cached.methods };
+    return { keyId, mode, methods: cached.methods, gatewayMethods: cached.gatewayMethods };
   }
 
-  let methods: RazorpayEnabledMethods = {
-    upi: true,
+  let gatewayMethods: RazorpayGatewayMethods = {
+    upi: mode === 'TEST',
+    upiIntent: mode === 'TEST',
     card: true,
     netbanking: true,
     wallet: true
@@ -243,8 +252,9 @@ export async function getRazorpayCheckoutConfig(): Promise<{
         const hasWallet =
           Boolean(data.wallet) &&
           (typeof data.wallet !== 'object' || Object.values(data.wallet).some(Boolean));
-        methods = {
+        gatewayMethods = {
           upi: Boolean(data.upi),
+          upiIntent: Boolean(data.upi_intent),
           card: Boolean(data.card),
           netbanking: hasNetbanking,
           wallet: hasWallet
@@ -255,8 +265,20 @@ export async function getRazorpayCheckoutConfig(): Promise<{
     // Keep safe defaults if Razorpay methods probe times out
   }
 
-  checkoutMethodsCache.set(keyId, { methods, expiresAt: Date.now() + 5 * 60 * 1000 });
-  return { keyId, mode, methods };
+  // In TEST mode, allow UPI/QR and Cards in UI even if merchant test key lacks UPI Collect activation
+  const methods: RazorpayEnabledMethods = {
+    upi: mode === 'TEST' ? true : gatewayMethods.upi,
+    card: mode === 'TEST' ? true : gatewayMethods.card,
+    netbanking: gatewayMethods.netbanking,
+    wallet: gatewayMethods.wallet
+  };
+
+  checkoutMethodsCache.set(keyId, {
+    methods,
+    gatewayMethods,
+    expiresAt: Date.now() + 5 * 60 * 1000
+  });
+  return { keyId, mode, methods, gatewayMethods };
 }
 
 export async function createRazorpayOrderForUser(params: {
@@ -278,6 +300,7 @@ export async function createRazorpayOrderForUser(params: {
   purpose: CanonicalPaymentPurpose;
   description: string;
   enabledMethods: RazorpayEnabledMethods;
+  gatewayMethods: RazorpayGatewayMethods;
   prefill: { name: string; email: string; contact: string };
 }> {
   if ((params.preferredMethod || '').trim().toUpperCase() === 'COD') {
@@ -294,7 +317,7 @@ export async function createRazorpayOrderForUser(params: {
   }
 
   const checkoutConfig = await getRazorpayCheckoutConfig();
-  const { keyId, mode, methods: enabledMethods } = checkoutConfig;
+  const { keyId, mode, methods: enabledMethods, gatewayMethods } = checkoutConfig;
   const canonicalPurpose = normalizePaymentPurpose(params.purpose);
   const { amountInr, amountInPaise, description, extraDetails } = await calculateAuthoritativeAmount({
     purpose: canonicalPurpose,
@@ -359,6 +382,7 @@ export async function createRazorpayOrderForUser(params: {
     purpose: canonicalPurpose,
     description,
     enabledMethods,
+    gatewayMethods,
     prefill: {
       name: user.fullName || '',
       email: user.email || '',
@@ -660,6 +684,76 @@ export async function verifyCheckoutPaymentForUser(params: {
     razorpaySignature: params.razorpaySignature,
     paymentMethod: resolvedMethod,
     fromWebhook: false
+  });
+}
+
+export async function completeTestModeCheckoutForUser(params: {
+  userId: string;
+  razorpayOrderId: string;
+  method: 'UPI' | 'CARD';
+  vpa?: string;
+  outcome?: 'success' | 'failure';
+}): Promise<{ payment: IPaymentDocument; alreadyFulfilled: boolean; fulfillmentDetails: Record<string, any> }> {
+  const { keyId, keySecret, mode } = paymentProvider.assertConfigured();
+  if (mode !== 'TEST' || !keyId.startsWith('rzp_test_')) {
+    throw new AppError(
+      'Test Mode checkout completion is strictly disabled outside Razorpay Test Mode.',
+      403,
+      'TEST_MODE_ONLY'
+    );
+  }
+
+  const payment = await PaymentModel.findOne({ razorpayOrderId: params.razorpayOrderId });
+  if (!payment) {
+    throw new AppError('Payment order not found for Test Mode completion.', 404, 'PAYMENT_ORDER_NOT_FOUND');
+  }
+
+  if (payment.userId.toString() !== params.userId.toString()) {
+    throw new AppError('Forbidden. You cannot complete another user’s payment order.', 403, 'FORBIDDEN');
+  }
+
+  const normalizedMethod = params.method === 'CARD' ? 'CARD' : 'UPI';
+  const cleanVpa = (params.vpa || '').trim().toLowerCase();
+  const isFailureRequested =
+    params.outcome === 'failure' ||
+    (normalizedMethod === 'UPI' && cleanVpa === 'failure@razorpay');
+
+  if (isFailureRequested) {
+    const failureReason =
+      normalizedMethod === 'UPI'
+        ? `UPI authorization declined for VPA "${cleanVpa || 'failure@razorpay'}" in Razorpay Test Mode.`
+        : 'Test Card authorization was declined in Razorpay Test Mode.';
+    if (!payment.fulfilled) {
+      payment.status = 'FAILED';
+      payment.failureReason = failureReason;
+      await payment.save();
+      await syncAdminPaymentRecord(payment, 'FAILED');
+    }
+    throw new AppError(failureReason, 402, 'TEST_MODE_PAYMENT_DECLINED');
+  }
+
+  if (payment.fulfilled && payment.razorpayPaymentId && payment.razorpaySignature) {
+    return verifyCheckoutPaymentForUser({
+      userId: params.userId,
+      razorpayOrderId: params.razorpayOrderId,
+      razorpayPaymentId: payment.razorpayPaymentId,
+      razorpaySignature: payment.razorpaySignature,
+      paymentMethod: payment.paymentMethod || normalizedMethod
+    });
+  }
+
+  const syntheticPaymentId = `pay_test_${crypto.randomBytes(7).toString('hex')}`;
+  const generatedSignature = crypto
+    .createHmac('sha256', keySecret)
+    .update(`${params.razorpayOrderId}|${syntheticPaymentId}`)
+    .digest('hex');
+
+  return verifyCheckoutPaymentForUser({
+    userId: params.userId,
+    razorpayOrderId: params.razorpayOrderId,
+    razorpayPaymentId: syntheticPaymentId,
+    razorpaySignature: generatedSignature,
+    paymentMethod: normalizedMethod
   });
 }
 

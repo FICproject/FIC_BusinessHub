@@ -2568,8 +2568,10 @@ export const extractApiErrorMessage = (payload: any, fallback: string): string =
     (typeof payload?.error?.message === 'string' && payload.error.message) ||
     (typeof payload?.error?.description === 'string' && payload.error.description) ||
     (typeof payload?.error?.reason === 'string' && payload.error.reason) ||
+    (typeof payload?.error_description === 'string' && payload.error_description) ||
     (typeof payload?.message === 'string' && payload.message) ||
     (typeof payload?.description === 'string' && payload.description) ||
+    (typeof payload?.reason === 'string' && payload.reason) ||
     '';
   const trimmed = candidate.trim();
   return trimmed && trimmed !== '[object Object]' ? trimmed : fallback;
@@ -2764,10 +2766,15 @@ export interface RazorpayEnabledMethods {
   wallet: boolean;
 }
 
+export interface RazorpayGatewayMethods extends RazorpayEnabledMethods {
+  upiIntent: boolean;
+}
+
 export interface RazorpayCheckoutConfig {
   keyId: string;
   mode: 'TEST' | 'LIVE';
   methods: RazorpayEnabledMethods;
+  gatewayMethods?: RazorpayGatewayMethods;
 }
 
 export const fetchRazorpayCheckoutConfig = async (): Promise<RazorpayCheckoutConfig | null> => {
@@ -2793,6 +2800,7 @@ export interface RazorpayCreateOrderResponse {
   purpose: RazorpayOrderPurpose;
   description: string;
   enabledMethods?: RazorpayEnabledMethods;
+  gatewayMethods?: RazorpayGatewayMethods;
   prefill: {
     name: string;
     email: string;
@@ -2883,6 +2891,39 @@ export const verifyRazorpayPayment = async (params: {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success) {
     throw new Error(extractApiErrorMessage(payload, `Payment verification failed (HTTP ${response.status})`));
+  }
+  return payload.data as RazorpayVerifyResponse;
+};
+
+export const completeTestModeRazorpayPayment = async (params: {
+  razorpay_order_id: string;
+  method: 'UPI' | 'CARD';
+  vpa?: string;
+  outcome?: 'success' | 'failure';
+  tokenOverride?: string;
+}): Promise<RazorpayVerifyResponse> => {
+  const token = params.tokenOverride || getAuthToken();
+  if (!token) {
+    throw new Error('Authentication required to complete test payment.');
+  }
+
+  const response = await fetch(`${BASE_URL}/payments/test-mode/complete`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({
+      razorpay_order_id: params.razorpay_order_id,
+      method: params.method,
+      ...(params.vpa ? { vpa: params.vpa } : {}),
+      ...(params.outcome ? { outcome: params.outcome } : {})
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success) {
+    throw new Error(extractApiErrorMessage(payload, `Test payment failed (HTTP ${response.status})`));
   }
   return payload.data as RazorpayVerifyResponse;
 };
