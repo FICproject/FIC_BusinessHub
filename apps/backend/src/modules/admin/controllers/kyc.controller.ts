@@ -25,8 +25,15 @@ async function syncMissingKycSubmissionsFromSharedDb() {
     })
       .select('memberId memberEmail')
       .lean(),
-    KYCSubmissionModel.find({ userId: { $ne: null } }).sort({ updatedAt: -1 }).lean(),
-    MemberModel.find({}).lean()
+    KYCSubmissionModel.find({
+      userId: { $ne: null },
+      status: { $ne: KYCStatus.NOT_SUBMITTED }
+    })
+      .sort({ updatedAt: -1 })
+      .lean(),
+    MemberModel.find({
+      $nor: [{ kycStatus: 'NOT_SUBMITTED', paymentStatus: 'PENDING' }]
+    }).lean()
   ]);
 
   const coveredMemberIds = new Set<string>();
@@ -41,11 +48,6 @@ async function syncMissingKycSubmissionsFromSharedDb() {
     if (cs.userId) customerSubByUserId.set(String(cs.userId), cs);
   }
 
-  const usersWithKycDocs = await DocumentAssetModel.distinct('ownerId', {
-    entityType: 'KYC',
-    isDeleted: { $ne: true }
-  });
-
   const candidateUserIds = new Set<string>();
   for (const cs of customerSubs as any[]) {
     if (cs.userId && !coveredMemberIds.has(String(cs.userId))) {
@@ -56,11 +58,6 @@ async function syncMissingKycSubmissionsFromSharedDb() {
     const email = m.email?.toLowerCase();
     if (!coveredMemberIds.has(String(m._id)) && (!email || !coveredEmails.has(email))) {
       candidateUserIds.add(String(m._id));
-    }
-  }
-  for (const uid of usersWithKycDocs as any[]) {
-    if (uid && !coveredMemberIds.has(String(uid))) {
-      candidateUserIds.add(String(uid));
     }
   }
 
@@ -123,7 +120,19 @@ async function syncMissingKycSubmissionsFromSharedDb() {
     }));
 
     const mergedDocs = docsFromAssets.length > 0 ? docsFromAssets : docsFromSub;
-    const rawState = customerSub?.status || memberDoc?.kycStatus || (mergedDocs.length > 0 ? 'SUBMITTED' : 'NOT_SUBMITTED');
+    const rawState = customerSub?.status || memberDoc?.kycStatus || 'NOT_SUBMITTED';
+    const hasCompletedPayment = Boolean(
+      latestPayment || user.isMembershipActive || memberDoc?.paymentStatus === 'PAID'
+    );
+    const hasActualSubmission =
+      (rawState !== 'NOT_SUBMITTED' || Boolean(customerSub && customerSub.status !== 'NOT_SUBMITTED')) &&
+      mergedDocs.length > 0;
+
+    // Never surface unpaid or unsubmitted draft registrations in Admin KYC Verification Desk
+    if (!hasCompletedPayment || !hasActualSubmission) {
+      continue;
+    }
+
     const normalizedStatus =
       rawState === 'APPROVED' || user.isKycApproved
         ? 'APPROVED'
@@ -131,8 +140,6 @@ async function syncMissingKycSubmissionsFromSharedDb() {
         ? 'REJECTED'
         : rawState === 'RESUBMIT_REQUIRED' || rawState === 'RESUBMISSION_REQUESTED'
         ? 'RESUBMISSION_REQUESTED'
-        : rawState === 'NOT_SUBMITTED' && mergedDocs.length === 0
-        ? 'NOT_SUBMITTED'
         : 'SUBMITTED';
 
     if (!memberDoc) {
@@ -151,7 +158,7 @@ async function syncMissingKycSubmissionsFromSharedDb() {
             primaryCategoryName: user.primaryCategoryName || 'General Business',
             subcategories: [user.subCategory || user.primarySubcategoryName || 'Member'].filter(Boolean),
             kycStatus: normalizedStatus,
-            status: normalizedStatus === 'APPROVED' ? 'ACTIVE' : normalizedStatus === 'NOT_SUBMITTED' ? 'PENDING_KYC' : 'UNDER_REVIEW',
+            status: normalizedStatus === 'APPROVED' ? 'ACTIVE' : 'UNDER_REVIEW',
             membershipFeePaid: latestPayment ? latestPayment.amount : 0,
             paymentStatus: latestPayment ? 'PAID' : 'PENDING'
           }
@@ -233,10 +240,12 @@ router.get('/', authenticateAdmin, requirePermission('KYC_VERIFY'), async (req, 
       if (s === 'RESUBMISSION_REQUESTED') {
         filter.status = { $in: ['RESUBMISSION_REQUESTED', 'RESUBMIT_REQUIRED'] };
       } else if (s === 'SUBMITTED') {
-        filter.status = { $in: ['SUBMITTED', 'PENDING', 'UNDER_REVIEW', 'NOT_SUBMITTED'] };
+        filter.status = { $in: ['SUBMITTED', 'PENDING', 'UNDER_REVIEW'] };
       } else {
         filter.status = s;
       }
+    } else {
+      filter.status = { $ne: 'NOT_SUBMITTED' };
     }
     if (categoryId) filter.categoryId = categoryId;
 

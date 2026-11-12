@@ -150,6 +150,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
       : `PAY ₹${amount.toLocaleString('en-IN')} VIA WALLET`;
 
   const handleLaunchCheckout = async () => {
+    if (isProcessing) return;
     setErrorMessage(null);
     setStatusMessage('Preparing secure Razorpay order...');
     setIsProcessing(true);
@@ -185,6 +186,15 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
         throw new Error('Razorpay Checkout SDK could not be loaded in this browser.');
       }
 
+      const methodDisplayConfig: Record<PaymentMethodKey, { title: string; method: string }> = {
+        upi: { title: 'Pay via UPI / QR', method: 'upi' },
+        card: { title: 'Pay via Credit / Debit Card', method: 'card' },
+        netbanking: { title: 'Pay via NetBanking', method: 'netbanking' },
+        wallet: { title: 'Pay via Digital Wallet', method: 'wallet' }
+      };
+      const selectedConfig = methodDisplayConfig[selectedMethod];
+
+      const rawContact = (order.prefill.contact || userPhone || '').replace(/[^0-9+]/g, '');
       const rzpOptions: Record<string, any> = {
         key: order.keyId,
         amount: order.amountInPaise,
@@ -192,13 +202,24 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
         name: 'FIC Business Hub',
         description: order.description,
         order_id: order.razorpayOrderId,
+        config: {
+          display: {
+            blocks: {
+              preferred: {
+                name: selectedConfig.title,
+                instruments: [{ method: selectedConfig.method }]
+              }
+            },
+            sequence: ['block.preferred'],
+            preferences: {
+              show_default_blocks: true
+            }
+          }
+        },
         prefill: {
           name: order.prefill.name || userName,
           email: order.prefill.email || userEmail,
-          contact: (order.prefill.contact || userPhone || '').replace(/[^0-9+]/g, ''),
-          ...(selectedMethod === 'upi' && upiMode === 'vpa' && upiId.trim()
-            ? { vpa: upiId.trim(), method: 'upi' }
-            : { method: selectedMethod })
+          contact: rawContact
         },
         notes: {
           internalOrderId: order.internalOrderId,
@@ -209,6 +230,8 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
         },
         modal: {
           confirm_close: true,
+          escape: false,
+          backdropclose: false,
           ondismiss: async () => {
             if (internalPaymentId) {
               await recordRazorpayFailure({
@@ -394,7 +417,10 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
                   key={id}
                   type="button"
                   disabled={isProcessing}
-                  onClick={() => setSelectedMethod(id)}
+                  onClick={() => {
+                    setSelectedMethod(id);
+                    setErrorMessage(null);
+                  }}
                   className={`flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-2xl border transition-all ${
                     active
                       ? 'bg-[#EEF5FF] border-blue-500 text-blue-700 shadow-sm'

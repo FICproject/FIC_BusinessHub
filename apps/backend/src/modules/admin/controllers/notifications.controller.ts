@@ -32,7 +32,10 @@ export interface AdminNotification {
 async function syncOperationalAdminAlerts() {
   const now = new Date();
   const [recentMembers, openTickets, pendingKyc, pendingServices, pendingRequests] = await Promise.all([
-    MemberModel.find().sort({ registeredAt: -1 }).limit(6).lean(),
+    MemberModel.find({ $nor: [{ kycStatus: 'NOT_SUBMITTED', paymentStatus: 'PENDING' }] })
+      .sort({ registeredAt: -1 })
+      .limit(6)
+      .lean(),
     SupportTicketModel.find({ status: { $in: ['OPEN', 'IN_PROGRESS'] } })
       .populate('memberId', 'name')
       .sort({ createdAt: -1 })

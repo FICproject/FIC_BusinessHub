@@ -145,7 +145,7 @@ async function resolveMemberForUser(user: { _id: any; email: string }): Promise<
   });
 }
 
-async function syncAdminPaymentRecord(
+export async function syncAdminPaymentRecord(
   payment: IPaymentDocument,
   status: 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED'
 ): Promise<void> {

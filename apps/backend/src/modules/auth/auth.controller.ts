@@ -7,11 +7,8 @@ import { config } from '../../config';
 import { AppError } from '../../common/errors/app-error';
 import { JWTPayload, UserRole, AccountStatus, KYCStatus } from '@fic/shared-types';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
-import { MemberModel } from '../admin/models/Member';
-import { KycSubmissionModel as AdminKycSubmissionModel } from '../admin/models/KycSubmission';
 import { KYCSubmissionModel } from '../kyc/kyc.model';
 import { evaluateMemberActivationAccess, resolveUserKycSnapshot } from '../kyc/kyc-status.helpers';
-import { notifyAdmins, notifyMember } from '../notifications/notifications.service';
 
 export { resolveUserKycSnapshot };
 
@@ -162,32 +159,10 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       isMembershipActive: false
     });
 
-    // Synchronize to Admin Portal members collection and initialize customer KYC record without mutating immutable _id
+    // Only initialize the private KYCSubmissionModel draft here.
+    // Admin Member, Admin KYC Submission, Admin Payment, Referral payouts, and Admin notifications
+    // are deferred until BOTH verified payment AND final KYC submission succeed in POST /api/v1/kyc/submit.
     try {
-      await MemberModel.findOneAndUpdate(
-        { $or: [{ _id: newUser._id }, { email: newUser.email.toLowerCase() }] },
-        {
-          $setOnInsert: {
-            _id: newUser._id,
-            registeredAt: new Date()
-          },
-          $set: {
-            name: newUser.fullName,
-            email: newUser.email.toLowerCase(),
-            phone: newUser.phoneNumber,
-            primaryCategory: newUser.primaryCategoryId,
-            primaryCategoryName: newUser.primaryCategoryName || '',
-            subcategories: [newUser.subCategory || newUser.primarySubcategoryName || 'Member'].filter(Boolean),
-            status: 'PENDING_KYC',
-            membershipPlan: 'FIRST_YEAR_INTRO',
-            membershipFeePaid: 0,
-            paymentStatus: 'PENDING',
-            kycStatus: 'NOT_SUBMITTED'
-          }
-        },
-        { upsert: true, new: true }
-      );
-
       await KYCSubmissionModel.findOneAndUpdate(
         { userId: newUser._id },
         {
@@ -200,139 +175,8 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         },
         { upsert: true, new: true }
       );
-
-      await AdminKycSubmissionModel.findOneAndUpdate(
-        { $or: [{ memberId: newUser._id }, { memberEmail: newUser.email.toLowerCase() }] },
-        {
-          $setOnInsert: {
-            status: 'NOT_SUBMITTED',
-            documents: [],
-            submittedAt: new Date()
-          },
-          $set: {
-            memberId: newUser._id,
-            memberName: newUser.fullName,
-            memberEmail: newUser.email.toLowerCase(),
-            memberPhone: newUser.phoneNumber,
-            memberDob: newUser.dob,
-            subCategory: resolvedSubcategory,
-            address: validatedAddress,
-            dynamicProfile: dynamicProfile || {},
-            categoryId: newUser.primaryCategoryId || new mongoose.Types.ObjectId(),
-            categoryName: newUser.primaryCategoryName || 'General Business'
-          }
-        },
-        { upsert: true, new: true }
-      );
-
-      await Promise.allSettled([
-        notifyAdmins({
-          eventType: 'NEW_MEMBER_REGISTERED',
-          title: 'New Member Registered',
-          message: `${newUser.fullName} (${newUser.email}) completed registration and is awaiting KYC verification.`,
-          link: '/kyc',
-          priority: 'HIGH',
-          metadata: { memberId: newUser._id.toString(), memberEmail: newUser.email }
-        }),
-        notifyMember({
-          userId: newUser._id,
-          eventType: 'REGISTRATION_SUBMITTED',
-          title: 'Registration Submitted',
-          message: 'Your registration has been submitted successfully. Upload or verify your KYC documents for Admin approval.',
-          link: '/kyc-pending',
-          priority: 'MEDIUM'
-        })
-      ]);
-    } catch (adminSyncErr) {
-      console.warn('Admin member sync warning:', adminSyncErr);
-    }
-
-    // If referred, create attributed Referral record for customer and admin portals
-    if (referrerUserId) {
-      try {
-        const { ReferralModel } = await import('../referrals/referral.model');
-        await ReferralModel.create({
-          referralId: `REF_${Date.now()}`,
-          referralCode: cleanRefBy,
-          referrerUserId,
-          referredUserId: newUser._id,
-          referralSource: 'REFERRED',
-          registrationDate: new Date(),
-          paymentStatus: 'PAID',
-          kycStatus: 'PENDING',
-          accountStatus: 'ACTIVE',
-          referralStatus: 'ELIGIBLE',
-          rewardAmount: 500,
-          rewardStatus: 'CREDITED',
-          approvedBy: 'System Auto-Credit',
-          approvedAt: new Date(),
-          creditedAt: new Date()
-        });
-
-        // Also create / upsert Admin ReferralRecordModel for Admin Referral Bonus Desk
-        const referrerUser = await UserModel.findById(referrerUserId);
-        if (referrerUser) {
-          const { ReferralRecordModel } = await import('../admin/models/Referral');
-          await ReferralRecordModel.findOneAndUpdate(
-            { referredMemberId: newUser._id },
-            {
-              referrerMemberId: referrerUser._id,
-              referrerName: referrerUser.fullName,
-              referrerEmail: referrerUser.email,
-              referredMemberId: newUser._id,
-              referredName: newUser.fullName,
-              referredEmail: newUser.email,
-              bonusAmount: 500,
-              status: 'PAID',
-              payoutDate: new Date(),
-              payoutReference: `REF-TXN-${referrerUser._id.toString().slice(-4).toUpperCase()}${newUser._id.toString().slice(-4).toUpperCase()}`,
-              notes: `Referral bonus automatically attributed to ${referrerUser.fullName} for onboarding member ${newUser.fullName}`
-            },
-            { upsert: true, new: true }
-          );
-
-          // Credit referrer's admin wallet
-          const { MemberWalletModel } = await import('../admin/models/MemberWallet');
-          let rWallet = await MemberWalletModel.findOne({
-            $or: [{ memberId: referrerUser._id }, { memberEmail: referrerUser.email.toLowerCase() }]
-          });
-
-          const bonusTx = {
-            id: `TXN-REF-${newUser._id.toString().slice(-6)}`,
-            type: 'CREDIT',
-            title: `Referral Bonus Reward (${newUser.fullName})`,
-            category: 'Referral Bonus',
-            amount: 500,
-            currency: 'INR',
-            status: 'SUCCESS',
-            reference: `REF-TXN-${newUser._id.toString().slice(-6).toUpperCase()}`,
-            date: new Date().toISOString(),
-            description: `Referral reward credited for onboarding member ${newUser.fullName} (${newUser.email})`
-          };
-
-          if (rWallet) {
-            rWallet.balance = (rWallet.balance || 0) + 500;
-            const rTxs = rWallet.transactions || [];
-            rTxs.unshift(bonusTx as any);
-            rWallet.transactions = rTxs;
-            rWallet.lastSyncedAt = new Date();
-            await rWallet.save();
-          } else {
-            await MemberWalletModel.create({
-              memberId: referrerUser._id,
-              memberEmail: referrerUser.email.toLowerCase(),
-              balance: 50500,
-              currency: 'INR',
-              currencySymbol: '₹',
-              status: 'ACTIVE',
-              lastSyncedAt: new Date(),
-              transactions: [bonusTx]
-            });
-          }
-        }
-      } catch (err: any) {
-        console.warn('Referral creation warning:', err?.message);
-      }
+    } catch (kycInitErr) {
+      console.warn('KYC draft initialization warning:', kycInitErr);
     }
 
     const payload: JWTPayload = {
@@ -566,3 +410,92 @@ export const getMe = async (req: AuthenticatedRequest, res: Response, next: Next
   }
 };
 
+
+export const awardReferralBonusIfApplicable = async (newUser: any): Promise<void> => {
+  if (!newUser?.referrerUserId) return;
+  try {
+    const { ReferralModel } = await import('../referrals/referral.model');
+    const existingRef = await ReferralModel.findOne({ referredUserId: newUser._id }).lean();
+    if (existingRef) return;
+
+    await ReferralModel.create({
+      referralId: `REF_${Date.now()}`,
+      referralCode: newUser.referredByCode || '',
+      referrerUserId: newUser.referrerUserId,
+      referredUserId: newUser._id,
+      referralSource: 'REFERRED',
+      registrationDate: newUser.createdAt || new Date(),
+      paymentStatus: 'PAID',
+      kycStatus: 'PENDING',
+      accountStatus: 'ACTIVE',
+      referralStatus: 'ELIGIBLE',
+      rewardAmount: 500,
+      rewardStatus: 'CREDITED',
+      approvedBy: 'System Auto-Credit',
+      approvedAt: new Date(),
+      creditedAt: new Date()
+    });
+
+    const referrerUser = await UserModel.findById(newUser.referrerUserId);
+    if (!referrerUser) return;
+
+    const { ReferralRecordModel } = await import('../admin/models/Referral');
+    await ReferralRecordModel.findOneAndUpdate(
+      { referredMemberId: newUser._id },
+      {
+        referrerMemberId: referrerUser._id,
+        referrerName: referrerUser.fullName,
+        referrerEmail: referrerUser.email,
+        referredMemberId: newUser._id,
+        referredName: newUser.fullName,
+        referredEmail: newUser.email,
+        bonusAmount: 500,
+        status: 'PAID',
+        payoutDate: new Date(),
+        payoutReference: `REF-TXN-${referrerUser._id.toString().slice(-4).toUpperCase()}${newUser._id.toString().slice(-4).toUpperCase()}`,
+        notes: `Referral bonus automatically attributed to ${referrerUser.fullName} for onboarding member ${newUser.fullName}`
+      },
+      { upsert: true, new: true }
+    );
+
+    const { MemberWalletModel } = await import('../admin/models/MemberWallet');
+    const rWallet = await MemberWalletModel.findOne({
+      $or: [{ memberId: referrerUser._id }, { memberEmail: referrerUser.email.toLowerCase() }]
+    });
+
+    const bonusTx = {
+      id: `TXN-REF-${newUser._id.toString().slice(-6)}`,
+      type: 'CREDIT',
+      title: `Referral Bonus Reward (${newUser.fullName})`,
+      category: 'Referral Bonus',
+      amount: 500,
+      currency: 'INR',
+      status: 'SUCCESS',
+      reference: `REF-TXN-${newUser._id.toString().slice(-6).toUpperCase()}`,
+      date: new Date().toISOString(),
+      description: `Referral reward credited for onboarding member ${newUser.fullName} (${newUser.email})`
+    };
+
+    if (rWallet) {
+      rWallet.balance = (rWallet.balance || 0) + 500;
+      const rTxs = rWallet.transactions || [];
+      rTxs.unshift(bonusTx as any);
+      rWallet.transactions = rTxs;
+      rWallet.lastSyncedAt = new Date();
+      await rWallet.save();
+    } else {
+      await MemberWalletModel.create({
+        memberId: referrerUser._id,
+        memberEmail: referrerUser.email.toLowerCase(),
+        balance: 50500,
+        currency: 'INR',
+        currencySymbol: '₹',
+        status: 'ACTIVE',
+        lastSyncedAt: new Date(),
+        transactions: [bonusTx]
+      });
+    }
+  } catch (err: any) {
+    console.warn('Referral creation warning:', err?.message);
+  }
+};

@@ -15,7 +15,7 @@ router.get('/stats', authenticateAdmin, async (_req, res) => {
   try {
     const [totalMembers, activeMembers, pendingKyc, pendingServices, activeServices, pendingRequests, recentLogs] =
       await Promise.all([
-        MemberModel.countDocuments(),
+        MemberModel.countDocuments({ $nor: [{ kycStatus: 'NOT_SUBMITTED', paymentStatus: 'PENDING' }] }),
         MemberModel.countDocuments({ status: 'ACTIVE' }),
         KycSubmissionModel.countDocuments({ status: { $in: ['SUBMITTED', 'UNDER_REVIEW'] } }),
         ServiceListingModel.countDocuments({ status: 'PENDING_APPROVAL' }),

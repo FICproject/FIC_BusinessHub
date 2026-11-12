@@ -9,6 +9,8 @@ import { CategoryModel as AdminCategoryModel } from '../admin/models/Category';
 import { DocumentAssetModel, toSafeDocumentDto } from '../documents/documents.model';
 import { uploadAndProcessDocument } from '../documents/documents.service';
 import { PaymentModel } from '../payments/payments.model';
+import { syncAdminPaymentRecord } from '../payments/payments.service';
+import { awardReferralBonusIfApplicable } from '../auth/auth.controller';
 import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
 import { config } from '../../config';
@@ -227,6 +229,19 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
       .sort({ createdAt: -1 })
       .lean();
 
+    const existingMemberPaid = await MemberModel.exists({
+      $or: [{ _id: user._id }, { email: user.email.toLowerCase() }],
+      paymentStatus: 'PAID'
+    });
+
+    if (!verifiedPayment && !user.isMembershipActive && !existingMemberPaid) {
+      throw new AppError(
+        'Membership payment must be completed successfully before submitting your KYC application.',
+        402,
+        'PAYMENT_REQUIRED_BEFORE_KYC_SUBMISSION'
+      );
+    }
+
     const verifiedPaymentDetails = verifiedPayment
       ? {
           orderId: verifiedPayment.razorpayOrderId || verifiedPayment.internalOrderId,
@@ -333,6 +348,16 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
       activeKycSubmissionId: submission._id,
       isKycApproved: false
     });
+
+    if (verifiedPayment) {
+      await syncAdminPaymentRecord(verifiedPayment as any, 'SUCCESS').catch((err) =>
+        console.warn('Admin payment sync warning during KYC submit:', err)
+      );
+    }
+
+    await awardReferralBonusIfApplicable(user).catch((err) =>
+      console.warn('Referral bonus sync warning during KYC submit:', err)
+    );
 
     await Promise.allSettled([
       notifyAdmins({

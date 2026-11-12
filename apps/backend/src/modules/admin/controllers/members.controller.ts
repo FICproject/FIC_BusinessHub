@@ -18,7 +18,7 @@ const router = Router();
 router.get('/', authenticateAdmin, async (req, res) => {
   try {
     const { status, categoryId, search } = req.query;
-    const filter: any = {};
+    const filter: any = { $nor: [{ kycStatus: 'NOT_SUBMITTED', paymentStatus: 'PENDING' }] };
     if (status && status !== 'ALL') filter.status = status;
     if (categoryId) filter.primaryCategory = categoryId;
     if (search) {

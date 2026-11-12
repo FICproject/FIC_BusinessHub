@@ -125,30 +125,44 @@ export async function collectUnifiedPayments(): Promise<any[]> {
 
   if (orphanGatewayPayments.length > 0) {
     const userIds = orphanGatewayPayments.map((g) => g.userId).filter(Boolean);
-    const memberIds = orphanGatewayPayments.map((g) => g.memberId).filter(Boolean);
+    const memberLookupIds = Array.from(
+      new Set([
+        ...userIds.map((id) => String(id)),
+        ...orphanGatewayPayments.map((g) => g.memberId).filter(Boolean).map((id) => String(id))
+      ])
+    );
     const [users, members] = await Promise.all([
       userIds.length
         ? UserModel.find({ _id: { $in: userIds } })
-            .select('fullName email phoneNumber primaryCategoryName')
-            .lean()
+          .select('fullName email phoneNumber primaryCategoryName')
+          .lean()
         : [],
-      memberIds.length
-        ? MemberModel.find({ _id: { $in: memberIds } })
-            .select('name email phone primaryCategoryName')
-            .lean()
+      memberLookupIds.length
+        ? MemberModel.find({
+          _id: { $in: memberLookupIds },
+          $nor: [{ kycStatus: 'NOT_SUBMITTED', paymentStatus: 'PENDING' }]
+        })
+          .select('name email phone primaryCategoryName')
+          .lean()
         : []
     ]);
     const userMap = new Map((users as any[]).map((u) => [u._id.toString(), u]));
     const memberMap = new Map((members as any[]).map((m) => [m._id.toString(), m]));
 
     for (const gp of orphanGatewayPayments) {
+      const normalizedStatus = normalizeStoredStatusForAdmin(gp.status);
+      const m =
+        (gp.memberId ? memberMap.get(gp.memberId.toString()) : null) ||
+        (gp.userId ? memberMap.get(gp.userId.toString()) : null);
+      // Do not surface unpaid/cancelled/initiated registration orders in Admin until payment succeeds & KYC is submitted
+      if (!m && normalizedStatus !== 'SUCCESS') continue;
+
       const gpKeys = [gp.paymentId, gp.razorpayOrderId, gp.internalOrderId, gp.razorpayPaymentId]
         .filter(Boolean)
         .map((k) => String(k));
       if (gpKeys.some((k) => seenKeys.has(k))) continue;
       gpKeys.forEach((k) => seenKeys.add(k));
 
-      const m = gp.memberId ? memberMap.get(gp.memberId.toString()) : null;
       const u = gp.userId ? userMap.get(gp.userId.toString()) : null;
       const resolvedMember = m || (u ? { _id: u._id, name: u.fullName, email: u.email, phone: u.phoneNumber, primaryCategoryName: u.primaryCategoryName } : null);
 
@@ -163,10 +177,10 @@ export async function collectUnifiedPayments(): Promise<any[]> {
           gp.purpose === 'MEMBERSHIP_RENEWAL' || gp.purpose === 'ANNUAL_RENEWAL'
             ? 'ANNUAL_RENEWAL'
             : gp.purpose === 'WALLET_TOPUP'
-            ? 'WALLET_TOPUP'
-            : gp.purpose === 'SERVICE_ORDER'
-            ? 'SERVICE_ORDER'
-            : 'INTRO_FEE',
+              ? 'WALLET_TOPUP'
+              : gp.purpose === 'SERVICE_ORDER'
+                ? 'SERVICE_ORDER'
+                : 'INTRO_FEE',
         purpose: gp.purpose,
         status: normalizeStoredStatusForAdmin(gp.status),
         rawStatus: gp.status,
@@ -221,13 +235,13 @@ router.get('/', authenticateAdmin, async (req: Request, res: Response, next: Nex
         const payIdMatch = p.paymentId?.toLowerCase().includes(searchTerm);
         return Boolean(
           nameMatch ||
-            emailMatch ||
-            phoneMatch ||
-            txnMatch ||
-            rzpPayMatch ||
-            rzpOrdMatch ||
-            internalMatch ||
-            payIdMatch
+          emailMatch ||
+          phoneMatch ||
+          txnMatch ||
+          rzpPayMatch ||
+          rzpOrdMatch ||
+          internalMatch ||
+          payIdMatch
         );
       });
     }
