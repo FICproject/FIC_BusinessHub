@@ -9,6 +9,7 @@ import {
   resolveUserKycSnapshot
 } from './auth.controller';
 import { authenticate } from '../../common/middleware/auth.middleware';
+import { lookupIndianPinCode } from './pincode.service';
 import { UserModel } from '../users/users.model';
 import { evaluateMemberActivationAccess } from '../kyc/kyc-status.helpers';
 
@@ -16,6 +17,14 @@ export const authRouter = Router();
 
 authRouter.get('/check-email', checkEmailAvailability);
 authRouter.get('/check-mobile', checkMobileAvailability);
+authRouter.get('/pincode/:pincode', async (req, res, next) => {
+  try {
+    const location = await lookupIndianPinCode(req.params.pincode);
+    res.status(200).json({ success: true, data: location });
+  } catch (err) {
+    next(err);
+  }
+});
 authRouter.post('/register', register);
 authRouter.post('/login', login);
 authRouter.get('/me', authenticate, getMe);

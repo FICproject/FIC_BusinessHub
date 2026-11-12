@@ -16,6 +16,7 @@ import { AppError } from '../../common/errors/app-error';
 import { config } from '../../config';
 import { KYCStatus, UserRole } from '@fic/shared-types';
 import {
+  buildApprovedProfileDocuments,
   buildNormalizedKycDocuments,
   evaluateMemberActivationAccess,
   normalizeDocStatus,
@@ -968,6 +969,12 @@ kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Re
         ? submission.additionalDocumentRequests
         : [];
 
+    const approvedDocuments = buildApprovedProfileDocuments(
+      normalizedDocuments,
+      additionalDocumentRequests,
+      privateDocs
+    );
+
     const basePayload = submission || {};
     res.status(200).json({
       success: true,
@@ -989,6 +996,7 @@ kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Re
         lastResubmittedAt: adminSubmission?.lastResubmittedAt,
         documents: normalizedDocuments,
         adminDocuments: normalizedDocuments,
+        approvedDocuments,
         additionalDocumentRequests,
         documentAssets: privateDocs.map((d) => toSafeDocumentDto(d, 'member')),
         notifications: notifData.notifications,

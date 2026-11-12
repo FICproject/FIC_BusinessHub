@@ -1,13 +1,17 @@
 import { Router, Response } from 'express';
 import { CategoryModel } from '../models/Category';
+import {
+  CategoryModel as PublicCategoryModel,
+  SubcategoryModel as PublicSubcategoryModel
+} from '../../categories/categories.model';
 import { authenticateAdmin, requireRole, AuthenticatedAdminRequest, logAdminAction } from '../middleware/admin-auth.middleware';
 
 const router = Router();
 
-// GET /api/admin/categories - Get all categories with subcategories & dynamic rules
+// GET /api/admin/categories - Get all active categories with subcategories & dynamic rules
 router.get('/', authenticateAdmin, async (_req, res) => {
   try {
-    const categories = await CategoryModel.find().sort({ name: 1 });
+    const categories = await CategoryModel.find({ isActive: { $ne: false } }).sort({ name: 1 });
     res.json({ success: true, data: categories });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -29,21 +33,57 @@ router.post('/', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (
       return;
     }
 
+    const trimmedName = String(name).trim();
+    const normalizedSlug = String(slug).trim().toLowerCase();
     const category = await CategoryModel.create({
-      name,
-      slug: slug.toLowerCase(),
+      name: trimmedName,
+      slug: normalizedSlug,
       description,
       icon,
       allowMultipleSubcategories: allowMultipleSubcategories ?? true,
       subcategories: subcategories || [],
       customFields: customFields || [],
       kycRequirements: kycRequirements || [
-        { docKey: 'id_proof', title: 'Government ID Proof', required: true, allowedExtensions: ['pdf', 'jpg', 'png'], maxSizeMB: 5 },
+        { docKey: 'id_proof', title: 'Government ID Proof', required: true, allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'], maxSizeMB: 2 },
       ],
       isActive: true,
     });
 
-    await logAdminAction(req, 'CREATE_CATEGORY', 'Category', category._id.toString(), { name, slug });
+    try {
+      const publicCat = await PublicCategoryModel.findOneAndUpdate(
+        { slug: normalizedSlug },
+        {
+          $set: {
+            name: trimmedName,
+            slug: normalizedSlug,
+            description: description || `${trimmedName} category`,
+            iconName: icon || 'Briefcase',
+            isActive: true
+          }
+        },
+        { upsert: true, new: true }
+      );
+      if (publicCat && Array.isArray(subcategories) && subcategories.length > 0) {
+        for (let i = 0; i < subcategories.length; i++) {
+          const sub = subcategories[i];
+          const subName = typeof sub === 'string' ? sub : sub?.name;
+          const subSlug = (typeof sub === 'string' ? sub : (sub?.slug || subName || ''))
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-');
+          if (subName && subSlug) {
+            await PublicSubcategoryModel.findOneAndUpdate(
+              { categoryId: publicCat._id, slug: subSlug },
+              { $set: { categoryId: publicCat._id, name: subName, slug: subSlug, displayOrder: i + 1, isActive: true } },
+              { upsert: true }
+            );
+          }
+        }
+      }
+    } catch {
+      // Non-fatal mirror sync
+    }
+
+    await logAdminAction(req, 'CREATE_CATEGORY', 'Category', category._id.toString(), { name: trimmedName, slug: normalizedSlug });
     res.status(201).json({ success: true, data: category });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -129,18 +169,29 @@ router.delete('/:id/subcategories/:subSlug', authenticateAdmin, requireRole('SUP
   }
 });
 
-// DELETE /api/admin/categories/:id - Deactivate category
-router.delete('/:id', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+// DELETE /api/admin/categories/:id - Remove main category
+router.delete('/:id', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const category = await CategoryModel.findByIdAndUpdate(id, { isActive: false }, { new: true });
+    const category = await CategoryModel.findByIdAndDelete(id);
     if (!category) {
       res.status(404).json({ success: false, error: 'Category not found' });
       return;
     }
 
-    await logAdminAction(req, 'DEACTIVATE_CATEGORY', 'Category', id);
-    res.json({ success: true, message: 'Category deactivated successfully', data: category });
+    try {
+      const publicCat = await PublicCategoryModel.findOneAndDelete({
+        $or: [{ slug: category.slug }, { name: category.name }]
+      });
+      if (publicCat) {
+        await PublicSubcategoryModel.deleteMany({ categoryId: publicCat._id });
+      }
+    } catch {
+      // Non-fatal mirror cleanup
+    }
+
+    await logAdminAction(req, 'DELETE_CATEGORY', 'Category', id, { name: category.name, slug: category.slug });
+    res.json({ success: true, message: `Main category "${category.name}" removed successfully`, data: category });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

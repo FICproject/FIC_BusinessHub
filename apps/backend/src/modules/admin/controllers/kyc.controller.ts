@@ -907,9 +907,15 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
     );
 
     const docsList = submission.documents || [];
-    const approvedDocIds = docsList
-      .filter((d: any) => normalizeDocStatus(d.status) === 'APPROVED' && d.documentId)
-      .map((d: any) => d.documentId);
+    const additionalApprovedDocIds = (submission.additionalDocumentRequests || [])
+      .filter((r: any) => normalizeDocStatus(r?.status) === 'APPROVED' && r?.uploadedDocument?.documentId)
+      .map((r: any) => r.uploadedDocument.documentId);
+    const approvedDocIds = [
+      ...docsList
+        .filter((d: any) => normalizeDocStatus(d.status) === 'APPROVED' && d.documentId)
+        .map((d: any) => d.documentId),
+      ...additionalApprovedDocIds
+    ];
     const reuploadDocIds = docsList
       .filter((d: any) => normalizeDocStatus(d.status) === 'REUPLOAD_REQUIRED' && d.documentId)
       .map((d: any) => d.documentId);

@@ -177,10 +177,76 @@ export const INDIAN_STATES_DISTRICTS: StateLocationData[] = [
     districts: ['Kolkata', 'North 24 Parganas', 'South 24 Parganas', 'Howrah', 'Hooghly', 'Darjeeling']
   },
   {
-    state: 'Other / Outside Listed States',
-    districts: ['Central / Headquarters District', 'Other District']
+    state: 'Madhya Pradesh',
+    districts: ['Bhopal', 'Indore', 'Gwalior', 'Jabalpur', 'Ujjain']
+  },
+  {
+    state: 'Odisha',
+    districts: ['Khordha', 'Bhubaneswar', 'Cuttack', 'Puri', 'Sambalpur', 'Sundargarh']
+  },
+  {
+    state: 'Bihar',
+    districts: ['Patna', 'Gaya', 'Muzaffarpur', 'Bhagalpur', 'Darbhanga']
+  },
+  {
+    state: 'Punjab',
+    districts: ['Ludhiana', 'Amritsar', 'Jalandhar', 'Patiala', 'Mohali (SAS Nagar)']
+  },
+  {
+    state: 'Haryana',
+    districts: ['Gurugram', 'Faridabad', 'Panipat', 'Ambala', 'Karnal']
+  },
+  {
+    state: 'Assam',
+    districts: ['Kamrup Metropolitan', 'Kamrup', 'Dibrugarh', 'Silchar (Cachar)', 'Jorhat']
+  },
+  {
+    state: 'Jharkhand',
+    districts: ['Ranchi', 'East Singhbhum (Jamshedpur)', 'Dhanbad', 'Bokaro']
+  },
+  {
+    state: 'Chhattisgarh',
+    districts: ['Raipur', 'Bilaspur', 'Durg', 'Korba']
+  },
+  {
+    state: 'Uttarakhand',
+    districts: ['Dehradun', 'Haridwar', 'Nainital', 'Udham Singh Nagar']
+  },
+  {
+    state: 'Himachal Pradesh',
+    districts: ['Shimla', 'Kangra', 'Solan', 'Mandi']
+  },
+  {
+    state: 'Goa',
+    districts: ['North Goa', 'South Goa']
+  },
+  {
+    state: 'Jammu & Kashmir',
+    districts: ['Srinagar', 'Jammu', 'Anantnag']
+  },
+  {
+    state: 'Chandigarh',
+    districts: ['Chandigarh']
   }
 ];
+
+const STATE_ALIASES: Record<string, string> = {
+  delhi: 'Delhi (NCT)',
+  'nct of delhi': 'Delhi (NCT)',
+  orissa: 'Odisha',
+  pondicherry: 'Puducherry',
+  'jammu and kashmir': 'Jammu & Kashmir'
+};
+
+export const matchIndianStateName = (rawState: string): string => {
+  const clean = (rawState || '').trim();
+  if (!clean) return '';
+  const aliased = STATE_ALIASES[clean.toLowerCase()] || clean;
+  const exact = INDIAN_STATES_DISTRICTS.find(
+    (s) => s.state.toLowerCase() === aliased.toLowerCase()
+  );
+  return exact ? exact.state : clean;
+};
 
 export const getIndianStates = (): string[] => {
   return INDIAN_STATES_DISTRICTS.map((s) => s.state);
@@ -190,13 +256,13 @@ export const getDistrictsForState = (stateName: string): string[] => {
   const match = INDIAN_STATES_DISTRICTS.find(
     (s) => s.state.toLowerCase() === (stateName || '').toLowerCase()
   );
-  return match ? match.districts : ['Other District'];
+  return match ? match.districts : [];
 };
 
 export const validateIndianPinCode = (pinCode: string): boolean => {
   if (!pinCode) return false;
   const clean = pinCode.trim();
-  // Valid 6-digit Indian PIN code starting with digits 1-9
-  return /^[1-9][0-9]{5}$/.test(clean);
+  // Indian civilian residential PIN codes are strictly 6 numeric digits starting with 1-8
+  return /^[1-8][0-9]{5}$/.test(clean);
 };
 

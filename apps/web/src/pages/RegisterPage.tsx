@@ -3,7 +3,12 @@ import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button, Input, Card, Badge } from '@fic/ui';
 import { INITIAL_CATEGORIES_DATA } from '../services/categoriesData';
 import { getSubcategoryFormConfig } from '../services/subcategoryForms';
-import { getIndianStates, getDistrictsForState, validateIndianPinCode } from '../services/indianLocations';
+import {
+  getIndianStates,
+  getDistrictsForState,
+  matchIndianStateName,
+  validateIndianPinCode
+} from '../services/indianLocations';
 import {
   apiRequest,
   setAuthToken,
@@ -22,6 +27,7 @@ import {
   extractApiErrorMessage,
   checkEmailAvailability,
   checkMobileAvailability,
+  lookupIndianPinCodeApi,
   UploadedDocumentAsset
 } from '../services/api';
 import {
@@ -368,17 +374,90 @@ export const RegisterPage: React.FC = () => {
   const [addressLine1, setAddressLine1] = useState('');
   const [addressLine2, setAddressLine2] = useState('');
   const [landmark, setLandmark] = useState('');
-  const [stateName, setStateName] = useState('Tamil Nadu');
-  const [district, setDistrict] = useState('Chennai');
+  const [country, setCountry] = useState('');
+  const [stateName, setStateName] = useState('');
+  const [district, setDistrict] = useState('');
   const [city, setCity] = useState('');
   const [pinCode, setPinCode] = useState('');
   const [addressType, setAddressType] = useState('Residential');
   const [pinCodeError, setPinCodeError] = useState('');
+  const [isLookingUpPin, setIsLookingUpPin] = useState(false);
+  const [pinLookupInfo, setPinLookupInfo] = useState('');
+  const latestPinLookupRef = useRef('');
 
   const handleStateChange = (selectedState: string) => {
     setStateName(selectedState);
     const availableDistricts = getDistrictsForState(selectedState);
-    setDistrict(availableDistricts[0] || 'Other District');
+    setDistrict(availableDistricts[0] || '');
+  };
+
+  const handlePinCodeInput = async (rawValue: string) => {
+    setPinCode(rawValue);
+    const trimmed = rawValue.trim();
+
+    if (!trimmed) {
+      setCountry('');
+      setStateName('');
+      setDistrict('');
+      setCity('');
+      setPinCodeError('');
+      setPinLookupInfo('');
+      return;
+    }
+
+    if (!/^[0-9]+$/.test(trimmed) || (trimmed.length >= 1 && !/^[1-8]/.test(trimmed)) || trimmed.length > 6) {
+      setCountry('');
+      setPinLookupInfo('');
+      setPinCodeError('Invalid or non-Indian PIN code. Please enter a valid 6-digit Indian PIN code (e.g., 600028).');
+      return;
+    }
+
+    if (trimmed.length < 6) {
+      setCountry('');
+      setPinLookupInfo('');
+      setPinCodeError('Enter all 6 digits of your Indian PIN code (e.g., 600028).');
+      return;
+    }
+
+    latestPinLookupRef.current = trimmed;
+    setPinCodeError('');
+    setPinLookupInfo('');
+    setIsLookingUpPin(true);
+    try {
+      const resolved = await lookupIndianPinCodeApi(trimmed);
+      if (latestPinLookupRef.current !== trimmed) return;
+
+      const normalizedState = matchIndianStateName(resolved.state);
+      const stateDistricts = getDistrictsForState(normalizedState);
+      const matchedDistrict =
+        stateDistricts.find((d) => d.toLowerCase() === resolved.district.toLowerCase()) ||
+        stateDistricts.find((d) => resolved.district.toLowerCase().includes(d.toLowerCase())) ||
+        resolved.district;
+
+      setCountry(resolved.country || 'India');
+      setStateName(normalizedState);
+      setDistrict(matchedDistrict);
+      setCity(resolved.city || matchedDistrict);
+      setFieldError('city', null);
+      setPinCodeError('');
+      setPinLookupInfo(
+        `Auto-filled: ${resolved.city || matchedDistrict}, ${matchedDistrict}, ${normalizedState}, India`
+      );
+    } catch (err: any) {
+      if (latestPinLookupRef.current !== trimmed) return;
+      setCountry('');
+      setStateName('');
+      setDistrict('');
+      setCity('');
+      setPinLookupInfo('');
+      setPinCodeError(
+        err?.message || 'Non-Indian or unrecognized PIN code. Please enter a valid 6-digit Indian PIN code.'
+      );
+    } finally {
+      if (latestPinLookupRef.current === trimmed) {
+        setIsLookingUpPin(false);
+      }
+    }
   };
 
   // Step 4: Real Document Attachment state (Aadhaar / Alt ID + PAN + Dynamic + Custom)
@@ -718,6 +797,14 @@ export const RegisterPage: React.FC = () => {
     }
     setFieldError('landmark', null);
 
+    if (!pinCode.trim() || !validateIndianPinCode(pinCode) || pinCodeError || country.trim().toLowerCase() !== 'india') {
+      const msg = pinCodeError || 'Please enter a valid 6-digit Indian PIN Code (e.g., 600028) to auto-fill location details.';
+      setPinCodeError(msg);
+      setErrorMessage(msg);
+      return;
+    }
+    setPinCodeError('');
+
     if (!stateName.trim()) {
       setErrorMessage('Please select your State.');
       return;
@@ -733,14 +820,6 @@ export const RegisterPage: React.FC = () => {
       return;
     }
     setFieldError('city', null);
-
-    if (!pinCode.trim() || !validateIndianPinCode(pinCode)) {
-      const msg = 'Please enter a valid 6-digit Indian PIN Code (e.g., 600028).';
-      setPinCodeError('Must be a valid 6-digit PIN code');
-      setErrorMessage(msg);
-      return;
-    }
-    setPinCodeError('');
 
     // Advance to Step 4: KYC Documents
     setStep(4);
@@ -854,7 +933,7 @@ export const RegisterPage: React.FC = () => {
       addressLine1: addressLine1.trim(),
       addressLine2: addressLine2.trim() || undefined,
       landmark: landmark.trim() || undefined,
-      country: 'India',
+      country: country.trim() || 'India',
       state: stateName.trim(),
       district: district.trim(),
       city: city.trim(),
@@ -1866,16 +1945,60 @@ export const RegisterPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Country, State, District & City */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* PIN Code (6 Digits) - Directly below Address Line 2; auto-fills Country, State, District & City */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-[#29302D] block">
-                        Country
+                        PIN Code (6 Digits) <span className="text-red-500">*</span>
                       </label>
                       <input
                         type="text"
-                        value="India"
-                        disabled
+                        inputMode="numeric"
+                        maxLength={12}
+                        placeholder="e.g., 600028"
+                        value={pinCode}
+                        onChange={(e) => {
+                          void handlePinCodeInput(e.target.value);
+                        }}
+                        onBlur={() => {
+                          if (!pinCode.trim()) {
+                            setPinCodeError('Please enter a valid 6-digit Indian PIN code.');
+                          }
+                        }}
+                        required
+                        className={`w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none focus:ring-2 ${
+                          pinCodeError
+                            ? 'border-red-400 focus:ring-red-400 bg-red-50/30'
+                            : 'border-[#E8DBC8] focus:ring-[#C66B52] bg-white'
+                        }`}
+                      />
+                      {isLookingUpPin && (
+                        <p className="text-[11px] text-amber-700 font-medium">
+                          Verifying Indian PIN code &amp; auto-filling location...
+                        </p>
+                      )}
+                      {!isLookingUpPin && pinLookupInfo && !pinCodeError && (
+                        <p className="text-[11px] text-emerald-700 font-semibold">
+                          ✓ {pinLookupInfo}
+                        </p>
+                      )}
+                      {pinCodeError && (
+                        <p className="text-[11px] text-red-600 font-semibold">{pinCodeError}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Country, State, District & City (Auto-filled from PIN Code) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-[#29302D] block">
+                        Country <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={country}
+                        placeholder="Auto-filled from PIN"
+                        readOnly
                         className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl bg-slate-50 text-slate-700 font-medium cursor-not-allowed"
                       />
                     </div>
@@ -1884,36 +2007,54 @@ export const RegisterPage: React.FC = () => {
                       <label className="text-xs font-semibold text-[#29302D] block">
                         State <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        value={stateName}
-                        onChange={(e) => handleStateChange(e.target.value)}
-                        required
-                        className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
-                      >
-                        {getIndianStates().map((st) => (
-                          <option key={st} value={st}>
-                            {st}
-                          </option>
-                        ))}
-                      </select>
+                      {(() => {
+                        const baseStates = getIndianStates();
+                        const stateOptions =
+                          stateName && !baseStates.includes(stateName) ? [stateName, ...baseStates] : baseStates;
+                        return (
+                          <select
+                            value={stateName}
+                            onChange={(e) => handleStateChange(e.target.value)}
+                            required
+                            className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
+                          >
+                            <option value="">-- Select State --</option>
+                            {stateOptions.map((st) => (
+                              <option key={st} value={st}>
+                                {st}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                     </div>
 
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-[#29302D] block">
                         District <span className="text-red-500">*</span>
                       </label>
-                      <select
-                        value={district}
-                        onChange={(e) => setDistrict(e.target.value)}
-                        required
-                        className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
-                      >
-                        {getDistrictsForState(stateName).map((dist) => (
-                          <option key={dist} value={dist}>
-                            {dist}
-                          </option>
-                        ))}
-                      </select>
+                      {(() => {
+                        const baseDistricts = getDistrictsForState(stateName);
+                        const districtOptions =
+                          district && !baseDistricts.includes(district)
+                            ? [district, ...baseDistricts]
+                            : baseDistricts;
+                        return (
+                          <select
+                            value={district}
+                            onChange={(e) => setDistrict(e.target.value)}
+                            required
+                            className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
+                          >
+                            <option value="">-- Select District --</option>
+                            {districtOptions.map((dist) => (
+                              <option key={dist} value={dist}>
+                                {dist}
+                              </option>
+                            ))}
+                          </select>
+                        );
+                      })()}
                     </div>
 
                     <div className="space-y-1">
@@ -1937,42 +2078,6 @@ export const RegisterPage: React.FC = () => {
                       />
                       {fieldErrors.city && (
                         <p className="text-[11px] text-red-600 font-semibold">{fieldErrors.city}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* PIN Code */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-[#29302D] block">
-                        PIN Code (6 Digits) <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={6}
-                        placeholder="e.g., 600028"
-                        value={pinCode}
-                        onChange={(e) => {
-                          const clean = e.target.value.replace(/\D/g, '').slice(0, 6);
-                          setPinCode(clean);
-                          if (clean.length === 6 && validateIndianPinCode(clean)) {
-                            setPinCodeError('');
-                          } else if (clean.length > 0 && clean.length < 6) {
-                            setPinCodeError('Must be a 6-digit PIN code');
-                          } else {
-                            setPinCodeError('');
-                          }
-                        }}
-                        required
-                        className={`w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none focus:ring-2 ${
-                          pinCodeError
-                            ? 'border-red-300 focus:ring-red-400 bg-red-50/20'
-                            : 'border-[#E8DBC8] focus:ring-[#C66B52] bg-white'
-                        }`}
-                      />
-                      {pinCodeError && (
-                        <p className="text-[11px] text-red-600 font-medium">{pinCodeError}</p>
                       )}
                     </div>
                   </div>

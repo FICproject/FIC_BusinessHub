@@ -3140,3 +3140,38 @@ export const markAllMemberNotificationsReadStrict = async (): Promise<void> => {
     headers: { Authorization: `Bearer ${token}` }
   }).catch(() => {});
 };
+
+export const fetchMyKycStatus = async (): Promise<any | null> => {
+  const token = getAuthToken();
+  if (!token) return null;
+  const response = await fetch(`${BASE_URL}/kyc/status`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) return null;
+  const payload = await response.json().catch(() => ({}));
+  return payload?.success ? payload.data : null;
+};
+
+export interface IndianPinCodeResult {
+  pinCode: string;
+  country: string;
+  state: string;
+  district: string;
+  city: string;
+  postOffice?: string;
+}
+
+export const lookupIndianPinCodeApi = async (pinCode: string): Promise<IndianPinCodeResult> => {
+  const clean = String(pinCode || '').trim();
+  const response = await fetch(`${BASE_URL}/auth/pincode/${encodeURIComponent(clean)}`);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success || !payload?.data) {
+    throw new Error(
+      extractApiErrorMessage(
+        payload,
+        'Invalid or non-Indian PIN code. Please enter a valid 6-digit Indian PIN code.'
+      )
+    );
+  }
+  return payload.data as IndianPinCodeResult;
+};

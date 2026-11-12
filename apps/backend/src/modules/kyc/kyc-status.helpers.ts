@@ -83,6 +83,86 @@ export function buildNormalizedKycDocuments(
   });
 }
 
+/**
+ * Returns strictly Admin-approved KYC and additional documents for Member Profile display.
+ * Excludes pending, rejected, superseded, and duplicate documents.
+ */
+export function buildApprovedProfileDocuments(
+  normalizedDocs: any[] = [],
+  additionalDocumentRequests: any[] = [],
+  privateAssets: any[] = []
+) {
+  const assetById = new Map<string, any>();
+  for (const a of privateAssets) {
+    if (a?.documentId && a?.isLatestVersion !== false && !a?.isDeleted) {
+      assetById.set(String(a.documentId), a);
+    }
+  }
+
+  const deduped = new Map<string, any>();
+
+  for (const doc of normalizedDocs || []) {
+    if (normalizeDocStatus(doc.status) !== 'APPROVED') continue;
+    const docId = doc.documentId ? String(doc.documentId) : '';
+    const dedupeKey = docId || `KEY:${String(doc.docKey || doc.documentType || doc.title || '').trim().toUpperCase()}`;
+    if (!dedupeKey) continue;
+
+    const asset = docId ? assetById.get(docId) : undefined;
+    const existing = deduped.get(dedupeKey);
+    const version = Number(doc.version || asset?.version || 1);
+    if (existing && Number(existing.version || 1) >= version) continue;
+
+    deduped.set(dedupeKey, {
+      documentId: docId || undefined,
+      docKey: doc.docKey || doc.documentType || dedupeKey,
+      documentCategory: doc.documentType || doc.docKey || 'KYC_DOCUMENT',
+      title: doc.title || asset?.documentLabel || 'Verified KYC Document',
+      fileName: doc.fileName || asset?.originalFileName || doc.title || 'verified-document',
+      originalFileName: doc.fileName || asset?.originalFileName || doc.title || 'verified-document',
+      originalFileExtension: asset?.originalFileExtension || (doc.fileName?.split('.').pop() || 'file'),
+      originalMimeType: doc.originalMimeType || asset?.originalMimeType || 'application/octet-stream',
+      originalFileSize: Number(doc.originalFileSize || asset?.originalFileSize || 0),
+      checksum: doc.checksum || asset?.checksum,
+      version,
+      status: 'APPROVED',
+      documentStatus: 'APPROVED',
+      reviewedAt: doc.reviewedAt || asset?.reviewedAt,
+      uploadedAt: doc.uploadedAt || asset?.createdAt,
+      viewUrl: docId ? `/api/v1/documents/${docId}/view` : doc.fileUrl
+    });
+  }
+
+  for (const reqDoc of additionalDocumentRequests || []) {
+    if (normalizeDocStatus(reqDoc?.status) !== 'APPROVED') continue;
+    const uploadedDoc = reqDoc?.uploadedDocument || {};
+    const docId = uploadedDoc.documentId ? String(uploadedDoc.documentId) : '';
+    const dedupeKey = docId || `ADD:${String(reqDoc.requestId || reqDoc.documentName || '').trim().toUpperCase()}`;
+    if (!dedupeKey || deduped.has(dedupeKey)) continue;
+
+    const asset = docId ? assetById.get(docId) : undefined;
+    deduped.set(dedupeKey, {
+      documentId: docId || undefined,
+      docKey: reqDoc.requestId || dedupeKey,
+      documentCategory: 'ADDITIONAL_KYC_DOCUMENT',
+      title: reqDoc.documentName || uploadedDoc.title || asset?.documentLabel || 'Approved Additional Document',
+      fileName: uploadedDoc.fileName || asset?.originalFileName || reqDoc.documentName || 'additional-document',
+      originalFileName: uploadedDoc.fileName || asset?.originalFileName || reqDoc.documentName || 'additional-document',
+      originalFileExtension: asset?.originalFileExtension || (uploadedDoc.fileName?.split('.').pop() || 'file'),
+      originalMimeType: uploadedDoc.originalMimeType || asset?.originalMimeType || 'application/octet-stream',
+      originalFileSize: Number(uploadedDoc.originalFileSize || asset?.originalFileSize || 0),
+      checksum: uploadedDoc.checksum || asset?.checksum,
+      version: Number(uploadedDoc.version || asset?.version || 1),
+      status: 'APPROVED',
+      documentStatus: 'APPROVED',
+      reviewedAt: reqDoc.reviewedAt || asset?.reviewedAt,
+      uploadedAt: uploadedDoc.uploadedAt || asset?.createdAt,
+      viewUrl: docId ? `/api/v1/documents/${docId}/view` : uploadedDoc.fileUrl
+    });
+  }
+
+  return Array.from(deduped.values());
+}
+
 export async function resolveUserKycSnapshot(user: {
   _id: any;
   email?: string;

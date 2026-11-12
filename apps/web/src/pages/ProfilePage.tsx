@@ -36,8 +36,7 @@ import {
   WalletTransactionType,
   WalletTransactionStatus
 ,
-  listMyDocuments,
-  uploadDocumentFile,
+  fetchMyKycStatus,
   downloadOriginalDocument,
   fetchLiveWalletSummary,
   fetchLiveWalletTransactions,
@@ -78,8 +77,8 @@ export const ProfilePage: React.FC = () => {
   // Live Wallet & Financial State
   const [wallet, setWallet] = useState<IMemberWallet | null>(null);
   const [privateDocuments, setPrivateDocuments] = useState<UploadedDocumentAsset[]>([]);
+  const [kycStatusSummary, setKycStatusSummary] = useState<{ status: string; isKycApproved: boolean } | null>(null);
   const [viewerDocument, setViewerDocument] = useState<UploadedDocumentAsset | null>(null);
-  const [isUploadingDocument, setIsUploadingDocument] = useState(false);
   const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [razorpayModalConfig, setRazorpayModalConfig] = useState<{
     isOpen: boolean;
@@ -192,12 +191,12 @@ export const ProfilePage: React.FC = () => {
     const bnk = getUserBankAccount(uid);
     setBankAccount(bnk);
 
-    // Sync real backend MongoDB wallet, private documents, and Razorpay payment history
+    // Sync real backend MongoDB wallet, strictly Admin-approved KYC documents, and Razorpay payment history
     try {
-      const [liveWallet, liveTxs, docs, payments] = await Promise.all([
+      const [liveWallet, liveTxs, kycData, payments] = await Promise.all([
         fetchLiveWalletSummary(),
         fetchLiveWalletTransactions(),
-        listMyDocuments(),
+        fetchMyKycStatus(),
         getMyPaymentHistory()
       ]);
       if (liveWallet) setWallet(liveWallet);
@@ -205,7 +204,40 @@ export const ProfilePage: React.FC = () => {
         setAllUserTransactions(liveTxs);
         setTransactions(liveTxs);
       }
-      if (docs) setPrivateDocuments(docs);
+      if (kycData) {
+        setKycStatusSummary({
+          status: String(kycData.kycStatus || kycData.status || (kycData.isKycApproved ? 'APPROVED' : 'PENDING')),
+          isKycApproved: Boolean(kycData.isKycApproved)
+        });
+        const approvedRaw = Array.isArray(kycData.approvedDocuments)
+          ? kycData.approvedDocuments
+          : (kycData.documents || []).filter((d: any) => {
+              const s = String(d?.status || '').toUpperCase();
+              return s === 'APPROVED' || s === 'VERIFIED';
+            });
+        const normalizedApproved: UploadedDocumentAsset[] = approvedRaw.map((doc: any, idx: number) => ({
+          documentId: doc.documentId || `approved-${doc.docKey || idx}`,
+          entityType: 'KYC',
+          documentCategory: doc.documentCategory || doc.documentType || doc.docKey || 'KYC_DOCUMENT',
+          documentLabel: doc.title || doc.documentLabel || 'Verified KYC Document',
+          originalFileName: doc.originalFileName || doc.fileName || doc.title || 'verified-document',
+          originalMimeType: doc.originalMimeType || 'application/octet-stream',
+          originalFileExtension:
+            doc.originalFileExtension || (doc.fileName ? String(doc.fileName).split('.').pop() || 'file' : 'file'),
+          originalFileSize: Number(doc.originalFileSize || 0),
+          checksum: doc.checksum || '',
+          compressionRatio: 0,
+          hasPreview: Boolean(doc.documentId),
+          hasThumbnail: Boolean(doc.documentId),
+          documentStatus: 'VERIFIED',
+          createdAt: doc.reviewedAt || doc.uploadedAt || new Date().toISOString(),
+          viewUrl: doc.viewUrl || (doc.documentId ? `/api/v1/documents/${doc.documentId}/view` : ''),
+          previewUrl: doc.documentId ? `/api/v1/documents/${doc.documentId}/preview` : '',
+          thumbnailUrl: doc.documentId ? `/api/v1/documents/${doc.documentId}/thumbnail` : '',
+          downloadUrl: doc.documentId ? `/api/v1/documents/${doc.documentId}/download` : ''
+        }));
+        setPrivateDocuments(normalizedApproved);
+      }
       if (payments) setPaymentHistory(payments);
     } catch {
       // Keep non-fatal fallback if user session has no backend JWT yet
@@ -1308,111 +1340,75 @@ export const ProfilePage: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="text-xs text-[#82776E] font-medium">Overall Status:</span>
             <div className="flex items-center gap-2 flex-wrap">
-              <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#3B9C91] hover:bg-[#2E847A] text-white text-xs font-bold transition-colors shadow-xs">
-                <input
-                  type="file"
-                  className="hidden"
-                  accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-                  disabled={isUploadingDocument}
-                  onChange={async (e) => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    setIsUploadingDocument(true);
-                    try {
-                      const uploaded = await uploadDocumentFile(f, {
-                        entityType: 'PROFILE',
-                        documentCategory: 'PROFILE_DOC',
-                        documentLabel: f.name
-                      });
-                      setPrivateDocuments((prev) => [uploaded, ...prev]);
-                      showToast(`Uploaded "${uploaded.originalFileName}" securely (original preserved).`);
-                    } catch (err: any) {
-                      showToast(err?.message || 'Document upload failed.');
-                    } finally {
-                      setIsUploadingDocument(false);
-                      e.target.value = '';
-                    }
-                  }}
-                />
-                <span>{isUploadingDocument ? 'Uploading...' : '+ Upload Document'}</span>
-              </label>
-              {renderKycBadge(user.isKycApproved ? 'VERIFIED' : 'PENDING')}
+              {renderKycBadge(
+                kycStatusSummary?.isKycApproved || user.isKycApproved
+                  ? 'VERIFIED'
+                  : kycStatusSummary?.status || 'PENDING'
+              )}
             </div>
           </div>
         </div>
 
         <div className="divide-y divide-[#EDE2D7]/70">
           {privateDocuments.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-              {privateDocuments.map((doc) => (
-                <div
-                  key={doc.documentId}
-                  className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EDE2D7] flex flex-col justify-between gap-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#3B9C91]">
-                        {doc.documentCategory.replace(/_/g, ' ')} · {doc.originalFileExtension.toUpperCase()}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+              {privateDocuments.map((doc) => {
+                const hasStoredAsset = Boolean(doc.documentId && !String(doc.documentId).startsWith('approved-'));
+                return (
+                  <div
+                    key={doc.documentId}
+                    className="p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EDE2D7] flex flex-col justify-between gap-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#3B9C91]">
+                          {doc.documentCategory.replace(/_/g, ' ')} · {doc.originalFileExtension.toUpperCase()}
+                        </span>
+                        <div className="text-xs sm:text-sm font-bold text-[#51463F] truncate">
+                          {doc.documentLabel || doc.originalFileName}
+                        </div>
+                        <div className="text-[11px] text-[#82776E] truncate">
+                          {doc.originalFileName}
+                          {doc.originalFileSize > 0 ? ` · ${(doc.originalFileSize / 1024).toFixed(1)} KB` : ''}
+                        </div>
+                      </div>
+                      {renderKycBadge('APPROVED')}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#EDE2D7]/70">
+                      <span className="text-[10px] text-emerald-700 font-semibold">
+                        Admin Approved · Verified Record
                       </span>
-                      <div className="text-xs sm:text-sm font-bold text-[#51463F] truncate">
-                        {doc.documentLabel || doc.originalFileName}
-                      </div>
-                      <div className="text-[11px] text-[#82776E] truncate">
-                        {doc.originalFileName} · {(doc.originalFileSize / 1024).toFixed(1)} KB
-                        {doc.compressionRatio && doc.compressionRatio > 0
-                          ? ` · Preview -${doc.compressionRatio}%`
-                          : ''}
-                      </div>
-                    </div>
-                    {renderKycBadge(doc.documentStatus === 'VERIFIED' ? 'VERIFIED' : doc.documentStatus === 'REJECTED' ? 'REJECTED' : 'PENDING')}
-                  </div>
-
-                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#EDE2D7]/70">
-                    <span className="text-[10px] text-emerald-700 font-semibold">
-                      Original Preserved
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setViewerDocument(doc)}
-                        className="px-2.5 py-1 rounded-lg bg-white border border-[#EDE2D7] hover:border-[#3B9C91] text-[#51463F] text-xs font-bold cursor-pointer"
-                      >
-                        View
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => downloadOriginalDocument(doc.documentId, doc.originalFileName)}
-                        className="px-2.5 py-1 rounded-lg bg-[#0A1D37] hover:bg-[#132E52] text-white text-xs font-bold cursor-pointer"
-                      >
-                        Download Original
-                      </button>
+                      {hasStoredAsset && (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setViewerDocument(doc)}
+                            className="px-2.5 py-1 rounded-lg bg-white border border-[#EDE2D7] hover:border-[#3B9C91] text-[#51463F] text-xs font-bold cursor-pointer"
+                          >
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => downloadOriginalDocument(doc.documentId, doc.originalFileName)}
+                            className="px-2.5 py-1 rounded-lg bg-[#0A1D37] hover:bg-[#132E52] text-white text-xs font-bold cursor-pointer"
+                          >
+                            Download Original
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          ) : null}
-
-          {privateDocuments.length === 0 && (user.submittedDocuments && user.submittedDocuments.length > 0
-            ? user.submittedDocuments
-            : [
-                { name: 'Aadhaar Card', status: 'VERIFIED' },
-                { name: 'PAN Card', status: 'VERIFIED' }
-              ]
-          ).map((doc, idx) => (
-            <div
-              key={idx}
-              className="py-2.5 flex items-center justify-between gap-4 text-xs hover:bg-[#FAF7F2]/50 px-2 rounded-xl"
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-[#FAF7F2] text-[#8064B1] flex items-center justify-center shrink-0 border border-[#EDE2D7]">
-                  <FileTextIcon size={14} />
-                </div>
-                <span className="font-bold text-[#51463F] text-xs sm:text-[13px]">{doc.name}</span>
-              </div>
-              <div>{renderKycBadge(doc.status)}</div>
+          ) : (
+            <div className="py-5 px-3 text-center text-xs text-[#82776E]">
+              {kycStatusSummary?.isKycApproved || user.isKycApproved
+                ? 'Your KYC verification is approved. No approved document files are attached to this record.'
+                : 'Approved KYC documents will appear here once verified by the Admin compliance desk.'}
             </div>
-          ))}
+          )}
         </div>
       </div>
 

@@ -96,9 +96,33 @@ router.post('/', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: 
       return;
     }
 
-    // Default meeting link placeholder if not supplied
-    const finalMeetingLink =
-      meetingLink?.trim() || `https://meet.google.com/fic-${Math.random().toString(36).substring(2, 6)}-${Math.random().toString(36).substring(2, 5)}`;
+    const trimmedMeetingLink = typeof meetingLink === 'string' ? meetingLink.trim() : '';
+    if (!trimmedMeetingLink) {
+      res.status(400).json({
+        success: false,
+        error: 'Meeting URL is required. Please enter a valid meeting link.',
+      });
+      return;
+    }
+
+    try {
+      const parsedUrl = new URL(trimmedMeetingLink);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        res.status(400).json({
+          success: false,
+          error: 'Meeting URL must start with http:// or https://.',
+        });
+        return;
+      }
+    } catch {
+      res.status(400).json({
+        success: false,
+        error: 'Please enter a valid Meeting URL (e.g., https://meet.google.com/xyz-abc).',
+      });
+      return;
+    }
+
+    const finalMeetingLink = trimmedMeetingLink;
 
     const hostAdminId = req.admin!.id;
 
@@ -166,6 +190,14 @@ router.patch('/:id/status', authenticateAdmin, async (req: AuthenticatedAdminReq
       return;
     }
 
+    if (meeting.status === 'COMPLETED' || meeting.status === 'CANCELLED') {
+      res.status(409).json({
+        success: false,
+        error: `Cannot reschedule a ${meeting.status.toLowerCase()} meeting.`,
+      });
+      return;
+    }
+
     const previousStatus = meeting.status;
     meeting.status = status;
     await meeting.save();
@@ -199,6 +231,14 @@ router.patch('/:id/reschedule', authenticateAdmin, async (req: AuthenticatedAdmi
     const meeting = await MeetingModel.findById(id);
     if (!meeting) {
       res.status(404).json({ success: false, error: 'Meeting not found' });
+      return;
+    }
+
+    if (meeting.status === 'COMPLETED' || meeting.status === 'CANCELLED') {
+      res.status(409).json({
+        success: false,
+        error: `Cannot reschedule a ${meeting.status.toLowerCase()} meeting.`,
+      });
       return;
     }
 
