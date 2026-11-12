@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import {
   createRazorpayPaymentOrder,
+  extractApiErrorMessage,
   RazorpayOrderPurpose,
   RazorpayVerifyResponse,
   recordRazorpayFailure,
@@ -250,8 +251,10 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
             setIsProcessing(false);
             setStatusMessage(null);
             setErrorMessage(
-              verifyErr?.message ||
+              extractApiErrorMessage(
+                verifyErr,
                 'Payment signature verification failed. Please contact support with your Razorpay Payment ID if funds were debited.'
+              )
             );
           }
         }
@@ -259,10 +262,10 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
 
       const rzpInstance = new window.Razorpay(rzpOptions);
       rzpInstance.on('payment.failed', async (failureResp: any) => {
-        const errDesc =
-          failureResp?.error?.description ||
-          failureResp?.error?.reason ||
-          'Payment attempt was declined by the gateway.';
+        const errDesc = extractApiErrorMessage(
+          failureResp,
+          'Payment attempt was declined by the gateway.'
+        );
         if (internalPaymentId) {
           await recordRazorpayFailure({
             paymentId: internalPaymentId,
@@ -283,7 +286,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
     } catch (err: any) {
       setIsProcessing(false);
       setStatusMessage(null);
-      setErrorMessage(err?.message || 'Unable to initiate Razorpay payment. Please try again.');
+      setErrorMessage(extractApiErrorMessage(err, 'Unable to initiate Razorpay payment. Please try again.'));
     }
   };
 

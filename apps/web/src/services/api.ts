@@ -2557,6 +2557,24 @@ export interface UploadedDocumentAsset {
   updatedAt: string;
 }
 
+export const extractApiErrorMessage = (payload: any, fallback: string): string => {
+  if (!payload) return fallback;
+  if (typeof payload === 'string') {
+    const trimmed = payload.trim();
+    return trimmed && trimmed !== '[object Object]' ? trimmed : fallback;
+  }
+  const candidate =
+    (typeof payload?.error === 'string' && payload.error) ||
+    (typeof payload?.error?.message === 'string' && payload.error.message) ||
+    (typeof payload?.error?.description === 'string' && payload.error.description) ||
+    (typeof payload?.error?.reason === 'string' && payload.error.reason) ||
+    (typeof payload?.message === 'string' && payload.message) ||
+    (typeof payload?.description === 'string' && payload.description) ||
+    '';
+  const trimmed = candidate.trim();
+  return trimmed && trimmed !== '[object Object]' ? trimmed : fallback;
+};
+
 const ALLOWED_DOCUMENT_EXTENSIONS = new Set([
   'pdf',
   'jpg',
@@ -2622,7 +2640,7 @@ export const uploadDocumentFile = async (
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.message || payload?.error || `Document upload failed (HTTP ${response.status})`);
+    throw new Error(extractApiErrorMessage(payload, `Document upload failed (HTTP ${response.status})`));
   }
   return payload.data as UploadedDocumentAsset;
 };
@@ -2682,7 +2700,7 @@ export const fetchAuthenticatedDocumentBlob = async (
 
   if (!response.ok) {
     const errPayload = await response.json().catch(() => ({}));
-    throw new Error(errPayload?.message || `Failed to load document (HTTP ${response.status})`);
+    throw new Error(extractApiErrorMessage(errPayload, `Failed to load document (HTTP ${response.status})`));
   }
 
   const blob = await response.blob();
@@ -2791,7 +2809,7 @@ export const createRazorpayPaymentOrder = async (params: {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.message || payload?.error || `Failed to create payment order (HTTP ${response.status})`);
+    throw new Error(extractApiErrorMessage(payload, `Failed to create payment order (HTTP ${response.status})`));
   }
   return payload.data as RazorpayCreateOrderResponse;
 };
@@ -2824,7 +2842,7 @@ export const verifyRazorpayPayment = async (params: {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.message || payload?.error || `Payment verification failed (HTTP ${response.status})`);
+    throw new Error(extractApiErrorMessage(payload, `Payment verification failed (HTTP ${response.status})`));
   }
   return payload.data as RazorpayVerifyResponse;
 };
@@ -2863,7 +2881,7 @@ export const getPaymentStatus = async (paymentIdOrOrderId: string): Promise<any>
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.message || 'Unable to fetch payment status.');
+    throw new Error(extractApiErrorMessage(payload, 'Unable to fetch payment status.'));
   }
   return payload.data;
 };
@@ -2910,7 +2928,7 @@ export const registerAccountStrict = async (body: Record<string, any>): Promise<
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success || !payload?.data?.token) {
-    throw new Error(payload?.message || payload?.error || `Registration failed (HTTP ${response.status})`);
+    throw new Error(extractApiErrorMessage(payload, `Registration failed (HTTP ${response.status})`));
   }
   return { token: payload.data.token, user: payload.data.user };
 };
@@ -2931,7 +2949,7 @@ export const submitKycApplicationStrict = async (
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.message || payload?.error || `KYC submission failed (HTTP ${response.status})`);
+    throw new Error(extractApiErrorMessage(payload, `KYC submission failed (HTTP ${response.status})`));
   }
   return payload.data;
 };
@@ -2959,7 +2977,7 @@ export const reuploadSingleKycDocumentStrict = async (
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.message || payload?.error || `Document reupload failed (HTTP ${response.status})`);
+    throw new Error(extractApiErrorMessage(payload, `Document reupload failed (HTTP ${response.status})`));
   }
   return payload.data;
 };

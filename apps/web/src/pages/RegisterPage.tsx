@@ -19,6 +19,7 @@ import {
   validateClientFileBeforeUpload,
   registerAccountStrict,
   submitKycApplicationStrict,
+  extractApiErrorMessage,
   UploadedDocumentAsset
 } from '../services/api';
 import {
@@ -513,15 +514,21 @@ export const RegisterPage: React.FC = () => {
         token = regResult.token;
         serverUser = regResult.user;
       } catch (regErr: any) {
-        const msg = String(regErr?.message || '').toLowerCase();
+        const msg = extractApiErrorMessage(regErr, '').toLowerCase();
         // Idempotent retry handling: if the account was created in a prior interrupted attempt,
         // authenticate with the supplied password instead of failing or duplicating records.
         if (msg.includes('already exists') || msg.includes('already registered')) {
           try {
-            const loginRes = await apiRequest('/auth/login', {
+            let loginRes = await apiRequest('/auth/login', {
               method: 'POST',
               body: JSON.stringify({ identifier: email.trim(), password })
             });
+            if (!(loginRes?.success && loginRes?.data?.token) && phoneNumber.trim()) {
+              loginRes = await apiRequest('/auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ identifier: phoneNumber.trim(), password })
+              });
+            }
             if (loginRes?.success && loginRes?.data?.token) {
               token = loginRes.data.token;
               serverUser = loginRes.data.user;
@@ -534,7 +541,7 @@ export const RegisterPage: React.FC = () => {
             );
           }
         } else {
-          throw regErr;
+          throw new Error(extractApiErrorMessage(regErr, 'Unable to register account. Please review your details and retry.'));
         }
       }
 
@@ -688,8 +695,10 @@ export const RegisterPage: React.FC = () => {
     } catch (err: any) {
       setIsLoading(false);
       setErrorMessage(
-        err?.message ||
+        extractApiErrorMessage(
+          err,
           'Payment succeeded, but KYC submission encountered an error. Please retry submitting.'
+        )
       );
     }
   };

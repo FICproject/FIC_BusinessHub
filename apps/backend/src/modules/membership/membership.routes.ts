@@ -139,7 +139,7 @@ membershipRouter.post('/renew-with-wallet', authenticate, async (req: Authentica
       amount: renewalFee,
       startDate: newStartDate,
       endDate: newEndDate,
-      paymentId: transaction.transactionId
+      paymentId: transaction._id
     });
 
     await UserModel.findByIdAndUpdate(req.user.userId, {

@@ -331,7 +331,7 @@ async function applyBusinessFulfillment(payment: IPaymentDocument): Promise<Reco
       amount: payment.amount,
       startDate: now,
       endDate,
-      paymentId: payment.paymentId
+      paymentId: payment._id as mongoose.Types.ObjectId
     });
 
     await UserModel.updateOne(
@@ -529,7 +529,16 @@ export async function fulfillVerifiedPayment(params: {
     };
   }
 
-  const fulfillmentDetails = await applyBusinessFulfillment(lockedPayment);
+  let fulfillmentDetails: Record<string, any>;
+  try {
+    fulfillmentDetails = await applyBusinessFulfillment(lockedPayment);
+  } catch (err) {
+    await PaymentModel.updateOne(
+      { _id: lockedPayment._id },
+      { $set: { fulfilled: false } }
+    );
+    throw err;
+  }
   await syncAdminPaymentRecord(lockedPayment, 'SUCCESS');
 
   return {
