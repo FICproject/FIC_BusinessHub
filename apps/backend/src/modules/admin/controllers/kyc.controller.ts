@@ -522,28 +522,7 @@ router.patch(
                 : KYCStatus.PENDING,
               rejectionReason: hasReuploadRequired || hasRejectedDoc ? submission.rejectionReason : undefined,
               reviewedAt: now,
-              documents: submission.documents.map((d: any) => ({
-                ...(d.documentId ? { documentId: d.documentId } : {}),
-                documentType: d.docKey,
-                title: d.title,
-                documentNumber: d.documentNumber || '',
-                originalFileName: d.fileName,
-                originalMimeType: d.originalMimeType,
-                originalFileSize: d.originalFileSize,
-                checksum: d.checksum,
-                hasOptimizedPreview: d.hasOptimizedPreview,
-                hasThumbnail: d.hasThumbnail,
-                fileUrl: d.documentId ? `/api/v1/documents/${d.documentId}/view` : d.fileUrl,
-                uploadedAt: new Date(d.uploadedAt),
-                verificationStatus: normalizeDocStatus(d.status),
-                adminReviewReason: d.adminReviewReason,
-                remarks: d.adminReviewReason,
-                version: d.version || 1,
-                previousVersionReference: d.previousVersionReference,
-                reviewedAt: d.reviewedAt,
-                reviewedByName: d.reviewedByName,
-                versionHistory: d.versionHistory || []
-              }))
+              documents: buildMemberKycDocuments(submission.documents || [])
             }
           },
           { upsert: true }
@@ -629,11 +608,36 @@ router.patch(
   }
 );
 
+function buildMemberKycDocuments(docs: any[]) {
+  return (docs || []).map((d: any) => ({
+    ...(d.documentId ? { documentId: d.documentId } : {}),
+    documentType: d.docKey,
+    title: d.title,
+    documentNumber: d.documentNumber || '',
+    originalFileName: d.fileName,
+    originalMimeType: d.originalMimeType,
+    originalFileSize: d.originalFileSize,
+    checksum: d.checksum,
+    hasOptimizedPreview: d.hasOptimizedPreview,
+    hasThumbnail: d.hasThumbnail,
+    fileUrl: d.documentId ? `/api/v1/documents/${d.documentId}/view` : d.fileUrl,
+    uploadedAt: new Date(d.uploadedAt),
+    verificationStatus: normalizeDocStatus(d.status),
+    adminReviewReason: d.adminReviewReason,
+    remarks: d.adminReviewReason,
+    version: d.version || 1,
+    previousVersionReference: d.previousVersionReference,
+    reviewedAt: d.reviewedAt,
+    reviewedByName: d.reviewedByName,
+    versionHistory: d.versionHistory || []
+  }));
+}
+
 // PATCH /api/admin/kyc/:id/review - Overall Review/Decision on KYC submission
 router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { decision, reviewerNotes, rejectionReason } = req.body; // 'APPROVED' | 'REJECTED' | 'RESUBMISSION_REQUESTED'
+    const { decision, reviewerNotes, rejectionReason, reuploadDocKeys } = req.body; // 'APPROVED' | 'REJECTED' | 'RESUBMISSION_REQUESTED'
 
     if (!['APPROVED', 'REJECTED', 'RESUBMISSION_REQUESTED'].includes(decision)) {
       res.status(400).json({ success: false, error: 'Invalid review decision' });
@@ -657,30 +661,101 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
       return;
     }
 
-    // Strict rule: before final KYC approval, every uploaded document must be individually APPROVED
-    if (decision === 'APPROVED') {
-      if (!submission.documents || submission.documents.length === 0) {
+    if (decision === 'APPROVED' && (!submission.documents || submission.documents.length === 0)) {
+      res.status(400).json({
+        success: false,
+        code: 'NO_DOCUMENTS_UPLOADED',
+        error: 'Cannot approve KYC because the member has not uploaded any KYC documents.'
+      });
+      return;
+    }
+
+    const selectedKeysSet = new Set(
+      Array.isArray(reuploadDocKeys)
+        ? reuploadDocKeys.map((k: any) => String(k || '').trim()).filter(Boolean)
+        : []
+    );
+
+    const hasExplicitReuploadList = Array.isArray(reuploadDocKeys);
+    if (decision === 'RESUBMISSION_REQUESTED' && submission.documents?.length > 0 && hasExplicitReuploadList) {
+      const matchedCount = submission.documents.filter((d: any) => {
+        const docKey = String(d.docKey || '').trim();
+        const docId = String(d.documentId || '').trim();
+        return (docKey && selectedKeysSet.has(docKey)) || (docId && selectedKeysSet.has(docId));
+      }).length;
+      if (matchedCount === 0) {
         res.status(400).json({
           success: false,
-          code: 'NO_DOCUMENTS_UPLOADED',
-          error: 'Cannot approve KYC because the member has not uploaded any KYC documents.'
-        });
-        return;
-      }
-      const unapproved = submission.documents.filter((d: any) => normalizeDocStatus(d.status) !== 'APPROVED');
-      if (unapproved.length > 0) {
-        res.status(400).json({
-          success: false,
-          code: 'DOCUMENTS_NOT_APPROVED',
-          error: `Cannot approve overall KYC until all documents are approved (${unapproved
-            .map((d: any) => `${d.title}: ${normalizeDocStatus(d.status)}`)
-            .join(', ')}).`
+          code: 'NO_DOCUMENTS_SELECTED',
+          error: 'Please select at least one uploaded document requiring reupload.'
         });
         return;
       }
     }
 
     const now = new Date();
+    const reviewerName = req.admin?.name || 'FIC Compliance Officer';
+    const reviewerObjectId = req.admin?.id && mongoose.Types.ObjectId.isValid(req.admin.id)
+      ? new mongoose.Types.ObjectId(req.admin.id)
+      : undefined;
+
+    if (Array.isArray(submission.documents) && submission.documents.length > 0) {
+      submission.documents = submission.documents.map((rawDoc: any) => {
+        const doc = typeof rawDoc?.toObject === 'function' ? rawDoc.toObject() : { ...rawDoc };
+        const docKey = String(doc.docKey || '').trim();
+        const docId = String(doc.documentId || '').trim();
+        const isSelectedForReupload = !hasExplicitReuploadList
+          || (Boolean(docKey) && selectedKeysSet.has(docKey))
+          || (Boolean(docId) && selectedKeysSet.has(docId));
+
+        if (decision === 'APPROVED') {
+          return {
+            ...doc,
+            status: 'APPROVED',
+            adminReviewReason: undefined,
+            rejectionReason: undefined,
+            reviewedAt: now,
+            ...(reviewerObjectId ? { reviewedBy: reviewerObjectId } : {}),
+            reviewedByName: reviewerName
+          };
+        }
+
+        if (decision === 'RESUBMISSION_REQUESTED') {
+          if (isSelectedForReupload) {
+            return {
+              ...doc,
+              status: 'REUPLOAD_REQUIRED',
+              adminReviewReason: trimmedReason,
+              rejectionReason: trimmedReason,
+              reviewedAt: now,
+              ...(reviewerObjectId ? { reviewedBy: reviewerObjectId } : {}),
+              reviewedByName: reviewerName
+            };
+          }
+          return {
+            ...doc,
+            status: 'APPROVED',
+            adminReviewReason: undefined,
+            rejectionReason: undefined,
+            reviewedAt: now,
+            ...(reviewerObjectId ? { reviewedBy: reviewerObjectId } : {}),
+            reviewedByName: reviewerName
+          };
+        }
+
+        return {
+          ...doc,
+          status: 'REJECTED',
+          adminReviewReason: trimmedReason,
+          rejectionReason: trimmedReason,
+          reviewedAt: now,
+          ...(reviewerObjectId ? { reviewedBy: reviewerObjectId } : {}),
+          reviewedByName: reviewerName
+        };
+      }) as any;
+      submission.markModified('documents');
+    }
+
     submission.status = decision;
     submission.reviewerNotes = trimmedNotes || submission.reviewerNotes;
     submission.rejectionReason = decision === 'APPROVED' ? undefined : trimmedReason;
@@ -705,8 +780,7 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
       { $or: [{ _id: submission.memberId }, { email: submission.memberEmail?.toLowerCase() }] },
       {
         $set: {
-          isKycApproved: isApproved,
-          ...(isApproved ? {} : {})
+          isKycApproved: isApproved
         }
       },
       { new: true }
@@ -724,22 +798,71 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
             ? KYCStatus.REJECTED
             : KYCStatus.RESUBMIT_REQUIRED,
           rejectionReason: isApproved ? undefined : trimmedReason,
-          reviewedAt: now
+          reviewedAt: now,
+          documents: buildMemberKycDocuments(submission.documents || [])
         }
       },
       { upsert: true }
     );
 
-    const linkedDocIds = (submission.documents || []).map((d: any) => d.documentId).filter(Boolean);
-    if (decision === 'APPROVED' && linkedDocIds.length > 0) {
+    const docsList = submission.documents || [];
+    const approvedDocIds = docsList
+      .filter((d: any) => normalizeDocStatus(d.status) === 'APPROVED' && d.documentId)
+      .map((d: any) => d.documentId);
+    const reuploadDocIds = docsList
+      .filter((d: any) => normalizeDocStatus(d.status) === 'REUPLOAD_REQUIRED' && d.documentId)
+      .map((d: any) => d.documentId);
+    const rejectedDocIds = docsList
+      .filter((d: any) => normalizeDocStatus(d.status) === 'REJECTED' && d.documentId)
+      .map((d: any) => d.documentId);
+
+    if (approvedDocIds.length > 0) {
       await DocumentAssetModel.updateMany(
         {
-          documentId: { $in: linkedDocIds },
+          documentId: { $in: approvedDocIds },
           isLatestVersion: { $ne: false }
         },
-        { $set: { documentStatus: 'APPROVED', reviewedAt: now, reviewedByName: req.admin?.name } }
+        {
+          $set: { documentStatus: 'APPROVED', reviewedAt: now, reviewedByName: reviewerName },
+          $unset: { adminReviewReason: 1 }
+        }
       );
     }
+    if (reuploadDocIds.length > 0) {
+      await DocumentAssetModel.updateMany(
+        {
+          documentId: { $in: reuploadDocIds },
+          isLatestVersion: { $ne: false }
+        },
+        {
+          $set: {
+            documentStatus: 'REUPLOAD_REQUIRED',
+            adminReviewReason: trimmedReason,
+            reviewedAt: now,
+            reviewedByName: reviewerName
+          }
+        }
+      );
+    }
+    if (rejectedDocIds.length > 0) {
+      await DocumentAssetModel.updateMany(
+        {
+          documentId: { $in: rejectedDocIds },
+          isLatestVersion: { $ne: false }
+        },
+        {
+          $set: {
+            documentStatus: 'REJECTED',
+            adminReviewReason: trimmedReason,
+            reviewedAt: now,
+            reviewedByName: reviewerName
+          }
+        }
+      );
+    }
+
+    const reuploadDocs = docsList.filter((d: any) => normalizeDocStatus(d.status) === 'REUPLOAD_REQUIRED');
+    const reuploadDocTitles = reuploadDocs.map((d: any) => d.title).filter(Boolean);
 
     if (updatedUser) {
       if (decision === 'APPROVED') {
@@ -754,14 +877,20 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
           metadata: { kycSubmissionId: submission._id.toString() }
         });
       } else if (decision === 'RESUBMISSION_REQUESTED') {
+        const docSummaryText = reuploadDocTitles.length > 0 ? ` (${reuploadDocTitles.join(', ')})` : '';
         await notifyMember({
           userId: updatedUser._id,
           eventType: 'KYC_RESUBMISSION_REQUESTED',
-          title: 'KYC Resubmission Requested',
-          message: `Your KYC application requires correction. Reason: ${trimmedReason}`,
+          title: 'Your KYC document requires correction',
+          message: `Your KYC document requires correction${docSummaryText}. Please review the document and upload it again. Reason: ${trimmedReason}`,
           link: '/kyc-pending',
           priority: 'HIGH',
-          metadata: { kycSubmissionId: submission._id.toString(), reason: trimmedReason }
+          metadata: {
+            kycSubmissionId: submission._id.toString(),
+            reason: trimmedReason,
+            reuploadDocKeys: reuploadDocs.map((d: any) => d.docKey).filter(Boolean),
+            documentLabels: reuploadDocTitles
+          }
         });
       } else {
         await notifyMember({
@@ -779,6 +908,7 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
     await logAdminAction(req, `KYC_${decision}`, 'KycSubmission', id, {
       memberId: submission.memberId?.toString(),
       decision,
+      reuploadDocKeys: decision === 'RESUBMISSION_REQUESTED' ? reuploadDocs.map((d: any) => d.docKey) : undefined,
       rejectionReason: trimmedReason || undefined,
     });
 
