@@ -81,6 +81,32 @@ export async function uploadAndProcessDocument(
     claimedMimeType: params.file.mimetype
   });
 
+  // Duplicate document detection (SHA-256) scoped cleanly to member's non-deleted uploads
+  const duplicateAsset = await DocumentAssetModel.findOne({
+    ownerId: params.ownerUserId,
+    checksum: fileInfo.checksumSha256,
+    isDeleted: { $ne: true }
+  })
+    .select('documentId documentLabel')
+    .lean();
+
+  if (duplicateAsset) {
+    throw new AppError(
+      'This document has already been uploaded. Please select a different document.',
+      409,
+      'DUPLICATE_DOCUMENT'
+    );
+  }
+
+  let sanitizedDocNumber = params.documentNumber ? params.documentNumber.trim().slice(0, 80) : undefined;
+  if (sanitizedDocNumber) {
+    const labelOrCat = `${params.documentCategory || ''} ${params.documentLabel || ''}`.toLowerCase();
+    const digitsOnly = sanitizedDocNumber.replace(/[\s-]/g, '');
+    if (labelOrCat.includes('aadhaar') && /^\d{12}$/.test(digitsOnly)) {
+      sanitizedDocNumber = `XXXX-XXXX-${digitsOnly.slice(-4)}`;
+    }
+  }
+
   let derivatives;
   try {
     derivatives = await generateOptimizedDerivatives(params.file.buffer, fileInfo);
@@ -177,7 +203,7 @@ export async function uploadAndProcessDocument(
       compressionRatio: derivatives.compressionRatio,
       documentCategory: normalizeCategory(params.documentCategory),
       documentLabel: (params.documentLabel || fileInfo.safeOriginalFileName).trim().slice(0, 140),
-      ...(params.documentNumber ? { documentNumber: params.documentNumber.trim().slice(0, 80) } : {}),
+      ...(sanitizedDocNumber ? { documentNumber: sanitizedDocNumber } : {}),
       documentStatus: entityType === 'KYC' ? 'PENDING_REVIEW' : 'UPLOADED',
       accessPermissions: {
         visibility: 'PRIVATE',

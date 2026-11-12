@@ -57,7 +57,10 @@ export const config = {
       ? path.resolve(process.env.LOCAL_PRIVATE_STORAGE_DIR)
       : path.resolve(__dirname, '../../storage/private'),
     signedUrlTtlSeconds: parseInt(process.env.DOCUMENT_SIGNED_URL_TTL_SECONDS || '300', 10),
-    maxUploadBytes: parseInt(process.env.DOCUMENT_MAX_UPLOAD_BYTES || String(15 * 1024 * 1024), 10)
+    maxUploadBytes: Math.min(
+      parseInt(process.env.DOCUMENT_MAX_UPLOAD_BYTES || String(2 * 1024 * 1024), 10),
+      2 * 1024 * 1024
+    )
   }
 };
 

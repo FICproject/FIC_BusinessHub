@@ -63,6 +63,7 @@ export async function notifyMember(params: {
   metadata?: Record<string, any>;
   link?: string;
   priority?: NotificationPriority;
+  sourceKey?: string;
 }) {
   try {
     return await createNotification({
@@ -73,7 +74,8 @@ export async function notifyMember(params: {
       message: params.message,
       metadata: params.metadata,
       link: params.link || '/kyc-pending',
-      priority: params.priority || 'HIGH'
+      priority: params.priority || 'HIGH',
+      sourceKey: params.sourceKey
     });
   } catch (err) {
     console.warn('Member notification error:', err);

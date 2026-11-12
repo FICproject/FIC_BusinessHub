@@ -1,10 +1,21 @@
 import { Router } from 'express';
-import { register, login, getMe, updateProfile, resolveUserKycSnapshot } from './auth.controller';
+import {
+  register,
+  login,
+  getMe,
+  updateProfile,
+  checkEmailAvailability,
+  checkMobileAvailability,
+  resolveUserKycSnapshot
+} from './auth.controller';
 import { authenticate } from '../../common/middleware/auth.middleware';
 import { UserModel } from '../users/users.model';
+import { evaluateMemberActivationAccess } from '../kyc/kyc-status.helpers';
 
 export const authRouter = Router();
 
+authRouter.get('/check-email', checkEmailAvailability);
+authRouter.get('/check-mobile', checkMobileAvailability);
 authRouter.post('/register', register);
 authRouter.post('/login', login);
 authRouter.get('/me', authenticate, getMe);
@@ -27,18 +38,22 @@ authRouter.get('/check-status', async (req, res) => {
       return;
     }
 
-    const kycSnapshot = await resolveUserKycSnapshot(user);
+    const activation = await evaluateMemberActivationAccess(user._id.toString());
+    const kycSnapshot = activation.kycSnapshot || (await resolveUserKycSnapshot(user));
 
     res.json({
       success: true,
       data: {
-        isKycApproved: kycSnapshot.isKycApproved,
+        isKycApproved: activation.checks.kycApproved,
+        kycApproved: activation.checks.kycApproved,
         kycStatus: kycSnapshot.kycStatus,
+        canAccessDashboard: activation.canAccessDashboard,
+        activationChecks: activation.checks,
         rejectionReason: kycSnapshot.rejectionReason,
         reviewerNotes: kycSnapshot.reviewerNotes,
         reviewedAt: kycSnapshot.reviewedAt,
         submittedAt: kycSnapshot.submittedAt,
-        status: kycSnapshot.isKycApproved ? 'ACTIVE' : user.status
+        status: activation.checks.accountActive ? 'ACTIVE' : user.status
       }
     });
   } catch (err: any) {

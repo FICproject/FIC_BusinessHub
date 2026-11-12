@@ -24,6 +24,8 @@ import {
   submitKycApplicationStrict,
   validateClientFileBeforeUpload,
   reuploadSingleKycDocumentStrict,
+  uploadAdditionalRequestedDocumentStrict,
+  MAX_KYC_FILE_BYTES,
   markMemberNotificationReadStrict,
   markAllMemberNotificationsReadStrict
 } from '../services/api';
@@ -84,6 +86,11 @@ export const KycPendingPage: React.FC = () => {
   const [reviewerNotes, setReviewerNotes] = useState<string | null>(user?.reviewerNotes || null);
   const [reviewedAt, setReviewedAt] = useState<string | null>(user?.reviewedAt || null);
   const [documents, setDocuments] = useState<any[]>([]);
+  const [additionalRequests, setAdditionalRequests] = useState<any[]>([]);
+  const [uploadingRequestId, setUploadingRequestId] = useState<string | null>(null);
+  const [additionalUploadFeedback, setAdditionalUploadFeedback] = useState<Record<string, { type: 'success' | 'error'; message: string }>>({});
+  const [isLocked, setIsLocked] = useState<boolean>(Boolean(user?.isKycApproved));
+  const [approvedAt, setApprovedAt] = useState<string | null>(user?.kycApprovedAt || null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadNotificationsCount, setUnreadNotificationsCount] = useState<number>(0);
   const [activationChecks, setActivationChecks] = useState<any>(user?.activationChecks || null);
@@ -177,6 +184,11 @@ export const KycPendingPage: React.FC = () => {
             }))
           : [];
         setDocuments(docList);
+        setAdditionalRequests(
+          Array.isArray(liveKycData?.additionalDocumentRequests) ? liveKycData.additionalDocumentRequests : []
+        );
+        setIsLocked(Boolean(liveKycData?.isLocked || resolvedState === 'APPROVED'));
+        setApprovedAt(liveKycData?.approvedAt || null);
 
         if (Array.isArray(liveKycData?.notifications)) {
           setNotifications(liveKycData.notifications);
@@ -220,11 +232,11 @@ export const KycPendingPage: React.FC = () => {
     });
 
     try {
-      validateClientFileBeforeUpload(file);
+      validateClientFileBeforeUpload(file, MAX_KYC_FILE_BYTES, ['pdf', 'jpg', 'jpeg', 'png']);
     } catch (valErr: any) {
       setDocUploadFeedback((prev) => ({
         ...prev,
-        [docRef]: { type: 'error', message: valErr?.message || 'Unsupported file or exceeds 10 MB limit.' }
+        [docRef]: { type: 'error', message: valErr?.message || 'File size must not exceed 2 MB. Please upload a smaller file.' }
       }));
       return;
     }
@@ -250,6 +262,50 @@ export const KycPendingPage: React.FC = () => {
     }
   };
 
+  const handleUploadAdditionalDoc = async (reqItem: any, file?: File) => {
+    if (!file) return;
+    const reqId = String(reqItem.requestId);
+    setAdditionalUploadFeedback((prev) => {
+      const next = { ...prev };
+      delete next[reqId];
+      return next;
+    });
+
+    const allowed = Array.isArray(reqItem.allowedExtensions) && reqItem.allowedExtensions.length > 0
+      ? reqItem.allowedExtensions
+      : ['pdf', 'jpg', 'jpeg', 'png'];
+
+    try {
+      validateClientFileBeforeUpload(file, MAX_KYC_FILE_BYTES, allowed);
+    } catch (valErr: any) {
+      setAdditionalUploadFeedback((prev) => ({
+        ...prev,
+        [reqId]: { type: 'error', message: valErr?.message || 'File size must not exceed 2 MB. Please upload a smaller file.' }
+      }));
+      return;
+    }
+
+    setUploadingRequestId(reqId);
+    try {
+      await uploadAdditionalRequestedDocumentStrict(reqId, file, allowed);
+      setAdditionalUploadFeedback((prev) => ({
+        ...prev,
+        [reqId]: {
+          type: 'success',
+          message: `"${reqItem.documentName}" uploaded successfully and sent to Admin for review.`
+        }
+      }));
+      await checkStatus();
+    } catch (err: any) {
+      setAdditionalUploadFeedback((prev) => ({
+        ...prev,
+        [reqId]: { type: 'error', message: err?.message || 'Failed to upload requested document.' }
+      }));
+    } finally {
+      setUploadingRequestId(null);
+    }
+  };
+
   const handleMarkNotifRead = async (id: string) => {
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
     setUnreadNotificationsCount((c) => Math.max(0, c - 1));
@@ -268,7 +324,7 @@ export const KycPendingPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      validateClientFileBeforeUpload(file);
+      validateClientFileBeforeUpload(file, MAX_KYC_FILE_BYTES, ['pdf', 'jpg', 'jpeg', 'png', 'docx']);
     } catch (valErr: any) {
       setResubmitError(valErr?.message || 'Invalid file selected.');
       return;
@@ -496,6 +552,21 @@ export const KycPendingPage: React.FC = () => {
           </div>
         </div>
 
+        {/* Permanent KYC Approval & Lock Notice */}
+        {(kycStatus === 'APPROVED' || isLocked) && (
+          <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-3">
+            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="font-extrabold uppercase tracking-wider text-[10px] text-emerald-800">
+                KYC Permanently Verified & Locked
+              </div>
+              <p className="font-medium leading-relaxed">
+                Your identity and KYC verification are permanently approved{approvedAt ? ` as of ${new Date(approvedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}` : ''}.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Explicit Admin Decision Feedback Box (Overall Reject/Resubmit) */}
         {(isRejected || isResubmitRequested) && rejectionReason && (
           <div
@@ -589,7 +660,7 @@ export const KycPendingPage: React.FC = () => {
                     {canReupload && (
                       <div className="pt-1 flex flex-wrap items-center justify-between gap-2">
                         <span className="text-[11px] text-amber-900 font-medium">
-                          Please upload a corrected copy of this document (PDF / JPG / PNG / DOCX, max 10 MB).
+                          Please upload a corrected copy of this document (PDF / JPG / JPEG / PNG • Max 2 MB, max 2 MB).
                         </span>
                         <label
                           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold cursor-pointer transition-colors ${
@@ -624,6 +695,148 @@ export const KycPendingPage: React.FC = () => {
                         }`}
                       >
                         {feedback.message}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Additional Documents Requested by Admin */}
+        {additionalRequests.length > 0 && (
+          <div className="p-5 rounded-2xl bg-[#FAF7F2] border border-[#8064A9]/30 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#29302D]">
+                <Upload className="w-4 h-4 text-[#8064A9]" />
+                <span>Additional Documents Requested by Admin ({additionalRequests.length})</span>
+              </div>
+              <span className="text-[10px] font-semibold text-[#77786E]">Max 2 MB • PDF/JPG/PNG</span>
+            </div>
+
+            {additionalRequests.some((r: any) => ['PENDING', 'REUPLOAD_REQUIRED'].includes(String(r.status || '').toUpperCase())) && (
+              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium">
+                FIC Admin has requested an additional document. Please review the instructions and upload the requested document.
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {additionalRequests.map((reqItem: any) => {
+                const reqStatus = String(reqItem.status || 'PENDING').toUpperCase();
+                const canUpload = reqStatus === 'PENDING' || reqStatus === 'REUPLOAD_REQUIRED';
+                const isUploadingReq = uploadingRequestId === reqItem.requestId;
+                const fb = additionalUploadFeedback[reqItem.requestId];
+                const allowedExts = Array.isArray(reqItem.allowedExtensions) && reqItem.allowedExtensions.length > 0
+                  ? reqItem.allowedExtensions
+                  : ['pdf', 'jpg', 'jpeg', 'png'];
+                const acceptAttr = allowedExts.map((x: string) => `.${x}`).join(',');
+                const badgeClass =
+                  reqStatus === 'APPROVED'
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    : reqStatus === 'REUPLOAD_REQUIRED'
+                    ? 'bg-amber-100 text-amber-800 border-amber-300'
+                    : reqStatus === 'SUBMITTED'
+                    ? 'bg-sky-100 text-sky-800 border-sky-200'
+                    : reqStatus === 'CANCELLED'
+                    ? 'bg-slate-100 text-slate-600 border-slate-200'
+                    : 'bg-orange-100 text-orange-800 border-orange-200';
+                const statusLabel =
+                  reqStatus === 'APPROVED'
+                    ? 'Approved'
+                    : reqStatus === 'REUPLOAD_REQUIRED'
+                    ? 'Reupload Required'
+                    : reqStatus === 'SUBMITTED'
+                    ? 'Submitted • Under Review'
+                    : reqStatus === 'CANCELLED'
+                    ? 'Cancelled'
+                    : 'Action Required';
+
+                return (
+                  <div
+                    key={reqItem.requestId}
+                    className="p-4 rounded-xl bg-white border border-[#E8DBC8] space-y-2.5 text-xs"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-[#29302D] break-words">{reqItem.documentName}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${reqItem.required !== false ? 'bg-[#C66B52]/10 text-[#C66B52]' : 'bg-slate-100 text-slate-600'}`}>
+                            {reqItem.required !== false ? 'Mandatory' : 'Optional'}
+                          </span>
+                        </div>
+                        {reqItem.description && (
+                          <p className="text-[11px] text-[#77786E] leading-relaxed">
+                            <strong className="text-[#29302D]">Instructions:</strong> {reqItem.description}
+                          </p>
+                        )}
+                        <p className="text-[11px] text-[#77786E] leading-relaxed">
+                          <strong className="text-[#29302D]">Reason:</strong> {reqItem.reason}
+                        </p>
+                        <p className="text-[10px] text-[#77786E]">
+                          Accepted: {allowedExts.join(', ').toUpperCase()} • Strict Limit: 2 MB
+                        </p>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border shrink-0 ${badgeClass}`}>
+                        {statusLabel}
+                      </span>
+                    </div>
+
+                    {(() => {
+                      const fulfilledId = reqItem.fulfilledDocumentId || reqItem.uploadedDocumentId;
+                      const linkedDoc = documents.find(
+                        (d: any) => (fulfilledId && d.documentId === fulfilledId) || (reqItem.docKey && d.docKey === reqItem.docKey)
+                      );
+                      const uploadedFileName = reqItem.uploadedFileName || linkedDoc?.fileName;
+                      const submittedAt = reqItem.submittedAt || reqItem.uploadedAt;
+                      const remark = reqItem.reviewReason || reqItem.adminReviewReason;
+                      return (
+                        <>
+                          {uploadedFileName && (
+                            <div className="p-2 rounded-lg bg-[#FAF7F2] border border-[#E8DBC8] text-[11px] text-[#29302D] flex flex-wrap items-center justify-between gap-2">
+                              <span className="truncate font-medium">Uploaded: {uploadedFileName}</span>
+                              {submittedAt && (
+                                <span className="text-[10px] text-[#77786E]">
+                                  {new Date(submittedAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {remark && reqStatus === 'REUPLOAD_REQUIRED' && (
+                            <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[11px]">
+                              <strong>Admin Remark:</strong> {remark}
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
+
+                    {canUpload && !isLocked && (
+                      <label className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl border-2 border-dashed border-[#8064A9]/50 bg-[#8064A9]/5 hover:bg-[#8064A9]/10 text-[#8064A9] font-bold cursor-pointer transition-colors">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>{isUploadingReq ? 'Uploading Document...' : 'Add Document'}</span>
+                        <input
+                          type="file"
+                          accept={acceptAttr}
+                          disabled={isUploadingReq}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            e.target.value = '';
+                            if (f) handleUploadAdditionalDoc(reqItem, f);
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+
+                    {fb && (
+                      <div
+                        className={`p-2 rounded-lg text-[11px] font-semibold ${
+                          fb.type === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                        }`}
+                      >
+                        {fb.message}
                       </div>
                     )}
                   </div>
@@ -714,28 +927,55 @@ export const KycPendingPage: React.FC = () => {
           </form>
         )}
 
-        {/* Account & Dashboard Activation Rules Checklist */}
+        {/* Account & Dashboard Activation Rules Checklist (Responsive Non-Overlapping Cards) */}
         {activationChecks && (
-          <div className="p-4 rounded-2xl bg-[#FAF7F2] border border-[#E8DBC8] space-y-2 text-xs">
-            <div className="font-extrabold uppercase tracking-wider text-[10px] text-[#77786E]">
-              Dashboard Access Activation Checklist
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#FAF7F2] border border-[#E8DBC8] space-y-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="font-extrabold uppercase tracking-wider text-[10px] text-[#77786E]">
+                Dashboard Access Activation Checklist
+              </div>
+              <span className="text-[10px] text-[#77786E] font-medium">
+                All required verification conditions must pass
+              </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <div className="p-2.5 rounded-xl bg-white border border-[#E8DBC8] flex items-center justify-between">
-                <span>Account Active</span>
-                <span className={activationChecks.accountActive ? 'text-emerald-700 font-bold' : 'text-rose-600 font-bold'}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3 rounded-xl bg-white border border-[#E8DBC8] flex flex-col justify-between gap-2 min-w-0">
+                <span className="text-[11px] font-semibold text-[#77786E]">Account Status</span>
+                <span
+                  className={`inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                    activationChecks.accountActive
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                  }`}
+                >
                   {activationChecks.accountActive ? 'Active' : 'Suspended'}
                 </span>
               </div>
-              <div className="p-2.5 rounded-xl bg-white border border-[#E8DBC8] flex items-center justify-between">
-                <span>KYC Approved</span>
-                <span className={activationChecks.kycApproved ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
-                  {activationChecks.kycApproved ? 'Approved' : activationChecks.kycStatus}
+              <div className="p-3 rounded-xl bg-white border border-[#E8DBC8] flex flex-col justify-between gap-2 min-w-0">
+                <span className="text-[11px] font-semibold text-[#77786E]">KYC Verification</span>
+                <span
+                  className={`inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-[11px] font-bold border break-all ${
+                    activationChecks.kycApproved && !activationChecks.hasPendingAdditionalDocs && !activationChecks.hasPendingDocs
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}
+                >
+                  {activationChecks.hasPendingAdditionalDocs
+                    ? 'Additional Docs Required'
+                    : activationChecks.kycApproved
+                    ? 'Approved'
+                    : String(activationChecks.kycStatus || 'Pending').replace(/_/g, ' ')}
                 </span>
               </div>
-              <div className="p-2.5 rounded-xl bg-white border border-[#E8DBC8] flex items-center justify-between">
-                <span>Membership</span>
-                <span className={activationChecks.membershipActive ? 'text-emerald-700 font-bold' : 'text-amber-700 font-bold'}>
+              <div className="p-3 rounded-xl bg-white border border-[#E8DBC8] flex flex-col justify-between gap-2 min-w-0">
+                <span className="text-[11px] font-semibold text-[#77786E]">Membership Plan</span>
+                <span
+                  className={`inline-flex items-center w-fit px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                    activationChecks.membershipActive
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}
+                >
                   {activationChecks.membershipActive ? 'Active' : activationChecks.paymentStatus || 'Pending'}
                 </span>
               </div>

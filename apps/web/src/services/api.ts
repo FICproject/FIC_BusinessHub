@@ -2590,18 +2590,33 @@ const ALLOWED_DOCUMENT_EXTENSIONS = new Set([
   'txt'
 ]);
 
-export const validateClientFileBeforeUpload = (file: File, maxBytes = 15 * 1024 * 1024): void => {
+export const MAX_KYC_FILE_BYTES = 2 * 1024 * 1024; // 2 MB = 2,097,152 bytes
+
+export const validateClientFileBeforeUpload = (
+  file: File,
+  maxBytes = MAX_KYC_FILE_BYTES,
+  allowedExtensions?: string[]
+): void => {
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
-  if (!ALLOWED_DOCUMENT_EXTENSIONS.has(ext)) {
-    throw new Error(
-      `Unsupported format ".${ext}". Allowed: PDF, JPG, JPEG, PNG, WEBP, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT.`
-    );
+  const allowedSet =
+    Array.isArray(allowedExtensions) && allowedExtensions.length > 0
+      ? new Set(allowedExtensions.map((x) => x.toLowerCase().replace('.', '')))
+      : ALLOWED_DOCUMENT_EXTENSIONS;
+
+  if (!allowedSet.has(ext)) {
+    const labelList = Array.from(allowedSet)
+      .map((e) => e.toUpperCase())
+      .join(', ');
+    throw new Error(`Unsupported format ".${ext}". Allowed: ${labelList}.`);
   }
   if (file.size <= 0) {
     throw new Error('Selected file is empty.');
   }
   if (file.size > maxBytes) {
-    throw new Error(`File size exceeds ${Math.round(maxBytes / (1024 * 1024))} MB limit.`);
+    if (maxBytes === MAX_KYC_FILE_BYTES) {
+      throw new Error('File size must not exceed 2 MB. Please upload a smaller file.');
+    }
+    throw new Error(`File size must not exceed ${Math.round(maxBytes / (1024 * 1024))} MB.`);
   }
 };
 
@@ -2945,6 +2960,28 @@ export const fetchLiveWalletTransactions = async (): Promise<IWalletTransaction[
 };
 
 
+export const checkEmailAvailability = async (
+  email: string
+): Promise<{ available: boolean; message: string }> => {
+  const response = await fetch(`${BASE_URL}/auth/check-email?email=${encodeURIComponent(email.trim().toLowerCase())}`);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success) {
+    throw new Error(extractApiErrorMessage(payload, 'Unable to verify email availability.'));
+  }
+  return payload.data;
+};
+
+export const checkMobileAvailability = async (
+  phoneNumber: string
+): Promise<{ available: boolean; message: string }> => {
+  const response = await fetch(`${BASE_URL}/auth/check-mobile?phoneNumber=${encodeURIComponent(phoneNumber.trim())}`);
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success) {
+    throw new Error(extractApiErrorMessage(payload, 'Unable to verify mobile number availability.'));
+  }
+  return payload.data;
+};
+
 export const registerAccountStrict = async (body: Record<string, any>): Promise<{ token: string; user: any }> => {
   const response = await fetch(`${BASE_URL}/auth/register`, {
     method: 'POST',
@@ -3003,6 +3040,30 @@ export const reuploadSingleKycDocumentStrict = async (
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.success) {
     throw new Error(extractApiErrorMessage(payload, `Document reupload failed (HTTP ${response.status})`));
+  }
+  return payload.data;
+};
+
+export const uploadAdditionalRequestedDocumentStrict = async (
+  requestId: string,
+  file: File,
+  allowedExtensions?: string[]
+): Promise<any> => {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required to upload requested document.');
+  validateClientFileBeforeUpload(file, MAX_KYC_FILE_BYTES, allowedExtensions);
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${BASE_URL}/kyc/additional-documents/${encodeURIComponent(requestId)}/upload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success) {
+    throw new Error(extractApiErrorMessage(payload, `Document upload failed (HTTP ${response.status})`));
   }
   return payload.data;
 };

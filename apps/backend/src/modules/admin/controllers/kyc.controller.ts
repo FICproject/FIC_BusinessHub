@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { Router, Response } from 'express';
 import { KycSubmissionModel } from '../models/KycSubmission';
@@ -399,6 +400,15 @@ router.patch(
         return;
       }
 
+      if (submission.status === 'APPROVED' || submission.isLocked) {
+        res.status(409).json({
+          success: false,
+          code: 'KYC_ALREADY_APPROVED',
+          error: 'This KYC application has already been permanently approved and locked. Further ordinary document review actions are not permitted.'
+        });
+        return;
+      }
+
       // Guard if caller passed an archived old DocumentAsset ID rather than active latest doc
       const archivedAsset = await DocumentAssetModel.findOne({
         documentId: docRef,
@@ -461,8 +471,6 @@ router.patch(
         submission.status = 'REJECTED';
         submission.rejectionReason = trimmedReason || submission.rejectionReason;
         submission.verifiedAt = now;
-      } else if (submission.status === 'APPROVED' && normalizeDocStatus(targetDoc.status) !== 'APPROVED') {
-        submission.status = 'UNDER_REVIEW';
       } else if (submission.status === 'SUBMITTED' || submission.status === 'RESUBMISSION_REQUESTED') {
         submission.status = 'UNDER_REVIEW';
         submission.rejectionReason = undefined;
@@ -650,6 +658,15 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
       return;
     }
 
+    if (submission.status === 'APPROVED' || submission.isLocked) {
+      res.status(409).json({
+        success: false,
+        code: 'KYC_ALREADY_APPROVED',
+        error: 'This KYC application has already been permanently approved and locked. Further ordinary decisions are not permitted.'
+      });
+      return;
+    }
+
     const trimmedReason = typeof rejectionReason === 'string' ? rejectionReason.trim() : '';
     const trimmedNotes = typeof reviewerNotes === 'string' ? reviewerNotes.trim() : '';
 
@@ -668,6 +685,24 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
         error: 'Cannot approve KYC because the member has not uploaded any KYC documents.'
       });
       return;
+    }
+
+    if (decision === 'APPROVED' && Array.isArray(submission.additionalDocumentRequests)) {
+      const pendingMandatoryAdditional = submission.additionalDocumentRequests.filter(
+        (r: any) =>
+          r.required !== false &&
+          ['PENDING', 'REUPLOAD_REQUIRED'].includes(String(r.status || '').toUpperCase())
+      );
+      if (pendingMandatoryAdditional.length > 0) {
+        res.status(400).json({
+          success: false,
+          code: 'ADDITIONAL_DOCUMENTS_PENDING',
+          error: `Cannot grant final KYC approval while mandatory requested documents are still pending upload: ${pendingMandatoryAdditional
+            .map((r: any) => r.documentName)
+            .join(', ')}.`
+        });
+        return;
+      }
     }
 
     const selectedKeysSet = new Set(
@@ -756,31 +791,87 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
       submission.markModified('documents');
     }
 
-    submission.status = decision;
-    submission.reviewerNotes = trimmedNotes || submission.reviewerNotes;
-    submission.rejectionReason = decision === 'APPROVED' ? undefined : trimmedReason;
-    submission.verifiedAt = now;
-    await submission.save();
+    const isApproved = decision === 'APPROVED';
+    if (isApproved && Array.isArray(submission.additionalDocumentRequests) && submission.additionalDocumentRequests.length > 0) {
+      submission.additionalDocumentRequests = submission.additionalDocumentRequests.map((reqDoc: any) => {
+        const plain = typeof reqDoc?.toObject === 'function' ? reqDoc.toObject() : { ...reqDoc };
+        if (String(plain.status || '').toUpperCase() === 'SUBMITTED') {
+          return {
+            ...plain,
+            status: 'APPROVED',
+            reviewedAt: now,
+            reviewedByName: reviewerName
+          };
+        }
+        return plain;
+      }) as any;
+      submission.markModified('additionalDocumentRequests');
+    }
+
+    const atomicUpdated = await KycSubmissionModel.findOneAndUpdate(
+      { _id: submission._id, status: { $ne: 'APPROVED' }, isLocked: { $ne: true } },
+      {
+        $set: {
+          documents: submission.documents,
+          additionalDocumentRequests: submission.additionalDocumentRequests || [],
+          status: decision,
+          reviewerNotes: trimmedNotes || submission.reviewerNotes,
+          rejectionReason: isApproved ? undefined : trimmedReason,
+          verifiedAt: now,
+          ...(isApproved
+            ? {
+                isLocked: true,
+                lockedAt: now,
+                approvedAt: now,
+                ...(reviewerObjectId ? { approvedBy: reviewerObjectId } : {}),
+                approvedByName: reviewerName
+              }
+            : {})
+        }
+      },
+      { new: true }
+    );
+
+    if (!atomicUpdated) {
+      res.status(409).json({
+        success: false,
+        code: 'KYC_ALREADY_APPROVED',
+        error: 'This KYC application has already been permanently approved and locked.'
+      });
+      return;
+    }
+
+    submission.set(atomicUpdated.toObject());
 
     const member = await MemberModel.findOne({
       $or: [{ _id: submission.memberId }, ...(submission.memberEmail ? [{ email: submission.memberEmail.toLowerCase() }] : [])]
     });
     if (member) {
       member.kycStatus = decision;
-      if (decision === 'APPROVED' && member.paymentStatus === 'PAID') {
-        member.status = 'ACTIVE';
+      if (isApproved) {
+        member.kycLocked = true;
+        member.kycApprovedAt = now;
+        if (member.paymentStatus === 'PAID') {
+          member.status = 'ACTIVE';
+        }
       } else if (decision === 'REJECTED' || decision === 'RESUBMISSION_REQUESTED') {
         member.status = 'PENDING_KYC';
       }
       await member.save();
     }
 
-    const isApproved = decision === 'APPROVED';
     const updatedUser = await UserModel.findOneAndUpdate(
       { $or: [{ _id: submission.memberId }, { email: submission.memberEmail?.toLowerCase() }] },
       {
         $set: {
-          isKycApproved: isApproved
+          isKycApproved: isApproved,
+          ...(isApproved
+            ? {
+                kycLocked: true,
+                kycApprovedAt: now,
+                ...(reviewerObjectId ? { kycApprovedBy: reviewerObjectId } : {})
+              }
+            : {})
         }
       },
       { new: true }
@@ -799,7 +890,17 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
             : KYCStatus.RESUBMIT_REQUIRED,
           rejectionReason: isApproved ? undefined : trimmedReason,
           reviewedAt: now,
-          documents: buildMemberKycDocuments(submission.documents || [])
+          documents: buildMemberKycDocuments(submission.documents || []),
+          additionalDocumentRequests: submission.additionalDocumentRequests || [],
+          ...(isApproved
+            ? {
+                isLocked: true,
+                lockedAt: now,
+                approvedAt: now,
+                ...(reviewerObjectId ? { approvedBy: reviewerObjectId } : {}),
+                approvedByName: reviewerName
+              }
+            : {})
         }
       },
       { upsert: true }
@@ -874,7 +975,8 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
             'Your KYC verification has been approved by the FIC Compliance Desk. All portal features are ready based on your active membership.',
           link: '/dashboard',
           priority: 'HIGH',
-          metadata: { kycSubmissionId: submission._id.toString() }
+          metadata: { kycSubmissionId: submission._id.toString() },
+          sourceKey: `KYC_APPROVED:${submission._id.toString()}:${Number(submission.reverificationHistory?.length || 0)}`
         });
       } else if (decision === 'RESUBMISSION_REQUESTED') {
         const docSummaryText = reuploadDocTitles.length > 0 ? ` (${reuploadDocTitles.join(', ')})` : '';
@@ -927,5 +1029,403 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// POST /api/admin/kyc/:id/additional-documents - Admin requests a brand-new additional document
+router.post(
+  '/:id/additional-documents',
+  authenticateAdmin,
+  requirePermission('KYC_VERIFY'),
+  async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { documentName, description, reason, required = true, allowedExtensions } = req.body;
+
+      const trimmedName = typeof documentName === 'string' ? documentName.trim() : '';
+      const trimmedReason = typeof reason === 'string' ? reason.trim() : '';
+      const trimmedDesc = typeof description === 'string' ? description.trim() : '';
+
+      if (!trimmedName || trimmedName.length < 2 || trimmedName.length > 120) {
+        res.status(400).json({ success: false, error: 'Document Name is required (2–120 characters).' });
+        return;
+      }
+      if (!trimmedReason || trimmedReason.length < 3 || trimmedReason.length > 500) {
+        res.status(400).json({ success: false, error: 'Reason for requesting this document is required.' });
+        return;
+      }
+
+      const submission = await KycSubmissionModel.findById(id);
+      if (!submission) {
+        res.status(404).json({ success: false, error: 'KYC submission not found' });
+        return;
+      }
+
+      if (submission.isLocked || submission.status === 'APPROVED') {
+        res.status(409).json({
+          success: false,
+          code: 'KYC_ALREADY_APPROVED',
+          error: 'Cannot add document requests to a permanently approved KYC application without Super Admin reverification.'
+        });
+        return;
+      }
+
+      if (submission.status === 'REJECTED') {
+        res.status(400).json({
+          success: false,
+          error: 'Cannot add document requests to a rejected application.'
+        });
+        return;
+      }
+
+      const normalizedNameKey = trimmedName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+      const existingRequests = Array.isArray(submission.additionalDocumentRequests)
+        ? submission.additionalDocumentRequests
+        : [];
+      const hasActiveDuplicate = existingRequests.some(
+        (r: any) =>
+          String(r.documentName || '').trim().toLowerCase() === trimmedName.toLowerCase() &&
+          !['CANCELLED', 'APPROVED'].includes(String(r.status || '').toUpperCase())
+      );
+
+      if (hasActiveDuplicate) {
+        res.status(409).json({
+          success: false,
+          code: 'DUPLICATE_DOC_REQUEST',
+          error: `An active document request for "${trimmedName}" already exists.`
+        });
+        return;
+      }
+
+      const safeExtensions = Array.isArray(allowedExtensions) && allowedExtensions.length > 0
+        ? allowedExtensions
+            .map((ext: any) => String(ext || '').trim().toLowerCase().replace('.', ''))
+            .filter((ext: string) => ['pdf', 'jpg', 'jpeg', 'png'].includes(ext))
+        : ['pdf', 'jpg', 'jpeg', 'png'];
+
+      const requestId = `ADD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+      const docKey = `ADD_${normalizedNameKey.toUpperCase() || requestId}_${requestId.slice(-4)}`;
+      const now = new Date();
+      const adminObjectId = req.admin?.id && mongoose.Types.ObjectId.isValid(req.admin.id)
+        ? new mongoose.Types.ObjectId(req.admin.id)
+        : undefined;
+
+      const newRequest: any = {
+        requestId,
+        documentName: trimmedName,
+        docKey,
+        ...(trimmedDesc ? { description: trimmedDesc } : {}),
+        reason: trimmedReason,
+        required: Boolean(required),
+        allowedExtensions: safeExtensions.length > 0 ? safeExtensions : ['pdf', 'jpg', 'jpeg', 'png'],
+        maxSizeBytes: 2 * 1024 * 1024,
+        status: 'PENDING',
+        ...(adminObjectId ? { requestedBy: adminObjectId } : {}),
+        requestedByName: req.admin?.name || 'FIC Compliance Officer',
+        requestedAt: now
+      };
+
+      submission.additionalDocumentRequests = [...existingRequests, newRequest] as any;
+      submission.markModified('additionalDocumentRequests');
+      await submission.save();
+
+      const memberUser = await UserModel.findOne({
+        $or: [{ _id: submission.memberId }, ...(submission.memberEmail ? [{ email: submission.memberEmail.toLowerCase() }] : [])]
+      });
+
+      await KYCSubmissionModel.findOneAndUpdate(
+        { $or: [{ userId: submission.memberId }, ...(memberUser?._id ? [{ userId: memberUser._id }] : [])] },
+        {
+          $set: {
+            additionalDocumentRequests: submission.additionalDocumentRequests
+          }
+        }
+      );
+
+      if (memberUser) {
+        await notifyMember({
+          userId: memberUser._id,
+          eventType: 'ADDITIONAL_DOCUMENT_REQUESTED',
+          title: 'Additional KYC Document Required',
+          message: `FIC Admin has requested an additional document (${trimmedName}). Please review the instructions and upload the requested document. Reason: ${trimmedReason}`,
+          link: '/kyc-pending',
+          priority: 'HIGH',
+          metadata: {
+            kycSubmissionId: submission._id.toString(),
+            requestId,
+            documentName: trimmedName,
+            reason: trimmedReason
+          }
+        });
+      }
+
+      await logAdminAction(req, 'KYC_ADD_DOCUMENT_REQUEST', 'KycSubmission', id, {
+        memberId: submission.memberId?.toString(),
+        requestId,
+        documentName: trimmedName,
+        required: Boolean(required)
+      });
+
+      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || []);
+      res.status(201).json({
+        success: true,
+        message: `Additional document request "${trimmedName}" sent to member.`,
+        data: {
+          ...submission.toObject(),
+          documents: normalizedDocs.map((d) => ({ ...d, fileUrl: d.adminViewUrl || d.fileUrl })),
+          docSummary,
+          createdRequest: newRequest
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// PATCH /api/admin/kyc/:id/additional-documents/:requestId/review
+router.patch(
+  '/:id/additional-documents/:requestId/review',
+  authenticateAdmin,
+  requirePermission('KYC_VERIFY'),
+  async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+    try {
+      const { id, requestId } = req.params;
+      const { decision, reason } = req.body;
+      const normalizedDecision = String(decision || '').trim().toUpperCase();
+
+      if (!['APPROVED', 'REUPLOAD_REQUIRED', 'CANCELLED'].includes(normalizedDecision)) {
+        res.status(400).json({ success: false, error: 'Decision must be APPROVED, REUPLOAD_REQUIRED, or CANCELLED.' });
+        return;
+      }
+
+      const trimmedReason = typeof reason === 'string' ? reason.trim() : '';
+      if (normalizedDecision === 'REUPLOAD_REQUIRED' && !trimmedReason) {
+        res.status(400).json({ success: false, error: 'Reason is mandatory when requesting reupload.' });
+        return;
+      }
+
+      const submission = await KycSubmissionModel.findById(id);
+      if (!submission) {
+        res.status(404).json({ success: false, error: 'KYC submission not found' });
+        return;
+      }
+      if (submission.isLocked || submission.status === 'APPROVED') {
+        res.status(409).json({
+          success: false,
+          code: 'KYC_ALREADY_APPROVED',
+          error: 'This KYC application is already permanently approved and locked.'
+        });
+        return;
+      }
+
+      const reqList = Array.isArray(submission.additionalDocumentRequests)
+        ? submission.additionalDocumentRequests
+        : [];
+      const idx = reqList.findIndex((r: any) => String(r.requestId) === requestId);
+      if (idx === -1) {
+        res.status(404).json({ success: false, error: 'Additional document request not found.' });
+        return;
+      }
+
+      const now = new Date();
+      const targetReq = reqList[idx] as any;
+      targetReq.status = normalizedDecision;
+      targetReq.reviewedAt = now;
+      targetReq.reviewedByName = req.admin?.name || 'FIC Compliance Officer';
+      targetReq.reviewReason = trimmedReason || undefined;
+      submission.additionalDocumentRequests![idx] = targetReq;
+      submission.markModified('additionalDocumentRequests');
+
+      // Also sync linked document inside submission.documents if uploaded
+      const linkedDocIdx = (submission.documents || []).findIndex(
+        (d: any) =>
+          String(d.docKey) === String(targetReq.docKey) ||
+          (targetReq.fulfilledDocumentId && String(d.documentId) === String(targetReq.fulfilledDocumentId))
+      );
+      if (linkedDocIdx >= 0 && normalizedDecision !== 'CANCELLED') {
+        const linkedDoc = submission.documents[linkedDocIdx] as any;
+        linkedDoc.status = normalizedDecision;
+        linkedDoc.adminReviewReason = normalizedDecision === 'APPROVED' ? undefined : trimmedReason;
+        linkedDoc.reviewedAt = now;
+        linkedDoc.reviewedByName = req.admin?.name || 'FIC Compliance Officer';
+        submission.documents[linkedDocIdx] = linkedDoc;
+        submission.markModified('documents');
+
+        if (linkedDoc.documentId) {
+          await DocumentAssetModel.updateOne(
+            { documentId: linkedDoc.documentId },
+            {
+              $set: {
+                documentStatus: normalizedDecision,
+                reviewedAt: now,
+                reviewedByName: req.admin?.name || 'FIC Compliance Officer',
+                ...(trimmedReason && normalizedDecision !== 'APPROVED' ? { adminReviewReason: trimmedReason } : {})
+              }
+            }
+          );
+        }
+      }
+
+      await submission.save();
+
+      const memberUser = await UserModel.findOne({
+        $or: [{ _id: submission.memberId }, ...(submission.memberEmail ? [{ email: submission.memberEmail.toLowerCase() }] : [])]
+      });
+
+      await KYCSubmissionModel.findOneAndUpdate(
+        { $or: [{ userId: submission.memberId }, ...(memberUser?._id ? [{ userId: memberUser._id }] : [])] },
+        {
+          $set: {
+            additionalDocumentRequests: submission.additionalDocumentRequests,
+            documents: buildMemberKycDocuments(submission.documents || [])
+          }
+        }
+      );
+
+      if (memberUser && normalizedDecision !== 'CANCELLED') {
+        await notifyMember({
+          userId: memberUser._id,
+          eventType:
+            normalizedDecision === 'APPROVED' ? 'ADDITIONAL_DOCUMENT_APPROVED' : 'ADDITIONAL_DOCUMENT_REUPLOAD_REQUIRED',
+          title:
+            normalizedDecision === 'APPROVED'
+              ? `Additional Document Approved (${targetReq.documentName})`
+              : `Correction Needed: ${targetReq.documentName}`,
+          message:
+            normalizedDecision === 'APPROVED'
+              ? `Your additional document "${targetReq.documentName}" has been approved.`
+              : `Please reupload "${targetReq.documentName}". Reason: ${trimmedReason}`,
+          link: '/kyc-pending',
+          priority: 'HIGH'
+        });
+      }
+
+      await logAdminAction(req, `KYC_ADDITIONAL_DOC_${normalizedDecision}`, 'KycSubmission', id, {
+        requestId,
+        documentName: targetReq.documentName,
+        decision: normalizedDecision
+      });
+
+      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || []);
+      res.json({
+        success: true,
+        message: `Additional document "${targetReq.documentName}" updated to ${normalizedDecision}.`,
+        data: {
+          ...submission.toObject(),
+          documents: normalizedDocs.map((d) => ({ ...d, fileUrl: d.adminViewUrl || d.fileUrl })),
+          docSummary
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// POST /api/admin/kyc/:id/reverify - Strict exception: SUPER_ADMIN only reverification with full history preservation
+router.post(
+  '/:id/reverify',
+  authenticateAdmin,
+  async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+    try {
+      if (String(req.admin?.role || '').toUpperCase() !== 'SUPER_ADMIN') {
+        res.status(403).json({
+          success: false,
+          code: 'SUPER_ADMIN_REQUIRED',
+          error: 'Only an authorized Super Admin can initiate reverification of an approved KYC application.'
+        });
+        return;
+      }
+
+      const { id } = req.params;
+      const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+      if (reason.length < 10) {
+        res.status(400).json({
+          success: false,
+          error: 'A detailed compliance reason (at least 10 characters) is mandatory to initiate reverification.'
+        });
+        return;
+      }
+
+      const submission = await KycSubmissionModel.findById(id);
+      if (!submission) {
+        res.status(404).json({ success: false, error: 'KYC submission not found' });
+        return;
+      }
+
+      const now = new Date();
+      const adminObjectId = req.admin?.id && mongoose.Types.ObjectId.isValid(req.admin.id)
+        ? new mongoose.Types.ObjectId(req.admin.id)
+        : undefined;
+
+      const historyEntry = {
+        ...(adminObjectId ? { initiatedBy: adminObjectId } : {}),
+        initiatedByName: req.admin?.name || 'Super Admin',
+        reason,
+        initiatedAt: now,
+        previousApprovedAt: submission.approvedAt || submission.verifiedAt,
+        previousApprovedByName: submission.approvedByName || 'Compliance Desk'
+      };
+
+      submission.reverificationHistory = [...(submission.reverificationHistory || []), historyEntry] as any;
+      submission.isLocked = false;
+      submission.status = 'UNDER_REVIEW';
+      submission.reviewerNotes = `Super Admin Reverification Initiated: ${reason}`;
+      submission.markModified('reverificationHistory');
+      await submission.save();
+
+      const member = await MemberModel.findOneAndUpdate(
+        { $or: [{ _id: submission.memberId }, ...(submission.memberEmail ? [{ email: submission.memberEmail.toLowerCase() }] : [])] },
+        { $set: { kycStatus: 'UNDER_REVIEW', kycLocked: false, status: 'UNDER_REVIEW' } },
+        { new: true }
+      );
+
+      const user = await UserModel.findOneAndUpdate(
+        { $or: [{ _id: submission.memberId }, { email: submission.memberEmail?.toLowerCase() }] },
+        { $set: { isKycApproved: false, kycLocked: false } },
+        { new: true }
+      );
+
+      await KYCSubmissionModel.findOneAndUpdate(
+        { $or: [{ userId: submission.memberId }, ...(member?._id ? [{ userId: member._id }] : [])] },
+        {
+          $set: {
+            status: KYCStatus.PENDING,
+            isLocked: false,
+            reverificationHistory: submission.reverificationHistory
+          }
+        }
+      );
+
+      if (user) {
+        await notifyMember({
+          userId: user._id,
+          eventType: 'KYC_REVERIFICATION_INITIATED',
+          title: 'KYC Compliance Reverification Notice',
+          message: `FIC Super Admin initiated a compliance reverification of your KYC profile. Reason: ${reason}`,
+          link: '/kyc-pending',
+          priority: 'HIGH'
+        });
+      }
+
+      await logAdminAction(req, 'KYC_SUPER_ADMIN_REVERIFY', 'KycSubmission', id, {
+        reason,
+        previousApprovedAt: historyEntry.previousApprovedAt
+      });
+
+      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || []);
+      res.json({
+        success: true,
+        message: 'Approved KYC unlocked for Super Admin reverification with full history preserved.',
+        data: {
+          ...submission.toObject(),
+          documents: normalizedDocs.map((d) => ({ ...d, fileUrl: d.adminViewUrl || d.fileUrl })),
+          docSummary
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
 
 export default router;

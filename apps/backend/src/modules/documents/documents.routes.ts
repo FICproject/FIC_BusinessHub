@@ -27,8 +27,7 @@ const upload = multer({
 function handleMulterError(err: any, _req: Request, _res: Response, next: NextFunction): void {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      const maxMb = Math.round(config.storage.maxUploadBytes / (1024 * 1024));
-      return next(new AppError(`Uploaded file exceeds ${maxMb} MB limit.`, 400, 'FILE_TOO_LARGE'));
+      return next(new AppError('File size must not exceed 2 MB. Please upload a smaller file.', 400, 'FILE_TOO_LARGE'));
     }
     return next(new AppError(`Upload error: ${err.message}`, 400, 'UPLOAD_ERROR'));
   }

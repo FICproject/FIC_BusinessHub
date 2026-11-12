@@ -142,9 +142,9 @@ export function validateUploadedDocumentBuffer(params: {
     throw new AppError('Uploaded file is empty.', 400, 'EMPTY_FILE');
   }
 
-  if (buffer.length > config.storage.maxUploadBytes) {
-    const maxMb = Math.round(config.storage.maxUploadBytes / (1024 * 1024));
-    throw new AppError(`File exceeds maximum allowed upload limit of ${maxMb} MB.`, 400, 'FILE_TOO_LARGE');
+  const maxAllowedBytes = Math.min(config.storage.maxUploadBytes || 2 * 1024 * 1024, 2 * 1024 * 1024);
+  if (buffer.length > maxAllowedBytes) {
+    throw new AppError('File size must not exceed 2 MB. Please upload a smaller file.', 400, 'FILE_TOO_LARGE');
   }
 
   const safeOriginalFileName = sanitizeOriginalFileName(originalName);

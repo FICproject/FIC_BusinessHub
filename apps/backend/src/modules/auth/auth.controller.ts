@@ -8,9 +8,63 @@ import { AppError } from '../../common/errors/app-error';
 import { JWTPayload, UserRole, AccountStatus, KYCStatus } from '@fic/shared-types';
 import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { KYCSubmissionModel } from '../kyc/kyc.model';
+import { MemberModel } from '../admin/models/Member';
+import { CategoryModel as AdminCategoryModel } from '../admin/models/Category';
 import { evaluateMemberActivationAccess, resolveUserKycSnapshot } from '../kyc/kyc-status.helpers';
+import {
+  validateAddressPayload,
+  validateDynamicProfileValues,
+  validateEmailFormat,
+  validateFullName,
+  validateIndianMobile,
+  validatePasswordStrength
+} from '../../common/utils/registration-validation';
 
 export { resolveUserKycSnapshot };
+
+export const checkEmailAvailability = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const normalizedEmail = validateEmailFormat(req.query.email);
+    const [existingUser, existingMember] = await Promise.all([
+      UserModel.exists({ email: normalizedEmail }),
+      MemberModel.exists({ email: normalizedEmail })
+    ]);
+    const exists = Boolean(existingUser || existingMember);
+    res.status(200).json({
+      success: true,
+      data: {
+        available: !exists,
+        message: exists
+          ? 'This email address is already registered. Please use another email address.'
+          : 'Email address is available.'
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const checkMobileAvailability = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const mobile = validateIndianMobile(req.query.phoneNumber ?? req.query.mobile);
+    const [existingUser, existingMember] = await Promise.all([
+      UserModel.exists({ phoneNumber: mobile }),
+      MemberModel.exists({ phone: mobile })
+    ]);
+    const exists = Boolean(existingUser || existingMember);
+    res.status(200).json({
+      success: true,
+      data: {
+        available: !exists,
+        message: exists
+          ? 'This mobile number is already registered. Please use another number.'
+          : 'Mobile number is available.'
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -20,6 +74,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       phoneNumber,
       dob,
       password,
+      confirmPassword,
       primaryCategoryId,
       primaryCategoryName,
       subCategory,
@@ -32,6 +87,15 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       ageConfirmed,
       termsAccepted
     } = req.body;
+
+    const cleanFullName = validateFullName(fullName);
+    const cleanEmail = validateEmailFormat(email);
+    const cleanPhone = validateIndianMobile(phoneNumber);
+    const cleanPassword = validatePasswordStrength(password);
+
+    if (confirmPassword !== undefined && confirmPassword !== cleanPassword) {
+      throw new AppError('Passwords do not match.', 400, 'PASSWORD_MISMATCH');
+    }
 
     if (!ageConfirmed) {
       throw new AppError('You must be at least 18 years of age to register for FIC Business Hub.', 400, 'UNDERAGE_NOT_PERMITTED');
@@ -69,56 +133,62 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       throw new AppError('You must accept the terms and conditions.', 400, 'TERMS_NOT_ACCEPTED');
     }
 
-    const existingUser = await UserModel.findOne({
-      $or: [{ email: email.toLowerCase() }, { phoneNumber }]
-    });
+    const [existingByEmail, existingByPhone] = await Promise.all([
+      UserModel.findOne({ email: cleanEmail }).select('_id').lean(),
+      UserModel.findOne({ phoneNumber: cleanPhone }).select('_id').lean()
+    ]);
 
-    if (existingUser) {
-      throw new AppError('An account with this email or mobile number already exists.', 409, 'ACCOUNT_EXISTS');
+    if (existingByEmail) {
+      throw new AppError(
+        'This email address is already registered. Please use another email address.',
+        409,
+        'EMAIL_EXISTS'
+      );
+    }
+    if (existingByPhone) {
+      throw new AppError(
+        'This mobile number is already registered. Please use another number.',
+        409,
+        'MOBILE_EXISTS'
+      );
     }
 
-    // Validate residential address if provided
-    let validatedAddress = undefined;
-    if (address) {
-      if (!address.addressLine1?.trim()) {
-        throw new AppError('Address Line 1 is required.', 400, 'ADDRESS_LINE1_REQUIRED');
-      }
-      if (!address.state?.trim()) {
-        throw new AppError('State is required.', 400, 'STATE_REQUIRED');
-      }
-      if (!address.district?.trim()) {
-        throw new AppError('District is required.', 400, 'DISTRICT_REQUIRED');
-      }
-      if (!address.city?.trim()) {
-        throw new AppError('City / Town is required.', 400, 'CITY_REQUIRED');
-      }
-      if (!address.pinCode?.trim() || !/^\d{6}$/.test(address.pinCode.trim())) {
-        throw new AppError('Valid 6-digit Indian PIN code is required.', 400, 'PINCODE_INVALID');
-      }
+    const validatedAddress = address ? validateAddressPayload(address) : undefined;
 
-      validatedAddress = {
-        addressLine1: address.addressLine1.trim(),
-        addressLine2: address.addressLine2?.trim() || '',
-        landmark: address.landmark?.trim() || '',
-        country: address.country?.trim() || 'India',
-        state: address.state.trim(),
-        district: address.district.trim(),
-        city: address.city.trim(),
-        pinCode: address.pinCode.trim(),
-        addressType: address.addressType?.trim() || 'Residential'
-      };
+    let adminCat: any = null;
+    if (primaryCategoryId && mongoose.isValidObjectId(primaryCategoryId)) {
+      adminCat = await AdminCategoryModel.findById(primaryCategoryId).lean();
+    } else if (primaryCategoryName) {
+      adminCat = await AdminCategoryModel.findOne({ name: String(primaryCategoryName).trim() }).lean();
     }
-
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
 
     const resolvedSubcategory =
-      primarySubcategoryName ||
-      subCategory ||
-      (Array.isArray(subcategoryIds) && subcategoryIds.length > 0 ? subcategoryIds[0] : 'Member');
+      (typeof (primarySubcategoryName || subCategory) === 'string' && (primarySubcategoryName || subCategory).trim()) ||
+      (Array.isArray(subcategoryIds) && subcategoryIds.length > 0 ? String(subcategoryIds[0]).trim() : 'Member');
 
-    // Referral code generation & attribution
-    const generatedReferralCode = `FIC-${fullName.toUpperCase().replace(/\s+/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+    if (adminCat && Array.isArray(adminCat.subcategories) && adminCat.subcategories.length > 0) {
+      const validSubs = adminCat.subcategories.map((s: any) =>
+        typeof s === 'string' ? s.trim().toLowerCase() : String(s?.name || '').trim().toLowerCase()
+      );
+      if (resolvedSubcategory && !validSubs.includes(resolvedSubcategory.toLowerCase())) {
+        throw new AppError(
+          `Selected subcategory "${resolvedSubcategory}" is not configured under "${adminCat.name}".`,
+          400,
+          'INVALID_SUBCATEGORY'
+        );
+      }
+    }
+
+    const validatedDynamicProfile = validateDynamicProfileValues(
+      dynamicProfile,
+      adminCat?.customFields || []
+    );
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(cleanPassword, salt);
+
+    const basePrefix = cleanFullName.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 12) || 'MEMBER';
+    const generatedReferralCode = `FIC-${basePrefix}-${Math.floor(100000 + Math.random() * 900000)}`;
 
     let referrerUserId: mongoose.Types.ObjectId | undefined = undefined;
     let referralSource: 'REFERRED' | 'ORGANIC' = 'ORGANIC';
@@ -134,30 +204,42 @@ export const register = async (req: Request, res: Response, next: NextFunction):
       }
     }
 
-    const newUser = await UserModel.create({
-      fullName,
-      email: email.toLowerCase(),
-      phoneNumber,
-      dob,
-      passwordHash,
-      role: UserRole.MEMBER,
-      status: AccountStatus.ACTIVE,
-      primaryCategoryId: mongoose.isValidObjectId(primaryCategoryId) ? primaryCategoryId : undefined,
-      primaryCategoryName: primaryCategoryName || undefined,
-      subCategory: resolvedSubcategory,
-      primarySubcategoryName: resolvedSubcategory,
-      subcategoryIds: Array.isArray(subcategoryIds) ? subcategoryIds.filter(id => mongoose.isValidObjectId(id)) : [],
-      dynamicProfile: dynamicProfile || {},
-      address: validatedAddress,
-      referralCode: generatedReferralCode,
-      referralSource,
-      referredByCode: cleanRefBy || undefined,
-      referrerUserId,
-      isEmailVerified: true, // simplified for onboarding
-      isPhoneVerified: true,
-      isKycApproved: false,
-      isMembershipActive: false
-    });
+    let newUser;
+    try {
+      newUser = await UserModel.create({
+        fullName: cleanFullName,
+        email: cleanEmail,
+        phoneNumber: cleanPhone,
+        dob,
+        passwordHash,
+        role: UserRole.MEMBER,
+        status: AccountStatus.ACTIVE,
+        primaryCategoryId: adminCat?._id || (mongoose.isValidObjectId(primaryCategoryId) ? primaryCategoryId : undefined),
+        primaryCategoryName: adminCat?.name || primaryCategoryName || undefined,
+        subCategory: resolvedSubcategory,
+        primarySubcategoryName: resolvedSubcategory,
+        subcategoryIds: Array.isArray(subcategoryIds) ? subcategoryIds.filter(id => mongoose.isValidObjectId(id)) : [],
+        dynamicProfile: validatedDynamicProfile,
+        address: validatedAddress,
+        referralCode: generatedReferralCode,
+        referralSource,
+        referredByCode: cleanRefBy || undefined,
+        referrerUserId,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        isKycApproved: false,
+        isMembershipActive: false
+      });
+    } catch (createErr: any) {
+      if (createErr?.code === 11000) {
+        const keyPattern = Object.keys(createErr.keyPattern || {});
+        if (keyPattern.includes('phoneNumber')) {
+          throw new AppError('This mobile number is already registered. Please use another number.', 409, 'MOBILE_EXISTS');
+        }
+        throw new AppError('This email address is already registered. Please use another email address.', 409, 'EMAIL_EXISTS');
+      }
+      throw createErr;
+    }
 
     // Only initialize the private KYCSubmissionModel draft here.
     // Admin Member, Admin KYC Submission, Admin Payment, Referral payouts, and Admin notifications
@@ -337,21 +419,37 @@ export const updateProfile = async (req: AuthenticatedRequest, res: Response, ne
       throw new AppError('User not found.', 404, 'USER_NOT_FOUND');
     }
 
-    if (fullName) user.fullName = fullName.trim();
-    if (phoneNumber) user.phoneNumber = phoneNumber.trim();
+    if (fullName) user.fullName = validateFullName(fullName);
+    if (phoneNumber) {
+      const validatedPhone = validateIndianMobile(phoneNumber);
+      const conflict = await UserModel.findOne({
+        phoneNumber: validatedPhone,
+        _id: { $ne: user._id }
+      })
+        .select('_id')
+        .lean();
+      if (conflict) {
+        throw new AppError(
+          'This mobile number is already registered. Please use another number.',
+          409,
+          'MOBILE_EXISTS'
+        );
+      }
+      user.phoneNumber = validatedPhone;
+    }
 
     if (address) {
-      user.address = {
-        addressLine1: address.addressLine1?.trim() || user.address?.addressLine1 || '',
-        addressLine2: address.addressLine2?.trim() || '',
-        landmark: address.landmark?.trim() || '',
-        country: address.country?.trim() || 'India',
-        state: address.state?.trim() || user.address?.state || '',
-        district: address.district?.trim() || user.address?.district || '',
-        city: address.city?.trim() || user.address?.city || '',
-        pinCode: address.pinCode?.trim() || user.address?.pinCode || '',
-        addressType: address.addressType?.trim() || 'Residential'
-      };
+      user.address = validateAddressPayload({
+        addressLine1: address.addressLine1 ?? user.address?.addressLine1,
+        addressLine2: address.addressLine2 ?? user.address?.addressLine2,
+        landmark: address.landmark ?? user.address?.landmark,
+        country: address.country ?? user.address?.country ?? 'India',
+        state: address.state ?? user.address?.state,
+        district: address.district ?? user.address?.district,
+        city: address.city ?? user.address?.city,
+        pinCode: address.pinCode ?? user.address?.pinCode,
+        addressType: address.addressType ?? user.address?.addressType ?? 'Residential'
+      });
     }
 
     if (subCategory) {
@@ -397,8 +495,12 @@ export const getMe = async (req: AuthenticatedRequest, res: Response, next: Next
       success: true,
       data: {
         ...userObj,
-        isKycApproved: kycSnapshot.isKycApproved,
+        isKycApproved: activation.checks.kycApproved,
+        kycApproved: activation.checks.kycApproved,
         kycStatus: kycSnapshot.kycStatus,
+        canAccessDashboard: activation.canAccessDashboard,
+        activationChecks: activation.checks,
+        isMembershipActive: activation.checks.membershipActive,
         rejectionReason: kycSnapshot.rejectionReason,
         reviewerNotes: kycSnapshot.reviewerNotes,
         reviewedAt: kycSnapshot.reviewedAt,

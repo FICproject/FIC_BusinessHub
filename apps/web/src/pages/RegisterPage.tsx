@@ -20,8 +20,24 @@ import {
   registerAccountStrict,
   submitKycApplicationStrict,
   extractApiErrorMessage,
+  checkEmailAvailability,
+  checkMobileAvailability,
   UploadedDocumentAsset
 } from '../services/api';
+import {
+  MAX_KYC_FILE_BYTES,
+  validateFullNameClient,
+  validateEmailClient,
+  validateMobileClient,
+  evaluatePasswordStrength,
+  validatePanClient,
+  validateAadhaarClient,
+  maskAadhaarDisplay,
+  validateAlternativeGovtIdClient,
+  validateDynamicFieldClient,
+  validateCityClient,
+  computeFileSha256
+} from '../utils/registrationValidation';
 import {
   ShieldCheckIcon,
   CheckCircleIcon,
@@ -102,9 +118,103 @@ export const RegisterPage: React.FC = () => {
   const [dobAge, setDobAge] = useState<number | null>(null);
   const [dobValidationError, setDobValidationError] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [emailAvail, setEmailAvail] = useState<{ status: 'idle' | 'checking' | 'available' | 'taken' | 'invalid'; message?: string }>({ status: 'idle' });
+  const [mobileAvail, setMobileAvail] = useState<{ status: 'idle' | 'checking' | 'available' | 'taken' | 'invalid'; message?: string }>({ status: 'idle' });
+  const emailCheckSeqRef = useRef(0);
+  const mobileCheckSeqRef = useRef(0);
+
+  const setFieldError = (key: string, msg: string | null) => {
+    setFieldErrors((prev) => {
+      if (!msg) {
+        if (!prev[key]) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: msg };
+    });
+  };
+
+  useEffect(() => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) {
+      setEmailAvail({ status: 'idle' });
+      setFieldError('email', null);
+      return;
+    }
+    const fmtErr = validateEmailClient(trimmed);
+    if (fmtErr) {
+      setEmailAvail({ status: 'invalid', message: fmtErr });
+      return;
+    }
+    const seq = ++emailCheckSeqRef.current;
+    setEmailAvail({ status: 'checking' });
+    const timer = setTimeout(async () => {
+      try {
+        const res = await checkEmailAvailability(trimmed);
+        if (seq !== emailCheckSeqRef.current) return;
+        if (res.available) {
+          setEmailAvail({ status: 'available', message: 'Email address is available' });
+          setFieldError('email', null);
+        } else {
+          const msg = res.message || 'This email address is already registered. Please use another email address.';
+          setEmailAvail({ status: 'taken', message: msg });
+          setFieldError('email', msg);
+        }
+      } catch {
+        if (seq === emailCheckSeqRef.current) {
+          setEmailAvail({ status: 'idle' });
+        }
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [email]);
+
+  useEffect(() => {
+    const clean = phoneNumber.trim();
+    if (!clean) {
+      setMobileAvail({ status: 'idle' });
+      setFieldError('phoneNumber', null);
+      return;
+    }
+    if (clean.length < 10) {
+      setMobileAvail({ status: 'invalid', message: 'Enter a valid 10-digit Indian mobile number.' });
+      return;
+    }
+    const fmtErr = validateMobileClient(clean);
+    if (fmtErr) {
+      setMobileAvail({ status: 'invalid', message: fmtErr });
+      setFieldError('phoneNumber', fmtErr);
+      return;
+    }
+    const seq = ++mobileCheckSeqRef.current;
+    setMobileAvail({ status: 'checking' });
+    const timer = setTimeout(async () => {
+      try {
+        const res = await checkMobileAvailability(clean);
+        if (seq !== mobileCheckSeqRef.current) return;
+        if (res.available) {
+          setMobileAvail({ status: 'available', message: 'Mobile number is available' });
+          setFieldError('phoneNumber', null);
+        } else {
+          const msg = res.message || 'This mobile number is already registered. Please use another number.';
+          setMobileAvail({ status: 'taken', message: msg });
+          setFieldError('phoneNumber', msg);
+        }
+      } catch {
+        if (seq === mobileCheckSeqRef.current) {
+          setMobileAvail({ status: 'idle' });
+        }
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [phoneNumber]);
 
   // Maximum allowed Date of Birth is exactly 18 years ago from today
   const maxDobAllowed = new Date(
@@ -158,7 +268,9 @@ export const RegisterPage: React.FC = () => {
             iconName: cat.iconName || cat.icon || 'Briefcase',
             subcategories: (cat.subcategories || []).map((s: any) =>
               typeof s === 'string' ? s : (s.name || 'General')
-            ).filter(Boolean)
+            ).filter(Boolean),
+            customFields: Array.isArray(cat.customFields) ? cat.customFields : [],
+            kycRequirements: Array.isArray(cat.kycRequirements) ? cat.kycRequirements : []
           }));
           setCategoriesList(mapped);
           // Keep current category selection or fallback to first live category
@@ -183,8 +295,73 @@ export const RegisterPage: React.FC = () => {
     fetchLiveCategories();
   }, []);
 
-  // Resolved dynamic configuration for the active subcategory
+  // Resolved dynamic configuration for the active subcategory merged with Admin customFields
   const subcategoryConfig = getSubcategoryFormConfig(selectedCategory.name, selectedSubcategory);
+  const mergedDynamicFields = React.useMemo(() => {
+    const base = [...subcategoryConfig.fields];
+    const seenKeys = new Set(base.map((f) => f.key));
+    const adminFields = Array.isArray((selectedCategory as any)?.customFields)
+      ? (selectedCategory as any).customFields
+      : [];
+    for (const cf of adminFields) {
+      const key = String(cf.fieldKey || cf.key || '').trim();
+      if (!key || seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      const rawType = String(cf.type || 'text').toLowerCase();
+      base.push({
+        key,
+        label: cf.label || key,
+        type: (rawType === 'select' || rawType === 'textarea' || rawType === 'number' ? rawType : 'text') as any,
+        required: Boolean(cf.required),
+        placeholder: cf.placeholder || `Enter ${cf.label || key}`,
+        options: Array.isArray(cf.options) ? cf.options : undefined,
+        helperText: cf.helperText
+      });
+    }
+    return base;
+  }, [subcategoryConfig.fields, selectedCategory]);
+
+  // Category & Subcategory specific documents excluding Aadhaar & PAN (which have dedicated mandatory sections)
+  const dynamicRoleDocs = React.useMemo(() => {
+    const isIdentitySlot = (typeOrKey: string, label: string) => {
+      const t = String(typeOrKey || '').toUpperCase();
+      const l = String(label || '').toLowerCase();
+      if (t === 'GOVT_ID' || t === 'AADHAAR' || t === 'AADHAAR_CARD' || t === 'PAN' || t === 'PAN_CARD') return true;
+      if (l.includes('aadhaar') || /pan/.test(l) || l.includes('pan card')) return true;
+      return false;
+    };
+    const list: Array<{ type: string; label: string; required: boolean; description?: string; allowedExtensions?: string[]; maxSizeMB?: number }> = [];
+    const seenTypes = new Set<string>();
+    for (const doc of subcategoryConfig.kycDocuments) {
+      if (isIdentitySlot(doc.type, doc.label)) continue;
+      seenTypes.add(doc.type.toUpperCase());
+      list.push({
+        ...doc,
+        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+        maxSizeMB: 2
+      });
+    }
+    const adminKycReqs = Array.isArray((selectedCategory as any)?.kycRequirements)
+      ? (selectedCategory as any).kycRequirements
+      : [];
+    for (const reqDoc of adminKycReqs) {
+      const key = String(reqDoc.docKey || reqDoc.documentType || reqDoc.type || reqDoc.title || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+      const label = String(reqDoc.title || reqDoc.label || reqDoc.documentType || 'Category Document').trim();
+      if (!key || isIdentitySlot(key, label) || seenTypes.has(key)) continue;
+      seenTypes.add(key);
+      list.push({
+        type: key,
+        label,
+        required: Boolean(reqDoc.required ?? true),
+        description: reqDoc.description || 'Mandatory category compliance proof',
+        allowedExtensions: Array.isArray(reqDoc.allowedExtensions) && reqDoc.allowedExtensions.length > 0
+          ? reqDoc.allowedExtensions.map((e: string) => e.toLowerCase()).filter((e: string) => ['pdf', 'jpg', 'jpeg', 'png'].includes(e))
+          : ['pdf', 'jpg', 'jpeg', 'png'],
+        maxSizeMB: Math.min(Number(reqDoc.maxSizeMB || 2), 2)
+      });
+    }
+    return list;
+  }, [subcategoryConfig.kycDocuments, selectedCategory]);
 
   // Step 3: Dynamic details & Residential Address
   const [dynamicAnswers, setDynamicAnswers] = useState<Record<string, any>>({});
@@ -204,14 +381,31 @@ export const RegisterPage: React.FC = () => {
     setDistrict(availableDistricts[0] || 'Other District');
   };
 
-  // Step 4: Real Document Attachment state (Default + Custom)
+  // Step 4: Real Document Attachment state (Aadhaar / Alt ID + PAN + Dynamic + Custom)
+  const [identityMode, setIdentityMode] = useState<'AADHAAR' | 'ALT_GOVT_ID'>('AADHAAR');
+  const [altGovtIdType, setAltGovtIdType] = useState<'PASSPORT' | 'VOTER_ID' | 'DRIVING_LICENCE'>('PASSPORT');
+  const [aadhaarConsent, setAadhaarConsent] = useState(false);
+  const [docFieldErrors, setDocFieldErrors] = useState<Record<string, string>>({});
   const [docNumbers, setDocNumbers] = useState<Record<string, string>>({});
   const [attachedFiles, setAttachedFiles] = useState<
-    Record<string, { file?: File; name: string; size: string; mimeType?: string; fileUrl: string; documentId?: string }>
+    Record<string, { file?: File; name: string; size: string; mimeType?: string; fileUrl: string; documentId?: string; sha256?: string }>
   >({});
   const registeredSessionRef = useRef<{ token: string; user: any } | null>(null);
   const uploadedAssetsRef = useRef<Record<string, UploadedDocumentAsset>>({});
+  const fileHashesRef = useRef<Record<string, string>>({});
   const [customDocs, setCustomDocs] = useState<CustomDoc[]>([]);
+
+  const setDocError = (key: string, msg: string | null) => {
+    setDocFieldErrors((prev) => {
+      if (!msg) {
+        if (!prev[key]) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      }
+      return { ...prev, [key]: msg };
+    });
+  };
 
   // Step 5: Payment
   const [paymentDone, setPaymentDone] = useState(false);
@@ -267,40 +461,72 @@ export const RegisterPage: React.FC = () => {
     }
   };
 
-  // File attach handler - validates client constraints and retains real File object for multipart upload
-  const handleFileChange = (docKey: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  // File attach handler - validates strict 2 MB limit, allowed formats, and SHA-256 duplicates
+  const handleFileChange = async (
+    docKey: string,
+    e: React.ChangeEvent<HTMLInputElement>,
+    allowedExtensions: string[] = ['pdf', 'jpg', 'jpeg', 'png']
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setDocError(docKey, null);
+    setErrorMessage('');
+
     try {
-      validateClientFileBeforeUpload(file);
+      validateClientFileBeforeUpload(file, MAX_KYC_FILE_BYTES, allowedExtensions);
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Unsupported or oversized file selected.');
+      const msg = err?.message || 'Unsupported or oversized file selected.';
+      setDocError(docKey, msg);
+      setErrorMessage(msg);
       e.target.value = '';
       return;
     }
 
-    const sizeStr =
-      file.size > 1024 * 1024
-        ? (file.size / (1024 * 1024)).toFixed(2) + ' MB'
-        : (file.size / 1024).toFixed(1) + ' KB';
-
-    const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : '';
-    delete uploadedAssetsRef.current[docKey];
-
-    setAttachedFiles((prev) => ({
-      ...prev,
-      [docKey]: {
-        file,
-        name: file.name,
-        size: sizeStr,
-        mimeType: file.type,
-        fileUrl: previewUrl
+    try {
+      const sha256 = await computeFileSha256(file);
+      const duplicateEntry = Object.entries(fileHashesRef.current).find(
+        ([existingKey, existingHash]) => existingKey !== docKey && existingHash === sha256
+      );
+      if (duplicateEntry) {
+        const dupMsg = 'This document has already been uploaded. Please select a different document.';
+        setDocError(docKey, dupMsg);
+        setErrorMessage(dupMsg);
+        e.target.value = '';
+        return;
       }
-    }));
-    setErrorMessage('');
+      fileHashesRef.current[docKey] = sha256;
+
+      const sizeStr =
+        file.size >= 1024 * 1024
+          ? (file.size / (1024 * 1024)).toFixed(2) + ' MB'
+          : (file.size / 1024).toFixed(1) + ' KB';
+
+      const previewUrl = file.type.startsWith('image/') ? URL.createObjectURL(file) : '';
+      delete uploadedAssetsRef.current[docKey];
+
+      setAttachedFiles((prev) => ({
+        ...prev,
+        [docKey]: {
+          file,
+          name: file.name,
+          size: sizeStr,
+          mimeType: file.type,
+          fileUrl: previewUrl,
+          sha256
+        }
+      }));
+    } catch (hashErr: any) {
+      const msg = hashErr?.message || 'Unable to verify file integrity.';
+      setDocError(docKey, msg);
+      setErrorMessage(msg);
+      e.target.value = '';
+    }
   };
 
   const handleRemoveFile = (docKey: string) => {
+    delete fileHashesRef.current[docKey];
+    delete uploadedAssetsRef.current[docKey];
+    setDocError(docKey, null);
     setAttachedFiles((prev) => {
       const updated = { ...prev };
       delete updated[docKey];
@@ -332,18 +558,42 @@ export const RegisterPage: React.FC = () => {
     handleRemoveFile(id);
   };
 
-  // Step 1 Submit
-  const handleStep1Submit = (e: React.FormEvent) => {
+  // Step 1 Submit (Full validation + confirm password + live duplicate check)
+  const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    if (!fullName || !email || !phoneNumber || !password) {
-      setErrorMessage('Please fill in all mandatory fields.');
+    const nameErr = validateFullNameClient(fullName);
+    if (nameErr) {
+      setFieldError('fullName', nameErr);
+      setErrorMessage(nameErr);
+      return;
+    }
+    setFieldError('fullName', null);
+
+    const emailErr = validateEmailClient(email);
+    if (emailErr) {
+      setFieldError('email', emailErr);
+      setErrorMessage(emailErr);
+      return;
+    }
+    if (emailAvail.status === 'taken') {
+      const msg = emailAvail.message || 'This email address is already registered. Please use another email address.';
+      setFieldError('email', msg);
+      setErrorMessage(msg);
       return;
     }
 
-    if (!/^[6-9]\d{9}$/.test(phoneNumber)) {
-      setErrorMessage('Please enter a valid 10-digit Indian mobile number.');
+    const mobErr = validateMobileClient(phoneNumber);
+    if (mobErr) {
+      setFieldError('phoneNumber', mobErr);
+      setErrorMessage(mobErr);
+      return;
+    }
+    if (mobileAvail.status === 'taken') {
+      const msg = mobileAvail.message || 'This mobile number is already registered. Please use another number.';
+      setFieldError('phoneNumber', msg);
+      setErrorMessage(msg);
       return;
     }
 
@@ -351,21 +601,64 @@ export const RegisterPage: React.FC = () => {
       setErrorMessage('Please enter your Date of Birth.');
       return;
     }
-
     const dobResult = validateDobAndAge(dob);
     if (!dobResult.valid) {
+      setDobValidationError(dobResult.error || 'Please enter a valid date of birth.');
       setErrorMessage(dobResult.error || 'Please enter a valid date of birth.');
       return;
     }
+
+    const { error: pwdErr } = evaluatePasswordStrength(password);
+    if (pwdErr) {
+      setFieldError('password', pwdErr);
+      setErrorMessage(pwdErr);
+      return;
+    }
+    setFieldError('password', null);
+
+    if (!confirmPassword || confirmPassword !== password) {
+      const mismatch = 'Passwords do not match.';
+      setFieldError('confirmPassword', mismatch);
+      setErrorMessage(mismatch);
+      return;
+    }
+    setFieldError('confirmPassword', null);
 
     if (!ageConfirmed) {
       setErrorMessage('Please legally confirm that you are 18 years of age or older.');
       return;
     }
-
     if (!termsAccepted) {
       setErrorMessage('Please accept the Terms of Service to proceed.');
       return;
+    }
+
+    // Final synchronous check against backend availability if still idle/checking
+    try {
+      if (emailAvail.status !== 'available') {
+        const res = await checkEmailAvailability(email.trim().toLowerCase());
+        if (!res.available) {
+          const msg = res.message || 'This email address is already registered. Please use another email address.';
+          setEmailAvail({ status: 'taken', message: msg });
+          setFieldError('email', msg);
+          setErrorMessage(msg);
+          return;
+        }
+        setEmailAvail({ status: 'available', message: 'Email address is available' });
+      }
+      if (mobileAvail.status !== 'available') {
+        const res = await checkMobileAvailability(phoneNumber.trim());
+        if (!res.available) {
+          const msg = res.message || 'This mobile number is already registered. Please use another number.';
+          setMobileAvail({ status: 'taken', message: msg });
+          setFieldError('phoneNumber', msg);
+          setErrorMessage(msg);
+          return;
+        }
+        setMobileAvail({ status: 'available', message: 'Mobile number is available' });
+      }
+    } catch {
+      // Backend register still enforces unique email & mobile strictly
     }
 
     setStep(2);
@@ -385,24 +678,46 @@ export const RegisterPage: React.FC = () => {
     setDynamicAnswers({});
   };
 
-  // Step 3 Dynamic Form Submit -> Tailored to Single Subcategory & Residential Address
+  // Step 3 Dynamic Form Submit -> Audits every dynamic & address field
   const handleDynamicFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    // Check mandatory dynamic fields for the selected subcategory
-    for (const field of subcategoryConfig.fields) {
-      if (field.required && !dynamicAnswers[field.key]) {
-        setErrorMessage(`Please fill in "${field.label}".`);
+    for (const field of mergedDynamicFields) {
+      const fErr = validateDynamicFieldClient(field, dynamicAnswers[field.key]);
+      if (fErr) {
+        setFieldError(`dyn_${field.key}`, fErr);
+        setErrorMessage(fErr);
         return;
       }
+      setFieldError(`dyn_${field.key}`, null);
     }
 
-    // Validate Residential Address & Location
-    if (!addressLine1.trim()) {
-      setErrorMessage('Address Line 1 is required.');
+    const line1 = addressLine1.trim();
+    if (line1.length < 5 || line1.length > 200) {
+      const msg = 'Address Line 1 must be between 5 and 200 characters.';
+      setFieldError('addressLine1', msg);
+      setErrorMessage(msg);
       return;
     }
+    setFieldError('addressLine1', null);
+
+    if (addressLine2.trim().length > 200) {
+      const msg = 'Address Line 2 cannot exceed 200 characters.';
+      setFieldError('addressLine2', msg);
+      setErrorMessage(msg);
+      return;
+    }
+    setFieldError('addressLine2', null);
+
+    if (landmark.trim().length > 120) {
+      const msg = 'Landmark cannot exceed 120 characters.';
+      setFieldError('landmark', msg);
+      setErrorMessage(msg);
+      return;
+    }
+    setFieldError('landmark', null);
+
     if (!stateName.trim()) {
       setErrorMessage('Please select your State.');
       return;
@@ -411,49 +726,107 @@ export const RegisterPage: React.FC = () => {
       setErrorMessage('Please select your District.');
       return;
     }
-    if (!city.trim()) {
-      setErrorMessage('City / Town / Village is required.');
+    const cityErr = validateCityClient(city);
+    if (cityErr) {
+      setFieldError('city', cityErr);
+      setErrorMessage(cityErr);
       return;
     }
-    if (!pinCode.trim()) {
-      setErrorMessage('PIN Code is required.');
-      setPinCodeError('PIN Code is required');
-      return;
-    }
-    if (!validateIndianPinCode(pinCode)) {
-      setErrorMessage('Please enter a valid 6-digit Indian PIN Code (e.g., 600028).');
+    setFieldError('city', null);
+
+    if (!pinCode.trim() || !validateIndianPinCode(pinCode)) {
+      const msg = 'Please enter a valid 6-digit Indian PIN Code (e.g., 600028).';
       setPinCodeError('Must be a valid 6-digit PIN code');
+      setErrorMessage(msg);
       return;
     }
     setPinCodeError('');
 
-    // Advance to Step 4: Role-specific KYC Document Upload
+    // Advance to Step 4: KYC Documents
     setStep(4);
   };
 
-  // Step 4 KYC Documents Submit -> Validates & advances to Step 5: Membership Checkout (₹99)
+  // Step 4 KYC Documents Submit -> Validates Aadhaar/Alt ID, PAN, Category Docs & Custom Docs
   const handleKycSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    // Check required subcategory documents
-    for (const doc of subcategoryConfig.kycDocuments) {
+    // 1. Validate Primary Identity Section (Aadhaar or Alternative Govt ID)
+    if (identityMode === 'AADHAAR') {
+      const aadhaarErr = validateAadhaarClient(docNumbers['AADHAAR_CARD'] || '');
+      if (aadhaarErr) {
+        setDocError('AADHAAR_CARD_NUM', aadhaarErr);
+        setErrorMessage(aadhaarErr);
+        return;
+      }
+      setDocError('AADHAAR_CARD_NUM', null);
+      if (!aadhaarConsent) {
+        const msg = 'Please confirm voluntary UIDAI Aadhaar consent or switch to an Alternative Govt ID.';
+        setDocError('AADHAAR_CONSENT', msg);
+        setErrorMessage(msg);
+        return;
+      }
+      setDocError('AADHAAR_CONSENT', null);
+      if (!attachedFiles['AADHAAR_CARD']) {
+        const msg = 'Please attach your Aadhaar Card copy (PDF, JPG, JPEG, or PNG up to 2 MB).';
+        setDocError('AADHAAR_CARD', msg);
+        setErrorMessage(msg);
+        return;
+      }
+    } else {
+      const altErr = validateAlternativeGovtIdClient(altGovtIdType, docNumbers['ALT_GOVT_ID'] || '');
+      if (altErr) {
+        setDocError('ALT_GOVT_ID_NUM', altErr);
+        setErrorMessage(altErr);
+        return;
+      }
+      setDocError('ALT_GOVT_ID_NUM', null);
+      if (!attachedFiles['ALT_GOVT_ID']) {
+        const msg = 'Please attach your Government Photo Identity copy (PDF, JPG, JPEG, or PNG up to 2 MB).';
+        setDocError('ALT_GOVT_ID', msg);
+        setErrorMessage(msg);
+        return;
+      }
+    }
+
+    // 2. Validate PAN Card Section (Mandatory)
+    const panErr = validatePanClient(docNumbers['PAN_CARD'] || '');
+    if (panErr) {
+      setDocError('PAN_CARD_NUM', panErr);
+      setErrorMessage(panErr);
+      return;
+    }
+    setDocError('PAN_CARD_NUM', null);
+    if (!attachedFiles['PAN_CARD']) {
+      const msg = 'Please attach your PAN Card copy (PDF, JPG, JPEG, or PNG up to 2 MB).';
+      setDocError('PAN_CARD', msg);
+      setErrorMessage(msg);
+      return;
+    }
+
+    // 3. Check Category / Role-Specific Dynamic Documents
+    for (const doc of dynamicRoleDocs) {
       if (doc.required) {
         if (!docNumbers[doc.type]?.trim()) {
-          setErrorMessage(`Please enter the document / registration number for "${doc.label}".`);
+          const msg = `Please enter the document / registration number for "${doc.label}".`;
+          setDocError(`${doc.type}_NUM`, msg);
+          setErrorMessage(msg);
           return;
         }
+        setDocError(`${doc.type}_NUM`, null);
         if (!attachedFiles[doc.type]) {
-          setErrorMessage(`Please attach / upload the document file (PDF or Image) for "${doc.label}".`);
+          const msg = `Please attach the document file (max 2 MB) for "${doc.label}".`;
+          setDocError(doc.type, msg);
+          setErrorMessage(msg);
           return;
         }
       }
     }
 
-    // Check custom documents if user added any
+    // 4. Check custom documents if user added any
     for (const cDoc of customDocs) {
-      if (!cDoc.label.trim()) {
-        setErrorMessage('Please enter a name / title for your additional document.');
+      if (!cDoc.label.trim() || cDoc.label.trim().length < 2) {
+        setErrorMessage('Please enter a valid document title (2+ characters) for your additional document.');
         return;
       }
       if (!cDoc.documentNumber.trim()) {
@@ -461,12 +834,11 @@ export const RegisterPage: React.FC = () => {
         return;
       }
       if (!attachedFiles[cDoc.id]) {
-        setErrorMessage(`Please attach / upload the document file for "${cDoc.label}".`);
+        setErrorMessage(`Please attach the document file (max 2 MB) for "${cDoc.label}".`);
         return;
       }
     }
 
-    // All KYC verification documents ready! Now advance to Step 5: ₹99 Payment
     setStep(5);
   };
 
@@ -496,11 +868,12 @@ export const RegisterPage: React.FC = () => {
 
       try {
         const regResult = await registerAccountStrict({
-          fullName,
-          email,
-          phoneNumber,
+          fullName: fullName.trim().replace(/\s+/g, ' '),
+          email: email.trim().toLowerCase(),
+          phoneNumber: phoneNumber.trim(),
           dob: formattedDob || dob,
           password,
+          confirmPassword,
           primaryCategoryId: selectedCategory.id,
           primaryCategoryName: selectedCategory.name,
           subCategory: selectedSubcategory,
@@ -584,12 +957,48 @@ export const RegisterPage: React.FC = () => {
 
     const activeToken = registeredSessionRef.current.token;
 
-    for (const doc of subcategoryConfig.kycDocuments) {
+    const primaryIdKey = identityMode === 'AADHAAR' ? 'AADHAAR_CARD' : 'ALT_GOVT_ID';
+    const primaryIdLabel =
+      identityMode === 'AADHAAR'
+        ? 'Aadhaar Card'
+        : altGovtIdType === 'PASSPORT'
+        ? 'Passport (Govt Identity)'
+        : altGovtIdType === 'VOTER_ID'
+        ? 'Voter ID / EPIC (Govt Identity)'
+        : 'Driving Licence (Govt Identity)';
+    const primaryIdNumber =
+      identityMode === 'AADHAAR'
+        ? maskAadhaarDisplay(docNumbers['AADHAAR_CARD'] || '')
+        : (docNumbers['ALT_GOVT_ID'] || '').trim().toUpperCase();
+
+    const primaryIdSlot = attachedFiles[primaryIdKey];
+    if (primaryIdSlot?.file && !uploadedAssetsRef.current[primaryIdKey]) {
+      uploadedAssetsRef.current[primaryIdKey] = await uploadDocumentFile(primaryIdSlot.file, {
+        entityType: 'KYC',
+        documentCategory: 'KYC_IDENTITY',
+        documentLabel: primaryIdLabel,
+        documentNumber: primaryIdNumber,
+        tokenOverride: activeToken
+      });
+    }
+
+    const panSlot = attachedFiles['PAN_CARD'];
+    if (panSlot?.file && !uploadedAssetsRef.current['PAN_CARD']) {
+      uploadedAssetsRef.current['PAN_CARD'] = await uploadDocumentFile(panSlot.file, {
+        entityType: 'KYC',
+        documentCategory: 'KYC_IDENTITY',
+        documentLabel: 'PAN Card',
+        documentNumber: (docNumbers['PAN_CARD'] || '').trim().toUpperCase(),
+        tokenOverride: activeToken
+      });
+    }
+
+    for (const doc of dynamicRoleDocs) {
       const slot = attachedFiles[doc.type];
       if (slot?.file && !uploadedAssetsRef.current[doc.type]) {
         const asset = await uploadDocumentFile(slot.file, {
           entityType: 'KYC',
-          documentCategory: 'KYC_IDENTITY',
+          documentCategory: 'KYC_BUSINESS',
           documentLabel: doc.label,
           documentNumber: docNumbers[doc.type] || '',
           tokenOverride: activeToken
@@ -630,17 +1039,58 @@ export const RegisterPage: React.FC = () => {
       const session = registeredSessionRef.current;
       const token = session?.token;
 
-      const defaultDocItems = subcategoryConfig.kycDocuments.map((doc) => {
-        const uploaded = uploadedAssetsRef.current[doc.type];
-        return {
-          documentId: uploaded?.documentId,
-          documentType: doc.type,
-          documentName: doc.label,
-          documentNumber: docNumbers[doc.type] || '',
-          fileName: uploaded?.originalFileName || attachedFiles[doc.type]?.name || '',
-          fileUrl: uploaded?.viewUrl || ''
-        };
-      });
+      const primaryIdKey = identityMode === 'AADHAAR' ? 'AADHAAR_CARD' : altGovtIdType;
+      const primarySlotKey = identityMode === 'AADHAAR' ? 'AADHAAR_CARD' : 'ALT_GOVT_ID';
+      const primaryUploaded = uploadedAssetsRef.current[primarySlotKey];
+      const panUploaded = uploadedAssetsRef.current['PAN_CARD'];
+
+      const identityDocItems = [
+        {
+          docKey: primaryIdKey,
+          documentId: primaryUploaded?.documentId,
+          documentType: primaryIdKey,
+          documentName:
+            identityMode === 'AADHAAR'
+              ? 'Aadhaar Card'
+              : altGovtIdType === 'PASSPORT'
+              ? 'Passport (Govt Identity)'
+              : altGovtIdType === 'VOTER_ID'
+              ? 'Voter ID / EPIC (Govt Identity)'
+              : 'Driving Licence (Govt Identity)',
+          documentNumber:
+            identityMode === 'AADHAAR'
+              ? maskAadhaarDisplay(docNumbers['AADHAAR_CARD'] || '')
+              : (docNumbers['ALT_GOVT_ID'] || '').trim().toUpperCase(),
+          fileName: primaryUploaded?.originalFileName || attachedFiles[primarySlotKey]?.name || '',
+          fileUrl: primaryUploaded?.viewUrl || ''
+        },
+        {
+          docKey: 'PAN_CARD',
+          documentId: panUploaded?.documentId,
+          documentType: 'PAN_CARD',
+          documentName: 'PAN Card',
+          documentNumber: (docNumbers['PAN_CARD'] || '').trim().toUpperCase(),
+          fileName: panUploaded?.originalFileName || attachedFiles['PAN_CARD']?.name || '',
+          fileUrl: panUploaded?.viewUrl || ''
+        }
+      ];
+
+      const roleDocItems = dynamicRoleDocs
+        .filter((doc) => Boolean(uploadedAssetsRef.current[doc.type] || attachedFiles[doc.type]))
+        .map((doc) => {
+          const uploaded = uploadedAssetsRef.current[doc.type];
+          return {
+            docKey: doc.type,
+            documentId: uploaded?.documentId,
+            documentType: doc.type,
+            documentName: doc.label,
+            documentNumber: docNumbers[doc.type] || '',
+            fileName: uploaded?.originalFileName || attachedFiles[doc.type]?.name || '',
+            fileUrl: uploaded?.viewUrl || ''
+          };
+        });
+
+      const defaultDocItems = [...identityDocItems, ...roleDocItems];
 
       const customDocItems = customDocs.map((cDoc) => {
         const uploaded = uploadedAssetsRef.current[cDoc.id];
@@ -799,32 +1249,77 @@ export const RegisterPage: React.FC = () => {
                   </div>
                 )}
 
-                <Input
-                  label="Full Legal Name"
-                  placeholder="e.g. S. Moorthy"
-                  value={fullName}
-                  onChange={(e: any) => setFullName(e.target.value)}
-                  required
-                />
+                <div className="space-y-1">
+                  <Input
+                    label="Full Legal Name"
+                    placeholder="e.g. S. Moorthy"
+                    value={fullName}
+                    onChange={(e: any) => {
+                      const val = e.target.value;
+                      setFullName(val);
+                      if (val.trim()) setFieldError('fullName', validateFullNameClient(val));
+                      else setFieldError('fullName', null);
+                    }}
+                    onBlur={() => setFieldError('fullName', validateFullNameClient(fullName))}
+                    required
+                  />
+                  {fieldErrors.fullName && (
+                    <p className="text-[11px] text-red-600 font-semibold">{fieldErrors.fullName}</p>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label="Email Address"
-                    type="email"
-                    placeholder="name@company.com"
-                    value={email}
-                    onChange={(e: any) => setEmail(e.target.value)}
-                    required
-                  />
+                  <div className="space-y-1">
+                    <Input
+                      label="Email Address"
+                      type="email"
+                      placeholder="name@company.com"
+                      value={email}
+                      onChange={(e: any) => setEmail(e.target.value)}
+                      onBlur={() => {
+                        const fmtErr = validateEmailClient(email);
+                        if (fmtErr) setFieldError('email', fmtErr);
+                      }}
+                      required
+                    />
+                    {emailAvail.status === 'checking' && (
+                      <p className="text-[11px] text-[#77786E]">Checking email availability...</p>
+                    )}
+                    {emailAvail.status === 'available' && (
+                      <p className="text-[11px] text-emerald-700 font-semibold">✓ {emailAvail.message}</p>
+                    )}
+                    {(fieldErrors.email || emailAvail.status === 'taken' || (emailAvail.status === 'invalid' && email.length > 0)) && (
+                      <p className="text-[11px] text-red-600 font-semibold">
+                        {fieldErrors.email || emailAvail.message}
+                      </p>
+                    )}
+                  </div>
 
-                  <Input
-                    label="10-Digit Mobile Number"
-                    placeholder="9876543210"
-                    value={phoneNumber}
-                    maxLength={10}
-                    onChange={(e: any) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
-                    required
-                  />
+                  <div className="space-y-1">
+                    <Input
+                      label="10-Digit Mobile Number"
+                      placeholder="9876543210"
+                      value={phoneNumber}
+                      maxLength={10}
+                      onChange={(e: any) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      onBlur={() => {
+                        const fmtErr = validateMobileClient(phoneNumber);
+                        if (fmtErr) setFieldError('phoneNumber', fmtErr);
+                      }}
+                      required
+                    />
+                    {mobileAvail.status === 'checking' && (
+                      <p className="text-[11px] text-[#77786E]">Checking mobile availability...</p>
+                    )}
+                    {mobileAvail.status === 'available' && (
+                      <p className="text-[11px] text-emerald-700 font-semibold">✓ {mobileAvail.message}</p>
+                    )}
+                    {(fieldErrors.phoneNumber || mobileAvail.status === 'taken') && (
+                      <p className="text-[11px] text-red-600 font-semibold">
+                        {fieldErrors.phoneNumber || mobileAvail.message}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Date of Birth & 18+ Adult Policy Validation */}
@@ -870,30 +1365,126 @@ export const RegisterPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-[#29302D] block">
-                    Create Secure Password *
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Minimum 6 characters"
-                      className="w-full text-xs px-3.5 py-2.5 pr-10 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white transition-colors"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#77786E] hover:text-[#29302D] p-1 transition-colors"
-                      title={showPassword ? 'Hide password' : 'Show password'}
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
-                    </button>
-                  </div>
-                </div>
+                {(() => {
+                  const { checks, error: pwdErr } = evaluatePasswordStrength(password);
+                  const passwordsMismatch = confirmPassword.length > 0 && confirmPassword !== password;
+                  const passwordsMatch = confirmPassword.length > 0 && confirmPassword === password && !pwdErr;
+                  return (
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-[#29302D] block">
+                          Create Secure Password <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showPassword ? 'text' : 'password'}
+                            placeholder="Minimum 8 chars with A-Z, a-z, 0-9 & symbol"
+                            className={`w-full text-xs px-3.5 py-2.5 pr-10 border rounded-xl focus:outline-none focus:ring-2 bg-white transition-colors ${
+                              fieldErrors.password
+                                ? 'border-red-400 focus:ring-red-400 bg-red-50/20'
+                                : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                            }`}
+                            value={password}
+                            onChange={(e) => {
+                              const nextPwd = e.target.value;
+                              setPassword(nextPwd);
+                              if (nextPwd) setFieldError('password', evaluatePasswordStrength(nextPwd).error);
+                              else setFieldError('password', null);
+                              if (confirmPassword) {
+                                setFieldError('confirmPassword', nextPwd !== confirmPassword ? 'Passwords do not match.' : null);
+                              }
+                            }}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#77786E] hover:text-[#29302D] p-1 transition-colors"
+                            title={showPassword ? 'Hide password' : 'Show password'}
+                            tabIndex={-1}
+                          >
+                            {showPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {[
+                            { ok: checks.minLength, label: '8+ chars' },
+                            { ok: checks.hasUpper, label: 'Uppercase A–Z' },
+                            { ok: checks.hasLower, label: 'Lowercase a–z' },
+                            { ok: checks.hasDigit, label: 'Number 0–9' },
+                            { ok: checks.hasSpecial, label: 'Special char (@#!)' }
+                          ].map((rule) => (
+                            <span
+                              key={rule.label}
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-colors ${
+                                rule.ok
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-[#FAF7F2] text-[#77786E] border-[#E8DBC8]'
+                              }`}
+                            >
+                              {rule.ok ? '✓ ' : ''}{rule.label}
+                            </span>
+                          ))}
+                        </div>
+                        {fieldErrors.password && (
+                          <p className="text-[11px] text-red-600 font-semibold">{fieldErrors.password}</p>
+                        )}
+                      </div>
+
+                      {/* Confirm Password directly below Password */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-[#29302D] block">
+                          Confirm Password <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showConfirmPassword ? 'text' : 'password'}
+                            placeholder="Re-enter your password"
+                            className={`w-full text-xs px-3.5 py-2.5 pr-10 border rounded-xl focus:outline-none focus:ring-2 bg-white transition-colors ${
+                              passwordsMismatch || fieldErrors.confirmPassword
+                                ? 'border-red-400 focus:ring-red-400 bg-red-50/20'
+                                : passwordsMatch
+                                ? 'border-emerald-400 focus:ring-emerald-400 bg-emerald-50/20'
+                                : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                            }`}
+                            value={confirmPassword}
+                            onChange={(e) => {
+                              const nextConfirm = e.target.value;
+                              setConfirmPassword(nextConfirm);
+                              setFieldError(
+                                'confirmPassword',
+                                nextConfirm && nextConfirm !== password ? 'Passwords do not match.' : null
+                              );
+                            }}
+                            onBlur={() => {
+                              if (confirmPassword && confirmPassword !== password) {
+                                setFieldError('confirmPassword', 'Passwords do not match.');
+                              }
+                            }}
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#77786E] hover:text-[#29302D] p-1 transition-colors"
+                            title={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                            tabIndex={-1}
+                          >
+                            {showConfirmPassword ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+                          </button>
+                        </div>
+                        {(passwordsMismatch || fieldErrors.confirmPassword) && (
+                          <p className="text-[11px] text-red-600 font-semibold">
+                            {fieldErrors.confirmPassword || 'Passwords do not match.'}
+                          </p>
+                        )}
+                        {passwordsMatch && (
+                          <p className="text-[11px] text-emerald-700 font-semibold">✓ Passwords match.</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Referral Code input */}
                 <div className="space-y-1">
@@ -1113,60 +1704,73 @@ export const RegisterPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Role-Specific Dynamic Fields */}
+                {/* Role-Specific Dynamic Fields (Subcategory + Live Category Custom Fields) */}
                 <div className="space-y-4">
-                  {subcategoryConfig.fields.map((field) => (
-                    <div key={field.key} className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold text-[#29302D] block">
-                          {field.label} {field.required && <span className="text-red-500">*</span>}
-                        </label>
-                        {field.helperText && (
-                          <span className="text-[10px] text-[#77786E]">{field.helperText}</span>
+                  {mergedDynamicFields.map((field) => {
+                    const errKey = `dyn_${field.key}`;
+                    const hasErr = Boolean(fieldErrors[errKey]);
+                    const handleDynChange = (val: string) => {
+                      setDynamicAnswers({ ...dynamicAnswers, [field.key]: val });
+                      setFieldError(errKey, val ? validateDynamicFieldClient(field, val) : null);
+                    };
+                    return (
+                      <div key={field.key} className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-xs font-semibold text-[#29302D] block">
+                            {field.label} {field.required && <span className="text-red-500">*</span>}
+                          </label>
+                          {field.helperText && (
+                            <span className="text-[10px] text-[#77786E]">{field.helperText}</span>
+                          )}
+                        </div>
+
+                        {field.type === 'select' ? (
+                          <select
+                            className={`w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none focus:ring-2 bg-white ${
+                              hasErr ? 'border-red-400 focus:ring-red-400' : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                            }`}
+                            value={dynamicAnswers[field.key] || ''}
+                            onChange={(e) => handleDynChange(e.target.value)}
+                            required={field.required}
+                          >
+                            <option value="">-- Select an option --</option>
+                            {field.options?.map((opt, i) => (
+                              <option key={i} value={opt}>
+                                {opt}
+                              </option>
+                            ))}
+                          </select>
+                        ) : field.type === 'textarea' ? (
+                          <textarea
+                            placeholder={field.placeholder}
+                            rows={3}
+                            className={`w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none focus:ring-2 bg-white ${
+                              hasErr ? 'border-red-400 focus:ring-red-400' : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                            }`}
+                            value={dynamicAnswers[field.key] || ''}
+                            onChange={(e) => handleDynChange(e.target.value)}
+                            onBlur={() => setFieldError(errKey, validateDynamicFieldClient(field, dynamicAnswers[field.key]))}
+                            required={field.required}
+                          />
+                        ) : (
+                          <input
+                            type={field.type}
+                            placeholder={field.placeholder}
+                            className={`w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none focus:ring-2 bg-white ${
+                              hasErr ? 'border-red-400 focus:ring-red-400' : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                            }`}
+                            value={dynamicAnswers[field.key] || ''}
+                            onChange={(e) => handleDynChange(e.target.value)}
+                            onBlur={() => setFieldError(errKey, validateDynamicFieldClient(field, dynamicAnswers[field.key]))}
+                            required={field.required}
+                          />
+                        )}
+                        {hasErr && (
+                          <p className="text-[11px] text-red-600 font-semibold">{fieldErrors[errKey]}</p>
                         )}
                       </div>
-
-                      {field.type === 'select' ? (
-                        <select
-                          className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
-                          value={dynamicAnswers[field.key] || ''}
-                          onChange={(e) =>
-                            setDynamicAnswers({ ...dynamicAnswers, [field.key]: e.target.value })
-                          }
-                          required={field.required}
-                        >
-                          <option value="">-- Select an option --</option>
-                          {field.options?.map((opt, i) => (
-                            <option key={i} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
-                        </select>
-                      ) : field.type === 'textarea' ? (
-                        <textarea
-                          placeholder={field.placeholder}
-                          rows={3}
-                          className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
-                          value={dynamicAnswers[field.key] || ''}
-                          onChange={(e) =>
-                            setDynamicAnswers({ ...dynamicAnswers, [field.key]: e.target.value })
-                          }
-                          required={field.required}
-                        />
-                      ) : (
-                        <input
-                          type={field.type}
-                          placeholder={field.placeholder}
-                          className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
-                          value={dynamicAnswers[field.key] || ''}
-                          onChange={(e) =>
-                            setDynamicAnswers({ ...dynamicAnswers, [field.key]: e.target.value })
-                          }
-                          required={field.required}
-                        />
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* ========================================================
@@ -1215,10 +1819,23 @@ export const RegisterPage: React.FC = () => {
                       type="text"
                       placeholder="e.g., No. 42, Anna Salai"
                       value={addressLine1}
-                      onChange={(e) => setAddressLine1(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setAddressLine1(val);
+                        if (val.trim().length >= 5) setFieldError('addressLine1', null);
+                      }}
+                      onBlur={() => {
+                        const len = addressLine1.trim().length;
+                        setFieldError('addressLine1', len < 5 || len > 200 ? 'Address Line 1 must be between 5 and 200 characters.' : null);
+                      }}
                       required
-                      className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
+                      className={`w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none focus:ring-2 bg-white ${
+                        fieldErrors.addressLine1 ? 'border-red-400 focus:ring-red-400' : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                      }`}
                     />
+                    {fieldErrors.addressLine1 && (
+                      <p className="text-[11px] text-red-600 font-semibold">{fieldErrors.addressLine1}</p>
+                    )}
                   </div>
 
                   {/* Address Line 2 & Landmark */}
@@ -1307,10 +1924,20 @@ export const RegisterPage: React.FC = () => {
                         type="text"
                         placeholder="e.g., Chennai"
                         value={city}
-                        onChange={(e) => setCity(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCity(val);
+                          if (val.trim()) setFieldError('city', validateCityClient(val));
+                        }}
+                        onBlur={() => setFieldError('city', validateCityClient(city))}
                         required
-                        className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#C66B52] bg-white"
+                        className={`w-full text-xs px-3.5 py-2.5 border rounded-xl focus:outline-none focus:ring-2 bg-white ${
+                          fieldErrors.city ? 'border-red-400 focus:ring-red-400' : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                        }`}
                       />
+                      {fieldErrors.city && (
+                        <p className="text-[11px] text-red-600 font-semibold">{fieldErrors.city}</p>
+                      )}
                     </div>
                   </div>
 
@@ -1393,18 +2020,18 @@ export const RegisterPage: React.FC = () => {
                   </div>
 
                   <p className="text-xs text-[#29302D] leading-relaxed pt-1 border-t border-[#E8DBC8]">
-                    📌 <strong>Basic Required Documents:</strong> Enter the registration / document number and attach valid PDF or clear image files (Aadhaar, PAN, GSTIN, Udyam, Factory License, Patta, Bar License, College ID or Bonafide).
+                    📌 <strong>Mandatory Identity & Category Proofs:</strong> Upload separate files for <strong>Aadhaar Card</strong> (or an Alternative Govt ID), <strong>PAN Card</strong>, and your role-specific certificates. Accepted formats: <strong>PDF, JPG, JPEG, PNG</strong> (Strict limit: <strong>2 MB max per file</strong>). Duplicate files are automatically blocked.
                   </p>
                   <p className="text-xs text-[#77786E] leading-relaxed">
-                    💡 <strong>Additional Documents:</strong> If you want to upload any additional supporting proofs (e.g. GST Certificate, Trade License, FSSAI, MSME, Partnership Deed, Bank Statement, Portfolio), click the <strong>"+ Add Document"</strong> button on the right!
+                    💡 <strong>Additional Documents:</strong> Need to attach extra supporting proofs (e.g. GST Certificate, Trade License, FSSAI, MSME)? Click <strong>"+ Add Document"</strong> on the right!
                   </p>
                 </div>
 
-                {/* 1. Default Role Documents with Opposite Add Document Button */}
+                {/* 1. Separate Aadhaar & PAN Verification Sections + Category Role Docs */}
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <span className="text-xs font-bold text-[#29302D] uppercase tracking-wider block">
-                      Core KYC Verification Documents for {selectedSubcategory}:
+                      Core Identity & Role KYC Verification ({selectedSubcategory}):
                     </span>
                     <button
                       type="button"
@@ -1417,20 +2044,338 @@ export const RegisterPage: React.FC = () => {
                     </button>
                   </div>
 
-                  {subcategoryConfig.kycDocuments.map((doc, i) => {
+                  {/* SECTION A: AADHAAR CARD (WITH UIDAI COMPLIANT ALTERNATIVE GOVT ID TOGGLE) */}
+                  <div className="p-4 sm:p-5 rounded-xl border border-[#E8DBC8] bg-[#FCFAF6] space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <span className="text-xs font-bold text-[#29302D] block">
+                          {identityMode === 'AADHAAR' ? '1. Aadhaar Card (Identity & 18+ Verification)' : '1. Alternative Government Photo Identity'}
+                        </span>
+                        <span className="text-[11px] text-[#77786E]">
+                          {identityMode === 'AADHAAR'
+                            ? 'Enter your 12-digit Aadhaar number (stored masked as XXXX-XXXX-NNNN per UIDAI guidelines).'
+                            : 'UIDAI-compliant alternative KYC photo identity verification.'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nextMode = identityMode === 'AADHAAR' ? 'ALT_GOVT_ID' : 'AADHAAR';
+                            setIdentityMode(nextMode);
+                            setErrorMessage('');
+                          }}
+                          className="text-[11px] font-bold text-[#8064A9] hover:underline px-2.5 py-1 rounded-lg bg-[#8064A9]/10 border border-[#8064A9]/20"
+                        >
+                          {identityMode === 'AADHAAR' ? 'Use Alternative Govt ID Instead' : 'Switch to Aadhaar Card'}
+                        </button>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C66B52]/15 text-[#C66B52] border border-[#C66B52]/30">
+                          Required
+                        </span>
+                      </div>
+                    </div>
+
+                    {identityMode === 'AADHAAR' ? (
+                      <>
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[11px] font-semibold text-[#29302D] block">
+                              12-Digit Aadhaar Number <span className="text-red-500">*</span>
+                            </label>
+                            {!validateAadhaarClient(docNumbers['AADHAAR_CARD'] || '') && (
+                              <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                Masked: {maskAadhaarDisplay(docNumbers['AADHAAR_CARD'] || '')}
+                              </span>
+                            )}
+                          </div>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={12}
+                            placeholder="Enter 12-digit Aadhaar number (e.g., 987654321012)"
+                            className={`w-full text-xs px-3.5 py-2.5 border rounded-xl bg-white focus:outline-none focus:ring-2 ${
+                              docFieldErrors['AADHAAR_CARD_NUM'] ? 'border-red-400 focus:ring-red-400' : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                            }`}
+                            value={docNumbers['AADHAAR_CARD'] || ''}
+                            onChange={(e) => {
+                              const digits = e.target.value.replace(/\D/g, '').slice(0, 12);
+                              setDocNumbers({ ...docNumbers, AADHAAR_CARD: digits });
+                              if (digits.length === 12) setDocError('AADHAAR_CARD_NUM', validateAadhaarClient(digits));
+                              else setDocError('AADHAAR_CARD_NUM', null);
+                            }}
+                            onBlur={() => {
+                              if (docNumbers['AADHAAR_CARD']) {
+                                setDocError('AADHAAR_CARD_NUM', validateAadhaarClient(docNumbers['AADHAAR_CARD']));
+                              }
+                            }}
+                          />
+                          {docFieldErrors['AADHAAR_CARD_NUM'] && (
+                            <p className="text-[11px] text-red-600 font-semibold">{docFieldErrors['AADHAAR_CARD_NUM']}</p>
+                          )}
+                        </div>
+
+                        <label className="flex items-start gap-2.5 p-3 rounded-xl bg-white border border-[#E8DBC8] cursor-pointer text-[11px] text-[#29302D]">
+                          <input
+                            type="checkbox"
+                            checked={aadhaarConsent}
+                            onChange={(e) => {
+                              setAadhaarConsent(e.target.checked);
+                              if (e.target.checked) setDocError('AADHAAR_CONSENT', null);
+                            }}
+                            className="mt-0.5 rounded text-[#C66B52] h-4 w-4"
+                          />
+                          <span>
+                            I voluntarily submit my Aadhaar copy and masked last-4 digits for FIC identity & age verification in accordance with UIDAI guidelines.
+                          </span>
+                        </label>
+                        {docFieldErrors['AADHAAR_CONSENT'] && (
+                          <p className="text-[11px] text-red-600 font-semibold">{docFieldErrors['AADHAAR_CONSENT']}</p>
+                        )}
+                      </>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-[#29302D] block">
+                            Select Government ID Type <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={altGovtIdType}
+                            onChange={(e) => setAltGovtIdType(e.target.value as any)}
+                            className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#C66B52]"
+                          >
+                            <option value="PASSPORT">Indian Passport</option>
+                            <option value="VOTER_ID">Voter ID (EPIC)</option>
+                            <option value="DRIVING_LICENCE">Driving Licence</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-semibold text-[#29302D] block">
+                            ID Document Number <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder={altGovtIdType === 'PASSPORT' ? 'e.g. A1234567' : altGovtIdType === 'VOTER_ID' ? 'e.g. ABC1234567' : 'e.g. TN0120200012345'}
+                            value={docNumbers['ALT_GOVT_ID'] || ''}
+                            onChange={(e) => {
+                              const val = e.target.value.toUpperCase();
+                              setDocNumbers({ ...docNumbers, ALT_GOVT_ID: val });
+                              if (val) setDocError('ALT_GOVT_ID_NUM', validateAlternativeGovtIdClient(altGovtIdType, val));
+                            }}
+                            className={`w-full text-xs px-3.5 py-2.5 border rounded-xl bg-white uppercase focus:outline-none focus:ring-2 ${
+                              docFieldErrors['ALT_GOVT_ID_NUM'] ? 'border-red-400 focus:ring-red-400' : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                            }`}
+                          />
+                          {docFieldErrors['ALT_GOVT_ID_NUM'] && (
+                            <p className="text-[11px] text-red-600 font-semibold">{docFieldErrors['ALT_GOVT_ID_NUM']}</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {(() => {
+                      const slotKey = identityMode === 'AADHAAR' ? 'AADHAAR_CARD' : 'ALT_GOVT_ID';
+                      const isAttached = !!attachedFiles[slotKey];
+                      const fileInfo = attachedFiles[slotKey];
+                      return (
+                        <div className="space-y-1.5 pt-1">
+                          <label className="text-[11px] font-semibold text-[#29302D] block">
+                            Attach {identityMode === 'AADHAAR' ? 'Aadhaar Card' : 'Government ID'} Copy (PDF, JPG, JPEG, PNG • Max 2 MB) <span className="text-red-500">*</span>
+                          </label>
+                          {isAttached ? (
+                            <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#FFF9F0] border border-[#D99B43]/50">
+                              <div className="flex items-center gap-3 overflow-hidden">
+                                <div className="w-9 h-9 rounded-lg bg-[#D99B43]/20 text-[#B87A28] flex items-center justify-center shrink-0">
+                                  <FileTextIcon size={20} />
+                                </div>
+                                <div className="truncate">
+                                  <span className="text-xs font-bold text-[#29302D] block truncate">{fileInfo.name}</span>
+                                  <span className="text-[11px] text-[#B87A28] font-medium flex items-center gap-1 mt-0.5">
+                                    <CheckCircleIcon size={13} /> {fileInfo.size} • File Attached & Ready
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                <label className="text-xs font-semibold text-[#C66B52] hover:underline cursor-pointer px-2.5 py-1 bg-white rounded-lg border border-[#E8DBC8] shadow-xs">
+                                  Change
+                                  <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    className="hidden"
+                                    onChange={(e) => handleFileChange(slotKey, e, ['pdf', 'jpg', 'jpeg', 'png'])}
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveFile(slotKey)}
+                                  className="p-1 text-[#77786E] hover:text-red-600"
+                                  title="Remove File"
+                                >
+                                  <TrashIcon size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl border-2 border-dashed border-[#E8DBC8] hover:border-[#C66B52] bg-white hover:bg-[#FFF9F0]/40 cursor-pointer transition-all gap-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-lg bg-[#F5EBDD] text-[#C66B52] flex items-center justify-center shrink-0">
+                                  <UploadIcon size={18} />
+                                </div>
+                                <div className="text-center sm:text-left">
+                                  <span className="text-xs font-semibold text-[#29302D] block">
+                                    Upload {identityMode === 'AADHAAR' ? 'Aadhaar Card' : 'Govt ID'} file
+                                  </span>
+                                  <span className="text-[11px] text-[#77786E]">
+                                    Supports PDF, JPG, JPEG, PNG (Max 2 MB)
+                                  </span>
+                                </div>
+                              </div>
+                              <span className="px-3.5 py-1.5 text-xs font-semibold bg-[#C66B52] hover:bg-[#D99B43] text-white rounded-lg shrink-0 shadow-sm">
+                                Attach Document
+                              </span>
+                              <input
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                className="hidden"
+                                onChange={(e) => handleFileChange(slotKey, e, ['pdf', 'jpg', 'jpeg', 'png'])}
+                              />
+                            </label>
+                          )}
+                          {docFieldErrors[slotKey] && (
+                            <p className="text-[11px] text-red-600 font-semibold">{docFieldErrors[slotKey]}</p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* SECTION B: MANDATORY PAN CARD VERIFICATION (SEPARATE FROM AADHAAR) */}
+                  <div className="p-4 sm:p-5 rounded-xl border border-[#E8DBC8] bg-[#FCFAF6] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-bold text-[#29302D] block">2. PAN Card (Permanent Account Number)</span>
+                        <span className="text-[11px] text-[#77786E]">
+                          Required separately for statutory identity and tax compliance.
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#C66B52]/15 text-[#C66B52] border border-[#C66B52]/30">
+                        Required
+                      </span>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-[#29302D] block">
+                        10-Character PAN Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={10}
+                        placeholder="e.g. ABCDE1234F"
+                        className={`w-full text-xs px-3.5 py-2.5 border rounded-xl bg-white uppercase font-mono focus:outline-none focus:ring-2 ${
+                          docFieldErrors['PAN_CARD_NUM'] ? 'border-red-400 focus:ring-red-400' : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                        }`}
+                        value={docNumbers['PAN_CARD'] || ''}
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+                          setDocNumbers({ ...docNumbers, PAN_CARD: val });
+                          if (val.length === 10) setDocError('PAN_CARD_NUM', validatePanClient(val));
+                          else setDocError('PAN_CARD_NUM', null);
+                        }}
+                        onBlur={() => {
+                          if (docNumbers['PAN_CARD']) setDocError('PAN_CARD_NUM', validatePanClient(docNumbers['PAN_CARD']));
+                        }}
+                        required
+                      />
+                      {docFieldErrors['PAN_CARD_NUM'] && (
+                        <p className="text-[11px] text-red-600 font-semibold">{docFieldErrors['PAN_CARD_NUM']}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5 pt-1">
+                      <label className="text-[11px] font-semibold text-[#29302D] block">
+                        Attach PAN Card File (PDF, JPG, JPEG, PNG • Max 2 MB) <span className="text-red-500">*</span>
+                      </label>
+                      {attachedFiles['PAN_CARD'] ? (
+                        <div className="flex items-center justify-between p-3.5 rounded-xl bg-[#FFF9F0] border border-[#D99B43]/50">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-9 h-9 rounded-lg bg-[#D99B43]/20 text-[#B87A28] flex items-center justify-center shrink-0">
+                              <FileTextIcon size={20} />
+                            </div>
+                            <div className="truncate">
+                              <span className="text-xs font-bold text-[#29302D] block truncate">{attachedFiles['PAN_CARD'].name}</span>
+                              <span className="text-[11px] text-[#B87A28] font-medium flex items-center gap-1 mt-0.5">
+                                <CheckCircleIcon size={13} /> {attachedFiles['PAN_CARD'].size} • File Attached & Ready
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <label className="text-xs font-semibold text-[#C66B52] hover:underline cursor-pointer px-2.5 py-1 bg-white rounded-lg border border-[#E8DBC8] shadow-xs">
+                              Change
+                              <input
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                className="hidden"
+                                onChange={(e) => handleFileChange('PAN_CARD', e, ['pdf', 'jpg', 'jpeg', 'png'])}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile('PAN_CARD')}
+                              className="p-1 text-[#77786E] hover:text-red-600"
+                              title="Remove File"
+                            >
+                              <TrashIcon size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col sm:flex-row items-center justify-between p-4 rounded-xl border-2 border-dashed border-[#E8DBC8] hover:border-[#C66B52] bg-white hover:bg-[#FFF9F0]/40 cursor-pointer transition-all gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-[#F5EBDD] text-[#C66B52] flex items-center justify-center shrink-0">
+                              <UploadIcon size={18} />
+                            </div>
+                            <div className="text-center sm:text-left">
+                              <span className="text-xs font-semibold text-[#29302D] block">
+                                Click to browse or drop PAN card file
+                              </span>
+                              <span className="text-[11px] text-[#77786E]">
+                                Supports PDF, JPG, JPEG, PNG (Max 2 MB)
+                              </span>
+                            </div>
+                          </div>
+                          <span className="px-3.5 py-1.5 text-xs font-semibold bg-[#C66B52] hover:bg-[#D99B43] text-white rounded-lg shrink-0 shadow-sm">
+                            Attach Document
+                          </span>
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            className="hidden"
+                            onChange={(e) => handleFileChange('PAN_CARD', e, ['pdf', 'jpg', 'jpeg', 'png'])}
+                          />
+                        </label>
+                      )}
+                      {docFieldErrors['PAN_CARD'] && (
+                        <p className="text-[11px] text-red-600 font-semibold">{docFieldErrors['PAN_CARD']}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* SECTION C: CATEGORY & SUBCATEGORY SPECIFIC DYNAMIC DOCUMENTS */}
+                  {dynamicRoleDocs.map((doc, i) => {
                     const isAttached = !!attachedFiles[doc.type];
                     const fileInfo = attachedFiles[doc.type];
+                    const allowedExts = doc.allowedExtensions || ['pdf', 'jpg', 'jpeg', 'png'];
+                    const acceptAttr = allowedExts.map((x) => `.${x}`).join(',');
 
                     return (
                       <div
-                        key={i}
+                        key={doc.type || i}
                         className="p-4 sm:p-5 rounded-xl border border-[#E8DBC8] bg-[#FCFAF6] space-y-3"
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <span className="text-xs font-bold text-[#29302D] block">{doc.label}</span>
-                            {(doc as any).description && (
-                              <span className="text-[11px] text-[#77786E]">{(doc as any).description}</span>
+                            <span className="text-xs font-bold text-[#29302D] block">{i + 3}. {doc.label}</span>
+                            {doc.description && (
+                              <span className="text-[11px] text-[#77786E]">{doc.description}</span>
                             )}
                           </div>
                           {doc.required ? (
@@ -1444,27 +2389,31 @@ export const RegisterPage: React.FC = () => {
                           )}
                         </div>
 
-                        {/* Document Number Input */}
                         <div className="space-y-1">
                           <label className="text-[11px] font-semibold text-[#29302D] block">
                             Document / Registration Number {doc.required && <span className="text-red-500">*</span>}
                           </label>
                           <input
                             type="text"
-                            placeholder="e.g. 12-digit Aadhaar / 10-char PAN / GSTIN / Reg No."
-                            className="w-full text-xs px-3.5 py-2.5 border border-[#E8DBC8] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#C66B52]"
+                            placeholder="e.g. GSTIN / Udyam / License / Certificate Reg No."
+                            className={`w-full text-xs px-3.5 py-2.5 border rounded-xl bg-white focus:outline-none focus:ring-2 ${
+                              docFieldErrors[`${doc.type}_NUM`] ? 'border-red-400 focus:ring-red-400' : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                            }`}
                             value={docNumbers[doc.type] || ''}
-                            onChange={(e) =>
-                              setDocNumbers({ ...docNumbers, [doc.type]: e.target.value })
-                            }
+                            onChange={(e) => {
+                              setDocNumbers({ ...docNumbers, [doc.type]: e.target.value });
+                              if (e.target.value.trim()) setDocError(`${doc.type}_NUM`, null);
+                            }}
                             required={doc.required}
                           />
+                          {docFieldErrors[`${doc.type}_NUM`] && (
+                            <p className="text-[11px] text-red-600 font-semibold">{docFieldErrors[`${doc.type}_NUM`]}</p>
+                          )}
                         </div>
 
-                        {/* Real File Upload & Attachment Component */}
                         <div className="space-y-1.5 pt-1">
                           <label className="text-[11px] font-semibold text-[#29302D] block">
-                            Attach Document File (PDF, PNG, JPG) {doc.required && <span className="text-red-500">*</span>}
+                            Attach Document File ({allowedExts.join(', ').toUpperCase()} • Max 2 MB) {doc.required && <span className="text-red-500">*</span>}
                           </label>
 
                           {isAttached ? (
@@ -1488,9 +2437,9 @@ export const RegisterPage: React.FC = () => {
                                   Change
                                   <input
                                     type="file"
-                                    accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                                    accept={acceptAttr}
                                     className="hidden"
-                                    onChange={(e) => handleFileChange(doc.type, e)}
+                                    onChange={(e) => handleFileChange(doc.type, e, allowedExts)}
                                   />
                                 </label>
                                 <button
@@ -1514,7 +2463,7 @@ export const RegisterPage: React.FC = () => {
                                     Click to browse or drop {doc.label.toLowerCase()} file
                                   </span>
                                   <span className="text-[11px] text-[#77786E]">
-                                    Supports PDF, PNG, JPG (up to 5MB)
+                                    Supports {allowedExts.join(', ').toUpperCase()} (Max 2 MB)
                                   </span>
                                 </div>
                               </div>
@@ -1523,11 +2472,14 @@ export const RegisterPage: React.FC = () => {
                               </span>
                               <input
                                 type="file"
-                                accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                                accept={acceptAttr}
                                 className="hidden"
-                                onChange={(e) => handleFileChange(doc.type, e)}
+                                onChange={(e) => handleFileChange(doc.type, e, allowedExts)}
                               />
                             </label>
+                          )}
+                          {docFieldErrors[doc.type] && (
+                            <p className="text-[11px] text-red-600 font-semibold">{docFieldErrors[doc.type]}</p>
                           )}
                         </div>
                       </div>
@@ -1606,7 +2558,7 @@ export const RegisterPage: React.FC = () => {
                           {/* File Attachment */}
                           <div className="space-y-1.5 pt-1">
                             <label className="text-[11px] font-semibold text-[#29302D] block">
-                              Attach Document File (PDF, PNG, JPG) *
+                              Attach Document File (PDF, JPG, JPEG, PNG • Max 2 MB) *
                             </label>
 
                             {isAttached ? (
@@ -1630,7 +2582,7 @@ export const RegisterPage: React.FC = () => {
                                     Change
                                     <input
                                       type="file"
-                                      accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                                      accept=".pdf,.jpg,.jpeg,.png"
                                       className="hidden"
                                       onChange={(e) => handleFileChange(cDoc.id, e)}
                                     />
@@ -1655,7 +2607,7 @@ export const RegisterPage: React.FC = () => {
                                       Click to browse or drop {cDoc.label || 'additional document'} file
                                     </span>
                                     <span className="text-[11px] text-[#77786E]">
-                                      Supports PDF, PNG, JPG (up to 5MB)
+                                      Supports PDF, JPG, JPEG, PNG (Max 2 MB)
                                     </span>
                                   </div>
                                 </div>
@@ -1664,11 +2616,14 @@ export const RegisterPage: React.FC = () => {
                                 </span>
                                 <input
                                   type="file"
-                                  accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
+                                  accept=".pdf,.jpg,.jpeg,.png"
                                   className="hidden"
                                   onChange={(e) => handleFileChange(cDoc.id, e)}
                                 />
                               </label>
+                            )}
+                            {docFieldErrors[cDoc.id] && (
+                              <p className="text-[11px] text-red-600 font-semibold">{docFieldErrors[cDoc.id]}</p>
                             )}
                           </div>
                         </div>

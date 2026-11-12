@@ -23,6 +23,9 @@ export interface IUserDocument extends Document {
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   isKycApproved: boolean;
+  kycLocked?: boolean;
+  kycApprovedAt?: Date;
+  kycApprovedBy?: mongoose.Types.ObjectId;
   isMembershipActive: boolean;
   activeMembershipId?: mongoose.Types.ObjectId;
   activeKycSubmissionId?: mongoose.Types.ObjectId;
@@ -71,6 +74,9 @@ const UserSchema = new Schema<IUserDocument>(
     isEmailVerified: { type: Boolean, default: false },
     isPhoneVerified: { type: Boolean, default: false },
     isKycApproved: { type: Boolean, default: false },
+    kycLocked: { type: Boolean, default: false },
+    kycApprovedAt: { type: Date },
+    kycApprovedBy: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
     isMembershipActive: { type: Boolean, default: false },
     activeMembershipId: { type: Schema.Types.ObjectId, ref: 'Membership' },
     activeKycSubmissionId: { type: Schema.Types.ObjectId, ref: 'KYCSubmission' }

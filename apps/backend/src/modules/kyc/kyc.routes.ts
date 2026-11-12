@@ -22,13 +22,18 @@ import {
   normalizeOverallKycStatus
 } from './kyc-status.helpers';
 import { listMemberNotifications, notifyAdmins, notifyMember } from '../notifications/notifications.service';
+import {
+  MAX_KYC_FILE_BYTES,
+  validateAndMaskAadhaar,
+  validatePanNumber
+} from '../../common/utils/registration-validation';
 
 export const kycRouter = Router();
 
 const reuploadMulter = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: config.storage.maxUploadBytes,
+    fileSize: MAX_KYC_FILE_BYTES,
     files: 1
   }
 });
@@ -36,8 +41,7 @@ const reuploadMulter = multer({
 function handleReuploadMulterError(err: any, _req: Request, _res: Response, next: NextFunction): void {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      const maxMb = Math.round(config.storage.maxUploadBytes / (1024 * 1024));
-      return next(new AppError(`Uploaded file exceeds ${maxMb} MB limit.`, 400, 'FILE_TOO_LARGE'));
+      return next(new AppError('File size must not exceed 2 MB. Please upload a smaller file.', 400, 'FILE_TOO_LARGE'));
     }
     return next(new AppError(`Upload error: ${err.message}`, 400, 'UPLOAD_ERROR'));
   }
@@ -64,8 +68,9 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
         : user.primaryCategoryId || new mongoose.Types.ObjectId();
 
     let categoryName = user.primaryCategoryName || 'General Business';
+    let foundCat: any = null;
     try {
-      const foundCat = await AdminCategoryModel.findById(resolvedCategoryId);
+      foundCat = await AdminCategoryModel.findById(resolvedCategoryId);
       if (foundCat) categoryName = foundCat.name;
     } catch {
       // Keep existing name
@@ -75,6 +80,67 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
     const existingAdminSub = await AdminKycSubmissionModel.findOne({
       $or: [{ memberId: user._id }, { memberEmail: user.email.toLowerCase() }]
     }).lean() as any;
+
+    if (existingAdminSub && (existingAdminSub.status === 'APPROVED' || existingAdminSub.isLocked)) {
+      throw new AppError(
+        'Your KYC application has already been permanently approved and locked.',
+        409,
+        'KYC_ALREADY_APPROVED'
+      );
+    }
+
+    const verifiedPayment = await PaymentModel.findOne({
+      userId: req.user.userId,
+      status: 'SUCCESS'
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const existingMemberPaid = await MemberModel.exists({
+      $or: [{ _id: user._id }, { email: user.email.toLowerCase() }],
+      paymentStatus: 'PAID'
+    });
+
+    if (!verifiedPayment && !user.isMembershipActive && !existingMemberPaid) {
+      throw new AppError(
+        'Membership payment must be completed successfully before submitting your KYC application.',
+        402,
+        'PAYMENT_REQUIRED_BEFORE_KYC_SUBMISSION'
+      );
+    }
+
+    if (foundCat && Array.isArray(foundCat.kycRequirements) && foundCat.kycRequirements.length > 0) {
+      const submittedKeys = new Set(
+        documents
+          .map((d: any) => String(d.documentType || d.docKey || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_'))
+          .filter(Boolean)
+      );
+      const hasPanAndIdFallback =
+        submittedKeys.has('PAN_CARD') &&
+        (submittedKeys.has('AADHAAR_CARD') ||
+          submittedKeys.has('PASSPORT') ||
+          submittedKeys.has('VOTER_ID') ||
+          submittedKeys.has('DRIVING_LICENCE') ||
+          submittedKeys.has('GOVT_ID'));
+      for (const reqDoc of foundCat.kycRequirements) {
+        const reqKey = String(reqDoc.docKey || reqDoc.documentType || reqDoc.type || reqDoc.title || '')
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9]+/g, '_');
+        const titleLower = String(reqDoc.title || reqDoc.label || '').toLowerCase();
+        const isGenericIdentity =
+          ['GOVT_ID', 'PAN_CARD', 'AADHAAR', 'AADHAAR_CARD', 'ID_PROOF', 'OWNER_ID'].includes(reqKey) ||
+          titleLower.includes('aadhaar') ||
+          /\bpan\b/.test(titleLower);
+        if (reqDoc.required && !submittedKeys.has(reqKey) && !(isGenericIdentity && hasPanAndIdFallback)) {
+          throw new AppError(
+            `Required category document "${reqDoc.title || reqKey}" is missing.`,
+            400,
+            'CATEGORY_DOCUMENT_REQUIRED'
+          );
+        }
+      }
+    }
 
     const existingApprovedByDocKey = new Map<string, any>();
     for (const d of existingAdminSub?.documents || []) {
@@ -126,6 +192,17 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
             );
           }
 
+          let sanitizedDocNum = String(doc.documentNumber || asset.documentNumber || '').trim();
+          const upperType = String(docType || '').toUpperCase();
+          if (upperType === 'PAN_CARD' && sanitizedDocNum) {
+            sanitizedDocNum = validatePanNumber(sanitizedDocNum);
+          } else if (upperType === 'AADHAAR_CARD' && sanitizedDocNum) {
+            sanitizedDocNum = validateAndMaskAadhaar(sanitizedDocNum).masked;
+            if (asset.documentNumber !== sanitizedDocNum) {
+              asset.documentNumber = sanitizedDocNum;
+            }
+          }
+
           asset.documentStatus = 'PENDING_REVIEW';
           asset.entityType = 'KYC';
           asset.isLatestVersion = true;
@@ -143,7 +220,7 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
             checksum: asset.checksum,
             hasOptimizedPreview: Boolean(asset.optimizedStorageKey),
             hasThumbnail: Boolean(asset.thumbnailStorageKey),
-            documentNumber: doc.documentNumber || asset.documentNumber || '',
+            documentNumber: sanitizedDocNum,
             uploadedAt: asset.createdAt.toISOString(),
             status: 'PENDING_REVIEW',
             version: asset.version || 1,
@@ -221,26 +298,6 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
       ...(doc.reviewedByName ? { reviewedByName: doc.reviewedByName } : {}),
       versionHistory: doc.versionHistory || []
     }));
-
-    const verifiedPayment = await PaymentModel.findOne({
-      userId: req.user.userId,
-      status: 'SUCCESS'
-    })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const existingMemberPaid = await MemberModel.exists({
-      $or: [{ _id: user._id }, { email: user.email.toLowerCase() }],
-      paymentStatus: 'PAID'
-    });
-
-    if (!verifiedPayment && !user.isMembershipActive && !existingMemberPaid) {
-      throw new AppError(
-        'Membership payment must be completed successfully before submitting your KYC application.',
-        402,
-        'PAYMENT_REQUIRED_BEFORE_KYC_SUBMISSION'
-      );
-    }
 
     const verifiedPaymentDetails = verifiedPayment
       ? {
@@ -668,6 +725,212 @@ kycRouter.post(
   }
 );
 
+/**
+ * POST /api/v1/kyc/additional-documents/:requestId/upload
+ * Member uploads a newly requested additional document created via Admin "Add Documents".
+ */
+kycRouter.post(
+  '/additional-documents/:requestId/upload',
+  authenticate,
+  reuploadMulter.single('file'),
+  handleReuploadMulterError,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) throw new AppError('Unauthorized', 401, 'UNAUTHORIZED');
+
+      const requestId = String(req.params.requestId || '').trim();
+      if (!requestId) throw new AppError('Additional document requestId is required.', 400, 'REQUEST_ID_REQUIRED');
+
+      if (!req.file) {
+        throw new AppError('Please attach the requested document file (max 2 MB).', 400, 'FILE_REQUIRED');
+      }
+
+      if (req.file.buffer.length > MAX_KYC_FILE_BYTES) {
+        throw new AppError('File size must not exceed 2 MB. Please upload a smaller file.', 400, 'FILE_TOO_LARGE');
+      }
+
+      const user = await UserModel.findById(userId);
+      if (!user) throw new AppError('User account not found.', 404, 'USER_NOT_FOUND');
+
+      const adminSub = await AdminKycSubmissionModel.findOne({
+        $or: [{ memberId: user._id }, { memberEmail: user.email.toLowerCase() }]
+      });
+      if (!adminSub) {
+        throw new AppError('KYC submission record not found.', 404, 'KYC_NOT_FOUND');
+      }
+
+      if (adminSub.isLocked || adminSub.status === 'APPROVED') {
+        throw new AppError(
+          'Your KYC application is already permanently approved and locked.',
+          409,
+          'KYC_ALREADY_APPROVED'
+        );
+      }
+
+      const reqList = Array.isArray(adminSub.additionalDocumentRequests)
+        ? adminSub.additionalDocumentRequests
+        : [];
+      const reqIndex = reqList.findIndex((r: any) => String(r.requestId) === requestId);
+      if (reqIndex === -1) {
+        throw new AppError('Additional document request not found.', 404, 'ADDITIONAL_REQUEST_NOT_FOUND');
+      }
+
+      const targetReq = reqList[reqIndex] as any;
+      if (!['PENDING', 'REUPLOAD_REQUIRED'].includes(String(targetReq.status || '').toUpperCase())) {
+        throw new AppError(
+          `This document request is currently "${targetReq.status}" and does not accept new uploads.`,
+          403,
+          'ADDITIONAL_REQUEST_NOT_UPLOADABLE'
+        );
+      }
+
+      const ext = (req.file.originalname.split('.').pop() || '').toLowerCase();
+      const allowedExts = Array.isArray(targetReq.allowedExtensions) && targetReq.allowedExtensions.length > 0
+        ? targetReq.allowedExtensions.map((x: string) => x.toLowerCase())
+        : ['pdf', 'jpg', 'jpeg', 'png'];
+      if (!allowedExts.includes(ext)) {
+        throw new AppError(
+          `Unsupported file format. Accepted formats for "${targetReq.documentName}": ${allowedExts.join(', ').toUpperCase()}.`,
+          400,
+          'UNSUPPORTED_FILE_TYPE'
+        );
+      }
+
+      const result = await uploadAndProcessDocument({
+        ownerUserId: userId,
+        uploadedByUserId: userId,
+        file: req.file,
+        documentCategory: 'KYC_BUSINESS',
+        documentLabel: targetReq.documentName,
+        entityType: 'KYC',
+        entityId: adminSub._id.toString()
+      });
+
+      const uploadedAsset = await DocumentAssetModel.findOne({ documentId: result.dto.documentId });
+      if (!uploadedAsset) {
+        throw new AppError('Failed to persist uploaded document.', 500, 'UPLOAD_PERSISTENCE_ERROR');
+      }
+
+      uploadedAsset.documentStatus = 'PENDING_REVIEW';
+      await uploadedAsset.save();
+
+      const now = new Date();
+      const docKey = targetReq.docKey || `ADD_DOC_${targetReq.requestId}`;
+      const existingDocIdx = (adminSub.documents || []).findIndex((d: any) => String(d.docKey) === docKey);
+
+      const newDocRecord: any = {
+        documentId: uploadedAsset.documentId,
+        docKey,
+        title: targetReq.documentName,
+        fileUrl: `/api/admin/documents/${uploadedAsset.documentId}/view`,
+        fileName: uploadedAsset.originalFileName,
+        originalMimeType: uploadedAsset.originalMimeType,
+        originalFileSize: uploadedAsset.originalFileSize,
+        checksum: uploadedAsset.checksum,
+        hasOptimizedPreview: Boolean(uploadedAsset.optimizedStorageKey),
+        hasThumbnail: Boolean(uploadedAsset.thumbnailStorageKey),
+        documentNumber: '',
+        uploadedAt: now.toISOString(),
+        status: 'PENDING_REVIEW',
+        version: existingDocIdx >= 0 ? Number((adminSub.documents[existingDocIdx] as any).version || 1) + 1 : 1,
+        versionHistory: existingDocIdx >= 0 ? (adminSub.documents[existingDocIdx] as any).versionHistory || [] : []
+      };
+
+      if (existingDocIdx >= 0) {
+        const prevDoc = adminSub.documents[existingDocIdx] as any;
+        newDocRecord.versionHistory = [
+          ...(prevDoc.versionHistory || []),
+          {
+            version: prevDoc.version || 1,
+            documentId: prevDoc.documentId,
+            fileUrl: prevDoc.fileUrl,
+            fileName: prevDoc.fileName,
+            uploadedAt: prevDoc.uploadedAt,
+            status: prevDoc.status,
+            reason: targetReq.reviewReason || targetReq.reason
+          }
+        ];
+        adminSub.documents[existingDocIdx] = newDocRecord;
+      } else {
+        adminSub.documents.push(newDocRecord);
+      }
+      adminSub.markModified('documents');
+
+      targetReq.status = 'SUBMITTED';
+      targetReq.fulfilledDocumentId = uploadedAsset.documentId;
+      targetReq.submittedAt = now;
+      adminSub.additionalDocumentRequests![reqIndex] = targetReq;
+      adminSub.markModified('additionalDocumentRequests');
+      adminSub.lastResubmittedAt = now;
+      await adminSub.save();
+
+      await KYCSubmissionModel.findOneAndUpdate(
+        { userId: user._id },
+        {
+          $set: {
+            additionalDocumentRequests: adminSub.additionalDocumentRequests,
+            documents: adminSub.documents.map((d: any) => ({
+              ...(d.documentId ? { documentId: d.documentId } : {}),
+              documentType: d.docKey,
+              title: d.title,
+              documentNumber: d.documentNumber || '',
+              originalFileName: d.fileName,
+              originalMimeType: d.originalMimeType,
+              originalFileSize: d.originalFileSize,
+              checksum: d.checksum,
+              hasOptimizedPreview: d.hasOptimizedPreview,
+              hasThumbnail: d.hasThumbnail,
+              fileUrl: d.documentId ? `/api/v1/documents/${d.documentId}/view` : d.fileUrl,
+              uploadedAt: new Date(d.uploadedAt),
+              verificationStatus: normalizeDocStatus(d.status),
+              adminReviewReason: d.adminReviewReason,
+              remarks: d.adminReviewReason,
+              version: d.version || 1,
+              versionHistory: d.versionHistory || []
+            }))
+          }
+        }
+      );
+
+      await Promise.allSettled([
+        notifyAdmins({
+          eventType: 'ADDITIONAL_DOCUMENT_UPLOADED',
+          title: 'Additional KYC Document Uploaded',
+          message: `${user.fullName} uploaded requested additional document "${targetReq.documentName}".`,
+          link: '/kyc',
+          priority: 'HIGH',
+          metadata: {
+            kycSubmissionId: adminSub._id.toString(),
+            requestId: targetReq.requestId,
+            documentId: uploadedAsset.documentId
+          }
+        }),
+        notifyMember({
+          userId: user._id,
+          eventType: 'ADDITIONAL_DOCUMENT_SUBMITTED',
+          title: 'Additional Document Submitted',
+          message: `Your "${targetReq.documentName}" has been submitted and is now Pending Review.`,
+          link: '/kyc-pending',
+          priority: 'MEDIUM',
+          metadata: { requestId: targetReq.requestId, documentId: uploadedAsset.documentId }
+        })
+      ]);
+
+      res.status(200).json({
+        success: true,
+        message: `"${targetReq.documentName}" uploaded and submitted for Admin review.`,
+        data: {
+          request: targetReq,
+          additionalDocumentRequests: adminSub.additionalDocumentRequests
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 // Get user's own KYC status along with per-document status, versioning, activation checks, and notifications
 kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
@@ -698,6 +961,13 @@ kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Re
       privateDocs
     );
 
+    const additionalDocumentRequests =
+      Array.isArray(adminSubmission?.additionalDocumentRequests) && adminSubmission.additionalDocumentRequests.length > 0
+        ? adminSubmission.additionalDocumentRequests
+        : Array.isArray(submission?.additionalDocumentRequests)
+        ? submission.additionalDocumentRequests
+        : [];
+
     const basePayload = submission || {};
     res.status(200).json({
       success: true,
@@ -706,6 +976,10 @@ kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Re
         status: resolvedStatus,
         kycStatus: resolvedStatus,
         isKycApproved: activation.checks.kycApproved,
+        isLocked: Boolean(adminSubmission?.isLocked || submission?.isLocked || activation.checks.kycApproved),
+        lockedAt: adminSubmission?.lockedAt || submission?.lockedAt,
+        approvedAt: adminSubmission?.approvedAt || submission?.approvedAt,
+        approvedByName: adminSubmission?.approvedByName || submission?.approvedByName,
         canAccessDashboard: activation.canAccessDashboard,
         activationChecks: activation.checks,
         rejectionReason: snapshot?.rejectionReason,
@@ -715,6 +989,7 @@ kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Re
         lastResubmittedAt: adminSubmission?.lastResubmittedAt,
         documents: normalizedDocuments,
         adminDocuments: normalizedDocuments,
+        additionalDocumentRequests,
         documentAssets: privateDocs.map((d) => toSafeDocumentDto(d, 'member')),
         notifications: notifData.notifications,
         unreadNotificationsCount: notifData.unreadCount

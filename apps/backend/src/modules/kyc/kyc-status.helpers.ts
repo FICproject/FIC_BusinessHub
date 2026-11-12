@@ -155,9 +155,11 @@ export interface ActivationEvaluationResult {
     isSuspended: boolean;
     kycApproved: boolean;
     kycStatus: string;
+    kycLocked: boolean;
     membershipActive: boolean;
     paymentStatus: string;
     hasReuploadRequiredDocs: boolean;
+    hasPendingAdditionalDocs: boolean;
   };
   user?: any;
   member?: any;
@@ -178,9 +180,11 @@ export async function evaluateMemberActivationAccess(
         isSuspended: false,
         kycApproved: false,
         kycStatus: 'NOT_SUBMITTED',
+        kycLocked: false,
         membershipActive: false,
         paymentStatus: 'PENDING',
-        hasReuploadRequiredDocs: false
+        hasReuploadRequiredDocs: false,
+        hasPendingAdditionalDocs: false
       }
     };
   }
@@ -197,9 +201,11 @@ export async function evaluateMemberActivationAccess(
         isSuspended: false,
         kycApproved: false,
         kycStatus: 'NOT_SUBMITTED',
+        kycLocked: false,
         membershipActive: false,
         paymentStatus: 'PENDING',
-        hasReuploadRequiredDocs: false
+        hasReuploadRequiredDocs: false,
+        hasPendingAdditionalDocs: false
       }
     };
   }
@@ -224,12 +230,33 @@ export async function evaluateMemberActivationAccess(
   );
   const hasReuploadRequiredDocs = normalizedDocs.some((d) => d.status === 'REUPLOAD_REQUIRED');
   const hasRejectedDocs = normalizedDocs.some((d) => d.status === 'REJECTED');
+  const hasPendingDocs = normalizedDocs.some((d) => d.status === 'PENDING_REVIEW');
+  const additionalRequests = Array.isArray(kycSnapshot.adminSub?.additionalDocumentRequests)
+    ? kycSnapshot.adminSub.additionalDocumentRequests
+    : Array.isArray(kycSnapshot.customerSub?.additionalDocumentRequests)
+    ? kycSnapshot.customerSub.additionalDocumentRequests
+    : [];
+  const hasPendingAdditionalDocs = additionalRequests.some(
+    (req: any) =>
+      req &&
+      req.required !== false &&
+      ['PENDING', 'SUBMITTED', 'REUPLOAD_REQUIRED'].includes(String(req.status || '').toUpperCase())
+  );
+  const kycLocked = Boolean(
+    kycSnapshot.adminSub?.isLocked ||
+      kycSnapshot.customerSub?.isLocked ||
+      user.kycLocked ||
+      member?.kycLocked ||
+      kycSnapshot.kycStatus === 'APPROVED'
+  );
 
   const kycApproved = Boolean(
     kycSnapshot.isKycApproved &&
       kycSnapshot.kycStatus === 'APPROVED' &&
       !hasReuploadRequiredDocs &&
-      !hasRejectedDocs
+      !hasRejectedDocs &&
+      !hasPendingDocs &&
+      !hasPendingAdditionalDocs
   );
 
   const now = new Date();
@@ -268,6 +295,9 @@ export async function evaluateMemberActivationAccess(
   } else if (kycSnapshot.kycStatus === 'RESUBMISSION_REQUESTED' || hasReuploadRequiredDocs) {
     denyCode = 'KYC_REUPLOAD_REQUIRED';
     denyMessage = 'One or more KYC documents require correction and reupload before dashboard access is enabled.';
+  } else if (hasPendingAdditionalDocs) {
+    denyCode = 'ADDITIONAL_DOCUMENTS_REQUIRED';
+    denyMessage = 'Additional documents requested by FIC Admin must be submitted and approved before dashboard access is enabled.';
   } else if (!kycApproved) {
     denyCode = 'KYC_APPROVAL_REQUIRED';
     denyMessage = 'Your KYC verification is currently pending admin approval. Dashboard access is locked until approved.';
@@ -286,9 +316,11 @@ export async function evaluateMemberActivationAccess(
       isSuspended,
       kycApproved,
       kycStatus: kycSnapshot.kycStatus,
+      kycLocked,
       membershipActive,
       paymentStatus,
-      hasReuploadRequiredDocs
+      hasReuploadRequiredDocs,
+      hasPendingAdditionalDocs
     },
     user,
     member,

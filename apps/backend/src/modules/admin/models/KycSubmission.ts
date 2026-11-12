@@ -40,6 +40,26 @@ export interface IKycDocumentRecord {
   versionHistory?: IKycDocumentVersionEntry[];
 }
 
+export interface IAdminAdditionalDocumentRequest {
+  requestId: string;
+  documentName: string;
+  docKey: string;
+  description?: string;
+  reason: string;
+  required: boolean;
+  allowedExtensions: string[];
+  maxSizeBytes: number;
+  status: 'PENDING' | 'SUBMITTED' | 'APPROVED' | 'REUPLOAD_REQUIRED' | 'CANCELLED';
+  requestedBy?: mongoose.Types.ObjectId;
+  requestedByName?: string;
+  requestedAt: Date;
+  fulfilledDocumentId?: string;
+  submittedAt?: Date;
+  reviewedAt?: Date;
+  reviewedByName?: string;
+  reviewReason?: string;
+}
+
 export interface IKycSubmission extends Document {
   memberId: mongoose.Types.ObjectId;
   memberName: string;
@@ -71,6 +91,20 @@ export interface IKycSubmission extends Document {
   categoryName: string;
   status: KycStatus;
   documents: IKycDocumentRecord[];
+  additionalDocumentRequests?: IAdminAdditionalDocumentRequest[];
+  isLocked?: boolean;
+  lockedAt?: Date;
+  approvedAt?: Date;
+  approvedBy?: mongoose.Types.ObjectId;
+  approvedByName?: string;
+  reverificationHistory?: Array<{
+    initiatedBy?: mongoose.Types.ObjectId;
+    initiatedByName?: string;
+    reason: string;
+    initiatedAt: Date;
+    previousApprovedAt?: Date;
+    previousApprovedByName?: string;
+  }>;
   assignedTo?: mongoose.Types.ObjectId;
   reviewerNotes?: string;
   rejectionReason?: string;
@@ -128,6 +162,33 @@ const KycDocumentItemSchema = new Schema(
   { _id: false }
 );
 
+const AdminAdditionalDocRequestSchema = new Schema(
+  {
+    requestId: { type: String, required: true },
+    documentName: { type: String, required: true },
+    docKey: { type: String, required: true },
+    description: { type: String },
+    reason: { type: String, required: true },
+    required: { type: Boolean, default: true },
+    allowedExtensions: { type: [String], default: ['pdf', 'jpg', 'jpeg', 'png'] },
+    maxSizeBytes: { type: Number, default: 2 * 1024 * 1024 },
+    status: {
+      type: String,
+      enum: ['PENDING', 'SUBMITTED', 'APPROVED', 'REUPLOAD_REQUIRED', 'CANCELLED'],
+      default: 'PENDING',
+    },
+    requestedBy: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
+    requestedByName: { type: String },
+    requestedAt: { type: Date, default: Date.now },
+    fulfilledDocumentId: { type: String },
+    submittedAt: { type: Date },
+    reviewedAt: { type: Date },
+    reviewedByName: { type: String },
+    reviewReason: { type: String },
+  },
+  { _id: false }
+);
+
 const KycSubmissionSchema = new Schema<IKycSubmission>(
   {
     memberId: { type: Schema.Types.ObjectId, ref: 'Member', required: true, index: true },
@@ -165,6 +226,28 @@ const KycSubmissionSchema = new Schema<IKycSubmission>(
       required: true,
     },
     documents: [KycDocumentItemSchema],
+    additionalDocumentRequests: { type: [AdminAdditionalDocRequestSchema], default: [] },
+    isLocked: { type: Boolean, default: false },
+    lockedAt: { type: Date },
+    approvedAt: { type: Date },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
+    approvedByName: { type: String },
+    reverificationHistory: {
+      type: [
+        new Schema(
+          {
+            initiatedBy: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
+            initiatedByName: { type: String },
+            reason: { type: String, required: true },
+            initiatedAt: { type: Date, default: Date.now },
+            previousApprovedAt: { type: Date },
+            previousApprovedByName: { type: String },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
     assignedTo: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
     reviewerNotes: { type: String },
     rejectionReason: { type: String },

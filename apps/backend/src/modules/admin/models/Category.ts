@@ -44,8 +44,8 @@ const KycRequirementSchema = new Schema(
     title: { type: String, required: true },
     description: { type: String },
     required: { type: Boolean, default: true },
-    allowedExtensions: [{ type: String, default: ['pdf', 'jpg', 'png'] }],
-    maxSizeMB: { type: Number, default: 5 },
+    allowedExtensions: [{ type: String, default: ['pdf', 'jpg', 'jpeg', 'png'] }],
+    maxSizeMB: { type: Number, default: 2 },
   },
   { _id: false }
 );
