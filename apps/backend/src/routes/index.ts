@@ -19,6 +19,7 @@ import { walletRouter } from '../modules/wallet/wallet.routes';
 import { referralsRouter } from '../modules/referrals/referral.routes';
 import { mentoringRouter } from '../modules/mentoring/mentoring.routes';
 import { documentsRouter } from '../modules/documents/documents.routes';
+import { notificationsRouter } from '../modules/notifications/notifications.routes';
 
 export const apiRouter = Router();
 
@@ -40,6 +41,7 @@ apiRouter.use('/membership', membershipRouter);
 apiRouter.use('/payments', paymentsRouter);
 apiRouter.use('/kyc', kycRouter);
 apiRouter.use('/documents', documentsRouter);
+apiRouter.use('/notifications', notificationsRouter);
 apiRouter.use('/marketplace', marketplaceRouter);
 apiRouter.use('/services', servicesRouter);
 apiRouter.use('/connections', connectionsRouter);

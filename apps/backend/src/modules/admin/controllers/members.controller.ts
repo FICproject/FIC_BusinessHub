@@ -7,7 +7,9 @@ import { KycSubmissionModel } from '../models/KycSubmission';
 import { MemberWalletModel } from '../models/MemberWallet';
 import { AdminPaymentModel } from '../models/Payment';
 import { DocumentAssetModel, toSafeDocumentDto } from '../../documents/documents.model';
-import { authenticateAdmin, AuthenticatedAdminRequest, logAdminAction } from '../middleware/admin-auth.middleware';
+import { AccountStatus } from '@fic/shared-types';
+import { authenticateAdmin, AuthenticatedAdminRequest, requirePermission, logAdminAction } from '../middleware/admin-auth.middleware';
+import { notifyMember } from '../../notifications/notifications.service';
 import { getOrCreateMemberWallet } from './funding.controller';
 
 const router = Router();
@@ -80,31 +82,11 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       'status submittedAt verifiedAt reviewerNotes documents memberPhone memberDob subCategory address'
     );
 
-    // Fallback Mock Documents if not yet submitted in DB
-    if (!kycSubmission || !kycSubmission.documents || kycSubmission.documents.length === 0) {
+        if (!kycSubmission) {
       kycSubmission = {
-        status: member.kycStatus || 'SUBMITTED',
+        status: member.kycStatus || 'NOT_SUBMITTED',
         submittedAt: member.registeredAt,
-        verifiedAt: member.kycStatus === 'APPROVED' ? new Date() : undefined,
-        reviewerNotes: 'Verified via national identity and MCA company registry.',
-        documents: [
-          {
-            docKey: 'id_proof',
-            title: 'Individual Government ID / PAN Card',
-            fileName: `${member.name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_pan.pdf`,
-            fileUrl: `https://placehold.co/600x400/png?text=Verified+PAN+Card+-+${encodeURIComponent(member.name)}`,
-            uploadedAt: new Date().toISOString(),
-            status: member.kycStatus === 'APPROVED' ? 'VERIFIED' : 'PENDING',
-          },
-          {
-            docKey: 'business_reg',
-            title: 'Business Registration / Udyam / Aadhaar Proof',
-            fileName: `${member.name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_registration.pdf`,
-            fileUrl: `https://placehold.co/600x400/png?text=Business+Registration+-+${encodeURIComponent(member.name)}`,
-            uploadedAt: new Date().toISOString(),
-            status: member.kycStatus === 'APPROVED' ? 'VERIFIED' : 'PENDING',
-          },
-        ],
+        documents: []
       } as any;
     }
 
@@ -266,7 +248,7 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
 });
 
 // PATCH /api/admin/members/:id/status - Update member account status (active/suspended/blocked)
-router.patch('/:id/status', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+router.patch('/:id/status', authenticateAdmin, requirePermission('MEMBERS_MANAGE'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { status, reason } = req.body; // 'ACTIVE' | 'SUSPENDED' | 'BLOCKED'
@@ -277,11 +259,40 @@ router.patch('/:id/status', authenticateAdmin, async (req: AuthenticatedAdminReq
       return;
     }
 
-    member.status = status;
+    const normalized = String(status || '').trim().toUpperCase();
+    member.status = normalized as any;
     await member.save();
 
-    await logAdminAction(req, `MEMBER_STATUS_${status}`, 'Member', id, { reason });
-    res.json({ success: true, message: `Member status updated to ${status}`, data: member });
+    const nextUserStatus =
+      normalized === 'SUSPENDED' || normalized === 'BLOCKED'
+        ? AccountStatus.SUSPENDED
+        : normalized === 'ACTIVE'
+        ? AccountStatus.ACTIVE
+        : undefined;
+
+    const linkedUser = nextUserStatus
+      ? await UserModel.findOneAndUpdate(
+          { $or: [{ _id: member._id }, { email: member.email.toLowerCase() }] },
+          { $set: { status: nextUserStatus } }
+        )
+      : await UserModel.findOne({ $or: [{ _id: member._id }, { email: member.email.toLowerCase() }] });
+
+    if (linkedUser) {
+      await notifyMember({
+        userId: linkedUser._id,
+        eventType: normalized === 'SUSPENDED' || normalized === 'BLOCKED' ? 'ACCOUNT_SUSPENDED' : 'ACCOUNT_ACTIVATED',
+        title: normalized === 'SUSPENDED' || normalized === 'BLOCKED' ? 'Account Suspended' : 'Account Status Updated',
+        message:
+          normalized === 'SUSPENDED' || normalized === 'BLOCKED'
+            ? `Your account has been ${normalized.toLowerCase()}${reason ? `: ${reason}` : '.'}`
+            : `Your account status has been updated to ${normalized}.`,
+        link: '/kyc-pending',
+        priority: 'HIGH'
+      });
+    }
+
+    await logAdminAction(req, `MEMBER_STATUS_${normalized}`, 'Member', id, { reason });
+    res.json({ success: true, message: `Member status updated to ${normalized}`, data: member });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

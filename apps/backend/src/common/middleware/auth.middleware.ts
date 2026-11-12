@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '../../config';
 import { AppError } from '../errors/app-error';
 import { JWTPayload, UserRole } from '@fic/shared-types';
+import { evaluateMemberActivationAccess } from '../../modules/kyc/kyc-status.helpers';
 
 export interface AuthenticatedRequest extends Request {
   user?: JWTPayload;
@@ -38,3 +39,28 @@ export const requireRoles = (...roles: UserRole[]) => {
   };
 };
 
+/**
+ * Strict backend portal access guard:
+ * Validates live database state for account activation, KYC approval,
+ * no unresolved document reupload/rejection flags, and active membership/payment.
+ */
+export const requireActiveVerifiedMember = async (
+  req: AuthenticatedRequest,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    if (!req.user?.userId) {
+      return next(new AppError('Authentication required.', 401, 'UNAUTHORIZED'));
+    }
+
+    const evaluation = await evaluateMemberActivationAccess(req.user.userId);
+    if (!evaluation.canAccessDashboard) {
+      return next(new AppError(evaluation.denyMessage, evaluation.denyStatus, evaluation.denyCode));
+    }
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+};

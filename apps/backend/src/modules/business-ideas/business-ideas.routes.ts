@@ -1,13 +1,13 @@
 import { Router, Response, NextFunction } from 'express';
 import { BusinessIdeaModel } from './business-ideas.model';
-import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireActiveVerifiedMember, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { UserRole } from '@fic/shared-types';
 import { AppError } from '../../common/errors/app-error';
 
 export const businessIdeasRouter = Router();
 
 // Submit a business idea for FIC development & mentoring
-businessIdeasRouter.post('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+businessIdeasRouter.post('/', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -60,7 +60,7 @@ businessIdeasRouter.post('/', authenticate, async (req: AuthenticatedRequest, re
 });
 
 // Submit additional information requested by FIC
-businessIdeasRouter.put('/:id/additional-info', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+businessIdeasRouter.put('/:id/additional-info', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -109,7 +109,7 @@ businessIdeasRouter.put('/:id/additional-info', authenticate, async (req: Authen
 });
 
 // Get own submitted business ideas
-businessIdeasRouter.get('/me', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+businessIdeasRouter.get('/me', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 

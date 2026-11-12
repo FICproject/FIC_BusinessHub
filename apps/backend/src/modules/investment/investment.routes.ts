@@ -11,7 +11,7 @@ import { MemberModel } from '../admin/models/Member';
 import { UserModel } from '../users/users.model';
 import { MeetingModel } from '../admin/models/Meeting';
 import { getOrCreateMemberWallet } from '../admin/controllers/funding.controller';
-import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireActiveVerifiedMember, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
 import { DocumentAssetModel } from '../documents/documents.model';
 import { UserRole } from '@fic/shared-types';
@@ -58,7 +58,7 @@ async function resolveOwnedInvestmentDocuments(userId: string, docs: any[], enti
 // ========================================================
 
 // Submit a new funding request (Synchronizes directly with Admin Funding Desk)
-investmentRouter.post('/funding', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.post('/funding', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -154,7 +154,7 @@ investmentRouter.post('/funding', authenticate, async (req: AuthenticatedRequest
 });
 
 // Get member's own funding requests
-investmentRouter.get('/funding/me', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.get('/funding/me', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -169,7 +169,7 @@ investmentRouter.get('/funding/me', authenticate, async (req: AuthenticatedReque
 });
 
 // Get single funding request
-investmentRouter.get('/funding/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.get('/funding/:id', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -196,7 +196,7 @@ investmentRouter.get('/funding/:id', authenticate, async (req: AuthenticatedRequ
 // ========================================================
 
 // Submit a new investor profile
-investmentRouter.post('/investor', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.post('/investor', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -264,7 +264,7 @@ investmentRouter.post('/investor', authenticate, async (req: AuthenticatedReques
 });
 
 // Get member's own investor profiles
-investmentRouter.get('/investor/me', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.get('/investor/me', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -279,7 +279,7 @@ investmentRouter.get('/investor/me', authenticate, async (req: AuthenticatedRequ
 });
 
 // Get single investor profile
-investmentRouter.get('/investor/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.get('/investor/:id', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -304,7 +304,7 @@ investmentRouter.get('/investor/:id', authenticate, async (req: AuthenticatedReq
 // ========================================================
 // 3. UNIFIED MEMBER STATUS & DEAL REQUESTS ENDPOINT
 // ========================================================
-investmentRouter.get('/me', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.get('/me', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -494,7 +494,7 @@ investmentRouter.get('/pools', async (_req, res: Response, next: NextFunction) =
 });
 
 // GET /api/v1/investment/my-investments - List user's investments & payout status
-investmentRouter.get('/my-investments', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.get('/my-investments', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -537,7 +537,7 @@ investmentRouter.get('/my-investments', authenticate, async (req: AuthenticatedR
 });
 
 // POST /api/v1/investment/pools/:id/invest - Invest in a community pool
-investmentRouter.post('/pools/:id/invest', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.post('/pools/:id/invest', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -641,7 +641,7 @@ investmentRouter.post('/pools/:id/invest', authenticate, async (req: Authenticat
 });
 
 // GET /api/v1/investment/my-meetings or /api/v1/meetings (direct mount)
-investmentRouter.get(['/my-meetings', '/'], authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.get(['/my-meetings', '/'], authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -663,7 +663,7 @@ investmentRouter.get(['/my-meetings', '/'], authenticate, async (req: Authentica
 });
 
 // POST /api/v1/investment/my-meetings or /api/v1/meetings/schedule (Direct user consultation booking)
-investmentRouter.post(['/my-meetings', '/schedule', '/book'], authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.post(['/my-meetings', '/schedule', '/book'], authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -743,7 +743,7 @@ investmentRouter.post(['/my-meetings', '/schedule', '/book'], authenticate, asyn
 // ========================================================
 // 6. LEGACY ROUTE FALLBACK
 // ========================================================
-investmentRouter.post('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+investmentRouter.post('/', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 

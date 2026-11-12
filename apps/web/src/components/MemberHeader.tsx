@@ -7,6 +7,9 @@ import {
   getUserNotifications,
   markNotificationAsRead,
   markAllNotificationsAsRead,
+  fetchMemberNotificationsStrict,
+  markMemberNotificationReadStrict,
+  markAllMemberNotificationsReadStrict,
   IWalletNotification
 } from '../services/api';
 import { getRoleNavigation } from '../services/dashboardConfig';
@@ -44,9 +47,27 @@ export const MemberHeader: React.FC = () => {
     return name.slice(0, 2).toUpperCase();
   };
 
-  const reloadNotifications = () => {
-    const list = getUserNotifications(userId);
-    setNotifications(list);
+  const reloadNotifications = async () => {
+    const localList = getUserNotifications(userId);
+    try {
+      const remote = await fetchMemberNotificationsStrict();
+      const mappedRemote = (remote.notifications || []).map((n: any) => ({
+        id: n.id,
+        userId,
+        type: n.type || n.eventType || 'KYC_UPDATE',
+        title: n.title,
+        message: n.message,
+        isRead: Boolean(n.isRead),
+        createdAt: n.createdAt
+      })) as IWalletNotification[];
+      const seen = new Set(mappedRemote.map((n) => n.id));
+      const merged = [...mappedRemote, ...localList.filter((l) => !seen.has(l.id))].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setNotifications(merged);
+    } catch {
+      setNotifications(localList);
+    }
   };
 
   useEffect(() => {
@@ -115,14 +136,16 @@ export const MemberHeader: React.FC = () => {
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
     markAllNotificationsAsRead(userId);
+    await markAllMemberNotificationsReadStrict();
     reloadNotifications();
   };
 
-  const handleMarkSingleRead = (id: string, e: React.MouseEvent) => {
+  const handleMarkSingleRead = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     markNotificationAsRead(userId, id);
+    await markMemberNotificationReadStrict(id);
     reloadNotifications();
   };
 

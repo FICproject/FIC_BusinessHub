@@ -10,76 +10,10 @@ import { AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { MemberModel } from '../admin/models/Member';
 import { KycSubmissionModel as AdminKycSubmissionModel } from '../admin/models/KycSubmission';
 import { KYCSubmissionModel } from '../kyc/kyc.model';
+import { evaluateMemberActivationAccess, resolveUserKycSnapshot } from '../kyc/kyc-status.helpers';
+import { notifyAdmins, notifyMember } from '../notifications/notifications.service';
 
-export async function resolveUserKycSnapshot(user: {
-  _id: any;
-  email?: string;
-  isKycApproved?: boolean;
-}) {
-  const email = user.email?.toLowerCase();
-  const [adminSub, customerSub, memberRecord] = await Promise.all([
-    AdminKycSubmissionModel.findOne({
-      $or: [{ memberId: user._id }, ...(email ? [{ memberEmail: email }] : [])]
-    })
-      .sort({ updatedAt: -1, submittedAt: -1 })
-      .lean() as Promise<any>,
-    KYCSubmissionModel.findOne({ userId: user._id })
-      .sort({ updatedAt: -1 })
-      .lean() as Promise<any>,
-    MemberModel.findOne({
-      $or: [{ _id: user._id }, ...(email ? [{ email }] : [])]
-    }).lean() as Promise<any>
-  ]);
-
-  let kycStatus = 'NOT_SUBMITTED';
-  let rejectionReason: string | undefined;
-  let reviewerNotes: string | undefined;
-  let reviewedAt: Date | string | undefined;
-  let submittedAt: Date | string | undefined;
-
-  if (adminSub?.status) {
-    kycStatus = adminSub.status === 'RESUBMIT_REQUIRED' ? 'RESUBMISSION_REQUESTED' : String(adminSub.status);
-    rejectionReason = adminSub.rejectionReason || customerSub?.rejectionReason || undefined;
-    reviewerNotes = adminSub.reviewerNotes || undefined;
-    reviewedAt = adminSub.verifiedAt || adminSub.updatedAt || customerSub?.reviewedAt || undefined;
-    submittedAt = adminSub.submittedAt || customerSub?.createdAt || undefined;
-  } else if (customerSub?.status) {
-    const raw = String(customerSub.status);
-    if (raw === 'NOT_SUBMITTED' && memberRecord?.kycStatus && memberRecord.kycStatus !== 'NOT_SUBMITTED') {
-      kycStatus =
-        memberRecord.kycStatus === 'RESUBMIT_REQUIRED'
-          ? 'RESUBMISSION_REQUESTED'
-          : String(memberRecord.kycStatus);
-    } else {
-      kycStatus =
-        raw === 'PENDING'
-          ? 'SUBMITTED'
-          : raw === 'RESUBMIT_REQUIRED'
-          ? 'RESUBMISSION_REQUESTED'
-          : raw;
-    }
-    rejectionReason = customerSub.rejectionReason || undefined;
-    reviewedAt = customerSub.reviewedAt || undefined;
-    submittedAt = customerSub.createdAt || undefined;
-  } else if (memberRecord?.kycStatus) {
-    kycStatus =
-      memberRecord.kycStatus === 'RESUBMIT_REQUIRED'
-        ? 'RESUBMISSION_REQUESTED'
-        : String(memberRecord.kycStatus);
-    submittedAt = memberRecord.registeredAt || undefined;
-  } else if (user.isKycApproved) {
-    kycStatus = 'APPROVED';
-  }
-
-  return {
-    kycStatus,
-    isKycApproved: kycStatus === 'APPROVED',
-    rejectionReason,
-    reviewerNotes,
-    reviewedAt,
-    submittedAt
-  };
-}
+export { resolveUserKycSnapshot };
 
 export const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -266,6 +200,49 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         },
         { upsert: true, new: true }
       );
+
+      await AdminKycSubmissionModel.findOneAndUpdate(
+        { $or: [{ memberId: newUser._id }, { memberEmail: newUser.email.toLowerCase() }] },
+        {
+          $setOnInsert: {
+            status: 'NOT_SUBMITTED',
+            documents: [],
+            submittedAt: new Date()
+          },
+          $set: {
+            memberId: newUser._id,
+            memberName: newUser.fullName,
+            memberEmail: newUser.email.toLowerCase(),
+            memberPhone: newUser.phoneNumber,
+            memberDob: newUser.dob,
+            subCategory: resolvedSubcategory,
+            address: validatedAddress,
+            dynamicProfile: dynamicProfile || {},
+            categoryId: newUser.primaryCategoryId || new mongoose.Types.ObjectId(),
+            categoryName: newUser.primaryCategoryName || 'General Business'
+          }
+        },
+        { upsert: true, new: true }
+      );
+
+      await Promise.allSettled([
+        notifyAdmins({
+          eventType: 'NEW_MEMBER_REGISTERED',
+          title: 'New Member Registered',
+          message: `${newUser.fullName} (${newUser.email}) completed registration and is awaiting KYC verification.`,
+          link: '/kyc',
+          priority: 'HIGH',
+          metadata: { memberId: newUser._id.toString(), memberEmail: newUser.email }
+        }),
+        notifyMember({
+          userId: newUser._id,
+          eventType: 'REGISTRATION_SUBMITTED',
+          title: 'Registration Submitted',
+          message: 'Your registration has been submitted successfully. Upload or verify your KYC documents for Admin approval.',
+          link: '/kyc-pending',
+          priority: 'MEDIUM'
+        })
+      ]);
     } catch (adminSyncErr) {
       console.warn('Admin member sync warning:', adminSyncErr);
     }
@@ -389,8 +366,20 @@ export const register = async (req: Request, res: Response, next: NextFunction):
           subcategories: [newUser.subCategory].filter(Boolean),
           address: newUser.address,
           referralCode: newUser.referralCode,
+          status: newUser.status,
+          kycStatus: 'NOT_SUBMITTED',
           isKycApproved: newUser.isKycApproved,
-          isMembershipActive: newUser.isMembershipActive
+          isMembershipActive: newUser.isMembershipActive,
+          canAccessDashboard: false,
+          activationChecks: {
+            accountActive: true,
+            isSuspended: false,
+            kycApproved: false,
+            kycStatus: 'NOT_SUBMITTED',
+            membershipActive: false,
+            paymentStatus: 'PENDING',
+            hasReuploadRequiredDocs: false
+          }
         }
       }
     });
@@ -427,7 +416,11 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
       throw new AppError('Your account has been deactivated or suspended. Please contact FIC support.', 403, 'ACCOUNT_INACTIVE');
     }
 
-    const kycSnapshot = await resolveUserKycSnapshot(user);
+    const activation = await evaluateMemberActivationAccess(user._id.toString());
+    if (activation.checks.isSuspended) {
+      throw new AppError('Your account has been suspended or deactivated. Please contact FIC support.', 403, 'ACCOUNT_INACTIVE');
+    }
+    const kycSnapshot = activation.kycSnapshot || (await resolveUserKycSnapshot(user));
 
     const payload: JWTPayload = {
       userId: user._id.toString(),
@@ -467,8 +460,10 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
           rejectionReason: kycSnapshot.rejectionReason,
           reviewerNotes: kycSnapshot.reviewerNotes,
           reviewedAt: kycSnapshot.reviewedAt,
-          submittedAt: kycSnapshot.submittedAt,
-          isMembershipActive: user.isMembershipActive
+        submittedAt: kycSnapshot.submittedAt,
+          isMembershipActive: activation.checks.membershipActive,
+          canAccessDashboard: activation.canAccessDashboard,
+          activationChecks: activation.checks
         }
       }
     });
@@ -550,7 +545,8 @@ export const getMe = async (req: AuthenticatedRequest, res: Response, next: Next
       throw new AppError('User not found.', 404, 'USER_NOT_FOUND');
     }
 
-    const kycSnapshot = await resolveUserKycSnapshot(user);
+    const activation = await evaluateMemberActivationAccess(user._id.toString());
+    const kycSnapshot = activation.kycSnapshot || (await resolveUserKycSnapshot(user));
     const userObj = user.toObject();
 
     res.status(200).json({

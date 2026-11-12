@@ -1,5 +1,44 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { KycDocumentItem, KycStatus } from '@fic/shared-types';
+import { KycStatus } from '@fic/shared-types';
+
+export interface IKycDocumentVersionEntry {
+  version: number;
+  documentId?: string;
+  fileUrl: string;
+  fileName: string;
+  originalMimeType?: string;
+  originalFileSize?: number;
+  checksum?: string;
+  uploadedAt: string;
+  status: string;
+  reason?: string;
+  reviewedAt?: Date;
+  reviewedByName?: string;
+}
+
+export interface IKycDocumentRecord {
+  documentId?: string;
+  docKey: string;
+  title: string;
+  fileUrl: string;
+  fileName: string;
+  originalMimeType?: string;
+  originalFileSize?: number;
+  checksum?: string;
+  hasOptimizedPreview?: boolean;
+  hasThumbnail?: boolean;
+  documentNumber?: string;
+  uploadedAt: string;
+  status: string;
+  rejectionReason?: string;
+  adminReviewReason?: string;
+  version?: number;
+  previousVersionReference?: string;
+  reviewedAt?: Date;
+  reviewedBy?: mongoose.Types.ObjectId;
+  reviewedByName?: string;
+  versionHistory?: IKycDocumentVersionEntry[];
+}
 
 export interface IKycSubmission extends Document {
   memberId: mongoose.Types.ObjectId;
@@ -31,28 +70,32 @@ export interface IKycSubmission extends Document {
   categoryId: mongoose.Types.ObjectId;
   categoryName: string;
   status: KycStatus;
-  documents: Array<{
-    documentId?: string;
-    docKey: string;
-    title: string;
-    fileUrl: string;
-    fileName: string;
-    originalMimeType?: string;
-    originalFileSize?: number;
-    checksum?: string;
-    hasOptimizedPreview?: boolean;
-    hasThumbnail?: boolean;
-    documentNumber?: string;
-    uploadedAt: string;
-    status: string;
-    rejectionReason?: string;
-  }>;
+  documents: IKycDocumentRecord[];
   assignedTo?: mongoose.Types.ObjectId;
   reviewerNotes?: string;
   rejectionReason?: string;
   submittedAt: Date;
+  lastResubmittedAt?: Date;
   verifiedAt?: Date;
 }
+
+const KycDocumentVersionSchema = new Schema(
+  {
+    version: { type: Number, required: true },
+    documentId: { type: String },
+    fileUrl: { type: String, required: true },
+    fileName: { type: String, required: true },
+    originalMimeType: { type: String },
+    originalFileSize: { type: Number },
+    checksum: { type: String },
+    uploadedAt: { type: String, required: true },
+    status: { type: String, required: true },
+    reason: { type: String },
+    reviewedAt: { type: Date },
+    reviewedByName: { type: String },
+  },
+  { _id: false }
+);
 
 const KycDocumentItemSchema = new Schema(
   {
@@ -68,17 +111,28 @@ const KycDocumentItemSchema = new Schema(
     hasThumbnail: { type: Boolean },
     documentNumber: { type: String },
     uploadedAt: { type: String, required: true },
-    status: { type: String, enum: ['PENDING', 'VERIFIED', 'REJECTED'], default: 'PENDING' },
+    status: {
+      type: String,
+      enum: ['PENDING_REVIEW', 'PENDING', 'APPROVED', 'VERIFIED', 'REUPLOAD_REQUIRED', 'REJECTED'],
+      default: 'PENDING_REVIEW',
+    },
     rejectionReason: { type: String },
+    adminReviewReason: { type: String },
+    version: { type: Number, default: 1 },
+    previousVersionReference: { type: String },
+    reviewedAt: { type: Date },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
+    reviewedByName: { type: String },
+    versionHistory: { type: [KycDocumentVersionSchema], default: [] },
   },
   { _id: false }
 );
 
 const KycSubmissionSchema = new Schema<IKycSubmission>(
   {
-    memberId: { type: Schema.Types.ObjectId, ref: 'Member', required: true },
+    memberId: { type: Schema.Types.ObjectId, ref: 'Member', required: true, index: true },
     memberName: { type: String, required: true },
-    memberEmail: { type: String, required: true },
+    memberEmail: { type: String, required: true, lowercase: true, trim: true, index: true },
     memberPhone: { type: String },
     memberDob: { type: String },
     subCategory: { type: String },
@@ -115,9 +169,14 @@ const KycSubmissionSchema = new Schema<IKycSubmission>(
     reviewerNotes: { type: String },
     rejectionReason: { type: String },
     submittedAt: { type: Date, default: Date.now },
+    lastResubmittedAt: { type: Date },
     verifiedAt: { type: Date },
   },
   { timestamps: true }
 );
 
-export const KycSubmissionModel = (mongoose.models.KycSubmission as mongoose.Model<IKycSubmission>) || mongoose.model<IKycSubmission>('KycSubmission', KycSubmissionSchema);
+KycSubmissionSchema.index({ status: 1, submittedAt: -1 });
+
+export const KycSubmissionModel =
+  (mongoose.models.KycSubmission as mongoose.Model<IKycSubmission>) ||
+  mongoose.model<IKycSubmission>('KycSubmission', KycSubmissionSchema);

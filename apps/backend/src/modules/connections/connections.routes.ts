@@ -5,14 +5,14 @@ import { ServiceListingModel } from '../services/services.model';
 import { FicRequestModel } from '../admin/models/FicRequest';
 import { MemberModel } from '../admin/models/Member';
 import { UserModel } from '../users/users.model';
-import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireActiveVerifiedMember, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
 import { ServiceRequestStatus } from '@fic/shared-types';
 
 export const connectionsRouter = Router();
 
 // Member submits a service request routed to FIC
-connectionsRouter.post('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+connectionsRouter.post('/', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -128,7 +128,7 @@ connectionsRouter.post('/', authenticate, async (req: AuthenticatedRequest, res:
 });
 
 // Member views all their submitted requests (combines FicRequests & ServiceRequests)
-connectionsRouter.get('/me', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 

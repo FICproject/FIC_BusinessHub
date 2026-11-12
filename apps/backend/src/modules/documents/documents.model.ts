@@ -4,6 +4,7 @@ export type DocumentCategory =
   | 'KYC_IDENTITY'
   | 'KYC_BUSINESS'
   | 'KYC_BANK'
+  | 'KYC_RESUBMISSION'
   | 'BUSINESS_CERTIFICATE'
   | 'FUNDING_PITCH'
   | 'INVESTMENT_DOC'
@@ -13,7 +14,9 @@ export type DocumentCategory =
 export type DocumentStatus =
   | 'UPLOADED'
   | 'PENDING_REVIEW'
+  | 'APPROVED'
   | 'VERIFIED'
+  | 'REUPLOAD_REQUIRED'
   | 'REJECTED'
   | 'ARCHIVED';
 
@@ -42,6 +45,14 @@ export interface IDocumentAsset extends Document {
   documentLabel: string;
   documentNumber?: string;
   documentStatus: DocumentStatus;
+  version: number;
+  isLatestVersion: boolean;
+  previousVersionId?: string;
+  previousVersionReference?: string;
+  adminReviewReason?: string;
+  reviewedBy?: mongoose.Types.ObjectId;
+  reviewedByName?: string;
+  reviewedAt?: Date;
   accessPermissions: {
     visibility: 'PRIVATE';
     ownerCanView: boolean;
@@ -87,6 +98,7 @@ const DocumentAssetSchema = new Schema<IDocumentAsset>(
         'KYC_IDENTITY',
         'KYC_BUSINESS',
         'KYC_BANK',
+        'KYC_RESUBMISSION',
         'BUSINESS_CERTIFICATE',
         'FUNDING_PITCH',
         'INVESTMENT_DOC',
@@ -99,10 +111,26 @@ const DocumentAssetSchema = new Schema<IDocumentAsset>(
     documentNumber: { type: String, trim: true },
     documentStatus: {
       type: String,
-      enum: ['UPLOADED', 'PENDING_REVIEW', 'VERIFIED', 'REJECTED', 'ARCHIVED'],
+      enum: [
+        'UPLOADED',
+        'PENDING_REVIEW',
+        'APPROVED',
+        'VERIFIED',
+        'REUPLOAD_REQUIRED',
+        'REJECTED',
+        'ARCHIVED'
+      ],
       default: 'UPLOADED',
       index: true
     },
+    version: { type: Number, default: 1, min: 1 },
+    isLatestVersion: { type: Boolean, default: true, index: true },
+    previousVersionId: { type: String, index: true },
+    previousVersionReference: { type: String },
+    adminReviewReason: { type: String, trim: true },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
+    reviewedByName: { type: String, trim: true },
+    reviewedAt: { type: Date },
     accessPermissions: {
       visibility: { type: String, enum: ['PRIVATE'], default: 'PRIVATE' },
       ownerCanView: { type: Boolean, default: true },
@@ -116,6 +144,7 @@ const DocumentAssetSchema = new Schema<IDocumentAsset>(
 );
 
 DocumentAssetSchema.index({ ownerId: 1, entityType: 1, createdAt: -1 });
+DocumentAssetSchema.index({ ownerId: 1, entityType: 1, isLatestVersion: 1, createdAt: -1 });
 
 export const DocumentAssetModel =
   (mongoose.models.DocumentAsset as mongoose.Model<IDocumentAsset>) ||
@@ -143,6 +172,13 @@ export interface SafeDocumentDto {
   documentLabel: string;
   documentNumber?: string;
   documentStatus: DocumentStatus;
+  version: number;
+  isLatestVersion: boolean;
+  previousVersionId?: string;
+  previousVersionReference?: string;
+  adminReviewReason?: string;
+  reviewedByName?: string;
+  reviewedAt?: Date;
   viewUrl: string;
   thumbnailUrl?: string;
   downloadUrl: string;
@@ -178,6 +214,13 @@ export function toSafeDocumentDto(doc: IDocumentAsset, apiPrefix: 'member' | 'ad
     documentLabel: doc.documentLabel,
     documentNumber: doc.documentNumber,
     documentStatus: doc.documentStatus,
+    version: doc.version || 1,
+    isLatestVersion: doc.isLatestVersion !== false,
+    previousVersionId: doc.previousVersionId,
+    previousVersionReference: doc.previousVersionReference || doc.previousVersionId,
+    adminReviewReason: doc.adminReviewReason,
+    reviewedByName: doc.reviewedByName,
+    reviewedAt: doc.reviewedAt,
     viewUrl: `${basePath}/view`,
     thumbnailUrl: doc.thumbnailStorageKey ? `${basePath}/view?variant=thumbnail` : undefined,
     downloadUrl: `${basePath}/download`,
@@ -185,4 +228,3 @@ export function toSafeDocumentDto(doc: IDocumentAsset, apiPrefix: 'member' | 'ad
     updatedAt: doc.updatedAt
   };
 }
-

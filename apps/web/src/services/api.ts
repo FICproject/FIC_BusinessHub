@@ -2935,3 +2935,63 @@ export const submitKycApplicationStrict = async (
   }
   return payload.data;
 };
+
+
+export const reuploadSingleKycDocumentStrict = async (
+  docRef: string,
+  file: File,
+  documentNumber?: string
+): Promise<any> => {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required to reupload document.');
+  validateClientFileBeforeUpload(file);
+
+  const formData = new FormData();
+  formData.append('file', file);
+  if (documentNumber && documentNumber.trim()) {
+    formData.append('documentNumber', documentNumber.trim());
+  }
+
+  const response = await fetch(`${BASE_URL}/kyc/documents/${encodeURIComponent(docRef)}/reupload`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload?.success) {
+    throw new Error(payload?.message || payload?.error || `Document reupload failed (HTTP ${response.status})`);
+  }
+  return payload.data;
+};
+
+export const fetchMemberNotificationsStrict = async (): Promise<{ notifications: any[]; unreadCount: number }> => {
+  const token = getAuthToken();
+  if (!token) return { notifications: [], unreadCount: 0 };
+  const response = await fetch(`${BASE_URL}/notifications`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) return { notifications: [], unreadCount: 0 };
+  const payload = await response.json().catch(() => ({}));
+  return {
+    notifications: Array.isArray(payload?.data?.notifications) ? payload.data.notifications : [],
+    unreadCount: Number(payload?.data?.unreadCount || 0)
+  };
+};
+
+export const markMemberNotificationReadStrict = async (id: string): Promise<void> => {
+  const token = getAuthToken();
+  if (!token) return;
+  await fetch(`${BASE_URL}/notifications/${encodeURIComponent(id)}/read`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` }
+  }).catch(() => {});
+};
+
+export const markAllMemberNotificationsReadStrict = async (): Promise<void> => {
+  const token = getAuthToken();
+  if (!token) return;
+  await fetch(`${BASE_URL}/notifications/read-all`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` }
+  }).catch(() => {});
+};

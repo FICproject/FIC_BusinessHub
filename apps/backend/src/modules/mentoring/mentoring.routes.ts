@@ -3,7 +3,7 @@ import { isValidObjectId } from 'mongoose';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
-import { authenticate, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireActiveVerifiedMember, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { TeachingServiceModel } from './teaching-service.model';
 import { LearningVideoModel } from './learning-video.model';
 import { MentorshipRequestModel } from './mentorship.model';
@@ -156,7 +156,7 @@ mentoringRouter.get('/mentors', async (_req, res: Response, next: NextFunction) 
 // ==========================================
 
 // 3.1 Get current mentor's teaching services
-mentoringRouter.get('/teaching-services/my', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.get('/teaching-services/my', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -212,7 +212,7 @@ mentoringRouter.get('/teaching-services/public', async (req, res: Response, next
 });
 
 // 3.3 Create a teaching service
-mentoringRouter.post('/teaching-services', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.post('/teaching-services', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -275,7 +275,7 @@ mentoringRouter.post('/teaching-services', authenticate, async (req: Authenticat
 });
 
 // 3.4 Update teaching service
-mentoringRouter.put('/teaching-services/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.put('/teaching-services/:id', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     const { id } = req.params;
@@ -300,7 +300,7 @@ mentoringRouter.put('/teaching-services/:id', authenticate, async (req: Authenti
 });
 
 // 3.5 Delete teaching service
-mentoringRouter.delete('/teaching-services/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.delete('/teaching-services/:id', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     const { id } = req.params;
@@ -325,7 +325,7 @@ mentoringRouter.delete('/teaching-services/:id', authenticate, async (req: Authe
 // ==========================================
 
 // 4.1 Get mentor's learning videos
-mentoringRouter.get('/videos/my', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.get('/videos/my', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -387,7 +387,7 @@ mentoringRouter.get('/videos/public', async (req, res: Response, next: NextFunct
 });
 
 // 4.3 Upload raw video file (multipart)
-mentoringRouter.post('/videos/upload-file', authenticate, (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.post('/videos/upload-file', authenticate, requireActiveVerifiedMember, (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   videoUpload.single('video')(req, res, (err) => {
     if (err) {
       res.status(400).json({ success: false, message: err.message || 'Video upload error' });
@@ -416,7 +416,7 @@ mentoringRouter.post('/videos/upload-file', authenticate, (req: AuthenticatedReq
 });
 
 // 4.3b Upload auto-captured thumbnail (file or base64)
-mentoringRouter.post('/videos/upload-thumbnail', authenticate, (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.post('/videos/upload-thumbnail', authenticate, requireActiveVerifiedMember, (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   thumbnailUpload.single('thumbnail')(req, res, (err) => {
     if (err) {
       res.status(400).json({ success: false, message: err.message || 'Thumbnail upload error' });
@@ -461,7 +461,7 @@ mentoringRouter.post('/videos/upload-thumbnail', authenticate, (req: Authenticat
 });
 
 // 4.3c Publish a learning video masterclass
-mentoringRouter.post('/videos', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.post('/videos', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -553,7 +553,7 @@ mentoringRouter.post('/videos', authenticate, async (req: AuthenticatedRequest, 
 });
 
 // 4.4 Update learning video
-mentoringRouter.put('/videos/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.put('/videos/:id', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     const { id } = req.params;
@@ -584,7 +584,7 @@ mentoringRouter.put('/videos/:id', authenticate, async (req: AuthenticatedReques
 });
 
 // 4.5 Delete learning video
-mentoringRouter.delete('/videos/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.delete('/videos/:id', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     const { id } = req.params;
@@ -633,7 +633,7 @@ mentoringRouter.patch('/videos/:id/views', async (req, res: Response, next: Next
 // ==========================================
 
 // 5.1 Student: Create a mentorship request (Book a Mentor)
-mentoringRouter.post('/requests', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.post('/requests', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -694,7 +694,7 @@ mentoringRouter.post('/requests', authenticate, async (req: AuthenticatedRequest
 });
 
 // 5.2 Student: Get my mentorship requests
-mentoringRouter.get('/requests/student', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.get('/requests/student', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -777,7 +777,7 @@ mentoringRouter.get('/requests/student', authenticate, async (req: Authenticated
 });
 
 // 5.3 Mentor: Get incoming mentorship requests
-mentoringRouter.get('/requests/mentor', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.get('/requests/mentor', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -875,7 +875,7 @@ mentoringRouter.get('/requests/mentor', authenticate, async (req: AuthenticatedR
 });
 
 // 5.4 Mentor: Accept request
-mentoringRouter.patch('/requests/:id/accept', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.patch('/requests/:id/accept', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     const { id } = req.params;
@@ -908,7 +908,7 @@ mentoringRouter.patch('/requests/:id/accept', authenticate, async (req: Authenti
 });
 
 // 5.5 Mentor: Reject request
-mentoringRouter.patch('/requests/:id/reject', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.patch('/requests/:id/reject', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     const { id } = req.params;
@@ -936,7 +936,7 @@ mentoringRouter.patch('/requests/:id/reject', authenticate, async (req: Authenti
 });
 
 // 5.6 Mentor: Propose Reschedule
-mentoringRouter.patch('/requests/:id/reschedule', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.patch('/requests/:id/reschedule', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     const { id } = req.params;
@@ -971,7 +971,7 @@ mentoringRouter.patch('/requests/:id/reschedule', authenticate, async (req: Auth
 });
 
 // 5.7 Student: Respond to Reschedule Proposal
-mentoringRouter.patch('/requests/:id/reschedule-response', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.patch('/requests/:id/reschedule-response', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     const { id } = req.params;
@@ -1009,7 +1009,7 @@ mentoringRouter.patch('/requests/:id/reschedule-response', authenticate, async (
 });
 
 // 5.8 Mentor: Complete Mentorship Session
-mentoringRouter.patch('/requests/:id/complete', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.patch('/requests/:id/complete', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     const { id } = req.params;
@@ -1041,7 +1041,7 @@ mentoringRouter.patch('/requests/:id/complete', authenticate, async (req: Authen
 });
 
 // 5.9 Cancel Mentorship Request (by Student or Mentor)
-mentoringRouter.patch('/requests/:id/cancel', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+mentoringRouter.patch('/requests/:id/cancel', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     const { id } = req.params;

@@ -4,6 +4,7 @@ import { KYCStatus } from '@fic/shared-types';
 export interface IKYCDocumentItem {
   documentId?: string;
   documentType: string;
+  title?: string;
   documentNumber?: string;
   originalFileName?: string;
   originalMimeType?: string;
@@ -13,8 +14,24 @@ export interface IKYCDocumentItem {
   hasThumbnail?: boolean;
   fileUrl: string;
   uploadedAt: Date;
-  verificationStatus: KYCStatus;
+  verificationStatus: string;
   remarks?: string;
+  adminReviewReason?: string;
+  version?: number;
+  previousVersionReference?: string;
+  reviewedAt?: Date;
+  reviewedByName?: string;
+  versionHistory?: Array<{
+    version: number;
+    documentId?: string;
+    fileUrl: string;
+    fileName: string;
+    uploadedAt: string;
+    status: string;
+    reason?: string;
+    reviewedAt?: Date;
+    reviewedByName?: string;
+  }>;
 }
 
 export interface IKYCSubmissionDocument extends Document {
@@ -29,9 +46,25 @@ export interface IKYCSubmissionDocument extends Document {
   updatedAt: Date;
 }
 
+const KYCDocumentVersionSchema = new Schema(
+  {
+    version: { type: Number, required: true },
+    documentId: { type: String },
+    fileUrl: { type: String, required: true },
+    fileName: { type: String, required: true },
+    uploadedAt: { type: String, required: true },
+    status: { type: String, required: true },
+    reason: { type: String },
+    reviewedAt: { type: Date },
+    reviewedByName: { type: String }
+  },
+  { _id: false }
+);
+
 const KYCDocumentItemSchema = new Schema<IKYCDocumentItem>({
   documentId: { type: String, index: true },
   documentType: { type: String, required: true },
+  title: { type: String },
   documentNumber: { type: String },
   originalFileName: { type: String },
   originalMimeType: { type: String },
@@ -43,10 +76,21 @@ const KYCDocumentItemSchema = new Schema<IKYCDocumentItem>({
   uploadedAt: { type: Date, default: Date.now },
   verificationStatus: {
     type: String,
-    enum: Object.values(KYCStatus),
+    enum: [
+      ...Object.values(KYCStatus),
+      'PENDING_REVIEW',
+      'REUPLOAD_REQUIRED',
+      'VERIFIED'
+    ],
     default: KYCStatus.PENDING
   },
-  remarks: { type: String }
+  remarks: { type: String },
+  adminReviewReason: { type: String },
+  version: { type: Number, default: 1 },
+  previousVersionReference: { type: String },
+  reviewedAt: { type: Date },
+  reviewedByName: { type: String },
+  versionHistory: { type: [KYCDocumentVersionSchema], default: [] }
 });
 
 const KYCSubmissionSchema = new Schema<IKYCSubmissionDocument>(
@@ -66,4 +110,6 @@ const KYCSubmissionSchema = new Schema<IKYCSubmissionDocument>(
   { timestamps: true }
 );
 
-export const KYCSubmissionModel = mongoose.model<IKYCSubmissionDocument>('KYCSubmission', KYCSubmissionSchema);
+export const KYCSubmissionModel =
+  (mongoose.models.KYCSubmission as mongoose.Model<IKYCSubmissionDocument>) ||
+  mongoose.model<IKYCSubmissionDocument>('KYCSubmission', KYCSubmissionSchema);

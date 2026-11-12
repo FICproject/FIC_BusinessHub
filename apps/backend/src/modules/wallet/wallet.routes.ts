@@ -8,7 +8,7 @@ import {
   MemberBankAccountModel
 } from './wallet.model';
 import { UserModel } from '../users/users.model';
-import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireActiveVerifiedMember, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
 import {
   WalletStatus,
@@ -44,7 +44,7 @@ export const getOrCreateWallet = async (userId: string | mongoose.Types.ObjectId
 };
 
 // 1. GET /api/v1/wallet - Current authenticated member's wallet overview
-walletRouter.get('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+walletRouter.get('/', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -59,7 +59,7 @@ walletRouter.get('/', authenticate, async (req: AuthenticatedRequest, res: Respo
 });
 
 // 2. GET /api/v1/wallet/transactions - List transactions with optional type/status filters
-walletRouter.get('/transactions', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+walletRouter.get('/transactions', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -84,7 +84,7 @@ walletRouter.get('/transactions', authenticate, async (req: AuthenticatedRequest
 });
 
 // 3. POST /api/v1/wallet/add-funds - Strictly requires verified Razorpay payment signature
-walletRouter.post('/add-funds', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+walletRouter.post('/add-funds', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -122,7 +122,7 @@ walletRouter.post('/add-funds', authenticate, async (req: AuthenticatedRequest, 
 });
 
 // 4. POST /api/v1/wallet/withdraw - Request withdrawal to verified bank account
-walletRouter.post('/withdraw', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+walletRouter.post('/withdraw', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -202,7 +202,7 @@ walletRouter.post('/withdraw', authenticate, async (req: AuthenticatedRequest, r
 });
 
 // 5. GET /api/v1/wallet/bank-accounts - Get user's bank accounts
-walletRouter.get('/bank-accounts', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+walletRouter.get('/bank-accounts', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -217,7 +217,7 @@ walletRouter.get('/bank-accounts', authenticate, async (req: AuthenticatedReques
 });
 
 // 6. POST /api/v1/wallet/bank-accounts - Add or update bank account
-walletRouter.post('/bank-accounts', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+walletRouter.post('/bank-accounts', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 

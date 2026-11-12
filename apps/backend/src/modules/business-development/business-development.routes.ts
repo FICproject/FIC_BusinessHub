@@ -1,12 +1,12 @@
 import { Router, Response, NextFunction } from 'express';
 import { BusinessDevRequestModel } from './business-development.model';
-import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireActiveVerifiedMember, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { UserRole } from '@fic/shared-types';
 import { AppError } from '../../common/errors/app-error';
 
 export const businessDevRouter = Router();
 
-businessDevRouter.post('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+businessDevRouter.post('/', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -54,7 +54,7 @@ businessDevRouter.post('/', authenticate, async (req: AuthenticatedRequest, res:
 });
 
 // Submit additional information requested by FIC
-businessDevRouter.put('/:id/additional-info', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+businessDevRouter.put('/:id/additional-info', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
@@ -102,7 +102,7 @@ businessDevRouter.put('/:id/additional-info', authenticate, async (req: Authenti
   }
 });
 
-businessDevRouter.get('/me', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+businessDevRouter.get('/me', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 

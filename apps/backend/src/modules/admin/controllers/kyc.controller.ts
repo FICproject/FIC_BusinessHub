@@ -7,38 +7,26 @@ import { KYCSubmissionModel } from '../../kyc/kyc.model';
 import { DocumentAssetModel, toSafeDocumentDto } from '../../documents/documents.model';
 import { PaymentModel } from '../../payments/payments.model';
 import { AccountStatus, KYCStatus } from '@fic/shared-types';
-import { authenticateAdmin, AuthenticatedAdminRequest, logAdminAction } from '../middleware/admin-auth.middleware';
+import {
+  authenticateAdmin,
+  AuthenticatedAdminRequest,
+  requirePermission,
+  logAdminAction
+} from '../middleware/admin-auth.middleware';
+import { buildNormalizedKycDocuments, normalizeDocStatus } from '../../kyc/kyc-status.helpers';
+import { notifyMember } from '../../notifications/notifications.service';
 
 const router = Router();
 
 async function syncMissingKycSubmissionsFromSharedDb() {
-  // Identify members/users who have completed KYC upload, payment, or customer-side KYC submission
-  // without an Admin KycSubmission document yet, and create a single idempotent Admin entry.
-  const [existingAdminSubs, customerSubs, submittedMembers, usersWithKycDocs] = await Promise.all([
+  const [existingAdminSubs, customerSubs, members] = await Promise.all([
     KycSubmissionModel.find({
-      $or: [
-        { memberId: { $ne: null } },
-        { memberEmail: { $exists: true, $ne: '' } }
-      ]
+      $or: [{ memberId: { $ne: null } }, { memberEmail: { $exists: true, $ne: '' } }]
     })
       .select('memberId memberEmail')
       .lean(),
-    KYCSubmissionModel.find({
-      userId: { $ne: null },
-      status: { $ne: KYCStatus.NOT_SUBMITTED }
-    })
-      .sort({ updatedAt: -1 })
-      .lean(),
-    MemberModel.find({
-      $or: [
-        { kycStatus: { $in: ['SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'RESUBMISSION_REQUESTED'] } },
-        { paymentStatus: 'PAID' }
-      ]
-    }).lean(),
-    DocumentAssetModel.distinct('ownerId', {
-      entityType: 'KYC',
-      isDeleted: { $ne: true }
-    })
+    KYCSubmissionModel.find({ userId: { $ne: null } }).sort({ updatedAt: -1 }).lean(),
+    MemberModel.find({}).lean()
   ]);
 
   const coveredMemberIds = new Set<string>();
@@ -53,13 +41,18 @@ async function syncMissingKycSubmissionsFromSharedDb() {
     if (cs.userId) customerSubByUserId.set(String(cs.userId), cs);
   }
 
+  const usersWithKycDocs = await DocumentAssetModel.distinct('ownerId', {
+    entityType: 'KYC',
+    isDeleted: { $ne: true }
+  });
+
   const candidateUserIds = new Set<string>();
   for (const cs of customerSubs as any[]) {
     if (cs.userId && !coveredMemberIds.has(String(cs.userId))) {
       candidateUserIds.add(String(cs.userId));
     }
   }
-  for (const m of submittedMembers as any[]) {
+  for (const m of members as any[]) {
     const email = m.email?.toLowerCase();
     if (!coveredMemberIds.has(String(m._id)) && (!email || !coveredEmails.has(email))) {
       candidateUserIds.add(String(m._id));
@@ -73,12 +66,12 @@ async function syncMissingKycSubmissionsFromSharedDb() {
 
   if (candidateUserIds.size === 0) return;
 
-  const users = await UserModel.find({ _id: { $in: Array.from(candidateUserIds) } }).lean() as any[];
+  const users = (await UserModel.find({ _id: { $in: Array.from(candidateUserIds) } }).lean()) as any[];
   for (const user of users) {
     const email = user.email?.toLowerCase();
     if (coveredMemberIds.has(String(user._id)) || (email && coveredEmails.has(email))) continue;
 
-    const memberDoc = (submittedMembers as any[]).find(
+    const memberDoc = (members as any[]).find(
       (m) => String(m._id) === String(user._id) || (email && m.email?.toLowerCase() === email)
     );
     const customerSub = customerSubByUserId.get(String(user._id));
@@ -86,7 +79,8 @@ async function syncMissingKycSubmissionsFromSharedDb() {
       DocumentAssetModel.find({
         ownerId: user._id,
         entityType: 'KYC',
-        isDeleted: { $ne: true }
+        isDeleted: { $ne: true },
+        isLatestVersion: { $ne: false }
       })
         .sort({ createdAt: -1 })
         .lean(),
@@ -106,13 +100,15 @@ async function syncMissingKycSubmissionsFromSharedDb() {
       hasThumbnail: Boolean(a.thumbnailStorageKey),
       documentNumber: a.documentNumber || '',
       uploadedAt: (a.createdAt || new Date()).toISOString(),
-      status: a.documentStatus === 'VERIFIED' ? 'VERIFIED' : a.documentStatus === 'REJECTED' ? 'REJECTED' : 'PENDING'
+      status: normalizeDocStatus(a.documentStatus),
+      version: a.version || 1,
+      previousVersionReference: a.previousVersionReference || a.previousVersionId
     }));
 
     const docsFromSub = (customerSub?.documents || []).map((d: any, idx: number) => ({
       ...(d.documentId ? { documentId: d.documentId } : {}),
       docKey: d.documentType || `doc_${idx}`,
-      title: d.documentType || `Document ${idx + 1}`,
+      title: d.title || d.documentType || `Document ${idx + 1}`,
       fileUrl: d.documentId ? `/api/admin/documents/${d.documentId}/view` : d.fileUrl,
       fileName: d.originalFileName || d.documentType || `Document_${idx + 1}`,
       originalMimeType: d.originalMimeType,
@@ -122,11 +118,12 @@ async function syncMissingKycSubmissionsFromSharedDb() {
       hasThumbnail: d.hasThumbnail,
       documentNumber: d.documentNumber || '',
       uploadedAt: (d.uploadedAt || customerSub.createdAt || new Date()).toISOString(),
-      status: d.verificationStatus === 'APPROVED' ? 'VERIFIED' : d.verificationStatus === 'REJECTED' ? 'REJECTED' : 'PENDING'
+      status: normalizeDocStatus(d.verificationStatus),
+      version: d.version || 1
     }));
 
     const mergedDocs = docsFromAssets.length > 0 ? docsFromAssets : docsFromSub;
-    const rawState = customerSub?.status || memberDoc?.kycStatus || 'SUBMITTED';
+    const rawState = customerSub?.status || memberDoc?.kycStatus || (mergedDocs.length > 0 ? 'SUBMITTED' : 'NOT_SUBMITTED');
     const normalizedStatus =
       rawState === 'APPROVED' || user.isKycApproved
         ? 'APPROVED'
@@ -134,6 +131,8 @@ async function syncMissingKycSubmissionsFromSharedDb() {
         ? 'REJECTED'
         : rawState === 'RESUBMIT_REQUIRED' || rawState === 'RESUBMISSION_REQUESTED'
         ? 'RESUBMISSION_REQUESTED'
+        : rawState === 'NOT_SUBMITTED' && mergedDocs.length === 0
+        ? 'NOT_SUBMITTED'
         : 'SUBMITTED';
 
     if (!memberDoc) {
@@ -152,7 +151,7 @@ async function syncMissingKycSubmissionsFromSharedDb() {
             primaryCategoryName: user.primaryCategoryName || 'General Business',
             subcategories: [user.subCategory || user.primarySubcategoryName || 'Member'].filter(Boolean),
             kycStatus: normalizedStatus,
-            status: normalizedStatus === 'APPROVED' ? 'ACTIVE' : 'UNDER_REVIEW',
+            status: normalizedStatus === 'APPROVED' ? 'ACTIVE' : normalizedStatus === 'NOT_SUBMITTED' ? 'PENDING_KYC' : 'UNDER_REVIEW',
             membershipFeePaid: latestPayment ? latestPayment.amount : 0,
             paymentStatus: latestPayment ? 'PAID' : 'PENDING'
           }
@@ -201,8 +200,29 @@ async function syncMissingKycSubmissionsFromSharedDb() {
   }
 }
 
+function summarizeSubmissionDocs(docs: any[] = []) {
+  const normalizedDocs = buildNormalizedKycDocuments(docs, [], []);
+  const approvedDocsCount = normalizedDocs.filter((d) => d.status === 'APPROVED').length;
+  const reuploadRequiredDocsCount = normalizedDocs.filter((d) => d.status === 'REUPLOAD_REQUIRED').length;
+  const rejectedDocsCount = normalizedDocs.filter((d) => d.status === 'REJECTED').length;
+  const pendingDocsCount = normalizedDocs.filter((d) => d.status === 'PENDING_REVIEW').length;
+  const allDocsApproved = normalizedDocs.length > 0 && approvedDocsCount === normalizedDocs.length;
+
+  return {
+    normalizedDocs,
+    docSummary: {
+      total: normalizedDocs.length,
+      approved: approvedDocsCount,
+      reuploadRequired: reuploadRequiredDocsCount,
+      rejected: rejectedDocsCount,
+      pendingReview: pendingDocsCount,
+      allDocsApproved
+    }
+  };
+}
+
 // GET /api/admin/kyc - List KYC submissions with filter
-router.get('/', authenticateAdmin, async (req, res) => {
+router.get('/', authenticateAdmin, requirePermission('KYC_VERIFY'), async (req, res) => {
   try {
     await syncMissingKycSubmissionsFromSharedDb();
 
@@ -213,14 +233,13 @@ router.get('/', authenticateAdmin, async (req, res) => {
       if (s === 'RESUBMISSION_REQUESTED') {
         filter.status = { $in: ['RESUBMISSION_REQUESTED', 'RESUBMIT_REQUIRED'] };
       } else if (s === 'SUBMITTED') {
-        filter.status = { $in: ['SUBMITTED', 'PENDING', 'UNDER_REVIEW'] };
+        filter.status = { $in: ['SUBMITTED', 'PENDING', 'UNDER_REVIEW', 'NOT_SUBMITTED'] };
       } else {
         filter.status = s;
       }
     }
     if (categoryId) filter.categoryId = categoryId;
 
-    // Filter to valid Admin KYC submissions with member reference or member name/email
     filter.$or = [
       { memberId: { $ne: null } },
       { memberEmail: { $exists: true, $ne: '' } },
@@ -228,13 +247,12 @@ router.get('/', authenticateAdmin, async (req, res) => {
     ];
 
     const submissions = await KycSubmissionModel.find(filter)
-      .populate('memberId', 'name email phone status address')
+      .populate('memberId', 'name email phone status address registeredAt paymentStatus')
       .populate('categoryId', 'name')
       .populate('assignedTo', 'name')
       .sort({ submittedAt: -1, updatedAt: -1 })
       .lean();
 
-    // Deduplicate per member/email and enrich with User fields
     const dedupMap = new Map<string, any>();
     for (const sub of submissions as any[]) {
       if (!sub.memberName && !sub.memberEmail && !sub.memberId) continue;
@@ -250,28 +268,27 @@ router.get('/', authenticateAdmin, async (req, res) => {
       Array.from(dedupMap.values()).map(async (sub: any) => {
         const normalizedStatus =
           sub.status === 'RESUBMIT_REQUIRED' ? 'RESUBMISSION_REQUESTED' : sub.status;
-        if (!sub.memberPhone || !sub.memberDob || !sub.address || !sub.subCategory || !sub.documents?.length) {
-          const user = await UserModel.findOne({
-            $or: [{ _id: sub.memberId?._id || sub.memberId }, { email: sub.memberEmail?.toLowerCase() }]
-          }).lean() as any;
+        const user = (await UserModel.findOne({
+          $or: [{ _id: sub.memberId?._id || sub.memberId }, { email: sub.memberEmail?.toLowerCase() }]
+        }).lean()) as any;
 
-          if (user) {
-            return {
-              ...sub,
-              status: normalizedStatus,
-              adminNotes: sub.adminNotes || sub.reviewerNotes,
-              memberPhone: sub.memberPhone || user.phoneNumber,
-              memberDob: sub.memberDob || user.dob,
-              subCategory: sub.subCategory || user.subCategory || user.primarySubcategoryName,
-              address: sub.address || user.address,
-              dynamicProfile: sub.dynamicProfile || user.dynamicProfile,
-            };
-          }
-        }
+        const { normalizedDocs, docSummary } = summarizeSubmissionDocs(sub.documents || []);
+
         return {
           ...sub,
           status: normalizedStatus,
           adminNotes: sub.adminNotes || sub.reviewerNotes,
+          memberPhone: sub.memberPhone || sub.memberId?.phone || user?.phoneNumber || '',
+          memberDob: sub.memberDob || user?.dob,
+          subCategory: sub.subCategory || user?.subCategory || user?.primarySubcategoryName,
+          address: sub.address || user?.address,
+          dynamicProfile: sub.dynamicProfile || user?.dynamicProfile,
+          registeredAt: sub.memberId?.registeredAt || user?.createdAt || sub.submittedAt,
+          documents: normalizedDocs.map((d) => ({
+            ...d,
+            fileUrl: d.adminViewUrl || d.fileUrl
+          })),
+          docSummary
         };
       })
     );
@@ -283,7 +300,7 @@ router.get('/', authenticateAdmin, async (req, res) => {
 });
 
 // GET /api/admin/kyc/:id - Get specific KYC submission details
-router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+router.get('/:id', authenticateAdmin, requirePermission('KYC_VERIFY'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const submission = await KycSubmissionModel.findById(req.params.id)
       .populate('memberId')
@@ -297,23 +314,19 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
     }
 
     const subObj = submission as any;
-    if (!subObj.memberPhone || !subObj.memberDob || !subObj.address || !subObj.subCategory) {
-      const user = await UserModel.findOne({
-        $or: [{ _id: subObj.memberId }, { email: subObj.memberEmail?.toLowerCase() }]
-      }).lean() as any;
+    const ownerUser = (await UserModel.findOne({
+      $or: [{ _id: subObj.memberId?._id || subObj.memberId }, { email: subObj.memberEmail?.toLowerCase() }]
+    }).lean()) as any;
 
-      if (user) {
-        subObj.memberPhone = subObj.memberPhone || user.phoneNumber;
-        subObj.memberDob = subObj.memberDob || user.dob;
-        subObj.subCategory = subObj.subCategory || user.subCategory || user.primarySubcategoryName;
-        subObj.address = subObj.address || user.address;
-        subObj.dynamicProfile = subObj.dynamicProfile || user.dynamicProfile;
-      }
+    if (ownerUser) {
+      subObj.memberPhone = subObj.memberPhone || ownerUser.phoneNumber;
+      subObj.memberDob = subObj.memberDob || ownerUser.dob;
+      subObj.subCategory = subObj.subCategory || ownerUser.subCategory || ownerUser.primarySubcategoryName;
+      subObj.address = subObj.address || ownerUser.address;
+      subObj.dynamicProfile = subObj.dynamicProfile || ownerUser.dynamicProfile;
+      subObj.registeredAt = subObj.memberId?.registeredAt || ownerUser.createdAt || subObj.submittedAt;
     }
 
-    const ownerUser = await UserModel.findOne({
-      $or: [{ _id: subObj.memberId?._id || subObj.memberId }, { email: subObj.memberEmail?.toLowerCase() }]
-    }).select('_id').lean<{ _id?: any }>();
     const privateAssets = await DocumentAssetModel.find({
       $or: [
         ...(ownerUser?._id ? [{ ownerId: ownerUser._id }] : []),
@@ -321,30 +334,294 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       ],
       entityType: 'KYC',
       isDeleted: { $ne: true }
-    }).sort({ createdAt: -1 });
+    }).sort({ version: -1, createdAt: -1 });
+
     subObj.documentAssets = privateAssets.map((a) => toSafeDocumentDto(a, 'admin'));
 
-    if (!subObj.memberPhone || !subObj.memberDob || !subObj.address || !subObj.subCategory) {
-      const user = await UserModel.findOne({
-        $or: [{ _id: subObj.memberId }, { email: subObj.memberEmail?.toLowerCase() }]
-      }).lean() as any;
+    const normalizedDocs = buildNormalizedKycDocuments(subObj.documents || [], [], privateAssets);
+    const { docSummary } = summarizeSubmissionDocs(normalizedDocs);
+    subObj.documents = normalizedDocs.map((d) => ({
+      ...d,
+      fileUrl: d.adminViewUrl || d.fileUrl
+    }));
+    subObj.docSummary = docSummary;
 
-      if (user) {
-        subObj.memberPhone = subObj.memberPhone || user.phoneNumber;
-        subObj.memberDob = subObj.memberDob || user.dob;
-        subObj.subCategory = subObj.subCategory || user.subCategory || user.primarySubcategoryName;
-        subObj.address = subObj.address || user.address;
-        subObj.dynamicProfile = subObj.dynamicProfile || user.dynamicProfile;
-      }
-    }
     res.json({ success: true, data: subObj });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// PATCH /api/admin/kyc/:id/review - Review/Decision on KYC submission
-router.patch('/:id/review', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+/**
+ * PATCH /api/admin/kyc/:id/documents/:docRef/review
+ * Individual document-level verification (Approve, Request Reupload with reason, or Reject).
+ * Enforces version concurrency check (expectedVersion) so Admin cannot accidentally verify an outdated document.
+ */
+router.patch(
+  '/:id/documents/:docRef/review',
+  authenticateAdmin,
+  requirePermission('KYC_VERIFY'),
+  async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+    try {
+      const { id, docRef } = req.params;
+      const { decision, reason, expectedVersion } = req.body;
+
+      const normalizedDecision = String(decision || '').trim().toUpperCase();
+      if (!['APPROVED', 'REUPLOAD_REQUIRED', 'REJECTED'].includes(normalizedDecision)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid document decision. Must be APPROVED, REUPLOAD_REQUIRED, or REJECTED.'
+        });
+        return;
+      }
+
+      const trimmedReason = typeof reason === 'string' ? reason.trim() : '';
+      if ((normalizedDecision === 'REUPLOAD_REQUIRED' || normalizedDecision === 'REJECTED') && !trimmedReason) {
+        res.status(400).json({
+          success: false,
+          error: 'A clear reason is mandatory when requesting document reupload or rejecting a document.'
+        });
+        return;
+      }
+
+      const submission = await KycSubmissionModel.findById(id);
+      if (!submission) {
+        res.status(404).json({ success: false, error: 'KYC submission not found' });
+        return;
+      }
+
+      // Guard if caller passed an archived old DocumentAsset ID rather than active latest doc
+      const archivedAsset = await DocumentAssetModel.findOne({
+        documentId: docRef,
+        isLatestVersion: false
+      }).lean();
+      if (archivedAsset) {
+        res.status(409).json({
+          success: false,
+          code: 'ARCHIVED_DOCUMENT',
+          error: 'This document version has been archived and superseded by a newer member upload. Please review the latest version.'
+        });
+        return;
+      }
+
+      const docIndex = submission.documents.findIndex(
+        (d: any) => String(d.docKey) === docRef || (d.documentId && String(d.documentId) === docRef)
+      );
+
+      if (docIndex === -1) {
+        res.status(404).json({ success: false, error: 'Document not found in this KYC submission' });
+        return;
+      }
+
+      const targetDoc = submission.documents[docIndex] as any;
+      const currentVersion = Number(targetDoc.version || 1);
+
+      if (expectedVersion !== undefined && expectedVersion !== null && Number(expectedVersion) !== currentVersion) {
+        res.status(409).json({
+          success: false,
+          code: 'VERSION_MISMATCH',
+          error: `A newer version (v${currentVersion}) of "${targetDoc.title}" was uploaded by the member. Please refresh and inspect the latest version.`
+        });
+        return;
+      }
+
+      const now = new Date();
+      targetDoc.status = normalizedDecision;
+      targetDoc.adminReviewReason = normalizedDecision === 'APPROVED' ? undefined : trimmedReason;
+      targetDoc.rejectionReason = normalizedDecision === 'APPROVED' ? undefined : trimmedReason;
+      targetDoc.reviewedAt = now;
+      targetDoc.reviewedBy = new mongoose.Types.ObjectId(req.admin!.id);
+      targetDoc.reviewedByName = req.admin!.name;
+
+      submission.documents[docIndex] = targetDoc;
+      submission.markModified('documents');
+
+      // Compute updated overall status based on individual document verdicts
+      const hasReuploadRequired = submission.documents.some(
+        (d: any) => normalizeDocStatus(d.status) === 'REUPLOAD_REQUIRED'
+      );
+      const hasRejectedDoc = submission.documents.some(
+        (d: any) => normalizeDocStatus(d.status) === 'REJECTED'
+      );
+
+      if (hasReuploadRequired) {
+        submission.status = 'RESUBMISSION_REQUESTED';
+        submission.rejectionReason = trimmedReason || submission.rejectionReason;
+        submission.verifiedAt = now;
+      } else if (hasRejectedDoc) {
+        submission.status = 'REJECTED';
+        submission.rejectionReason = trimmedReason || submission.rejectionReason;
+        submission.verifiedAt = now;
+      } else if (submission.status === 'APPROVED' && normalizeDocStatus(targetDoc.status) !== 'APPROVED') {
+        submission.status = 'UNDER_REVIEW';
+      } else if (submission.status === 'SUBMITTED' || submission.status === 'RESUBMISSION_REQUESTED') {
+        submission.status = 'UNDER_REVIEW';
+        submission.rejectionReason = undefined;
+      }
+
+      await submission.save();
+
+      // Update linked DocumentAsset if present
+      if (targetDoc.documentId) {
+        await DocumentAssetModel.updateOne(
+          { documentId: targetDoc.documentId },
+          {
+            $set: {
+              documentStatus: normalizedDecision,
+              adminReviewReason: normalizedDecision === 'APPROVED' ? undefined : trimmedReason,
+              reviewedAt: now,
+              reviewedBy: new mongoose.Types.ObjectId(req.admin!.id),
+              reviewedByName: req.admin!.name
+            }
+          }
+        );
+      }
+
+      const userFilter = {
+        $or: [{ _id: submission.memberId }, ...(submission.memberEmail ? [{ email: submission.memberEmail.toLowerCase() }] : [])]
+      };
+      const userDoc = await UserModel.findOne(userFilter);
+
+      // Update Member & Customer KYC models when a document requires reupload/rejection or restarts under review
+      const overallNextStatus = submission.status;
+      await MemberModel.findOneAndUpdate(
+        {
+          $or: [{ _id: submission.memberId }, ...(submission.memberEmail ? [{ email: submission.memberEmail.toLowerCase() }] : [])]
+        },
+        {
+          $set: {
+            kycStatus: overallNextStatus,
+            ...(hasReuploadRequired || hasRejectedDoc ? { status: 'PENDING_KYC' } : { status: 'UNDER_REVIEW' })
+          }
+        }
+      );
+
+      if (userDoc) {
+        if (hasReuploadRequired || hasRejectedDoc) {
+          userDoc.isKycApproved = false;
+          await userDoc.save();
+        }
+
+        await KYCSubmissionModel.findOneAndUpdate(
+          { userId: userDoc._id },
+          {
+            $set: {
+              status: hasReuploadRequired
+                ? KYCStatus.RESUBMIT_REQUIRED
+                : hasRejectedDoc
+                ? KYCStatus.REJECTED
+                : KYCStatus.PENDING,
+              rejectionReason: hasReuploadRequired || hasRejectedDoc ? submission.rejectionReason : undefined,
+              reviewedAt: now,
+              documents: submission.documents.map((d: any) => ({
+                ...(d.documentId ? { documentId: d.documentId } : {}),
+                documentType: d.docKey,
+                title: d.title,
+                documentNumber: d.documentNumber || '',
+                originalFileName: d.fileName,
+                originalMimeType: d.originalMimeType,
+                originalFileSize: d.originalFileSize,
+                checksum: d.checksum,
+                hasOptimizedPreview: d.hasOptimizedPreview,
+                hasThumbnail: d.hasThumbnail,
+                fileUrl: d.documentId ? `/api/v1/documents/${d.documentId}/view` : d.fileUrl,
+                uploadedAt: new Date(d.uploadedAt),
+                verificationStatus: normalizeDocStatus(d.status),
+                adminReviewReason: d.adminReviewReason,
+                remarks: d.adminReviewReason,
+                version: d.version || 1,
+                previousVersionReference: d.previousVersionReference,
+                reviewedAt: d.reviewedAt,
+                reviewedByName: d.reviewedByName,
+                versionHistory: d.versionHistory || []
+              }))
+            }
+          },
+          { upsert: true }
+        );
+
+        if (normalizedDecision === 'REUPLOAD_REQUIRED') {
+          await notifyMember({
+            userId: userDoc._id,
+            eventType: 'DOCUMENT_REUPLOAD_REQUIRED',
+            title: 'Your KYC document requires correction',
+            message: `Your KYC document requires correction. Please review "${targetDoc.title}" (v${currentVersion}) and upload it again. Reason: ${trimmedReason}`,
+            link: '/kyc-pending',
+            priority: 'HIGH',
+            metadata: {
+              kycSubmissionId: submission._id.toString(),
+              documentId: targetDoc.documentId,
+              docKey: targetDoc.docKey,
+              documentLabel: targetDoc.title,
+              version: currentVersion,
+              reason: trimmedReason,
+              actionRequired: 'REUPLOAD_DOCUMENT'
+            }
+          });
+        } else if (normalizedDecision === 'REJECTED') {
+          await notifyMember({
+            userId: userDoc._id,
+            eventType: 'DOCUMENT_REJECTED',
+            title: 'KYC Document Rejected',
+            message: `Your KYC document "${targetDoc.title}" was rejected. Reason: ${trimmedReason}`,
+            link: '/kyc-pending',
+            priority: 'HIGH',
+            metadata: {
+              kycSubmissionId: submission._id.toString(),
+              documentId: targetDoc.documentId,
+              docKey: targetDoc.docKey,
+              documentLabel: targetDoc.title,
+              version: currentVersion,
+              reason: trimmedReason
+            }
+          });
+        } else if (normalizedDecision === 'APPROVED') {
+          await notifyMember({
+            userId: userDoc._id,
+            eventType: 'DOCUMENT_APPROVED',
+            title: 'KYC Document Approved',
+            message: `Your document "${targetDoc.title}" (v${currentVersion}) has been verified and approved.`,
+            link: '/kyc-pending',
+            priority: 'MEDIUM',
+            metadata: {
+              kycSubmissionId: submission._id.toString(),
+              documentId: targetDoc.documentId,
+              docKey: targetDoc.docKey,
+              documentLabel: targetDoc.title,
+              version: currentVersion
+            }
+          });
+        }
+      }
+
+      await logAdminAction(req, `KYC_DOC_${normalizedDecision}`, 'KycSubmission', id, {
+        memberId: submission.memberId?.toString(),
+        docKey: targetDoc.docKey,
+        documentId: targetDoc.documentId,
+        version: currentVersion,
+        decision: normalizedDecision,
+        reason: trimmedReason || undefined
+      });
+
+      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || []);
+
+      res.json({
+        success: true,
+        message: `Document "${targetDoc.title}" (v${currentVersion}) marked as ${normalizedDecision}.`,
+        data: {
+          ...submission.toObject(),
+          documents: normalizedDocs.map((d) => ({ ...d, fileUrl: d.adminViewUrl || d.fileUrl })),
+          docSummary
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// PATCH /api/admin/kyc/:id/review - Overall Review/Decision on KYC submission
+router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { decision, reviewerNotes, rejectionReason } = req.body; // 'APPROVED' | 'REJECTED' | 'RESUBMISSION_REQUESTED'
@@ -371,13 +648,36 @@ router.patch('/:id/review', authenticateAdmin, async (req: AuthenticatedAdminReq
       return;
     }
 
+    // Strict rule: before final KYC approval, every uploaded document must be individually APPROVED
+    if (decision === 'APPROVED') {
+      if (!submission.documents || submission.documents.length === 0) {
+        res.status(400).json({
+          success: false,
+          code: 'NO_DOCUMENTS_UPLOADED',
+          error: 'Cannot approve KYC because the member has not uploaded any KYC documents.'
+        });
+        return;
+      }
+      const unapproved = submission.documents.filter((d: any) => normalizeDocStatus(d.status) !== 'APPROVED');
+      if (unapproved.length > 0) {
+        res.status(400).json({
+          success: false,
+          code: 'DOCUMENTS_NOT_APPROVED',
+          error: `Cannot approve overall KYC until all documents are approved (${unapproved
+            .map((d: any) => `${d.title}: ${normalizeDocStatus(d.status)}`)
+            .join(', ')}).`
+        });
+        return;
+      }
+    }
+
+    const now = new Date();
     submission.status = decision;
     submission.reviewerNotes = trimmedNotes || submission.reviewerNotes;
     submission.rejectionReason = decision === 'APPROVED' ? undefined : trimmedReason;
-    submission.verifiedAt = new Date();
+    submission.verifiedAt = now;
     await submission.save();
 
-    // 1. Update corresponding Member record status
     const member = await MemberModel.findOne({
       $or: [{ _id: submission.memberId }, ...(submission.memberEmail ? [{ email: submission.memberEmail.toLowerCase() }] : [])]
     });
@@ -391,19 +691,18 @@ router.patch('/:id/review', authenticateAdmin, async (req: AuthenticatedAdminReq
       await member.save();
     }
 
-    // 2. Keep UserModel.status ACTIVE so member can log in and see APPROVED / RESUBMISSION_REQUESTED / REJECTED status
     const isApproved = decision === 'APPROVED';
-    await UserModel.findOneAndUpdate(
+    const updatedUser = await UserModel.findOneAndUpdate(
       { $or: [{ _id: submission.memberId }, { email: submission.memberEmail?.toLowerCase() }] },
       {
         $set: {
           isKycApproved: isApproved,
-          status: AccountStatus.ACTIVE
+          ...(isApproved ? {} : {})
         }
-      }
+      },
+      { new: true }
     );
 
-    // 3. Keep customer KYCSubmission document aligned
     await KYCSubmissionModel.findOneAndUpdate(
       { $or: [{ userId: submission.memberId }, ...(member?._id ? [{ userId: member._id }] : [])] },
       {
@@ -416,34 +715,74 @@ router.patch('/:id/review', authenticateAdmin, async (req: AuthenticatedAdminReq
             ? KYCStatus.REJECTED
             : KYCStatus.RESUBMIT_REQUIRED,
           rejectionReason: isApproved ? undefined : trimmedReason,
-          reviewedAt: new Date()
+          reviewedAt: now
         }
       },
       { upsert: true }
     );
 
-    // 4. Update DocumentAsset statuses for uploaded KYC docs
     const linkedDocIds = (submission.documents || []).map((d: any) => d.documentId).filter(Boolean);
-    await DocumentAssetModel.updateMany(
-      {
-        $or: [
-          ...(linkedDocIds.length ? [{ documentId: { $in: linkedDocIds } }] : []),
-          { ownerId: submission.memberId, entityType: 'KYC' }
-        ]
-      },
-      { $set: { documentStatus: isApproved ? 'VERIFIED' : 'REJECTED' } }
-    );
+    if (decision === 'APPROVED' && linkedDocIds.length > 0) {
+      await DocumentAssetModel.updateMany(
+        {
+          documentId: { $in: linkedDocIds },
+          isLatestVersion: { $ne: false }
+        },
+        { $set: { documentStatus: 'APPROVED', reviewedAt: now, reviewedByName: req.admin?.name } }
+      );
+    }
+
+    if (updatedUser) {
+      if (decision === 'APPROVED') {
+        await notifyMember({
+          userId: updatedUser._id,
+          eventType: 'KYC_APPROVED',
+          title: 'KYC Approved! Dashboard Access Ready',
+          message:
+            'Your KYC verification has been approved by the FIC Compliance Desk. All portal features are ready based on your active membership.',
+          link: '/dashboard',
+          priority: 'HIGH',
+          metadata: { kycSubmissionId: submission._id.toString() }
+        });
+      } else if (decision === 'RESUBMISSION_REQUESTED') {
+        await notifyMember({
+          userId: updatedUser._id,
+          eventType: 'KYC_RESUBMISSION_REQUESTED',
+          title: 'KYC Resubmission Requested',
+          message: `Your KYC application requires correction. Reason: ${trimmedReason}`,
+          link: '/kyc-pending',
+          priority: 'HIGH',
+          metadata: { kycSubmissionId: submission._id.toString(), reason: trimmedReason }
+        });
+      } else {
+        await notifyMember({
+          userId: updatedUser._id,
+          eventType: 'KYC_REJECTED',
+          title: 'KYC Application Rejected',
+          message: `Your KYC verification was rejected. Reason: ${trimmedReason}`,
+          link: '/kyc-pending',
+          priority: 'HIGH',
+          metadata: { kycSubmissionId: submission._id.toString(), reason: trimmedReason }
+        });
+      }
+    }
 
     await logAdminAction(req, `KYC_${decision}`, 'KycSubmission', id, {
-      memberId: submission.memberId.toString(),
+      memberId: submission.memberId?.toString(),
       decision,
-      rejectionReason,
+      rejectionReason: trimmedReason || undefined,
     });
+
+    const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || []);
 
     res.json({
       success: true,
       message: `KYC submission marked as ${decision}. Portal access ${isApproved ? 'GRANTED' : 'RESTRICTED'}.`,
-      data: submission,
+      data: {
+        ...submission.toObject(),
+        documents: normalizedDocs.map((d) => ({ ...d, fileUrl: d.adminViewUrl || d.fileUrl })),
+        docSummary
+      },
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -451,5 +790,3 @@ router.patch('/:id/review', authenticateAdmin, async (req: AuthenticatedAdminReq
 });
 
 export default router;
-
-

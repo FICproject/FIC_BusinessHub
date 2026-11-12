@@ -1,12 +1,12 @@
 import { Router, Response, NextFunction } from 'express';
-import { authenticate, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
+import { authenticate, requireActiveVerifiedMember, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { ServiceListingModel } from './services.model';
 import { ServiceListingStatus, UserRole } from '@fic/shared-types';
 
 export const servicesRouter = Router();
 
 // 1. Get all services created by the authenticated member
-servicesRouter.get('/my', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+servicesRouter.get('/my', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -30,7 +30,7 @@ servicesRouter.get('/my', authenticate, async (req: AuthenticatedRequest, res: R
 });
 
 // 2. Create a new service listing (Member action)
-servicesRouter.post('/', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+servicesRouter.post('/', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -128,7 +128,7 @@ servicesRouter.post('/', authenticate, async (req: AuthenticatedRequest, res: Re
 });
 
 // 3. Get single service details
-servicesRouter.get('/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+servicesRouter.get('/:id', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const service = await ServiceListingModel.findById(id)
@@ -151,7 +151,7 @@ servicesRouter.get('/:id', authenticate, async (req: AuthenticatedRequest, res: 
 });
 
 // 4. Update service listing
-servicesRouter.put('/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+servicesRouter.put('/:id', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = req.user?.userId;
@@ -205,7 +205,7 @@ servicesRouter.put('/:id', authenticate, async (req: AuthenticatedRequest, res: 
 });
 
 // 5. Submit service for FIC approval
-servicesRouter.post('/:id/submit', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+servicesRouter.post('/:id/submit', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = req.user?.userId;
@@ -282,7 +282,7 @@ servicesRouter.post('/:id/reject', authenticate, requireRoles(UserRole.ADMIN, Us
 });
 
 // 8. Delete / Deactivate service
-servicesRouter.delete('/:id', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+servicesRouter.delete('/:id', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const userId = req.user?.userId;
