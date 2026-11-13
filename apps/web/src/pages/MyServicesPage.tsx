@@ -460,7 +460,9 @@ export const MyServicesPage: React.FC = () => {
 
   const loadUserServices = async () => {
     if (!user) return;
-    const localList = getMemberServices(user.id || user.userId);
+    const localList = getMemberServices(user.id || user.userId).filter(
+      (s) => (s.status as string) !== 'DELETED' && s.status !== 'ARCHIVED'
+    );
 
     // Sync live admin moderation decision from backend
     try {
@@ -470,25 +472,41 @@ export const MyServicesPage: React.FC = () => {
         const res = await fetch(`${backendBase}/api/admin/services/member-sync?email=${encodeURIComponent(email)}`);
         if (res.ok) {
           const json = await res.json();
-          if (json?.data && Array.isArray(json.data) && json.data.length > 0) {
+          if (json?.data && Array.isArray(json.data)) {
+            // Strictly exclude DELETED or ARCHIVED services
+            const activeRemote = json.data.filter(
+              (r: any) => r.status !== 'DELETED' && r.status !== 'ARCHIVED'
+            );
+
             // Merge live server moderation status into local list
-            const merged = localList.map((srv) => {
-              const remote = json.data.find(
-                (r: any) => r.title.toLowerCase() === srv.title.toLowerCase() || r.id === srv.id || r._id === srv.id
-              );
-              if (remote) {
-                return {
-                  ...srv,
-                  status: remote.status,
-                  adminFeedback: remote.rejectionReason || srv.adminFeedback,
-                  approvedAt: remote.approvedAt ? 'Approved by Admin' : srv.approvedAt
-                };
-              }
-              return srv;
-            });
+            const merged = localList
+              .filter((srv) => {
+                const remote = json.data.find(
+                  (r: any) => r.title.toLowerCase() === srv.title.toLowerCase() || r.id === srv.id || r._id === srv.id
+                );
+                // If remote says DELETED or ARCHIVED, drop it
+                if (remote && (remote.status === 'DELETED' || remote.status === 'ARCHIVED')) {
+                  return false;
+                }
+                return true;
+              })
+              .map((srv) => {
+                const remote = activeRemote.find(
+                  (r: any) => r.title.toLowerCase() === srv.title.toLowerCase() || r.id === srv.id || r._id === srv.id
+                );
+                if (remote) {
+                  return {
+                    ...srv,
+                    status: remote.status,
+                    adminFeedback: remote.rejectionReason || srv.adminFeedback,
+                    approvedAt: remote.approvedAt ? 'Approved by Admin' : srv.approvedAt
+                  };
+                }
+                return srv;
+              });
 
             // Also include any remote services that might not be in local list
-            json.data.forEach((remote: any) => {
+            activeRemote.forEach((remote: any) => {
               const exists = merged.some(
                 (m) => m.title.toLowerCase() === remote.title.toLowerCase() || m.id === remote._id
               );
@@ -647,7 +665,7 @@ export const MyServicesPage: React.FC = () => {
     };
 
     if (editingServiceId) {
-      updateMemberService(editingServiceId, payload);
+      updateMemberService(editingServiceId, payload).then(() => loadUserServices());
       showToast(
         submitForApproval
           ? 'Service updated and submitted for FIC Admin review!'
@@ -655,7 +673,7 @@ export const MyServicesPage: React.FC = () => {
       );
     } else {
       if (!user) return;
-      createMemberService(user.id || user.userId, payload);
+      createMemberService(user.id || user.userId, payload).then(() => loadUserServices());
       showToast(
         submitForApproval
           ? 'Service submitted to FIC Admin! Once verified, it will be published on the Universal Marketplace.'
@@ -667,16 +685,16 @@ export const MyServicesPage: React.FC = () => {
     loadUserServices();
   };
 
-  const handleSubmitForApproval = (serviceId: string) => {
-    submitServiceForApproval(serviceId);
+  const handleSubmitForApproval = async (serviceId: string) => {
+    await submitServiceForApproval(serviceId);
     showToast('Service submitted for FIC review. Our coordinator will verify details.');
-    loadUserServices();
+    await loadUserServices();
   };
 
-  const handleSimulateApprove = (serviceId: string) => {
-    simulateAdminApproveService(serviceId);
+  const handleSimulateApprove = async (serviceId: string) => {
+    await simulateAdminApproveService(serviceId);
     showToast('Service APPROVED! It is now live in the Universal Marketplace for all members.');
-    loadUserServices();
+    await loadUserServices();
   };
 
   const handleOpenRejectModal = (serviceId: string) => {
@@ -684,20 +702,22 @@ export const MyServicesPage: React.FC = () => {
     setRejectionFeedback('Please specify more deliverables and details regarding operational capabilities.');
   };
 
-  const handleConfirmReject = () => {
+  const handleConfirmReject = async () => {
     if (!rejectingServiceId) return;
-    simulateAdminRejectService(rejectingServiceId, rejectionFeedback);
+    await simulateAdminRejectService(rejectingServiceId, rejectionFeedback);
     showToast('Service marked as requiring revision. Admin feedback recorded.', 'info');
     setRejectingServiceId(null);
     setRejectionFeedback('');
-    loadUserServices();
+    await loadUserServices();
   };
 
-  const handleDelete = (serviceId: string) => {
+  const handleDelete = async (serviceId: string) => {
     if (window.confirm('Are you sure you want to delete this service listing?')) {
-      deleteMemberService(serviceId);
+      // Optimistically remove from state
+      setServices((prev) => prev.filter((s) => s.id !== serviceId && (s as any)._id !== serviceId));
+      await deleteMemberService(serviceId);
       showToast('Service listing deleted.', 'info');
-      loadUserServices();
+      await loadUserServices();
     }
   };
 
@@ -1381,10 +1401,13 @@ export const MyServicesPage: React.FC = () => {
                             <WorkspaceButton
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
-                                updateMemberService(service.id, { status: 'DRAFT' });
+                              onClick={async () => {
+                                setServices((prev) =>
+                                  prev.map((s) => (s.id === service.id ? { ...s, status: 'DRAFT' as const } : s))
+                                );
+                                await updateMemberService(service.id, { status: 'DRAFT' });
                                 showToast('Service unpublished and moved to Drafts.', 'info');
-                                loadUserServices();
+                                await loadUserServices();
                               }}
                             >
                               Move to Draft

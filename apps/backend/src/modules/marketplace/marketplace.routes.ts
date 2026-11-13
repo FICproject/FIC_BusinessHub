@@ -16,24 +16,36 @@ marketplaceRouter.get('/services', async (req: Request, res: Response, next: Nex
       status: AccountStatus.ACTIVE,
       isKycApproved: true
     }).select('_id').lean();
-    const activeUserIds = activeVerifiedUsers.map((u) => u._id);
+
+    const activeUserObjectIds = activeVerifiedUsers.map((u: any) => u._id);
+    const activeUserStringIds = activeVerifiedUsers.map((u: any) => u._id.toString());
+    const validProviderIds = [...activeUserObjectIds, ...activeUserStringIds];
 
     const filter: Record<string, any> = {
       status: ServiceListingStatus.APPROVED,
       isActive: true,
-      providerId: { $in: activeUserIds }
+      providerId: { $in: validProviderIds }
     };
 
     if (categoryId && categoryId !== 'all') {
-      filter.categoryId = categoryId;
+      filter.$or = [
+        { categoryId: categoryId },
+        { categorySlug: categoryId }
+      ];
     }
 
     if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { tags: { $in: [new RegExp(String(search), 'i')] } }
-      ];
+      const searchRegex = new RegExp(String(search), 'i');
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { categoryName: { $regex: search, $options: 'i' } },
+          { subcategoryName: { $regex: search, $options: 'i' } },
+          { tags: { $in: [searchRegex] } }
+        ]
+      });
     }
 
     const skip = (Number(page) - 1) * Number(limit);

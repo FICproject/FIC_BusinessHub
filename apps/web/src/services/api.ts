@@ -709,7 +709,7 @@ const syncServiceWithAdminBackend = async (service: ServiceListing) => {
         categorySlug: service.categorySlug,
         subcategoryId: service.subcategoryId,
         subcategoryName: service.subcategoryName,
-        providerId: service.ownerUserId,
+        providerId: service.ownerUserId || user?.id || user?.userId,
         providerPrivateName: service.ownerName || user?.fullName || 'FIC Member',
         providerEmail: user?.email || 'member@ficapp.in',
         pricingEstimate: 'Custom Quote',
@@ -727,10 +727,10 @@ const syncServiceWithAdminBackend = async (service: ServiceListing) => {
 };
 
 // 3. Create a new service listing for the member
-export const createMemberService = (
+export const createMemberService = async (
   userId: string,
   data: Partial<ServiceListing>
-): ServiceListing => {
+): Promise<ServiceListing> => {
   const all = getAllCatalogServices();
   const user = getStoredUser();
 
@@ -764,16 +764,16 @@ export const createMemberService = (
   saveCatalogServices(all);
 
   // Sync to database
-  syncServiceWithAdminBackend(newService);
+  await syncServiceWithAdminBackend(newService);
 
   return newService;
 };
 
 // 4. Update an existing service listing
-export const updateMemberService = (
+export const updateMemberService = async (
   serviceId: string,
   updates: Partial<ServiceListing>
-): ServiceListing | null => {
+): Promise<ServiceListing | null> => {
   const all = getAllCatalogServices();
   const index = all.findIndex((s) => s.id === serviceId);
   if (index === -1) return null;
@@ -788,14 +788,14 @@ export const updateMemberService = (
   saveCatalogServices(all);
 
   // Sync update to backend
-  syncServiceWithAdminBackend(updated);
+  await syncServiceWithAdminBackend(updated);
 
   return updated;
 };
 
 // 5. Submit a draft or rejected service for FIC approval
-export const submitServiceForApproval = (serviceId: string): ServiceListing | null => {
-  return updateMemberService(serviceId, {
+export const submitServiceForApproval = async (serviceId: string): Promise<ServiceListing | null> => {
+  return await updateMemberService(serviceId, {
     status: 'PENDING_APPROVAL',
     submittedAt: 'Today',
     adminFeedback: undefined
@@ -803,8 +803,8 @@ export const submitServiceForApproval = (serviceId: string): ServiceListing | nu
 };
 
 // 6. Simulate FIC Reviewer / Admin Approval (instantly publishes to Marketplace)
-export const simulateAdminApproveService = (serviceId: string): ServiceListing | null => {
-  return updateMemberService(serviceId, {
+export const simulateAdminApproveService = async (serviceId: string): Promise<ServiceListing | null> => {
+  return await updateMemberService(serviceId, {
     status: 'APPROVED',
     approvedAt: 'Today',
     adminFeedback: undefined
@@ -812,25 +812,37 @@ export const simulateAdminApproveService = (serviceId: string): ServiceListing |
 };
 
 // 7. Simulate FIC Reviewer / Admin Rejection with feedback
-export const simulateAdminRejectService = (
+export const simulateAdminRejectService = async (
   serviceId: string,
   reason: string
-): ServiceListing | null => {
-  return updateMemberService(serviceId, {
+): Promise<ServiceListing | null> => {
+  return await updateMemberService(serviceId, {
     status: 'REJECTED',
     adminFeedback: reason || 'Please provide more details on deliverables and capabilities.'
   });
 };
 
 // 8. Delete / Archive service
-export const deleteMemberService = (serviceId: string): boolean => {
-  const all = getAllCatalogServices();
-  const index = all.findIndex((s) => s.id === serviceId);
-  if (index === -1) return false;
+export const deleteMemberService = async (serviceId: string): Promise<boolean> => {
+  try {
+    const all = getAllCatalogServices();
+    const filtered = all.filter((s) => s.id !== serviceId && (s as any)._id !== serviceId);
+    saveCatalogServices(filtered);
 
-  all[index].status = 'ARCHIVED';
-  saveCatalogServices(all);
-  return true;
+    const backendBase = BASE_URL.replace(/\/api\/v1\/?$/, '');
+    await fetch(`${backendBase}/api/admin/services/${serviceId}`, {
+      method: 'DELETE'
+    });
+
+    try {
+      await apiRequest(`/services/${serviceId}`, { method: 'DELETE' });
+    } catch {}
+
+    return true;
+  } catch (err) {
+    console.error('deleteMemberService error:', err);
+    return false;
+  }
 };
 
 // ============================================================================

@@ -171,9 +171,16 @@ servicesRouter.put('/:id', authenticate, requireActiveVerifiedMember, async (req
     const { id } = req.params;
     const userId = req.user?.userId;
 
-    const service = await ServiceListingModel.findOne({ _id: id, providerId: userId });
+    let service = await ServiceListingModel.findOne({ _id: id, providerId: userId });
     if (!service) {
-      res.status(404).json({ success: false, message: 'Service not found or unauthorized' });
+      service = await ServiceListingModel.findById(id);
+      if (service && service.providerId && service.providerId.toString() !== userId) {
+        res.status(403).json({ success: false, message: 'Unauthorized to delete this service' });
+        return;
+      }
+    }
+    if (!service) {
+      res.status(404).json({ success: false, message: 'Service not found' });
       return;
     }
 

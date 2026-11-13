@@ -1,8 +1,90 @@
 import { Router, Response } from 'express';
+import mongoose from 'mongoose';
 import { ServiceListingModel } from '../models/ServiceListing';
 import { authenticateAdmin, AuthenticatedAdminRequest, logAdminAction } from '../middleware/admin-auth.middleware';
 
 const router = Router();
+
+// Helper: Synchronize administrative service changes into the public marketplace collection (servicelistings)
+async function syncToPublicListing(adminDoc: any) {
+  try {
+    const { ServiceListingModel: PublicListingModel } = await import('../../services/services.model');
+    const { UserModel } = await import('../../users/users.model');
+    const { CategoryModel } = await import('../../categories/categories.model');
+
+    // 1. Resolve Provider User ID
+    let resolvedProviderId = adminDoc.providerId;
+    if ((!resolvedProviderId || !mongoose.isValidObjectId(resolvedProviderId)) && adminDoc.providerEmail) {
+      const user = await UserModel.findOne({ email: adminDoc.providerEmail.toLowerCase() }).select('_id primaryCategoryId');
+      if (user) {
+        resolvedProviderId = user._id;
+      }
+    }
+
+    // 2. Resolve Category ID
+    let resolvedCategoryId = adminDoc.categoryId;
+    if (!resolvedCategoryId || !mongoose.isValidObjectId(resolvedCategoryId)) {
+      if (adminDoc.categorySlug || adminDoc.categoryName) {
+        const cat = await CategoryModel.findOne({
+          $or: [
+            { slug: adminDoc.categorySlug },
+            { name: adminDoc.categoryName }
+          ]
+        }).select('_id');
+        if (cat) resolvedCategoryId = cat._id;
+      }
+      if (!resolvedCategoryId && resolvedProviderId) {
+        const user = await UserModel.findById(resolvedProviderId).select('primaryCategoryId');
+        if (user?.primaryCategoryId) resolvedCategoryId = user.primaryCategoryId;
+      }
+      if (!resolvedCategoryId) {
+        const defaultCat = await CategoryModel.findOne({}).select('_id');
+        resolvedCategoryId = defaultCat?._id;
+      }
+    }
+
+    const isApproved = adminDoc.status === 'APPROVED';
+    const isDraft = adminDoc.status === 'DRAFT';
+    const isDeleted = adminDoc.status === 'DELETED' || adminDoc.status === 'ARCHIVED';
+
+    const updatePayload: Record<string, any> = {
+      title: adminDoc.title,
+      description: adminDoc.description,
+      shortDescription: adminDoc.description ? adminDoc.description.substring(0, 140) : adminDoc.title,
+      categoryName: adminDoc.categoryName || 'Business & Entrepreneurship',
+      categorySlug: adminDoc.categorySlug || 'business-entrepreneurship',
+      subcategoryName: adminDoc.subcategoryName || '',
+      servicesOffered: adminDoc.servicesOffered || [],
+      skills: adminDoc.skills || [],
+      tags: adminDoc.tags || [],
+      coverageArea: adminDoc.coverageArea || 'Pan India',
+      deliveryMode: adminDoc.deliveryMode || 'ONLINE',
+      status: adminDoc.status,
+      // Only APPROVED listings are active in the marketplace. DRAFT, DELETED, or REJECTED are strictly inactive.
+      isActive: isApproved && !isDraft && !isDeleted,
+      adminFeedback: adminDoc.rejectionReason || undefined,
+      updatedAt: new Date()
+    };
+
+    if (resolvedProviderId && mongoose.isValidObjectId(resolvedProviderId)) {
+      updatePayload.providerId = new mongoose.Types.ObjectId(resolvedProviderId);
+    }
+    if (resolvedCategoryId && mongoose.isValidObjectId(resolvedCategoryId)) {
+      updatePayload.categoryId = new mongoose.Types.ObjectId(resolvedCategoryId);
+    }
+    if (adminDoc.subcategoryId && mongoose.isValidObjectId(adminDoc.subcategoryId)) {
+      updatePayload.subcategoryId = new mongoose.Types.ObjectId(adminDoc.subcategoryId);
+    }
+
+    await PublicListingModel.findByIdAndUpdate(
+      adminDoc._id,
+      { $set: updatePayload },
+      { upsert: true }
+    );
+  } catch (syncErr) {
+    console.warn('syncToPublicListing warning:', syncErr);
+  }
+}
 
 // GET /api/admin/services - List service listings with admin moderation data
 router.get('/', authenticateAdmin, async (req, res) => {
@@ -63,8 +145,6 @@ router.post('/sync', async (req, res) => {
       return;
     }
 
-    const query = id ? { $or: [{ _id: id.length === 24 ? id : undefined }, { title, providerEmail }] } : { title, providerEmail };
-    // Remove undefined fields in query
     const cleanQuery = id && id.length === 24 ? { _id: id } : { title, providerEmail };
 
     const payload: any = {
@@ -74,7 +154,7 @@ router.post('/sync', async (req, res) => {
       categorySlug,
       subcategoryName,
       providerPrivateName: providerPrivateName || 'FIC Member',
-      providerEmail: providerEmail || 'member@ficapp.in',
+      providerEmail: providerEmail ? providerEmail.toLowerCase() : 'member@ficapp.in',
       pricingEstimate: pricingEstimate || 'Custom Quote',
       servicesOffered: servicesOffered || [],
       skills: skills || [],
@@ -84,14 +164,20 @@ router.post('/sync', async (req, res) => {
       status: status || 'PENDING_APPROVAL'
     };
 
-    if (categoryId && categoryId.length === 24) payload.categoryId = categoryId;
-    if (providerId && providerId.length === 24) payload.providerId = providerId;
+    if (categoryId && mongoose.isValidObjectId(categoryId)) payload.categoryId = categoryId;
+    if (providerId && mongoose.isValidObjectId(providerId)) payload.providerId = providerId;
+    if (subcategoryId && mongoose.isValidObjectId(subcategoryId)) payload.subcategoryId = subcategoryId;
 
     const updated = await ServiceListingModel.findOneAndUpdate(
       cleanQuery,
       { $set: payload },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+
+    // Synchronize to public marketplace collection
+    if (updated) {
+      await syncToPublicListing(updated);
+    }
 
     res.json({ success: true, data: updated });
   } catch (err: any) {
@@ -103,9 +189,12 @@ router.post('/sync', async (req, res) => {
 router.get('/member-sync', async (req, res) => {
   try {
     const { email, providerId } = req.query;
-    const filter: any = {};
+    // Exclude DELETED and ARCHIVED records so they do not resurrect in the member's UI
+    const filter: any = {
+      status: { $nin: ['DELETED', 'ARCHIVED'] }
+    };
     if (email) filter.providerEmail = (email as string).toLowerCase();
-    if (providerId) filter.providerId = providerId;
+    if (providerId && mongoose.isValidObjectId(providerId)) filter.providerId = providerId;
 
     if (!email && !providerId) {
       res.status(400).json({ success: false, error: 'Email or providerId required' });
@@ -141,34 +230,7 @@ router.patch('/:id/moderate', authenticateAdmin, async (req: AuthenticatedAdminR
     await listing.save();
 
     // Mirror approval or status change to public marketplace collection (servicelistings)
-    try {
-      const { ServiceListingModel: PublicListingModel } = await import('../../services/services.model');
-      await PublicListingModel.findByIdAndUpdate(
-        listing._id,
-        {
-          $set: {
-            title: listing.title,
-            description: listing.description,
-            shortDescription: listing.description?.substring(0, 140) || '',
-            categoryName: listing.categoryName,
-            categorySlug: listing.categorySlug,
-            subcategoryName: listing.subcategoryName,
-            servicesOffered: listing.servicesOffered || [],
-            skills: listing.skills || [],
-            tags: listing.tags || [],
-            coverageArea: listing.coverageArea || 'Pan India',
-            deliveryMode: listing.deliveryMode || 'IN_PERSON',
-            status: status === 'APPROVED' ? 'APPROVED' : (status === 'REJECTED' ? 'REJECTED' : 'DRAFT'),
-            isActive: status === 'APPROVED',
-            adminFeedback: rejectionReason || undefined,
-            updatedAt: new Date()
-          }
-        },
-        { upsert: true }
-      );
-    } catch (syncPublicErr) {
-      console.warn('Public marketplace service sync notice:', syncPublicErr);
-    }
+    await syncToPublicListing(listing);
 
     await logAdminAction(req, `SERVICE_LISTING_${status}`, 'ServiceListing', id, { rejectionReason });
     res.json({ success: true, message: `Service listing status updated to ${status}`, data: listing });
@@ -177,5 +239,32 @@ router.patch('/:id/moderate', authenticateAdmin, async (req: AuthenticatedAdminR
   }
 });
 
-export default router;
+// DELETE /api/admin/services/:id - Delete a service listing from both admin and public collections
+router.delete('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
 
+    // 1. Mark DELETED in Admin collection
+    const adminDoc = await ServiceListingModel.findByIdAndUpdate(
+      id,
+      { $set: { status: 'DELETED', isActive: false, updatedAt: new Date() } },
+      { new: true }
+    );
+
+    if (adminDoc) {
+      await syncToPublicListing(adminDoc);
+    } else {
+      // If not found in admin collection, mark directly in public collection
+      const { ServiceListingModel: PublicListingModel } = await import('../../services/services.model');
+      await PublicListingModel.findByIdAndUpdate(id, {
+        $set: { status: 'DELETED', isActive: false, updatedAt: new Date() }
+      });
+    }
+
+    res.json({ success: true, message: 'Service deleted successfully' });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+export default router;
