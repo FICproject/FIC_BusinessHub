@@ -66,22 +66,12 @@ adminPricingRouter.get('/', authenticateAdmin, async (_req: AuthenticatedAdminRe
 
 // ===================================================
 // Admin Endpoint: PUT /api/admin/config/pricing
-// Super Admin is VIEW ONLY. Only ADMIN can update.
+// Authorized Admin and Super Admin can update pricing.
 // ===================================================
 adminPricingRouter.put('/', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     if (!req.admin) {
       res.status(401).json({ success: false, error: 'Authentication required' });
-      return;
-    }
-
-    // RBAC Enforcement: Super Admin is strictly View Only for Pricing
-    if (req.admin.role === 'SUPER_ADMIN') {
-      res.status(403).json({
-        success: false,
-        code: 'SUPER_ADMIN_VIEW_ONLY',
-        error: 'View Only: Only authorized Admin can update pricing. Super Admin has view-only access.'
-      });
       return;
     }
 

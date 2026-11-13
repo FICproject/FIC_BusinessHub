@@ -30,6 +30,36 @@ authRouter.post('/login', login);
 authRouter.get('/me', authenticate, getMe);
 authRouter.patch('/profile', authenticate, updateProfile);
 
+// Refresh active session token
+authRouter.post('/refresh', authenticate, async (req: any, res: any) => {
+  try {
+    const { UserModel } = await import('../users/users.model');
+    const user = await UserModel.findById(req.user?.userId);
+    if (!user) {
+      res.status(404).json({ success: false, error: 'User not found' });
+      return;
+    }
+
+    const { config } = await import('../../config');
+    const jwt = (await import('jsonwebtoken')).default;
+    const newToken = jwt.sign(
+      {
+        userId: user._id.toString(),
+        email: user.email,
+        role: user.role,
+        kycStatus: user.kycStatus,
+        isMembershipActive: user.isMembershipActive
+      },
+      config.jwt.accessSecret,
+      { expiresIn: config.jwt.accessExpiresIn as any }
+    );
+
+    res.json({ success: true, data: { token: newToken, user } });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Public check-status endpoint for live KYC approval/decision polling without session mismatch
 authRouter.get('/check-status', async (req, res) => {
   try {

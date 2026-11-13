@@ -711,11 +711,13 @@ export const MyServicesPage: React.FC = () => {
     await loadUserServices();
   };
 
-  const handleDelete = async (serviceId: string) => {
+  const handleDelete = async (serviceId: string, serviceTitle?: string) => {
     if (window.confirm('Are you sure you want to delete this service listing?')) {
       // Optimistically remove from state
-      setServices((prev) => prev.filter((s) => s.id !== serviceId && (s as any)._id !== serviceId));
-      await deleteMemberService(serviceId);
+      setServices((prev) =>
+        prev.filter((s) => s.id !== serviceId && (s as any)._id !== serviceId && (!serviceTitle || s.title !== serviceTitle))
+      );
+      await deleteMemberService(serviceId, serviceTitle);
       showToast('Service listing deleted.', 'info');
       await loadUserServices();
     }
@@ -1416,7 +1418,7 @@ export const MyServicesPage: React.FC = () => {
 
                           <button
                             type="button"
-                            onClick={() => handleDelete(service.id)}
+                            onClick={() => handleDelete(service.id || (service as any)._id, service.title)}
                             className="p-2 text-[#77786E] hover:text-[#C66B52] rounded-xl hover:bg-[#FFF4F0] transition-colors cursor-pointer"
                             title="Delete Service"
                           >

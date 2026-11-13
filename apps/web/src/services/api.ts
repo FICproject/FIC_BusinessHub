@@ -823,19 +823,25 @@ export const simulateAdminRejectService = async (
 };
 
 // 8. Delete / Archive service
-export const deleteMemberService = async (serviceId: string): Promise<boolean> => {
+export const deleteMemberService = async (serviceId: string, serviceTitle?: string): Promise<boolean> => {
   try {
     const all = getAllCatalogServices();
-    const filtered = all.filter((s) => s.id !== serviceId && (s as any)._id !== serviceId);
+    const filtered = all.filter((s) => s.id !== serviceId && (s as any)._id !== serviceId && (!serviceTitle || s.title !== serviceTitle));
     saveCatalogServices(filtered);
 
     const backendBase = BASE_URL.replace(/\/api\/v1\/?$/, '');
-    await fetch(`${backendBase}/api/admin/services/${serviceId}`, {
+    await fetch(`${backendBase}/api/admin/services/${encodeURIComponent(serviceId)}`, {
       method: 'DELETE'
-    });
+    }).catch(() => null);
+
+    if (serviceTitle && serviceTitle !== serviceId) {
+      await fetch(`${backendBase}/api/admin/services/${encodeURIComponent(serviceTitle)}`, {
+        method: 'DELETE'
+      }).catch(() => null);
+    }
 
     try {
-      await apiRequest(`/services/${serviceId}`, { method: 'DELETE' });
+      await apiRequest(`/services/${encodeURIComponent(serviceId)}`, { method: 'DELETE' });
     } catch {}
 
     return true;
@@ -1282,6 +1288,82 @@ export const requestWalletWithdrawal = (
   });
 
   return { success: true, wallet };
+};
+
+// Asynchronous backend withdrawal request to MongoDB
+export const requestWalletWithdrawalApi = async (
+  amount: number,
+  userId: string
+): Promise<{ success: boolean; data?: any; error?: string }> => {
+  const token = getAuthToken();
+  if (token) {
+    try {
+      const response = await fetch(`${BASE_URL}/wallet/withdraw`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ amount })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && payload?.success) {
+        if (payload?.data?.wallet) {
+          const wallets = getStoredWallets();
+          wallets[userId] = payload.data.wallet;
+          saveStoredWallets(wallets);
+        }
+        return { success: true, data: payload.data };
+      } else {
+        return {
+          success: false,
+          error: payload?.error || payload?.message || `Withdrawal failed (HTTP ${response.status})`
+        };
+      }
+    } catch (netErr: any) {
+      console.warn('Backend withdrawal net error:', netErr);
+    }
+  }
+
+  // Local sync fallback
+  const res = requestWalletWithdrawal(userId, amount);
+  return { success: res.success, error: res.error, data: res };
+};
+
+// Backend bank account verification & linking
+export const saveBankToBackendApi = async (params: {
+  accountHolderName: string;
+  bankName: string;
+  accountNumber: string;
+  confirmAccountNumber: string;
+  ifscCode: string;
+  accountType?: string;
+}): Promise<{ success: boolean; data?: any; error?: string }> => {
+  const token = getAuthToken();
+  if (!token) {
+    return { success: false, error: 'Authentication required to link bank account.' };
+  }
+
+  try {
+    const response = await fetch(`${BASE_URL}/wallet/bank-accounts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(params)
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (response.ok && payload?.success) {
+      return { success: true, data: payload.data };
+    }
+    return {
+      success: false,
+      error: payload?.error || payload?.message || `Bank linking failed (HTTP ${response.status})`
+    };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Unable to connect to server.' };
+  }
 };
 
 export const renewMembershipWithWallet = (

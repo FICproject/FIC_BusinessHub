@@ -18,10 +18,13 @@ import {
   removeAuthToken,
   calculateAgeFromDob,
   formatDisplayDob,
+  getAuthToken,
   getUserWallet,
   getUserWalletTransactions,
   addWalletFunds,
   requestWalletWithdrawal,
+  requestWalletWithdrawalApi,
+  saveBankToBackendApi,
   renewMembershipWithWallet,
   getUserReferrals,
   getUserBankAccount,
@@ -217,17 +220,40 @@ export const ProfilePage: React.FC = () => {
 
     // Sync real backend MongoDB wallet, strictly Admin-approved KYC documents, and Razorpay payment history
     try {
-      const [liveWallet, liveTxs, kycData, payments, liveRefs] = await Promise.all([
+      const [liveWallet, liveTxs, kycData, payments, liveRefs, liveBank] = await Promise.all([
         fetchLiveWalletSummary(),
         fetchLiveWalletTransactions(),
         fetchMyKycStatus(),
         getMyPaymentHistory(),
-        apiRequest('/referrals/my-referrals').catch(() => null)
+        apiRequest('/referrals/my-referrals').catch(() => null),
+        apiRequest('/wallet/bank-accounts').catch(() => null)
       ]);
       if (liveRefs?.success && liveRefs.data) {
         setReferralData(liveRefs.data);
       }
-      if (liveWallet) setWallet(liveWallet);
+      if (liveBank?.success && Array.isArray(liveBank.data) && liveBank.data.length > 0) {
+        const b = liveBank.data[0];
+        setBankAccount({
+          bankAccountId: b._id || b.id || `bnk_${Date.now()}`,
+          userId: uid,
+          accountHolderName: b.accountHolderName,
+          bankName: b.bankName,
+          accountNumberMasked: b.accountNumberMasked,
+          ifscCode: b.ifscCode,
+          accountType: b.accountType || 'SAVINGS',
+          verificationStatus: b.verificationStatus || 'VERIFIED',
+          verifiedAt: b.verifiedAt ? new Date(b.verifiedAt).toLocaleDateString() : 'Verified',
+          createdAt: b.createdAt ? new Date(b.createdAt).toLocaleDateString() : 'Today'
+        });
+      }
+      if (liveWallet) {
+        setWallet(liveWallet);
+        try {
+          const stored = JSON.parse(localStorage.getItem('fic_member_wallets') || '{}');
+          stored[uid] = liveWallet;
+          localStorage.setItem('fic_member_wallets', JSON.stringify(stored));
+        } catch {}
+      }
       if (liveTxs && liveTxs.length > 0) {
         setAllUserTransactions(liveTxs);
         setTransactions(liveTxs);
@@ -408,7 +434,7 @@ export const ProfilePage: React.FC = () => {
     });
   };
 
-  const handleWithdrawSubmit = (e: React.FormEvent) => {
+  const handleWithdrawSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const minWdr = platformPricing.minWithdrawalAmount || 500;
     const num = Number(withdrawAmount);
@@ -420,12 +446,12 @@ export const ProfilePage: React.FC = () => {
       setWithdrawError(`Insufficient withdrawable balance. You have ₹${effectiveWithdrawableBalance.toLocaleString('en-IN')} available for withdrawal.`);
       return;
     }
-    const res = requestWalletWithdrawal(userId, num);
+    const res = await requestWalletWithdrawalApi(num, userId);
     if (res.success) {
       setIsWithdrawModalOpen(false);
       setWithdrawAmount('');
       setWithdrawError('');
-      refreshFinancialData(userId);
+      await refreshFinancialData(userId);
       showToast(`Withdrawal request for ₹${num.toLocaleString('en-IN')} submitted under review.`);
     } else {
       setWithdrawError(res.error || 'Failed to process withdrawal.');
@@ -446,48 +472,74 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  // Save Bank Account
-  const handleSaveBankSubmit = (e: React.FormEvent) => {
+  // Save Bank Account with strict field validation and permanent lock
+  const handleSaveBankSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (bankAccountNumber !== bankConfirmAccount) {
-      setBankFormError('Account numbers do not match.');
+
+    if (bankAccount && (bankAccount.accountNumberMasked || bankAccount.verificationStatus === 'VERIFIED')) {
+      setBankFormError('Bank account details are already verified and permanently locked against modification.');
       return;
     }
-    if (!bankHolderName || !bankName || !bankIfsc) {
-      setBankFormError('Please fill all required fields.');
+
+    const cleanHolder = bankHolderName.trim();
+    const cleanBank = bankName.trim();
+    const cleanAcc = bankAccountNumber.trim();
+    const cleanConfirm = bankConfirmAccount.trim();
+    const cleanIfsc = bankIfsc.trim().toUpperCase();
+
+    if (!cleanHolder || !/^[A-Za-z. ]{3,60}$/.test(cleanHolder)) {
+      setBankFormError('Account Holder Name must be at least 3 characters and contain letters and spaces only.');
       return;
     }
-    saveUserBankAccount(userId, {
-      accountHolderName: bankHolderName,
-      bankName,
-      accountNumber: bankAccountNumber,
-      ifscCode: bankIfsc,
+
+    if (!cleanBank || !/^[A-Za-z ]{2,50}$/.test(cleanBank)) {
+      setBankFormError('Bank Name must contain alphabetic letters and spaces only.');
+      return;
+    }
+
+    if (!cleanAcc || !/^\d{9,18}$/.test(cleanAcc)) {
+      setBankFormError('Account Number must contain between 9 and 18 numeric digits only.');
+      return;
+    }
+
+    if (cleanAcc !== cleanConfirm) {
+      setBankFormError('Account Number and Confirm Account Number do not match.');
+      return;
+    }
+
+    if (!cleanIfsc || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanIfsc)) {
+      setBankFormError('Invalid IFSC code format. IFSC must be 11 characters (4 letters, 0, 6 alphanumeric, e.g. SBIN0001234).');
+      return;
+    }
+
+    // Attempt backend verification and MongoDB storage
+    const backendRes = await saveBankToBackendApi({
+      accountHolderName: cleanHolder,
+      bankName: cleanBank,
+      accountNumber: cleanAcc,
+      confirmAccountNumber: cleanConfirm,
+      ifscCode: cleanIfsc,
       accountType: bankAccountType
     });
 
-    const token = localStorage.getItem('fic_auth_token') || localStorage.getItem('token');
-    if (token) {
-      fetch('/api/v1/wallet/bank-accounts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          accountHolderName: bankHolderName,
-          bankName,
-          accountNumber: bankAccountNumber,
-          confirmAccountNumber: bankConfirmAccount,
-          ifscCode: bankIfsc,
-          accountType: bankAccountType
-        })
-      }).catch((err) => console.warn('Backend bank sync fallback:', err));
+    if (!backendRes.success && backendRes.error) {
+      setBankFormError(backendRes.error);
+      return;
     }
+
+    // Save to local cache
+    saveUserBankAccount(userId, {
+      accountHolderName: cleanHolder,
+      bankName: cleanBank,
+      accountNumber: cleanAcc,
+      ifscCode: cleanIfsc,
+      accountType: bankAccountType
+    });
 
     setIsBankModalOpen(false);
     setBankFormError('');
-    refreshFinancialData(userId);
-    showToast('Bank account verified and saved successfully.');
+    await refreshFinancialData(userId);
+    showToast('Bank account verified and permanently locked successfully.');
   };
 
   // Copy Referral Link
@@ -992,21 +1044,10 @@ export const ProfilePage: React.FC = () => {
 
           <div className="flex items-center gap-2">
             {bankAccount ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setBankHolderName(bankAccount.accountHolderName);
-                  setBankName(bankAccount.bankName);
-                  setBankAccountNumber('');
-                  setBankConfirmAccount('');
-                  setBankIfsc(bankAccount.ifscCode);
-                  setBankFormError('');
-                  setIsBankModalOpen(true);
-                }}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-[#FAF7F2] border border-[#EDE2D7] hover:border-[#8064B1] hover:text-[#8064B1] text-[#51463F] transition-all cursor-pointer shadow-2xs"
-              >
-                Change Bank Account
-              </button>
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                <CheckCircleIcon size={14} className="text-emerald-600" />
+                <span>Verified & Locked</span>
+              </span>
             ) : (
               <button
                 type="button"
@@ -2447,16 +2488,18 @@ export const ProfilePage: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="font-bold text-[#51463F]">Receiving Bank Account *</label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsWithdrawModalOpen(false);
-                      setIsBankModalOpen(true);
-                    }}
-                    className="text-[11px] font-bold text-[#8064B1] hover:underline"
-                  >
-                    {bankAccount ? 'Change Bank' : '+ Add Bank Account'}
-                  </button>
+                  {!bankAccount && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsWithdrawModalOpen(false);
+                        setIsBankModalOpen(true);
+                      }}
+                      className="text-[11px] font-bold text-[#8064B1] hover:underline cursor-pointer"
+                    >
+                      + Add Bank Account
+                    </button>
+                  )}
                 </div>
 
                 {bankAccount ? (
@@ -2683,9 +2726,9 @@ export const ProfilePage: React.FC = () => {
                 <label className="block font-bold text-[#51463F] mb-1">Account Holder Full Name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. S. Moorthy"
+                  placeholder="e.g. S. Moorthy (letters and spaces only)"
                   value={bankHolderName}
-                  onChange={(e) => setBankHolderName(e.target.value)}
+                  onChange={(e) => setBankHolderName(e.target.value.replace(/[^A-Za-z. ]/g, ''))}
                   required
                   className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F]"
                 />
@@ -2695,9 +2738,9 @@ export const ProfilePage: React.FC = () => {
                 <label className="block font-bold text-[#51463F] mb-1">Bank Name *</label>
                 <input
                   type="text"
-                  placeholder="e.g. HDFC Bank, SBI, ICICI"
+                  placeholder="e.g. HDFC Bank, SBI, ICICI (letters only)"
                   value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
+                  onChange={(e) => setBankName(e.target.value.replace(/[^A-Za-z ]/g, ''))}
                   required
                   className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F]"
                 />
@@ -2707,11 +2750,13 @@ export const ProfilePage: React.FC = () => {
                 <label className="block font-bold text-[#51463F] mb-1">Account Number *</label>
                 <input
                   type="text"
-                  placeholder="Enter full bank account number"
+                  inputMode="numeric"
+                  placeholder="Enter 9 to 18 digits (numbers only)"
                   value={bankAccountNumber}
-                  onChange={(e) => setBankAccountNumber(e.target.value)}
+                  maxLength={18}
+                  onChange={(e) => setBankAccountNumber(e.target.value.replace(/[^0-9]/g, '').slice(0, 18))}
                   required
-                  className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F]"
+                  className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F] font-mono"
                 />
               </div>
 
@@ -2719,11 +2764,13 @@ export const ProfilePage: React.FC = () => {
                 <label className="block font-bold text-[#51463F] mb-1">Confirm Account Number *</label>
                 <input
                   type="text"
-                  placeholder="Re-enter bank account number"
+                  inputMode="numeric"
+                  placeholder="Re-enter 9 to 18 digits (numbers only)"
                   value={bankConfirmAccount}
-                  onChange={(e) => setBankConfirmAccount(e.target.value)}
+                  maxLength={18}
+                  onChange={(e) => setBankConfirmAccount(e.target.value.replace(/[^0-9]/g, '').slice(0, 18))}
                   required
-                  className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F]"
+                  className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F] font-mono"
                 />
               </div>
 
@@ -2732,11 +2779,12 @@ export const ProfilePage: React.FC = () => {
                   <label className="block font-bold text-[#51463F] mb-1">IFSC Code *</label>
                   <input
                     type="text"
-                    placeholder="e.g. HDFC0001234"
+                    placeholder="e.g. HDFC0001234 (11 alphanumeric)"
                     value={bankIfsc}
-                    onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
+                    maxLength={11}
+                    onChange={(e) => setBankIfsc(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 11))}
                     required
-                    className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl uppercase text-[#51463F]"
+                    className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl uppercase text-[#51463F] font-mono"
                   />
                 </div>
                 <div>
@@ -3164,6 +3212,8 @@ export const ProfilePage: React.FC = () => {
           userName={user?.fullName || 'FIC Member'}
           userEmail={user?.email || ''}
           userPhone={user?.phoneNumber || ''}
+          tokenOverride={getAuthToken() || undefined}
+          ensureAuthToken={async () => getAuthToken() || undefined}
           onSuccess={async (verified) => {
             setRazorpayModalConfig(null);
             await refreshFinancialData(userId);

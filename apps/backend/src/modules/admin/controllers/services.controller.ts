@@ -90,8 +90,12 @@ async function syncToPublicListing(adminDoc: any) {
 router.get('/', authenticateAdmin, async (req, res) => {
   try {
     const { status, categoryId } = req.query;
-    const filter: any = {};
-    if (status && status !== 'ALL') filter.status = status;
+    const filter: any = {
+      status: { $nin: ['DELETED', 'ARCHIVED'] }
+    };
+    if (status && status !== 'ALL') {
+      filter.status = status;
+    }
     if (categoryId) filter.categoryId = categoryId;
 
     const listings = await ServiceListingModel.find(filter)
@@ -243,10 +247,13 @@ router.patch('/:id/moderate', authenticateAdmin, async (req: AuthenticatedAdminR
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const deleteFilter: any = mongoose.isValidObjectId(id)
+      ? { _id: new mongoose.Types.ObjectId(id) }
+      : { $or: [{ _id: id }, { title: id }] };
 
     // 1. Mark DELETED in Admin collection
-    const adminDoc = await ServiceListingModel.findByIdAndUpdate(
-      id,
+    const adminDoc = await ServiceListingModel.findOneAndUpdate(
+      deleteFilter,
       { $set: { status: 'DELETED', isActive: false, updatedAt: new Date() } },
       { new: true }
     );
@@ -256,7 +263,7 @@ router.delete('/:id', async (req, res) => {
     } else {
       // If not found in admin collection, mark directly in public collection
       const { ServiceListingModel: PublicListingModel } = await import('../../services/services.model');
-      await PublicListingModel.findByIdAndUpdate(id, {
+      await PublicListingModel.findOneAndUpdate(deleteFilter, {
         $set: { status: 'DELETED', isActive: false, updatedAt: new Date() }
       });
     }
