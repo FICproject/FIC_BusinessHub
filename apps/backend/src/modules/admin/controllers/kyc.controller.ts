@@ -215,6 +215,8 @@ async function resolveReferralAttribution(userDoc: any) {
       source: 'DIRECT',
       sourceLabel: 'Direct Registration',
       referredByName: '',
+      referrerEmail: '',
+      referrerPhone: '',
       referralCode: ''
     };
   }
@@ -225,26 +227,43 @@ async function resolveReferralAttribution(userDoc: any) {
       source: 'DIRECT',
       sourceLabel: 'Direct Registration',
       referredByName: '',
+      referrerEmail: '',
+      referrerPhone: '',
       referralCode: ''
     };
   }
 
   let referrerName = '';
+  let referrerEmail = '';
+  let referrerPhone = '';
   if (userDoc.referrerUserId) {
-    const refUser = await UserModel.findById(userDoc.referrerUserId).select('fullName email').lean();
-    if (refUser) referrerName = (refUser as any).fullName;
+    const refUser = await UserModel.findById(userDoc.referrerUserId).select('fullName email phoneNumber').lean();
+    if (refUser) {
+      referrerName = (refUser as any).fullName || '';
+      referrerEmail = (refUser as any).email || '';
+      referrerPhone = (refUser as any).phoneNumber || '';
+    }
   }
   if (!referrerName && userDoc.referredByCode) {
     const refUser = await UserModel.findOne({
-      $or: [{ referralCode: userDoc.referredByCode }, { email: userDoc.referredByCode.toLowerCase() }]
-    }).select('fullName email').lean();
-    if (refUser) referrerName = (refUser as any).fullName;
+      $or: [
+        { referralCode: String(userDoc.referredByCode).trim().toUpperCase() },
+        { email: String(userDoc.referredByCode).trim().toLowerCase() }
+      ]
+    }).select('fullName email phoneNumber').lean();
+    if (refUser) {
+      referrerName = (refUser as any).fullName || '';
+      referrerEmail = (refUser as any).email || '';
+      referrerPhone = (refUser as any).phoneNumber || '';
+    }
   }
 
   return {
     source: 'REFERRAL',
     sourceLabel: 'Referral',
     referredByName: referrerName || 'Registered Referrer',
+    referrerEmail,
+    referrerPhone,
     referralCode: userDoc.referredByCode || ''
   };
 }
@@ -949,6 +968,50 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
         }
 
         if (referrerUser && String(referrerUser._id) !== String(updatedUser._id)) {
+          // 1. Credit Referrer Wallet immediately with Referral Bonus
+          const { MemberWalletModel, WalletTransactionModel } = await import('../../wallet/wallet.model');
+          const { WalletTransactionType, WalletTransactionStatus, WalletStatus } = await import('@fic/shared-types');
+          let referrerWallet = await MemberWalletModel.findOne({ userId: referrerUser._id });
+          if (!referrerWallet) {
+            referrerWallet = await MemberWalletModel.create({
+              userId: referrerUser._id,
+              currency: 'INR',
+              totalBalance: 0,
+              availableBalance: 0,
+              pendingBalance: 0,
+              restrictedBalance: 0,
+              withdrawalEligibleBalance: 0,
+              membershipEligibleBalance: 0,
+              totalAdded: 0,
+              totalWithdrawn: 0,
+              totalReferralEarnings: 0,
+              totalRenewalSpent: 0,
+              status: WalletStatus.ACTIVE
+            });
+          }
+
+          referrerWallet.availableBalance = (referrerWallet.availableBalance || 0) + rewardAmount;
+          referrerWallet.totalBalance = (referrerWallet.totalBalance || 0) + rewardAmount;
+          referrerWallet.totalReferralEarnings = (referrerWallet.totalReferralEarnings || 0) + rewardAmount;
+          referrerWallet.withdrawalEligibleBalance = Math.max(0, (referrerWallet.availableBalance || 0) - (referrerWallet.restrictedBalance || 0));
+          await referrerWallet.save();
+
+          // 2. Insert Completed Ledger Transaction
+          await WalletTransactionModel.create({
+            transactionId: `TXN_REF_${Date.now()}_${Math.floor(100 + Math.random() * 900)}`,
+            walletId: referrerWallet._id,
+            userId: referrerUser._id,
+            transactionType: WalletTransactionType.REFERRAL_REWARD,
+            direction: 'CREDIT',
+            amount: rewardAmount,
+            currency: 'INR',
+            description: `Referral reward for verified member ${updatedUser.fullName}`,
+            status: WalletTransactionStatus.COMPLETED,
+            balanceAfter: referrerWallet.availableBalance,
+            sourceReferenceId: `REF_${updatedUser._id}`
+          });
+
+          // 3. Mark Referral qualified & rewarded
           await ReferralModel.findOneAndUpdate(
             { referredUserId: updatedUser._id },
             {
@@ -962,9 +1025,10 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
                 paymentStatus: member?.paymentStatus || 'PAID',
                 kycStatus: 'VERIFIED',
                 accountStatus: 'ACTIVE',
-                referralStatus: 'ELIGIBLE',
+                referralStatus: 'QUALIFIED',
                 rewardAmount: rewardAmount,
-                rewardStatus: 'PENDING_APPROVAL'
+                rewardStatus: 'REWARDED',
+                rewardPaidAt: now
               }
             },
             { upsert: true, new: true }
@@ -981,8 +1045,9 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
                 referredName: updatedUser.fullName,
                 referredEmail: updatedUser.email,
                 bonusAmount: rewardAmount,
-                status: 'PENDING',
-                notes: `Referred via code ${updatedUser.referredByCode || referrerUser.referralCode || 'FIC-REF'}`
+                status: 'APPROVED',
+                paidAt: now,
+                notes: `Referral bonus auto-credited to wallet upon KYC approval (Referred via ${updatedUser.referredByCode || referrerUser.referralCode || 'FIC-REF'})`
               }
             },
             { upsert: true, new: true }

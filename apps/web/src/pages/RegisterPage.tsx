@@ -998,6 +998,8 @@ export const RegisterPage: React.FC = () => {
     if (!registeredSessionRef.current) {
       let token = '';
       let serverUser: any = null;
+      const isReferred = Boolean(referrerInfo?.valid || referralCode.trim());
+      const newRefCode = `FIC-${fullName.toUpperCase().replace(/\s+/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
 
       try {
         const regResult = await registerAccountStrict({
@@ -1015,7 +1017,11 @@ export const RegisterPage: React.FC = () => {
           dynamicProfile: dynamicAnswers,
           address: userAddress,
           ageConfirmed,
-          termsAccepted
+          termsAccepted,
+          referralCode: newRefCode,
+          referredByCode: referralCode.trim() ? referralCode.trim() : undefined,
+          referrerUserId: referrerInfo?.referrerUserId || undefined,
+          referralSource: (referralCode.trim() || referrerInfo?.valid) ? 'REFERRED' : 'ORGANIC'
         });
         token = regResult.token;
         serverUser = regResult.user;
@@ -1051,8 +1057,7 @@ export const RegisterPage: React.FC = () => {
         }
       }
 
-      const isReferred = referrerInfo?.valid;
-      const newRefCode = `FIC-${fullName.toUpperCase().replace(/\s+/g, '')}-${Math.floor(1000 + Math.random() * 9000)}`;
+      // Referral attribution details defined above
       const enrichedUser = {
         ...(serverUser || {}),
         primaryCategory: selectedCategory.name,
@@ -1079,7 +1084,7 @@ export const RegisterPage: React.FC = () => {
         referralCode: newRefCode,
         referralSource: isReferred ? 'REFERRED' : 'ORGANIC',
         referredByCode: isReferred ? referralCode : undefined,
-        referrerUserId: isReferred ? referrerInfo.referrerUserId : undefined
+        referrerUserId: isReferred ? referrerInfo?.referrerUserId : undefined
       };
 
       setAuthToken(token);
@@ -1242,7 +1247,10 @@ export const RegisterPage: React.FC = () => {
       await submitKycApplicationStrict(
         {
           categoryId: selectedCategory.id,
-          documents: allDocItems
+          documents: allDocItems,
+          referredByCode: referralCode.trim() ? referralCode.trim() : undefined,
+          referrerUserId: referrerInfo?.referrerUserId || undefined,
+          referralSource: (referralCode.trim() || referrerInfo?.valid) ? 'REFERRED' : 'ORGANIC'
         },
         token
       );

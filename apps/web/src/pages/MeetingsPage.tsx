@@ -1040,29 +1040,6 @@ export const MeetingsPage: React.FC = () => {
                             <span>Join Session Room</span>
                           </a>
                         )}
-
-                        {(isScheduled || isPending) && (
-                          <>
-                            <WorkspaceButton
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setRescheduleTarget(meeting);
-                                setRescheduleDate(meeting.scheduledDate);
-                                setRescheduleTime(meeting.scheduledTime);
-                              }}
-                            >
-                              Reschedule
-                            </WorkspaceButton>
-                            <WorkspaceButton
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setCancelTarget(meeting)}
-                            >
-                              Cancel
-                            </WorkspaceButton>
-                          </>
-                        )}
                       </div>
                     </div>
                   </div>

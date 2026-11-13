@@ -25,7 +25,8 @@ import {
   getStoredUser,
   uploadDocumentFile,
   downloadOriginalDocument,
-  UploadedDocumentAsset
+  UploadedDocumentAsset,
+  lookupIndianPinCodeApi
 } from '../services/api';
 import { DocumentViewerModal } from '../components/DocumentViewerModal';
 
@@ -264,10 +265,36 @@ export const InvestmentPage: React.FC = () => {
   const [fundingBusinessName, setFundingBusinessName] = useState('');
   const [fundingBusinessType, setFundingBusinessType] = useState('Private Limited Company');
   const [fundingIndustry, setFundingIndustry] = useState('Manufacturing');
+  const [fundingPinCode, setFundingPinCode] = useState('');
   const [fundingCountry, setFundingCountry] = useState('India');
   const [fundingState, setFundingState] = useState('Tamil Nadu');
   const [fundingDistrict, setFundingDistrict] = useState('Coimbatore');
   const [fundingCity, setFundingCity] = useState('Coimbatore');
+  const [isLookingUpPin, setIsLookingUpPin] = useState(false);
+  const [pinLookupMsg, setPinLookupMsg] = useState('');
+
+  const handleFundingPinCodeChange = async (val: string) => {
+    const sanitized = val.replace(/\D/g, '').slice(0, 6);
+    setFundingPinCode(sanitized);
+    if (sanitized.length === 6) {
+      setIsLookingUpPin(true);
+      setPinLookupMsg('Auto-fetching location...');
+      try {
+        const resolved = await lookupIndianPinCodeApi(sanitized);
+        setFundingCountry(resolved.country || 'India');
+        if (resolved.state) setFundingState(resolved.state);
+        if (resolved.district) setFundingDistrict(resolved.district);
+        if (resolved.city) setFundingCity(resolved.city);
+        setPinLookupMsg(`Auto-filled: ${resolved.city || resolved.district}, ${resolved.district}, ${resolved.state}`);
+      } catch {
+        setPinLookupMsg('');
+      } finally {
+        setIsLookingUpPin(false);
+      }
+    } else {
+      setPinLookupMsg('');
+    }
+  };
   const [fundingStage, setFundingStage] = useState('Growing Business');
   const [fundingAmount, setFundingAmount] = useState('5000000');
   const [fundingPurpose, setFundingPurpose] = useState<string[]>(['Business Expansion', 'Machinery / Equipment Purchase']);
@@ -581,8 +608,9 @@ export const InvestmentPage: React.FC = () => {
         country: fundingCountry.trim() || 'India',
         state: fundingState.trim(),
         district: fundingDistrict.trim(),
-        city: fundingCity.trim()
-      },
+        city: fundingCity.trim(),
+        pinCode: fundingPinCode.trim()
+      } as any,
       businessStage: fundingStage,
       fundingAmount: Number(fundingAmount) || 0,
       fundingPurpose,
@@ -1270,12 +1298,28 @@ export const InvestmentPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Location: Country, State, District, City */}
-                      <div className="space-y-1">
-                        <label className="text-xs font-black text-[#2E231C] block">
-                          4. Business Location <span className="text-[#C65638]">*</span>
-                        </label>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {/* Location: PIN Code first + Country, State, District, City */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-black text-[#2E231C] block">
+                            4. Business Location <span className="text-[#C65638]">*</span>
+                          </label>
+                          {pinLookupMsg && (
+                            <span className={`text-[11px] font-semibold ${isLookingUpPin ? 'text-[#8064B1] animate-pulse' : 'text-[#2E7D32]'}`}>{pinLookupMsg}</span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                          <div className="col-span-2 sm:col-span-1">
+                            <input
+                              type="text"
+                              maxLength={6}
+                              placeholder="PIN Code *"
+                              value={fundingPinCode}
+                              onChange={(e) => handleFundingPinCodeChange(e.target.value)}
+                              required
+                              className="w-full text-xs p-2.5 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] font-semibold focus:outline-none focus:ring-1 focus:ring-[#2C857B]"
+                            />
+                          </div>
                           <input
                             type="text"
                             placeholder="Country"

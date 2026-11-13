@@ -326,19 +326,7 @@ export const ProfilePage: React.FC = () => {
     }
   }, [searchParams, setSearchParams]);
 
-  useEffect(() => {
-    if (user) {
-      const uid = user.id || user.userId;
-      const allTxs = getUserWalletTransactions(uid);
-      setAllUserTransactions(allTxs);
-      const txs = getUserWalletTransactions(uid, {
-        type: txTypeFilter,
-        status: txStatusFilter,
-        search: txSearchQuery
-      });
-      setTransactions(txs);
-    }
-  }, [txTypeFilter, txStatusFilter, txSearchQuery, user]);
+
 
   const isAnyModalOpen =
     isReferralModalOpen ||
@@ -407,13 +395,7 @@ export const ProfilePage: React.FC = () => {
     navigate('/login');
   };
 
-  const handleOpenEdit = () => {
-    if (user) {
-      populateForm(user);
-    }
-    setDobError('');
-    setIsEditModalOpen(true);
-  };
+  const handleOpenEdit = () => {};
 
   // Add Funds Handler
   const handleAddFundsSubmit = (e: React.FormEvent) => {
@@ -599,13 +581,13 @@ export const ProfilePage: React.FC = () => {
   // User's transactions calculation for inline wallet ledger & statistics
   const totalTxCount = allUserTransactions.length;
   const totalCreditsAmount = allUserTransactions
-    .filter((t) => t.direction === 'CREDIT' && t.status === WalletTransactionStatus.COMPLETED)
-    .reduce((sum, t) => sum + t.amount, 0);
+    .filter((t) => t.direction === 'CREDIT' && ['COMPLETED', 'SUCCESS', 'PAID', 'CAPTURED', 'SETTLED'].includes(String(t.status || '').toUpperCase()))
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
   const totalDebitsAmount = allUserTransactions
-    .filter((t) => t.direction === 'DEBIT' && t.status === WalletTransactionStatus.COMPLETED)
-    .reduce((sum, t) => sum + t.amount, 0);
-  const pendingTxCount = allUserTransactions.filter((t) => t.status === WalletTransactionStatus.PENDING).length;
-  const completedTxCount = allUserTransactions.filter((t) => t.status === WalletTransactionStatus.COMPLETED).length;
+    .filter((t) => t.direction === 'DEBIT' && ['COMPLETED', 'SUCCESS', 'PAID', 'CAPTURED', 'SETTLED'].includes(String(t.status || '').toUpperCase()))
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+  const pendingTxCount = allUserTransactions.filter((t) => ['PENDING', 'PROCESSING', 'AWAITING_VERIFICATION'].includes(String(t.status || '').toUpperCase())).length;
+  const completedTxCount = allUserTransactions.filter((t) => ['COMPLETED', 'SUCCESS', 'PAID', 'CAPTURED', 'SETTLED'].includes(String(t.status || '').toUpperCase())).length;
 
   // Filtered transactions for inline activity view
   const filteredTransactions = React.useMemo(() => {
@@ -618,9 +600,25 @@ export const ProfilePage: React.FC = () => {
       if (txFlowFilter !== 'ALL' && tx.direction !== txFlowFilter) {
         return false;
       }
-      // Status filter
-      if (txStatusFilter !== 'ALL' && tx.status !== txStatusFilter) {
-        return false;
+      // Status filter (case-insensitive & semantic alias matching)
+      if (txStatusFilter !== 'ALL') {
+        const currentStatus = String(tx.status || '').toUpperCase();
+        const targetStatus = String(txStatusFilter).toUpperCase();
+        if (targetStatus === 'COMPLETED') {
+          if (!['COMPLETED', 'SUCCESS', 'PAID', 'CAPTURED', 'SETTLED'].includes(currentStatus)) {
+            return false;
+          }
+        } else if (targetStatus === 'PENDING') {
+          if (!['PENDING', 'PROCESSING', 'AWAITING_VERIFICATION'].includes(currentStatus)) {
+            return false;
+          }
+        } else if (targetStatus === 'FAILED') {
+          if (!['FAILED', 'REJECTED', 'CANCELLED'].includes(currentStatus)) {
+            return false;
+          }
+        } else if (currentStatus !== targetStatus) {
+          return false;
+        }
       }
       // Search query
       if (txSearchQuery.trim()) {
@@ -793,16 +791,7 @@ export const ProfilePage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
-            <WorkspaceButton
-              variant="outline"
-              size="md"
-              icon={<EditIcon size={15} />}
-              onClick={handleOpenEdit}
-            >
-              Edit Profile
-            </WorkspaceButton>
-          </div>
+
         </div>
       </div>
 
@@ -1400,24 +1389,12 @@ export const ProfilePage: React.FC = () => {
                       ? `${user.address.addressLine1}${user.address.addressLine2 ? ', ' + user.address.addressLine2 : ''}${user.address.landmark ? ', Landmark: ' + user.address.landmark : ''}, ${user.address.city}, ${user.address.district}, ${user.address.state} - ${user.address.pinCode}, ${user.address.country || 'India'}`
                       : `${user.personalInfo?.address || ''}${user.personalInfo?.city ? ', ' + user.personalInfo.city : ''}${user.personalInfo?.district ? ', ' + user.personalInfo.district : ''}${user.personalInfo?.state ? ', ' + user.personalInfo.state : ''}${user.personalInfo?.pincode ? ' - ' + user.personalInfo.pincode : ''}`}
                   </span>
-                  <button
-                    type="button"
-                    onClick={handleOpenEdit}
-                    className="text-[11px] font-bold text-[#8064B1] hover:underline shrink-0 cursor-pointer"
-                  >
-                    Edit
-                  </button>
+
                 </div>
               ) : (
                 <div className="flex items-center gap-3 mt-1.5">
                   <span className="text-[#82776E] italic text-xs">Address Not Provided</span>
-                  <button
-                    type="button"
-                    onClick={handleOpenEdit}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[#8064B1] bg-[#8064B1]/10 hover:bg-[#8064B1]/20 transition-all cursor-pointer shadow-2xs"
-                  >
-                    + Add Address
-                  </button>
+
                 </div>
               )}
             </div>
@@ -1472,63 +1449,7 @@ export const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {paymentHistory.length > 0 && (
-        <div className="bg-white/95 rounded-2xl border border-[#EDE2D7] p-5 sm:p-6 shadow-xs mb-6">
-          <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-3 mb-4">
-            <h3 className="text-sm sm:text-base font-black text-[#51463F]">
-              Verified Razorpay Payments
-            </h3>
-            <span className="text-[11px] font-bold text-[#3B9C91]">
-              {paymentHistory.length} Record(s)
-            </span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#EDE2D7] text-[#82776E]">
-                  <th className="py-2 pr-3">Payment / Razorpay ID</th>
-                  <th className="py-2 pr-3">Purpose</th>
-                  <th className="py-2 pr-3">Method</th>
-                  <th className="py-2 pr-3">Amount</th>
-                  <th className="py-2">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#EDE2D7]/60">
-                {paymentHistory.slice(0, 6).map((p: any) => (
-                  <tr key={p.paymentId || p._id}>
-                    <td className="py-2.5 pr-3 font-mono text-[11px] text-[#51463F]">
-                      {p.razorpayPaymentId || p.internalOrderId || p.paymentId}
-                    </td>
-                    <td className="py-2.5 pr-3 font-semibold text-[#51463F]">
-                      {String(p.purpose || '').replace(/_/g, ' ')}
-                    </td>
-                    <td className="py-2.5 pr-3 text-[#82776E]">
-                      {p.paymentMethod || p.preferredMethod || 'RAZORPAY'}
-                    </td>
-                    <td className="py-2.5 pr-3 font-bold text-[#51463F]">
-                      ₹{Number(p.amount || 0).toLocaleString('en-IN')}
-                    </td>
-                    <td className="py-2.5">
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                          p.status === 'SUCCESS'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : p.status === 'FAILED'
-                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                            : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}
-                      >
-                        {p.status}
-                        {p.signatureVerified ? ' ✓' : ''}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+
       {/* ========================================================
           G. KYC VERIFICATION & COMPLIANCE FILES (SIMPLIFIED)
          ======================================================== */}
@@ -2820,283 +2741,6 @@ export const ProfilePage: React.FC = () => {
       )}
     </AnimatePresence>
 
-      {/* ========================================================
-          MODAL 5: EDIT PROFILE DETAILS
-         ======================================================== */}
-      <AnimatePresence>
-        {isEditModalOpen && (
-          <motion.div
-            key="edit-profile-modal"
-            variants={modalBackdrop}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
-            onClick={() => setIsEditModalOpen(false)}
-          >
-            <motion.div
-              variants={modalEntrance}
-              className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto my-auto border border-[#EDE2D7]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between border-b border-[#EDE2D7] pb-4 mb-4">
-                <h3 className="text-lg font-bold text-[#51463F]">Edit Member Profile Details</h3>
-                <button
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-[#FAF7F2] hover:bg-[#EDE2D7] text-[#82776E] flex items-center justify-center font-bold cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (editPincode && !validateIndianPinCode(editPincode)) {
-                  setEditPinError('Please enter a valid 6-digit PIN code.');
-                  return;
-                }
-                setEditPinError('');
-
-                const updatedAddress: UserAddress = {
-                  addressLine1: editAddressLine1.trim(),
-                  addressLine2: editAddressLine2.trim() || undefined,
-                  landmark: editLandmark.trim() || undefined,
-                  country: 'India',
-                  state: editState.trim(),
-                  district: editDistrict.trim(),
-                  city: editCity.trim(),
-                  pinCode: editPincode.trim(),
-                  addressType: editAddressType
-                };
-
-                const updated = updateUserProfile(userId, {
-                  fullName: editFullName,
-                  mobileNumber: editPhone,
-                  phoneNumber: editPhone,
-                  subcategories: editSubcategories.split(',').map((s) => s.trim()).filter(Boolean),
-                  address: updatedAddress,
-                  personalInfo: {
-                    ...(user?.personalInfo || {}),
-                    dob: editDob,
-                    address: `${updatedAddress.addressLine1}${updatedAddress.addressLine2 ? ', ' + updatedAddress.addressLine2 : ''}`,
-                    city: updatedAddress.city,
-                    district: updatedAddress.district,
-                    state: updatedAddress.state,
-                    pincode: updatedAddress.pinCode
-                  },
-                  professionalInfo: {
-                    ...(user?.professionalInfo || {}),
-                    roleTitle: editRoleTitle,
-                    skills: editSkills.split(',').map((s) => s.trim()).filter(Boolean),
-                    portfolioUrl: editPortfolio,
-                    description: editDescription
-                  }
-                });
-                setUser(updated);
-                setIsEditModalOpen(false);
-                showToast('Profile information updated successfully.');
-              }}
-              className="space-y-4 text-xs sm:text-sm"
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-[#51463F] mb-1">Full Legal Name</label>
-                  <input
-                    type="text"
-                    value={editFullName}
-                    onChange={(e) => setEditFullName(e.target.value)}
-                    required
-                    className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#51463F] mb-1">Mobile Number</label>
-                  <input
-                    type="text"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    required
-                    className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#51463F] mb-1">Subcategories (comma separated)</label>
-                <input
-                  type="text"
-                  value={editSubcategories}
-                  onChange={(e) => setEditSubcategories(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
-                />
-              </div>
-
-              {/* Residential Address & Location Fields */}
-              <div className="pt-3 border-t border-[#EDE2D7] space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-[#51463F] text-xs uppercase tracking-wider">
-                    Residential Address & Location
-                  </h4>
-                  <div className="flex items-center gap-1">
-                    {(['Residential', 'Business', 'Other'] as const).map((t) => (
-                      <button
-                        key={t}
-                        type="button"
-                        onClick={() => setEditAddressType(t)}
-                        className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all cursor-pointer ${
-                          editAddressType === t
-                            ? 'bg-gradient-to-r from-[#E8795B] to-[#D96B4E] text-white shadow-2xs'
-                            : 'bg-[#FAF7F2] text-[#82776E] hover:text-[#51463F]'
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block font-bold text-[#51463F]">Address Line 1 (House No., Street)</label>
-                  <input
-                    type="text"
-                    value={editAddressLine1}
-                    onChange={(e) => setEditAddressLine1(e.target.value)}
-                    placeholder="e.g., No. 42, Anna Salai"
-                    className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-bold text-[#51463F] mb-1">Address Line 2 (Area, Sector)</label>
-                    <input
-                      type="text"
-                      value={editAddressLine2}
-                      onChange={(e) => setEditAddressLine2(e.target.value)}
-                      placeholder="e.g., Teynampet"
-                      className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-[#51463F] mb-1">Landmark</label>
-                    <input
-                      type="text"
-                      value={editLandmark}
-                      onChange={(e) => setEditLandmark(e.target.value)}
-                      placeholder="e.g., Near Metro Station"
-                      className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div>
-                    <label className="block font-bold text-[#51463F] mb-1">State</label>
-                    <select
-                      value={editState}
-                      onChange={(e) => {
-                        const newState = e.target.value;
-                        setEditState(newState);
-                        const dists = getDistrictsForState(newState);
-                        setEditDistrict(dists[0] || 'Other District');
-                      }}
-                      className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl bg-white text-[#51463F]"
-                    >
-                      {getIndianStates().map((st) => (
-                        <option key={st} value={st}>
-                          {st}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-[#51463F] mb-1">District</label>
-                    <select
-                      value={editDistrict}
-                      onChange={(e) => setEditDistrict(e.target.value)}
-                      className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl bg-white text-[#51463F]"
-                    >
-                      {getDistrictsForState(editState).map((dist) => (
-                        <option key={dist} value={dist}>
-                          {dist}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-bold text-[#51463F] mb-1">City / Town</label>
-                    <input
-                      type="text"
-                      value={editCity}
-                      onChange={(e) => setEditCity(e.target.value)}
-                      placeholder="e.g., Chennai"
-                      className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block font-bold text-[#51463F] mb-1">PIN Code</label>
-                    <input
-                      type="text"
-                      maxLength={6}
-                      value={editPincode}
-                      onChange={(e) => {
-                        const clean = e.target.value.replace(/\D/g, '').slice(0, 6);
-                        setEditPincode(clean);
-                        if (clean.length === 6 && validateIndianPinCode(clean)) {
-                          setEditPinError('');
-                        }
-                      }}
-                      placeholder="e.g., 600028"
-                      className={`w-full px-3.5 py-2 border rounded-xl text-[#51463F] ${
-                        editPinError ? 'border-red-400 bg-red-50/20' : 'border-[#EDE2D7]'
-                      }`}
-                    />
-                    {editPinError && <p className="text-[10px] text-red-600 mt-0.5">{editPinError}</p>}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#51463F] mb-1">Professional Role / Title</label>
-                <input
-                  type="text"
-                  value={editRoleTitle}
-                  onChange={(e) => setEditRoleTitle(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#51463F] mb-1">Bio / Business Description</label>
-                <textarea
-                  rows={3}
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  className="w-full px-3.5 py-2 border border-[#EDE2D7] rounded-xl text-[#51463F]"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#EDE2D7]">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2 font-bold text-[#82776E] hover:text-[#51463F] cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-gradient-to-r from-[#E8795B] to-[#D96B4E] hover:from-[#D96B4E] hover:to-[#C65D40] text-white font-bold rounded-xl transition-colors cursor-pointer shadow-[0_2px_8px_rgba(232,121,91,0.25)]"
-                >
-                  Save Profile Changes
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
 
       {/* ========================================================
           MODAL 6: CHANGE PASSWORD

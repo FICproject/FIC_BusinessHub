@@ -361,6 +361,17 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
       { upsert: true, new: true }
     );
 
+    const finalReferredByCode = req.body.referredByCode || user.referredByCode || undefined;
+    const finalReferrerUserId = req.body.referrerUserId || user.referrerUserId || undefined;
+    const finalReferralSource = (finalReferredByCode || finalReferrerUserId || user.referralSource === 'REFERRED') ? 'REFERRED' : 'ORGANIC';
+
+    if (finalReferredByCode && !user.referredByCode) {
+      user.referredByCode = finalReferredByCode;
+      user.referralSource = 'REFERRED';
+      if (finalReferrerUserId) user.referrerUserId = finalReferrerUserId;
+      await user.save();
+    }
+
     // 2. Synchronize to Admin KYC Submission collection
     const adminSub = await AdminKycSubmissionModel.findOneAndUpdate(
       { $or: [{ memberId: user._id }, { memberEmail: user.email.toLowerCase() }] },
@@ -379,6 +390,9 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
           categoryName,
           status: 'SUBMITTED',
           documents: formattedAdminDocs,
+          referredByCode: finalReferredByCode,
+          referrerUserId: finalReferrerUserId,
+          referralSource: finalReferralSource,
           submittedAt: existingAdminSub?.submittedAt || new Date()
         },
         $unset: {
