@@ -521,6 +521,18 @@ export const RegisterPage: React.FC = () => {
   // Step 5: Payment
   const [paymentDone, setPaymentDone] = useState(false);
   const [showRazorpayModal, setShowRazorpayModal] = useState(false);
+  const [membershipPrice, setMembershipPrice] = useState<number>(99);
+
+  useEffect(() => {
+    fetch('/api/v1/config/pricing')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.success && res.data?.firstYearMembershipFee) {
+          setMembershipPrice(Number(res.data.firstYearMembershipFee));
+        }
+      })
+      .catch((err) => console.warn('Could not load dynamic pricing, using default:', err));
+  }, []);
 
   // Stepper metadata (Updated to show KYC at Step 4 and Membership at Step 5)
   const stepsInfo = [
@@ -528,7 +540,7 @@ export const RegisterPage: React.FC = () => {
     { num: 2, title: 'Sector', desc: 'Category' },
     { num: 3, title: 'Profile', desc: 'Details' },
     { num: 4, title: 'KYC', desc: 'Documents' },
-    { num: 5, title: 'Membership', desc: '₹99 Pass' },
+    { num: 5, title: 'Membership', desc: `₹${membershipPrice} Pass` },
     { num: 6, title: 'Status', desc: 'Activation' }
   ];
 
@@ -2821,7 +2833,7 @@ export const RegisterPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-4xl sm:text-5xl font-extrabold text-[#D99B43]">₹99</span>
+                    <span className="text-4xl sm:text-5xl font-extrabold text-[#D99B43]">₹{membershipPrice}</span>
                     <span className="text-[#E8DBC8] text-xs font-medium">/ first year</span>
                   </div>
 
@@ -2886,7 +2898,7 @@ export const RegisterPage: React.FC = () => {
                 <div className="p-4 rounded-xl border border-[#E8DBC8] bg-[#FFF9F0] space-y-2.5 text-xs text-[#29302D]">
                   <div className="flex justify-between">
                     <span>1-Year Ecosystem Access Subtotal:</span>
-                    <strong>₹99.00</strong>
+                    <strong>₹{membershipPrice}.00</strong>
                   </div>
                   <div className="flex justify-between">
                     <span>GST & Transaction Processing:</span>
@@ -2894,7 +2906,7 @@ export const RegisterPage: React.FC = () => {
                   </div>
                   <div className="flex justify-between pt-2.5 border-t border-[#E8DBC8] text-sm font-bold text-[#29302D]">
                     <span>Total Amount Payable:</span>
-                    <span className="text-[#C66B52]">₹99.00</span>
+                    <span className="text-[#C66B52]">₹{membershipPrice}.00</span>
                   </div>
                 </div>
 
@@ -2914,7 +2926,7 @@ export const RegisterPage: React.FC = () => {
                     className="bg-[#C66B52] hover:bg-[#D99B43] text-white"
                     onClick={handleInitiateRazorpay}
                   >
-                    Pay ₹99 via Razorpay & Submit
+                    Pay ₹{membershipPrice} via Razorpay & Submit
                     <ArrowRightIcon className="ml-2" size={16} />
                   </Button>
                 </div>
@@ -3047,7 +3059,7 @@ export const RegisterPage: React.FC = () => {
       {/* Razorpay Payment Gateway Modal */}
       <RazorpayCheckoutModal
         isOpen={showRazorpayModal}
-        amount={99}
+        amount={membershipPrice}
         purpose="MEMBERSHIP_FIRST_YEAR"
         orderLabel="MEMBERSHIP ACTIVATION"
         orderSubtitle={`1st Year FIC Business Pass · ${selectedCategory.name}`}

@@ -13,6 +13,7 @@ import notificationRoutes from './controllers/notifications.controller';
 import referralRoutes from './controllers/referrals.controller';
 import fundingRoutes from './controllers/funding.controller';
 import { adminDocumentsRouter } from './controllers/documents.controller';
+import { adminPricingRouter } from './controllers/pricing.controller';
 
 export const adminRouter = Router();
 
@@ -30,4 +31,6 @@ adminRouter.use('/notifications', notificationRoutes);
 adminRouter.use('/referrals', referralRoutes);
 adminRouter.use('/funding', fundingRoutes);
 adminRouter.use('/documents', adminDocumentsRouter);
+adminRouter.use('/config/pricing', adminPricingRouter);
+adminRouter.use('/pricing', adminPricingRouter);
 

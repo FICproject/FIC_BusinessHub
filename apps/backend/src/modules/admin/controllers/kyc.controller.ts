@@ -925,6 +925,74 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
       { new: true }
     );
 
+    // If KYC approved, sync referral reward in PENDING status awaiting Admin approval
+    if (isApproved && updatedUser) {
+      try {
+        const { ensureFinancialConfig } = await import('../models/FinancialConfig');
+        const { ReferralRecordModel } = await import('../models/Referral');
+        const { ReferralModel } = await import('../../referrals/referral.model');
+
+        const finConfig = await ensureFinancialConfig();
+        const rewardAmount = finConfig.referralRewardAmount || 500;
+
+        let referrerUser: any = null;
+        if (updatedUser.referrerUserId) {
+          referrerUser = await UserModel.findById(updatedUser.referrerUserId);
+        }
+        if (!referrerUser && updatedUser.referredByCode) {
+          referrerUser = await UserModel.findOne({
+            $or: [
+              { referralCode: updatedUser.referredByCode.trim().toUpperCase() },
+              { email: updatedUser.referredByCode.trim().toLowerCase() }
+            ]
+          });
+        }
+
+        if (referrerUser && String(referrerUser._id) !== String(updatedUser._id)) {
+          await ReferralModel.findOneAndUpdate(
+            { referredUserId: updatedUser._id },
+            {
+              $set: {
+                referralId: `REF-${updatedUser._id.toString().slice(-6).toUpperCase()}`,
+                referralCode: updatedUser.referredByCode || referrerUser.referralCode || 'FIC-REF',
+                referrerUserId: referrerUser._id,
+                referredUserId: updatedUser._id,
+                referralSource: 'REFERRED',
+                registrationDate: updatedUser.createdAt || now,
+                paymentStatus: member?.paymentStatus || 'PAID',
+                kycStatus: 'VERIFIED',
+                accountStatus: 'ACTIVE',
+                referralStatus: 'ELIGIBLE',
+                rewardAmount: rewardAmount,
+                rewardStatus: 'PENDING_APPROVAL'
+              }
+            },
+            { upsert: true, new: true }
+          );
+
+          await ReferralRecordModel.findOneAndUpdate(
+            { referredMemberId: updatedUser._id },
+            {
+              $set: {
+                referrerMemberId: referrerUser._id,
+                referrerName: referrerUser.fullName,
+                referrerEmail: referrerUser.email,
+                referredMemberId: updatedUser._id,
+                referredName: updatedUser.fullName,
+                referredEmail: updatedUser.email,
+                bonusAmount: rewardAmount,
+                status: 'PENDING',
+                notes: `Referred via code ${updatedUser.referredByCode || referrerUser.referralCode || 'FIC-REF'}`
+              }
+            },
+            { upsert: true, new: true }
+          );
+        }
+      } catch (refErr) {
+        console.error('Error synchronizing referral on KYC approval:', refErr);
+      }
+    }
+
     await KYCSubmissionModel.findOneAndUpdate(
       { $or: [{ userId: submission.memberId }, ...(member?._id ? [{ userId: member._id }] : [])] },
       {

@@ -132,6 +132,30 @@ export const ProfilePage: React.FC = () => {
   // Add Funds Form
   const [topUpAmount, setTopUpAmount] = useState<number>(500);
   const [customTopUp, setCustomTopUp] = useState<string>('');
+  const [platformPricing, setPlatformPricing] = useState({
+    firstYearMembershipFee: 99,
+    renewalMembershipFee: 5999,
+    referralRewardAmount: 500,
+    referralProgramEnabled: true,
+    minWithdrawalAmount: 500
+  });
+
+  useEffect(() => {
+    fetch('/api/v1/config/pricing')
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.success && res.data) {
+          setPlatformPricing({
+            firstYearMembershipFee: Number(res.data.firstYearMembershipFee) || 99,
+            renewalMembershipFee: Number(res.data.renewalMembershipFee) || 5999,
+            referralRewardAmount: Number(res.data.referralRewardAmount) ?? 500,
+            referralProgramEnabled: res.data.referralProgramEnabled !== false,
+            minWithdrawalAmount: Number(res.data.minWithdrawalAmount) || 500
+          });
+        }
+      })
+      .catch((err) => console.warn('Could not load dynamic pricing in profile, using defaults:', err));
+  }, []);
   const [paymentMethod, setPaymentMethod] = useState<string>('UPI');
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
@@ -386,13 +410,14 @@ export const ProfilePage: React.FC = () => {
 
   const handleWithdrawSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const minWdr = platformPricing.minWithdrawalAmount || 500;
     const num = Number(withdrawAmount);
-    if (!num || num < 500) {
-      setWithdrawError('Minimum withdrawal amount is ₹500.');
+    if (!num || num < minWdr) {
+      setWithdrawError(`Minimum withdrawal amount is ₹${minWdr.toLocaleString('en-IN')}.`);
       return;
     }
-    if (!wallet || wallet.availableBalance < num) {
-      setWithdrawError('Amount exceeds your available balance.');
+    if (num > effectiveWithdrawableBalance) {
+      setWithdrawError(`Insufficient withdrawable balance. You have ₹${effectiveWithdrawableBalance.toLocaleString('en-IN')} available for withdrawal.`);
       return;
     }
     const res = requestWalletWithdrawal(userId, num);
@@ -439,6 +464,26 @@ export const ProfilePage: React.FC = () => {
       ifscCode: bankIfsc,
       accountType: bankAccountType
     });
+
+    const token = localStorage.getItem('fic_auth_token') || localStorage.getItem('token');
+    if (token) {
+      fetch('/api/v1/wallet/bank-accounts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          accountHolderName: bankHolderName,
+          bankName,
+          accountNumber: bankAccountNumber,
+          confirmAccountNumber: bankConfirmAccount,
+          ifscCode: bankIfsc,
+          accountType: bankAccountType
+        })
+      }).catch((err) => console.warn('Backend bank sync fallback:', err));
+    }
+
     setIsBankModalOpen(false);
     setBankFormError('');
     refreshFinancialData(userId);
@@ -615,7 +660,13 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const renewalFee = 5999;
+  const renewalFee = platformPricing.renewalMembershipFee || 5999;
+  const effectiveWithdrawableBalance = Math.max(
+    0,
+    (wallet?.withdrawalEligibleBalance !== undefined && wallet.withdrawalEligibleBalance > 0
+      ? wallet.withdrawalEligibleBalance
+      : (wallet?.availableBalance || 0)) - (wallet?.restrictedBalance || 0)
+  );
   const availableBal = wallet?.availableBalance || 0;
   const isRenewalSufficient = availableBal >= renewalFee;
   const renewalShortfall = isRenewalSufficient ? 0 : renewalFee - availableBal;
@@ -918,6 +969,126 @@ export const ProfilePage: React.FC = () => {
       </div>
 
       {/* ========================================================
+          BANK ACCOUNT DETAILS & SETTLEMENT DESTINATION
+         ======================================================== */}
+      <div className="bg-white/95 rounded-2xl border border-[#EDE2D7] p-4 sm:p-5 lg:p-6 shadow-[0_4px_24px_-4px_rgba(81,70,63,0.05)] space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EDE2D7] pb-3 gap-2.5">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-[#8064B1]/10 text-[#8064B1] flex items-center justify-center font-bold text-lg border border-[#8064B1]/20 shadow-2xs">
+              🏦
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#3B9C91]/10 text-[#2E847A] text-[11px] font-black uppercase tracking-wider mb-0.5">
+                <span>Verified Remittance Destination</span>
+              </div>
+              <h2 className="text-lg sm:text-xl font-black text-[#51463F] tracking-tight">
+                Bank Account Details
+              </h2>
+              <p className="text-xs text-[#82776E] mt-0.5">
+                Official receiving account for authorized wallet withdrawals and ecosystem settlements.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {bankAccount ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setBankHolderName(bankAccount.accountHolderName);
+                  setBankName(bankAccount.bankName);
+                  setBankAccountNumber('');
+                  setBankConfirmAccount('');
+                  setBankIfsc(bankAccount.ifscCode);
+                  setBankFormError('');
+                  setIsBankModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-[#FAF7F2] border border-[#EDE2D7] hover:border-[#8064B1] hover:text-[#8064B1] text-[#51463F] transition-all cursor-pointer shadow-2xs"
+              >
+                Change Bank Account
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setBankHolderName(user.fullName || '');
+                  setBankName('');
+                  setBankAccountNumber('');
+                  setBankConfirmAccount('');
+                  setBankIfsc('');
+                  setBankFormError('');
+                  setIsBankModalOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-[#8064B1] to-[#6E529F] hover:from-[#6E529F] hover:to-[#5E448D] text-white transition-all cursor-pointer shadow-xs"
+              >
+                + Add Bank Account
+              </button>
+            )}
+          </div>
+        </div>
+
+        {bankAccount ? (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+            <div className="p-3.5 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] space-y-1">
+              <span className="text-[11px] text-[#82776E] block font-medium">Bank Name</span>
+              <strong className="text-sm font-black text-[#51463F] block">
+                {bankAccount.bankName}
+              </strong>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] space-y-1">
+              <span className="text-[11px] text-[#82776E] block font-medium">Account Holder</span>
+              <strong className="text-sm font-bold text-[#51463F] block">
+                {bankAccount.accountHolderName}
+              </strong>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] space-y-1">
+              <span className="text-[11px] text-[#82776E] block font-medium">Masked Account Number</span>
+              <strong className="text-sm font-mono font-bold text-[#51463F] block tracking-wider">
+                {bankAccount.accountNumberMasked}
+              </strong>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] space-y-1 flex flex-col justify-between">
+              <div>
+                <span className="text-[11px] text-[#82776E] block font-medium">IFSC Code & Status</span>
+                <strong className="text-xs font-mono font-bold text-[#8064B1] block">
+                  {bankAccount.ifscCode}
+                </strong>
+              </div>
+              <div className="pt-1">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                  <CheckCircleIcon size={12} /> {bankAccount.verificationStatus || 'VERIFIED'}
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-[#FAF7F2] border border-dashed border-[#EDE2D7] text-center space-y-2">
+            <span className="text-xs text-[#82776E] block">
+              No verified settlement bank account linked to your profile yet.
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setBankHolderName(user.fullName || '');
+                setBankName('');
+                setBankAccountNumber('');
+                setBankConfirmAccount('');
+                setBankIfsc('');
+                setBankFormError('');
+                setIsBankModalOpen(true);
+              }}
+              className="text-xs font-bold text-[#8064B1] hover:underline cursor-pointer"
+            >
+              Link your bank account now to enable fast withdrawal remittances &rarr;
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================
           C. REFERRAL PROGRAMME (SECTION 7 & 8)
          ======================================================== */}
       <div className="bg-white/95 rounded-2xl border border-[#EDE2D7] p-4 sm:p-5 lg:p-6 shadow-[0_4px_24px_-4px_rgba(81,70,63,0.05)] space-y-4">
@@ -930,13 +1101,13 @@ export const ProfilePage: React.FC = () => {
               Referral Programme & Earnings
             </h2>
             <p className="text-xs text-[#82776E] mt-0.5">
-              Invite entrepreneurs and businesses to FIC Business Hub and earn ₹500 wallet reward per verified membership.
+              Invite entrepreneurs and businesses to FIC Business Hub and earn ₹{platformPricing.referralRewardAmount} wallet reward per verified membership.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="px-3 py-1 rounded-xl bg-[#3B9C91]/15 text-[#2E847A] text-xs font-bold border border-[#3B9C91]/30 shadow-2xs">
-              Reward: ₹500 per Referral
+              Reward: ₹{platformPricing.referralRewardAmount} per Referral
             </span>
           </div>
         </div>
@@ -1103,7 +1274,7 @@ export const ProfilePage: React.FC = () => {
         <div className="p-3 rounded-xl bg-[#FFF9F0] border border-[#E5A23B]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
           <div>
             <span className="font-bold text-[#51463F] block">
-              Annual Renewal Policy (Year 2+): Standard fee ₹5,999/yr.
+              Annual Renewal Policy (Year 2+): Standard fee ₹{renewalFee.toLocaleString('en-IN')}/yr.
             </span>
             <span className="text-[#77786E] block mt-0.5">
               Available Wallet Balance: ₹{availableBal.toLocaleString('en-IN')} &bull;{' '}
@@ -1121,7 +1292,7 @@ export const ProfilePage: React.FC = () => {
               onClick={() => setIsRenewModalOpen(true)}
               className="px-3.5 py-1.5 bg-[#27AE60] hover:bg-[#219653] text-white font-bold rounded-xl transition-colors shrink-0"
             >
-              Renew for ₹5,999
+              Renew for ₹{renewalFee.toLocaleString('en-IN')}
             </button>
           ) : (
             <button
@@ -1940,7 +2111,7 @@ export const ProfilePage: React.FC = () => {
                     No members have registered through your referral link yet.
                   </h4>
                   <p className="text-xs text-[#82776E] max-w-md mx-auto leading-relaxed">
-                    Share your unique referral code <strong className="font-mono text-[#51463F]">{referralData?.referralCode}</strong> or referral link with business contacts. You will earn ₹500 in your personal wallet per verified member.
+                    Share your unique referral code <strong className="font-mono text-[#51463F]">{referralData?.referralCode}</strong> or referral link with business contacts. You will earn ₹{platformPricing.referralRewardAmount} in your personal wallet per verified member.
                   </p>
                   <div className="pt-2 flex justify-center">
                     <button
@@ -2268,7 +2439,7 @@ export const ProfilePage: React.FC = () => {
               <div className="p-3.5 bg-white rounded-xl border border-[#EDE2D7] space-y-1">
                 <span className="text-[11px] text-[#82776E] block">Available for Withdrawal</span>
                 <span className="text-xl font-black text-[#51463F] block">
-                  ₹{(wallet?.withdrawalEligibleBalance || 0).toLocaleString('en-IN')}
+                  ₹{effectiveWithdrawableBalance.toLocaleString('en-IN')}
                 </span>
               </div>
 
@@ -2324,7 +2495,7 @@ export const ProfilePage: React.FC = () => {
                   type="number"
                   placeholder="e.g. 1000"
                   min={500}
-                  max={wallet?.withdrawalEligibleBalance || 0}
+                  max={effectiveWithdrawableBalance}
                   value={withdrawAmount}
                   onChange={(e) => setWithdrawAmount(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F]"
@@ -2402,7 +2573,7 @@ export const ProfilePage: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-[#82776E]">
                   <span>Authorized Renewal Fee:</span>
-                  <span className="font-black text-[#51463F] text-sm">₹5,999</span>
+                  <span className="font-black text-[#51463F] text-sm">₹{renewalFee.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between text-[#82776E] border-t border-[#EDE2D7] pt-2">
                   <span>Your Available Wallet Balance:</span>
@@ -2412,7 +2583,7 @@ export const ProfilePage: React.FC = () => {
                                 {isRenewalSufficient ? (
                   <div className="flex justify-between border-t border-[#EDE2D7] pt-2 font-bold text-[#51463F]">
                     <span>Remaining Balance After Renewal:</span>
-                    <span>₹{(availableBal - 5999).toLocaleString('en-IN')}</span>
+                    <span>₹{(availableBal - renewalFee).toLocaleString('en-IN')}</span>
                   </div>
                 ) : (
                   <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
@@ -2436,21 +2607,21 @@ export const ProfilePage: React.FC = () => {
                     setRazorpayModalConfig({
                       isOpen: true,
                       purpose: 'MEMBERSHIP_RENEWAL',
-                      amount: 5999,
+                      amount: renewalFee,
                       title: 'ANNUAL MEMBERSHIP RENEWAL',
                       subtitle: 'FIC Business Hub · 1 Year Renewal Pass'
                     });
                   }}
                   className="px-4 py-2 bg-[#0A1D37] hover:bg-[#132E52] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                 >
-                  Pay ₹5,999 via Razorpay
+                  Pay ₹{renewalFee.toLocaleString('en-IN')} via Razorpay
                 </button>
                 {isRenewalSufficient ? (
                   <button
                     onClick={handleRenewWithWallet}
                     className="px-5 py-2.5 bg-gradient-to-r from-[#3B9C91] to-[#2E847A] hover:from-[#2E847A] hover:to-[#22675F] text-white font-bold rounded-xl text-xs sm:text-sm shadow-xs transition-colors cursor-pointer"
                   >
-                    Confirm & Deduct ₹5,999 from Wallet
+                    Confirm & Deduct ₹{renewalFee.toLocaleString('en-IN')} from Wallet
                   </button>
                 ) : (
                   <button

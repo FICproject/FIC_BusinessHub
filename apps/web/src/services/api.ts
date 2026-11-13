@@ -1098,7 +1098,16 @@ const saveAllNotifications = (notifs: Record<string, IWalletNotification[]>) => 
 // -------------------------------------------------------------
 export const getUserWallet = (userId: string): IMemberWallet => {
   const wallets = getStoredWallets();
-  if (wallets[userId]) return wallets[userId];
+  if (wallets[userId]) {
+    const w = wallets[userId];
+    const calculated = Math.max(0, (w.availableBalance || 0) - (w.restrictedBalance || 0));
+    if (w.withdrawalEligibleBalance !== calculated) {
+      w.withdrawalEligibleBalance = calculated;
+      wallets[userId] = w;
+      saveStoredWallets(wallets);
+    }
+    return w;
+  }
 
   // Initialize new default wallet
   const newWallet: IMemberWallet = {
@@ -1229,6 +1238,7 @@ export const requestWalletWithdrawal = (
   // Atomically reserve funds
   wallet.availableBalance -= amount;
   wallet.pendingBalance += amount;
+  wallet.withdrawalEligibleBalance = Math.max(0, (wallet.availableBalance || 0) - (wallet.restrictedBalance || 0));
   wallet.updatedAt = 'Today';
 
   wallets[userId] = wallet;

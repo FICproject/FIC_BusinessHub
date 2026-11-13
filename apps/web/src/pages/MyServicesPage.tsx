@@ -1110,9 +1110,9 @@ export const MyServicesPage: React.FC = () => {
         <div className="space-y-4">
 
           {/* ========================================================
-          2. 5 KPI SUMMARY CARDS
+          2. 4 KPI SUMMARY CARDS (Total, Active, Drafts, Needs Revision)
          ======================================================== */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <WorkspaceKpi
               title="Total Services"
               value={<AnimatedCounter value={totalCount} />}
@@ -1126,13 +1126,6 @@ export const MyServicesPage: React.FC = () => {
               subtitle="Live on Marketplace"
               icon={<CheckCircleIcon size={18} />}
               accent="emerald"
-            />
-            <WorkspaceKpi
-              title="Under Review"
-              value={<AnimatedCounter value={pendingCount} />}
-              subtitle="Awaiting FIC Review"
-              icon={<ClockIcon size={18} />}
-              accent="amber"
             />
             <WorkspaceKpi
               title="Drafts"
@@ -1158,7 +1151,6 @@ export const MyServicesPage: React.FC = () => {
               {[
                 { key: 'ALL', label: 'All Services', count: totalCount },
                 { key: 'APPROVED', label: 'Active & Live', count: approvedCount },
-                { key: 'PENDING_APPROVAL', label: 'Under Review', count: pendingCount },
                 { key: 'DRAFT', label: 'Drafts', count: draftCount },
                 { key: 'REJECTED', label: 'Needs Revision', count: rejectedCount }
               ].map((tab) => {

@@ -21,6 +21,7 @@ import { MemberModel } from '../admin/models/Member';
 import { AdminPaymentModel } from '../admin/models/Payment';
 import { KycSubmissionModel as AdminKycSubmissionModel } from '../admin/models/KycSubmission';
 import { AdminMemberWalletModel } from '../admin/models/MemberWallet';
+import { ensureFinancialConfig } from '../admin/models/FinancialConfig';
 import { IPaymentDocument, PaymentModel, PaymentPurpose } from './payments.model';
 
 export const AUTHORITATIVE_PRICING = {
@@ -29,6 +30,30 @@ export const AUTHORITATIVE_PRICING = {
   WALLET_TOPUP_MIN: 100,
   WALLET_TOPUP_MAX: 200000
 } as const;
+
+export async function getAuthoritativePricing(): Promise<{
+  MEMBERSHIP_FIRST_YEAR: number;
+  MEMBERSHIP_RENEWAL: number;
+  WALLET_TOPUP_MIN: number;
+  WALLET_TOPUP_MAX: number;
+}> {
+  try {
+    const config = await ensureFinancialConfig();
+    return {
+      MEMBERSHIP_FIRST_YEAR: Number(config.firstYearMembershipFee) || 99,
+      MEMBERSHIP_RENEWAL: Number(config.renewalMembershipFee) || 5999,
+      WALLET_TOPUP_MIN: 100,
+      WALLET_TOPUP_MAX: 200000
+    };
+  } catch (_err) {
+    return {
+      MEMBERSHIP_FIRST_YEAR: AUTHORITATIVE_PRICING.MEMBERSHIP_FIRST_YEAR,
+      MEMBERSHIP_RENEWAL: AUTHORITATIVE_PRICING.MEMBERSHIP_RENEWAL,
+      WALLET_TOPUP_MIN: AUTHORITATIVE_PRICING.WALLET_TOPUP_MIN,
+      WALLET_TOPUP_MAX: AUTHORITATIVE_PRICING.WALLET_TOPUP_MAX
+    };
+  }
+}
 
 export type CanonicalPaymentPurpose =
   | 'MEMBERSHIP_FIRST_YEAR'
@@ -82,20 +107,22 @@ export async function calculateAuthoritativeAmount(params: {
   const { purpose, requestedAmount, serviceId } = params;
 
   if (purpose === 'MEMBERSHIP_FIRST_YEAR') {
+    const pricing = await getAuthoritativePricing();
     return {
-      amountInr: AUTHORITATIVE_PRICING.MEMBERSHIP_FIRST_YEAR,
-      amountInPaise: AUTHORITATIVE_PRICING.MEMBERSHIP_FIRST_YEAR * 100,
-      description: 'FIC Business Hub - First-Year Introductory Membership Fee',
-      extraDetails: { planType: 'FIRST_YEAR_INTRO' }
+      amountInr: pricing.MEMBERSHIP_FIRST_YEAR,
+      amountInPaise: pricing.MEMBERSHIP_FIRST_YEAR * 100,
+      description: `FIC Business Hub - First-Year Introductory Membership Fee (₹${pricing.MEMBERSHIP_FIRST_YEAR})`,
+      extraDetails: { planType: 'FIRST_YEAR_INTRO', fee: pricing.MEMBERSHIP_FIRST_YEAR }
     };
   }
 
   if (purpose === 'MEMBERSHIP_RENEWAL') {
+    const pricing = await getAuthoritativePricing();
     return {
-      amountInr: AUTHORITATIVE_PRICING.MEMBERSHIP_RENEWAL,
-      amountInPaise: AUTHORITATIVE_PRICING.MEMBERSHIP_RENEWAL * 100,
-      description: 'FIC Business Hub - Annual Membership Renewal',
-      extraDetails: { planType: 'ANNUAL_RENEWAL' }
+      amountInr: pricing.MEMBERSHIP_RENEWAL,
+      amountInPaise: pricing.MEMBERSHIP_RENEWAL * 100,
+      description: `FIC Business Hub - Annual Membership Renewal (₹${pricing.MEMBERSHIP_RENEWAL})`,
+      extraDetails: { planType: 'ANNUAL_RENEWAL', fee: pricing.MEMBERSHIP_RENEWAL }
     };
   }
 

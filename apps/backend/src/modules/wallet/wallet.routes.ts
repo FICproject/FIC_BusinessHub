@@ -1,3 +1,4 @@
+import { verifyBankAccountDetails } from './bank-verification.service';
 import { Router, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
 import {
@@ -40,6 +41,14 @@ export const getOrCreateWallet = async (userId: string | mongoose.Types.ObjectId
       status: WalletStatus.ACTIVE
     });
   }
+
+  // Ensure withdrawalEligibleBalance is strictly synchronized with (availableBalance - restrictedBalance)
+  const calculatedWithdrawable = Math.max(0, (wallet.availableBalance || 0) - (wallet.restrictedBalance || 0));
+  if (wallet.withdrawalEligibleBalance !== calculatedWithdrawable) {
+    wallet.withdrawalEligibleBalance = calculatedWithdrawable;
+    await wallet.save();
+  }
+
   return wallet;
 };
 
@@ -135,9 +144,10 @@ walletRouter.post('/withdraw', authenticate, requireActiveVerifiedMember, async 
 
     const wallet = await getOrCreateWallet(req.user.userId);
 
-    if (wallet.availableBalance < numericAmount) {
+    const withdrawable = Math.max(0, (wallet.availableBalance || 0) - (wallet.restrictedBalance || 0));
+    if (withdrawable < numericAmount) {
       throw new AppError(
-        `Insufficient available balance. You have ₹${wallet.availableBalance.toLocaleString('en-IN')} available.`,
+        `Insufficient withdrawable balance. You have ₹${withdrawable.toLocaleString('en-IN')} available for withdrawal.`,
         400
       );
     }
@@ -155,9 +165,10 @@ walletRouter.post('/withdraw', authenticate, requireActiveVerifiedMember, async 
       );
     }
 
-    // Atomically reserve funds (deduct from available, put into pending)
+    // Atomically reserve funds (deduct from available and withdrawable, put into pending)
     wallet.availableBalance -= numericAmount;
     wallet.pendingBalance += numericAmount;
+    wallet.withdrawalEligibleBalance = Math.max(0, (wallet.availableBalance || 0) - (wallet.restrictedBalance || 0));
     await wallet.save();
 
     const withdrawalId = `WDR_${Date.now()}_${Math.floor(100 + Math.random() * 900)}`;
@@ -216,30 +227,35 @@ walletRouter.get('/bank-accounts', authenticate, requireActiveVerifiedMember, as
   }
 });
 
-// 6. POST /api/v1/wallet/bank-accounts - Add or update bank account
+// 6. POST /api/v1/wallet/bank-accounts - Add or update bank account with verification layer
 walletRouter.post('/bank-accounts', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
-    const { accountHolderName, bankName, accountNumber, ifscCode, accountType = 'SAVINGS' } = req.body;
+    const { accountHolderName, bankName, accountNumber, confirmAccountNumber, ifscCode, accountType = 'SAVINGS' } = req.body;
 
-    if (!accountHolderName || !bankName || !accountNumber || !ifscCode) {
-      throw new AppError('Please provide all mandatory bank account fields.', 400);
+    const verification = await verifyBankAccountDetails({
+      accountHolderName,
+      bankName,
+      accountNumber,
+      confirmAccountNumber,
+      ifscCode
+    });
+
+    if (!verification.isValid) {
+      throw new AppError(verification.message, 400);
     }
-
-    const cleanAcc = String(accountNumber).trim();
-    const masked = `XXXX XXXX ${cleanAcc.slice(-4)}`;
 
     const bankAccount = await MemberBankAccountModel.findOneAndUpdate(
       { userId: req.user.userId },
       {
         userId: req.user.userId,
         accountHolderName: accountHolderName.trim(),
-        bankName: bankName.trim(),
-        accountNumberMasked: masked,
-        ifscCode: ifscCode.trim().toUpperCase(),
+        bankName: verification.bankName,
+        accountNumberMasked: verification.accountNumberMasked,
+        ifscCode: verification.ifscCode,
         accountType,
-        verificationStatus: 'VERIFIED',
+        verificationStatus: verification.status,
         verifiedAt: new Date()
       },
       { upsert: true, new: true }

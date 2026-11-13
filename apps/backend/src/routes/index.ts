@@ -20,6 +20,7 @@ import { referralsRouter } from '../modules/referrals/referral.routes';
 import { mentoringRouter } from '../modules/mentoring/mentoring.routes';
 import { documentsRouter } from '../modules/documents/documents.routes';
 import { notificationsRouter } from '../modules/notifications/notifications.routes';
+import { publicPricingRouter } from '../modules/admin/controllers/pricing.controller';
 
 export const apiRouter = Router();
 
@@ -55,3 +56,4 @@ apiRouter.use('/wallet', walletRouter);
 apiRouter.use('/referrals', referralsRouter);
 apiRouter.use('/mentoring', mentoringRouter);
 apiRouter.use('/meetings', investmentRouter); // Mounts /meetings/my-meetings directly
+apiRouter.use('/config/pricing', publicPricingRouter);

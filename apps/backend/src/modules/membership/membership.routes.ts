@@ -52,8 +52,10 @@ membershipRouter.get('/renewal-quote', authenticate, async (req: AuthenticatedRe
     if (!req.user) throw new AppError('Unauthorized', 401);
 
     const { getOrCreateWallet } = await import('../wallet/wallet.routes');
+    const { getAuthoritativePricing } = await import('../payments/payments.service');
     const wallet = await getOrCreateWallet(req.user.userId);
-    const renewalFee = 5999;
+    const pricing = await getAuthoritativePricing();
+    const renewalFee = pricing.MEMBERSHIP_RENEWAL;
     const availableBalance = wallet.availableBalance || 0;
     const isSufficient = availableBalance >= renewalFee;
     const shortfall = isSufficient ? 0 : renewalFee - availableBalance;
@@ -85,12 +87,14 @@ membershipRouter.post('/renew-with-wallet', authenticate, async (req: Authentica
     const { WalletTransactionType, WalletTransactionStatus } = await import('@fic/shared-types');
 
     const wallet = await getOrCreateWallet(req.user.userId);
-    const renewalFee = 5999;
+    const { getAuthoritativePricing } = await import('../payments/payments.service');
+    const pricing = await getAuthoritativePricing();
+    const renewalFee = pricing.MEMBERSHIP_RENEWAL;
 
     if (wallet.availableBalance < renewalFee) {
       const shortfall = renewalFee - wallet.availableBalance;
       throw new AppError(
-        `Insufficient wallet balance. Renewal requires ₹5,999. Shortfall is ₹${shortfall.toLocaleString('en-IN')}. Please add funds to complete renewal.`,
+        `Insufficient wallet balance. Renewal requires ₹${renewalFee.toLocaleString('en-IN')}. Shortfall is ₹${shortfall.toLocaleString('en-IN')}. Please add funds to complete renewal.`,
         400
       );
     }

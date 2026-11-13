@@ -6,6 +6,7 @@ import { ServiceListingModel } from '../models/ServiceListing';
 import { KycSubmissionModel } from '../models/KycSubmission';
 import { MemberWalletModel } from '../models/MemberWallet';
 import { AdminPaymentModel } from '../models/Payment';
+import { MemberBankAccountModel, MemberWalletModel as LiveWalletModel, WalletTransactionModel } from '../../wallet/wallet.model';
 import { DocumentAssetModel, toSafeDocumentDto } from '../../documents/documents.model';
 import { AccountStatus } from '@fic/shared-types';
 import { authenticateAdmin, AuthenticatedAdminRequest, requirePermission, logAdminAction } from '../middleware/admin-auth.middleware';
@@ -122,18 +123,58 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       ? `${member.email.split('@')[0]}@okaxis`
       : `${member.email.split('@')[0]}@upi`;
 
-    const bankDetails = {
-      accountHolderName: member.name,
-      bankName: paymentInfo ? 'State Bank of India / Verified Account' : 'Primary Settlement Bank',
-      accountNumber: paymentInfo ? `•••• •••• ${member.phone.slice(-4)}` : 'Verified on File',
-      ifscCode: 'SBIN0001244',
-      accountType: 'Savings Account',
-      branchName: ((member.address || user?.address) && typeof (member.address || user?.address) === 'object' && (member.address?.city || user?.address?.city))
-        ? `${member.address?.city || user?.address?.city} Main Branch`
-        : 'Metro Main Branch',
+    // Member Bank Details - Authentically retrieved from MemberBankAccountModel
+    const userTargetId = user?._id || member._id;
+    const realBank = await MemberBankAccountModel.findOne({
+      $or: [
+        { userId: userTargetId },
+        ...(member?._id ? [{ userId: member._id }] : [])
+      ]
+    });
+
+    const realWallet = await LiveWalletModel.findOne({
+      $or: [
+        { userId: userTargetId },
+        ...(member?._id ? [{ userId: member._id }] : [])
+      ]
+    });
+
+    const bankDetails = realBank ? {
+      accountHolderName: realBank.accountHolderName,
+      bankName: realBank.bankName,
+      accountNumber: realBank.accountNumberMasked,
+      accountNumberMasked: realBank.accountNumberMasked,
+      ifscCode: realBank.ifscCode,
+      accountType: realBank.accountType === 'CURRENT' ? 'Current Account' : 'Savings Account',
+      branchName: realBank.bankName,
+      verificationStatus: realBank.verificationStatus || 'VERIFIED',
+      verifiedAt: realBank.verifiedAt || realBank.createdAt,
       upiId: upiHandle,
-      verificationStatus: member.kycStatus === 'APPROVED' ? 'VERIFIED' : 'PENDING',
-      verifiedAt: member.registeredAt || new Date(),
+      membershipPayment: member.paymentStatus === 'PAID' ? {
+        amount: member.membershipFeePaid || 99,
+        currency: 'INR',
+        paidFrom: 'Bank Account / Verified UPI',
+        status: 'PAID',
+        referenceId: razorpayTxn?.razorpayPaymentId || razorpayTxn?.gatewayTransactionId || (kycSubmission as any)?.paymentDetails?.paymentId || 'UNAVAILABLE',
+        razorpayOrderId: razorpayTxn?.razorpayOrderId || (kycSubmission as any)?.paymentDetails?.orderId,
+        razorpayPaymentId: razorpayTxn?.razorpayPaymentId || razorpayTxn?.gatewayTransactionId,
+        paymentMethod: razorpayTxn?.paymentMethod || 'Online / Razorpay',
+        signatureVerified: Boolean(razorpayTxn?.signatureVerified),
+        webhookVerified: Boolean(razorpayTxn?.webhookVerified),
+        invoiceUrl: razorpayTxn?.invoiceUrl,
+        paidAt: member.registeredAt || new Date()
+      } : undefined
+    } : {
+      accountHolderName: member.name,
+      bankName: 'No Bank Linked',
+      accountNumber: 'Not Added',
+      accountNumberMasked: 'Not Added',
+      ifscCode: 'N/A',
+      accountType: 'Savings Account',
+      branchName: 'N/A',
+      verificationStatus: 'NOT_ADDED',
+      verifiedAt: undefined,
+      upiId: upiHandle,
       membershipPayment: member.paymentStatus === 'PAID' ? {
         amount: member.membershipFeePaid || 99,
         currency: 'INR',
@@ -150,85 +191,43 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       } : undefined
     };
 
-    // Safe retrieval of member wallet
+    // Safe retrieval of member wallet from authoritative MemberWalletModel and transactions
     let wallet = {
-      balance: 50000,
-      currency: 'INR',
+      balance: realWallet ? realWallet.availableBalance : 0,
+      currency: realWallet?.currency || 'INR',
       currencySymbol: '₹',
-      status: 'ACTIVE',
-      lastSyncedAt: new Date().toISOString(),
-      note: 'Wallet balance and transaction ledger synchronized with collection pool activities',
+      status: realWallet?.status || 'ACTIVE',
+      lastSyncedAt: (realWallet?.updatedAt || new Date()).toISOString(),
+      note: 'Live Member Wallet Ledger synchronized from MongoDB',
       transactions: [] as any[],
     };
 
     try {
-      const walletDoc = await getOrCreateMemberWallet(member._id, member.email, member.name);
-      if (walletDoc) {
-        // Check for earned referral bonus records for this member
-        const { ReferralRecordModel } = await import('../models/Referral');
-        const referralRecords = await ReferralRecordModel.find({
-          $or: [{ referrerMemberId: member._id }, { referrerEmail: member.email.toLowerCase() }]
-        });
+      const realTxs = await WalletTransactionModel.find({
+        $or: [
+          { userId: userTargetId },
+          ...(realWallet?._id ? [{ walletId: realWallet._id }] : [])
+        ]
+      })
+        .sort({ createdAt: -1 })
+        .limit(50);
 
-        // Filter out any membership fee debits from wallet transactions (as membership fee is paid directly via bank account)
-        let cleanTransactions = (walletDoc.transactions || []).filter(
-          (t: any) => t.category !== 'Platform Membership' && !t.title?.toLowerCase().includes('membership')
-        );
-
-        // Populate initial ecosystem grant if no base transaction exists
-        const regDateStr = member.registeredAt ? new Date(member.registeredAt).toISOString() : new Date().toISOString();
-        const initTx = {
-          id: `TXN-INIT-${member._id.toString().slice(-6)}`,
-          type: 'CREDIT' as const,
-          title: 'Welcome Ecosystem Grant Credit',
-          category: 'Promotional Credit',
-          amount: 50000,
-          currency: 'INR',
-          status: 'SUCCESS' as const,
-          reference: `GRANT-FIC-${member._id.toString().slice(-6).toUpperCase()}`,
-          date: regDateStr,
-          description: 'Initial opportunity activation allowance credited to member ledger'
-        };
-
-        if (!cleanTransactions.some((t: any) => t.category === 'Promotional Credit' || t.title?.includes('Welcome Ecosystem Grant'))) {
-          cleanTransactions.push(initTx);
-        }
-
-        // Add any missing referral bonus transactions from ReferralRecordModel
-        let referralBonusTotal = 0;
-        for (const ref of referralRecords) {
-          referralBonusTotal += (ref.bonusAmount || 500);
-          const refTxId = `TXN-REF-${ref._id.toString().slice(-6)}`;
-          if (!cleanTransactions.some((t: any) => t.id === refTxId || t.reference === ref.payoutReference || t.title?.includes(ref.referredName))) {
-            cleanTransactions.unshift({
-              id: refTxId,
-              type: 'CREDIT',
-              title: `Referral Bonus Reward (${ref.referredName})`,
-              category: 'Referral Bonus',
-              amount: ref.bonusAmount || 500,
-              currency: 'INR',
-              status: 'SUCCESS',
-              reference: ref.payoutReference || `REF-TXN-${ref._id.toString().slice(-6).toUpperCase()}`,
-              date: ref.payoutDate ? new Date(ref.payoutDate).toISOString() : new Date().toISOString(),
-              description: `Referral reward credited for onboarding member ${ref.referredName} (${ref.referredEmail})`
-            });
-          }
-        }
-
-        const calculatedBalance = 50000 + referralBonusTotal;
-        wallet.balance = Math.max(walletDoc.balance || 0, calculatedBalance);
-        wallet.currency = walletDoc.currency || 'INR';
-        wallet.currencySymbol = walletDoc.currencySymbol || '₹';
-        wallet.status = walletDoc.status || 'ACTIVE';
-        wallet.transactions = cleanTransactions;
-
-        walletDoc.balance = wallet.balance;
-        walletDoc.transactions = cleanTransactions as any;
-        walletDoc.lastSyncedAt = new Date();
-        await walletDoc.save();
+      if (realTxs.length > 0) {
+        wallet.transactions = realTxs.map((t) => ({
+          id: t.transactionId,
+          type: t.direction,
+          title: t.description,
+          category: t.transactionType,
+          amount: t.amount,
+          currency: t.currency || 'INR',
+          status: t.status === 'COMPLETED' ? 'SUCCESS' : t.status,
+          reference: t.sourceReferenceId || t.transactionId,
+          date: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
+          description: t.description
+        }));
       }
     } catch (wErr) {
-      console.warn('Wallet retrieval fallback used:', wErr);
+      console.warn('Live wallet transactions query fallback:', wErr);
     }
 
     // Resolve referral attribution
