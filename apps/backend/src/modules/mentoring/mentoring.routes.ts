@@ -8,6 +8,7 @@ import { TeachingServiceModel } from './teaching-service.model';
 import { LearningVideoModel } from './learning-video.model';
 import { MentorshipRequestModel } from './mentorship.model';
 import { UserModel } from '../users/users.model';
+import { MemberModel } from '../admin/models/Member';
 import { AccountStatus } from '@fic/shared-types';
 
 export const mentoringRouter = Router();
@@ -111,16 +112,28 @@ mentoringRouter.get('/ecosystem-counts', async (_req, res: Response, next: NextF
 // ==========================================
 mentoringRouter.get('/mentors', async (_req, res: Response, next: NextFunction) => {
   try {
+    // Only return mentors who are actively approved by Admin & KYC verified
+    const approvedMembers = await MemberModel.find({
+      kycStatus: 'APPROVED',
+      status: 'ACTIVE',
+      paymentStatus: 'PAID'
+    }).select('email').lean();
+    const approvedEmails = new Set(approvedMembers.map((m) => m.email.toLowerCase()));
+
     const mentors = await UserModel.find({
       status: AccountStatus.ACTIVE,
+      isKycApproved: true,
       subCategory: { $regex: /mentor/i }
     })
       .select('fullName email phoneNumber subCategory dynamicProfile createdAt')
       .lean();
 
+    // Strictly exclude unapproved/pending mentors
+    const verifiedMentors = mentors.filter((m) => approvedEmails.has(m.email.toLowerCase()));
+
     // Enrich with teaching service count
     const enrichedMentors = await Promise.all(
-      mentors.map(async (m) => {
+      verifiedMentors.map(async (m) => {
         const services = await TeachingServiceModel.find({
           mentorId: m._id,
           status: 'PUBLISHED'
@@ -372,6 +385,15 @@ mentoringRouter.get('/videos/public', async (req, res: Response, next: NextFunct
         { mentorName: { $regex: search, $options: 'i' } }
       ];
     }
+
+    const approvedMentors = await UserModel.find({
+      status: AccountStatus.ACTIVE,
+      isKycApproved: true,
+      subCategory: { $regex: /mentor/i }
+    }).select('_id').lean();
+    const approvedMentorIds = approvedMentors.map((m) => m._id);
+
+    query.mentorId = { $in: approvedMentorIds };
 
     const videos = await LearningVideoModel.find(query)
       .sort({ createdAt: -1 })

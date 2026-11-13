@@ -33,7 +33,18 @@ router.get('/', authenticateAdmin, async (req, res) => {
       .populate('primaryCategory', 'name slug')
       .sort({ registeredAt: -1 });
 
-    res.json({ success: true, data: members });
+    const sanitizedMembers = members.map((m) => {
+      const obj: any = m.toObject();
+      const isEligibleForActive = m.kycStatus === 'APPROVED' && m.paymentStatus === 'PAID';
+      // If KYC is not approved or payment is pending, status CANNOT be ACTIVE
+      if (!isEligibleForActive && obj.status === 'ACTIVE') {
+        obj.status = m.kycStatus === 'SUBMITTED' ? 'UNDER_REVIEW' : (m.kycStatus === 'RESUBMISSION_REQUESTED' ? 'UNDER_REVIEW' : 'PENDING_KYC');
+      }
+      obj.canActivate = isEligibleForActive;
+      return obj;
+    });
+
+    res.json({ success: true, data: sanitizedMembers });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -288,6 +299,24 @@ router.patch('/:id/status', authenticateAdmin, requirePermission('MEMBERS_MANAGE
     }
 
     const normalized = String(status || '').trim().toUpperCase();
+
+    if (normalized === 'ACTIVE') {
+      if (member.kycStatus !== 'APPROVED') {
+        res.status(400).json({
+          success: false,
+          error: 'Cannot grant Active Privilege. Member KYC must be approved in KYC Verification first before activating the account.'
+        });
+        return;
+      }
+      if (member.paymentStatus !== 'PAID') {
+        res.status(400).json({
+          success: false,
+          error: 'Cannot grant Active Privilege. Member membership payment is pending.'
+        });
+        return;
+      }
+    }
+
     member.status = normalized as any;
     await member.save();
 

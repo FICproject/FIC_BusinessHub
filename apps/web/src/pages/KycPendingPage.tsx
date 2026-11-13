@@ -527,6 +527,76 @@ export const KycPendingPage: React.FC = () => {
           </div>
         )}
 
+        {/* Explicit Activation Status Breakdown Card */}
+        <div className="bg-[#FAF7F2] p-5 rounded-2xl border border-[#E8DBC8] space-y-3 text-xs">
+          <div className="flex items-center justify-between border-b border-[#E8DBC8] pb-2">
+            <span className="font-extrabold text-[#29302D] uppercase tracking-wider text-[11px]">
+              Dashboard Activation Requirements
+            </span>
+            <span className="text-[10px] font-bold text-[#8064A9] bg-[#8064A9]/10 px-2.5 py-0.5 rounded-full">
+              {canAccessDashboard ? 'All Conditions Satisfied' : 'Verification In Progress'}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between pb-1.5 border-b border-[#E8DBC8]/50">
+              <span className="text-[#77786E] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                1. Registration Status
+              </span>
+              <span className="font-bold text-emerald-700">Registration Submitted Successfully</span>
+            </div>
+
+            <div className="flex items-center justify-between pb-1.5 border-b border-[#E8DBC8]/50">
+              <span className="text-[#77786E] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                2. Membership Payment Status
+              </span>
+              <span className="font-bold text-emerald-700">1st Year Pass Paid (₹99)</span>
+            </div>
+
+            <div className="flex items-center justify-between pb-1.5 border-b border-[#E8DBC8]/50">
+              <span className="text-[#77786E] flex items-center gap-2">
+                {kycStatus === 'APPROVED' ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
+                )}
+                3. KYC Verification Status
+              </span>
+              <span className={`font-bold ${kycStatus === 'APPROVED' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {kycStatus === 'APPROVED' ? 'Approved & Verified' : 'Under Admin Verification'}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between pb-1.5 border-b border-[#E8DBC8]/50">
+              <span className="text-[#77786E] flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                4. Membership Status
+              </span>
+              <span className="font-bold text-[#8064A9]">Active</span>
+            </div>
+
+            <div className="flex items-center justify-between pt-0.5">
+              <span className="text-[#77786E] flex items-center gap-2">
+                {canAccessDashboard ? (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                ) : (
+                  <Lock className="w-4 h-4 text-rose-500" />
+                )}
+                5. Dashboard Access Status
+              </span>
+              <span className={`font-bold ${canAccessDashboard ? 'text-emerald-700' : 'text-rose-600'}`}>
+                {canAccessDashboard ? 'Active – Full Access Granted' : 'Locked – Awaiting Admin KYC Verification'}
+              </span>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-[#E8DBC8] text-[11px] text-[#77786E] leading-relaxed italic bg-amber-50/50 p-2.5 rounded-xl border border-amber-200/50">
+            Your KYC documents are awaiting Admin verification. Your dashboard will be activated after all required verification and membership conditions are completed.
+          </div>
+        </div>
+
         {/* Applicant Overview Card */}
         <div className="bg-[#FAF7F2] p-5 rounded-2xl border border-[#E8DBC8] space-y-2.5 text-xs">
           <div className="flex justify-between items-center pb-2 border-b border-[#E8DBC8]">

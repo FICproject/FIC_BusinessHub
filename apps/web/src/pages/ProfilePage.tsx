@@ -670,9 +670,9 @@ export const ProfilePage: React.FC = () => {
               </h1>
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                 <span className="px-2.5 py-0.5 rounded-lg bg-[#FFF0EB] text-[#E8795B] border border-[#E8795B]/30 text-xs font-bold">
-                  {user.primaryCategory || user.categoryName}
+                  {user.primaryCategoryName || user.primaryCategory || user.categoryName || 'General Category'}
                 </span>
-                {(user.subcategories || [user.subCategory]).filter(Boolean).map((sub, idx) => (
+                {(user.subcategories || [user.subCategory || user.primarySubcategoryName]).filter(Boolean).map((sub, idx) => (Boolean(sub) && sub !== 'undefined') && (
                   <span
                     key={idx}
                     className="px-2.5 py-0.5 rounded-lg bg-white text-[#82776E] text-xs font-medium border border-[#EDE2D7]"

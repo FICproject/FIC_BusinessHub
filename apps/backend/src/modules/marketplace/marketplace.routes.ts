@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { ServiceListingModel } from '../services/services.model';
-import { ServiceListingStatus } from '@fic/shared-types';
+import { UserModel } from '../users/users.model';
+import { ServiceListingStatus, AccountStatus } from '@fic/shared-types';
 
 export const marketplaceRouter = Router();
 
@@ -10,9 +11,17 @@ marketplaceRouter.get('/services', async (req: Request, res: Response, next: Nex
   try {
     const { categoryId, search, page = 1, limit = 50 } = req.query;
 
+    // Exclude services from unapproved, suspended, or unverified members
+    const activeVerifiedUsers = await UserModel.find({
+      status: AccountStatus.ACTIVE,
+      isKycApproved: true
+    }).select('_id').lean();
+    const activeUserIds = activeVerifiedUsers.map((u) => u._id);
+
     const filter: Record<string, any> = {
       status: ServiceListingStatus.APPROVED,
-      isActive: true
+      isActive: true,
+      providerId: { $in: activeUserIds }
     };
 
     if (categoryId && categoryId !== 'all') {

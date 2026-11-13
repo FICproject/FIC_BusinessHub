@@ -2994,6 +2994,38 @@ export const RegisterPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Explicit Activation Status Breakdown */}
+                <div className="p-4 rounded-xl bg-[#FFF9F0] border border-[#D99B43]/40 text-left space-y-2.5">
+                  <div className="text-xs font-bold text-[#8064A9] uppercase tracking-wider">
+                    Activation Status Breakdown
+                  </div>
+                  <div className="space-y-1.5 text-xs text-[#29302D]">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#77786E]">1. Registration Status:</span>
+                      <strong className="text-emerald-700 font-semibold">Registration Submitted Successfully</strong>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#77786E]">2. Payment Status:</span>
+                      <strong className="text-emerald-700 font-semibold">1st Year Pass Paid (₹99)</strong>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#77786E]">3. KYC Status:</span>
+                      <strong className="text-amber-700 font-semibold">Under Admin Verification</strong>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#77786E]">4. Membership Status:</span>
+                      <strong className="text-[#8064A9] font-semibold">Active</strong>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[#77786E]">5. Dashboard Access Status:</span>
+                      <strong className="text-rose-600 font-semibold">Locked – Awaiting Admin KYC Verification</strong>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-[#D99B43]/30 text-[11px] text-[#77786E] leading-relaxed">
+                    <em>Your KYC documents are awaiting Admin verification. Your dashboard will be activated after all required verification and membership conditions are completed.</em>
+                  </div>
+                </div>
+
                 <div className="pt-2">
                   <Link to="/kyc-pending">
                     <Button variant="primary" size="sm" className="w-full bg-[#C66B52] hover:bg-[#D99B43] text-white font-bold mb-2">

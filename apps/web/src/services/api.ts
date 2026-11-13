@@ -69,10 +69,12 @@ export interface AuthenticatedUser {
   phoneNumber: string;
   mobileNumber: string;
   primaryCategory: string;
+  primaryCategoryName?: string;
   categoryName: string;
   primaryCategoryId: string;
   subcategories: string[];
   subCategory?: string;
+  primarySubcategoryName?: string;
   subcategoryIds?: string[];
   address?: UserAddress;
   accountStatus: 'ACTIVE' | 'PENDING' | 'SUSPENDED';
@@ -306,10 +308,18 @@ export const getStoredUser = (): AuthenticatedUser | null => {
 };
 
 export const setStoredUser = (user: AuthenticatedUser | any): void => {
-  // Ensure consistent object structure
-  const resolvedCategory = user.primaryCategory || user.categoryName || 'Business & Entrepreneurship';
+  // Ensure consistent object structure without hardcoding categories
+  const rawCat =
+    user.primaryCategoryName ||
+    (typeof user.primaryCategoryId === 'object' ? user.primaryCategoryId?.name : undefined) ||
+    user.primaryCategory ||
+    user.categoryName ||
+    'General Category';
+  const resolvedCategory = typeof rawCat === 'string' && rawCat.trim() ? rawCat.trim() : 'General Category';
+
   const resolvedSubcategory =
     user.subCategory ||
+    user.primarySubcategoryName ||
     (user.subcategories && user.subcategories.length > 0
       ? user.subcategories[0]
       : `${resolvedCategory} Member`);
@@ -322,11 +332,13 @@ export const setStoredUser = (user: AuthenticatedUser | any): void => {
     phoneNumber: user.phoneNumber || user.mobileNumber || '',
     categoryName: resolvedCategory,
     primaryCategory: resolvedCategory,
+    primaryCategoryName: resolvedCategory,
     subcategories:
       user.subcategories && user.subcategories.length > 0
         ? user.subcategories
         : [resolvedSubcategory],
     subCategory: resolvedSubcategory,
+    primarySubcategoryName: resolvedSubcategory,
     roles: user.roles || [user.role || 'MEMBER']
   };
 
@@ -366,17 +378,22 @@ export const saveRegisteredAccount = (account: Partial<AuthenticatedUser> & { em
     existingAccount?.personalInfo?.dob ||
     (normalizedEmail === 'kathir@gmail.com' ? '15 Aug 1996' : undefined);
 
-  const resolvedCategory =
+  const rawCat =
+    account.primaryCategoryName ||
     account.primaryCategory ||
     account.categoryName ||
+    existingAccount?.primaryCategoryName ||
     existingAccount?.primaryCategory ||
     existingAccount?.categoryName ||
-    'Business & Entrepreneurship';
+    'General Category';
+  const resolvedCategory = typeof rawCat === 'string' && rawCat.trim() ? rawCat.trim() : 'General Category';
 
   let resolvedSubcategory =
     account.subCategory ||
+    account.primarySubcategoryName ||
     (account.subcategories && account.subcategories.length > 0 ? account.subcategories[0] : undefined) ||
     existingAccount?.subCategory ||
+    existingAccount?.primarySubcategoryName ||
     (existingAccount?.subcategories && existingAccount.subcategories.length > 0 ? existingAccount.subcategories[0] : undefined);
 
   // Fix corrupted accounts that had Freelance Specialist when category is Business

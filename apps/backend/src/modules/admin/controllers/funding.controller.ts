@@ -42,7 +42,7 @@ let memoryPools: any[] = [];
 
 // GET /api/admin/funding/summary
 // Exclusive to SUPER_ADMIN
-router.get('/summary', authenticateAdmin, requireRole('SUPER_ADMIN'), async (_req: AuthenticatedAdminRequest, res: Response) => {
+router.get('/summary', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (_req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const applications = await FundingApplicationModel.find().sort({ createdAt: -1 });
 
@@ -91,7 +91,7 @@ router.get('/summary', authenticateAdmin, requireRole('SUPER_ADMIN'), async (_re
 
 // POST /api/admin/funding/request
 // Create or log a new funding proposal
-router.post('/request', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
+router.post('/request', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const {
       applicantName,
@@ -147,7 +147,7 @@ router.post('/request', authenticateAdmin, requireRole('SUPER_ADMIN'), async (re
 
 // PATCH /api/admin/funding/:id/schedule-meeting
 // Move to REVIEW and attach meeting details
-router.patch('/:id/schedule-meeting', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
+router.patch('/:id/schedule-meeting', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const { meetingScheduledAt, meetingLink, diligenceNotes } = req.body;
     const app = await FundingApplicationModel.findById(req.params.id);
@@ -236,7 +236,7 @@ router.patch('/:id/schedule-meeting', authenticateAdmin, requireRole('SUPER_ADMI
 
 // PATCH /api/admin/funding/:id/disburse
 // Approve and mark as FUNDED with custom interest rate & principal
-router.patch('/:id/disburse', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
+router.patch('/:id/disburse', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const { approvedPrincipal, interestRateAnnual, tenureMonths, disbursementReference, diligenceNotes } = req.body;
     const app = await FundingApplicationModel.findById(req.params.id);
@@ -291,7 +291,7 @@ router.patch('/:id/disburse', authenticateAdmin, requireRole('SUPER_ADMIN'), asy
 
 // PATCH /api/admin/funding/:id/repayment
 // Log installment / interest repayment
-router.patch('/:id/repayment', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
+router.patch('/:id/repayment', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const { principalRepaid, interestRepaid, isFullySettled, businessName, applicantEmail } = req.body;
     
@@ -342,7 +342,7 @@ router.patch('/:id/repayment', authenticateAdmin, requireRole('SUPER_ADMIN'), as
 
 // PATCH /api/admin/funding/:id/reject
 // Decline funding request
-router.patch('/:id/reject', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
+router.patch('/:id/reject', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const { rejectionReason } = req.body;
     const app = await FundingApplicationModel.findById(req.params.id);
@@ -375,7 +375,7 @@ router.patch('/:id/reject', authenticateAdmin, requireRole('SUPER_ADMIN'), async
 // ==========================================
 
 // GET /api/admin/funding/pools - List all collection pools with metrics
-router.get('/pools', authenticateAdmin, requireRole('SUPER_ADMIN'), async (_req: AuthenticatedAdminRequest, res: Response) => {
+router.get('/pools', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (_req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const dbPools = await InvestmentPoolModel.find().sort({ createdAt: -1 });
 
@@ -426,7 +426,7 @@ router.get('/pools', authenticateAdmin, requireRole('SUPER_ADMIN'), async (_req:
 });
 
 // POST /api/admin/funding/pools - Create new Collection Pool
-router.post('/pools', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+router.post('/pools', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const {
       title,
@@ -525,7 +525,7 @@ router.post('/pools', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req:
 });
 
 // POST /api/admin/funding/pools/:id/invest - Record user/investor contribution into pool
-router.post('/pools/:id/invest', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+router.post('/pools/:id/invest', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { memberId, investedAmount, transactionReference } = req.body;
@@ -673,7 +673,7 @@ router.post('/pools/:id/invest', authenticateAdmin, requireRole('SUPER_ADMIN'), 
 });
 
 // PATCH /api/admin/funding/pools/:id/disburse - Disburse collected capital to proposal requester
-router.patch('/pools/:id/disburse', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+router.patch('/pools/:id/disburse', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { disbursementReference } = req.body;
@@ -725,7 +725,7 @@ router.patch('/pools/:id/disburse', authenticateAdmin, requireRole('SUPER_ADMIN'
 });
 
 // PATCH /api/admin/funding/pools/:id/settle-investors - Return principal + interest back to users
-router.patch('/pools/:id/settle-investors', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+router.patch('/pools/:id/settle-investors', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { transactionReferencePrefix } = req.body;

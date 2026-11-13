@@ -213,7 +213,7 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         dob,
         passwordHash,
         role: UserRole.MEMBER,
-        status: AccountStatus.ACTIVE,
+        status: AccountStatus.PENDING,
         primaryCategoryId: adminCat?._id || (mongoose.isValidObjectId(primaryCategoryId) ? primaryCategoryId : undefined),
         primaryCategoryName: adminCat?.name || primaryCategoryName || undefined,
         subCategory: resolvedSubcategory,

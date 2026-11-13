@@ -147,7 +147,7 @@ router.patch('/profile', authenticateAdmin, async (req: AuthenticatedAdminReques
 });
 
 // GET /api/admin/auth/staff/:id (Super Admin only - full detail profile)
-router.get('/staff/:id', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+router.get('/staff/:id', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const staffMember = await AdminUserModel.findById(id).select('-passwordHash');
@@ -162,7 +162,7 @@ router.get('/staff/:id', authenticateAdmin, requireRole('SUPER_ADMIN'), async (r
 });
 
 // GET /api/admin/auth/staff (Super Admin only)
-router.get('/staff', authenticateAdmin, requireRole('SUPER_ADMIN'), async (_req, res) => {
+router.get('/staff', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (_req, res) => {
   try {
     const staff = await AdminUserModel.find().select('-passwordHash').sort({ createdAt: -1 });
     res.json({ success: true, data: staff });
@@ -172,7 +172,7 @@ router.get('/staff', authenticateAdmin, requireRole('SUPER_ADMIN'), async (_req,
 });
 
 // POST /api/admin/auth/staff (Super Admin only)
-router.post('/staff', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+router.post('/staff', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const {
       name,
@@ -243,7 +243,7 @@ router.post('/staff', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req:
 });
 
 // PATCH /api/admin/auth/staff/:id/status (Super Admin only)
-router.patch('/staff/:id/status', authenticateAdmin, requireRole('SUPER_ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+router.patch('/staff/:id/status', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { isActive, role } = req.body;

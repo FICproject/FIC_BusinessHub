@@ -53,6 +53,55 @@ router.get('/', authenticateAdmin, async (req, res) => {
       console.warn('Funding meeting sync warning:', syncErr);
     }
 
+    // Sync any Student-Mentor Mentorship Requests into Meetings so Admin has complete visibility
+    try {
+      const { MentorshipRequestModel } = await import('../../mentoring/mentorship.model');
+      const mentorshipSessions = await MentorshipRequestModel.find({});
+      const sampleAdmin = await AdminUserModel.findOne();
+
+      for (const mReq of mentorshipSessions) {
+        const titleStr = mReq.title || `Student Mentorship: ${mReq.studentName} with ${mReq.mentorName}`;
+        const existing = await MeetingModel.findOne({
+          $or: [
+            { title: titleStr },
+            { description: { $regex: mReq.requestId || String(mReq._id) } }
+          ]
+        });
+
+        if (!existing) {
+          const participantMembers = await MemberModel.find({
+            $or: [
+              { _id: { $in: [mReq.studentId, mReq.mentorId] } },
+              { email: { $in: [mReq.studentEmail ? mReq.studentEmail.toLowerCase() : ''] } }
+            ]
+          }).select('_id');
+
+          const scheduledAtDate = mReq.confirmedDate
+            ? new Date(`${mReq.confirmedDate} ${mReq.confirmedTime || '11:00 AM'}`)
+            : new Date(`${mReq.preferredDate} ${mReq.preferredTime || '11:00 AM'}`);
+
+          await MeetingModel.create({
+            title: titleStr,
+            description: `[${mReq.requestId}] ${mReq.purpose}: ${mReq.reason || ''}. Student: ${mReq.studentName}, Mentor: ${mReq.mentorName}.`,
+            hostAdminId: sampleAdmin?._id,
+            participantMemberIds: participantMembers.map((p) => p._id),
+            externalParticipants: [
+              { name: mReq.studentName, email: mReq.studentEmail || '', phone: '', roleOrCompany: 'Student' },
+              { name: mReq.mentorName, email: '', phone: '', roleOrCompany: 'Mentor' }
+            ],
+            meetingType: 'GENERAL_CONSULTATION',
+            scheduledAt: isNaN(scheduledAtDate.getTime()) ? new Date() : scheduledAtDate,
+            durationMinutes: 45,
+            meetingLink: mReq.locationOrUrl || 'https://meet.google.com/fic-mentor-session',
+            status: mReq.status === 'COMPLETED' ? 'COMPLETED' : mReq.status === 'REJECTED' || mReq.status === 'CANCELLED' ? 'CANCELLED' : mReq.status === 'CONFIRMED' || mReq.status === 'SCHEDULED' ? 'SCHEDULED' : 'PENDING_COORDINATION',
+            notificationSent: true
+          });
+        }
+      }
+    } catch (mentorSyncErr) {
+      console.warn('Mentorship meeting sync warning:', mentorSyncErr);
+    }
+
     let meetings = await MeetingModel.find(filter)
       .populate('hostAdminId', 'name email role')
       .populate('participantMemberIds', 'name email phone primaryCategoryName')

@@ -332,14 +332,55 @@ export const MeetingsPage: React.FC = () => {
     loadMentoringData();
   };
 
-  // KPI Calculations
-  const totalCount = meetings.length;
-  const scheduledCount = meetings.filter((m) => m.status === 'SCHEDULED').length;
-  const pendingCount = meetings.filter((m) => m.status === 'PENDING_COORDINATION').length;
-  const completedCount = meetings.filter((m) => m.status === 'COMPLETED').length;
+  // Unified Consultations combining meetings and student mentorship requests
+  const unifiedConsultations = React.useMemo(() => {
+    const existingMeetingIds = new Set(meetings.map((m) => String(m.id)));
+    const mappedMentorship: any[] = [];
 
-  // Filtered Meetings
-  const filteredMeetings = meetings.filter((m) => {
+    for (const req of mentorshipRequests) {
+      const reqId = String(req.requestId || req.id || req._id);
+      if (existingMeetingIds.has(reqId)) continue;
+
+      let canonicalStatus: MeetingStatus = 'PENDING_COORDINATION';
+      if (req.status === 'CONFIRMED' || req.status === 'SCHEDULED' || req.status === 'ACCEPTED') {
+        canonicalStatus = 'SCHEDULED';
+      } else if (req.status === 'COMPLETED') {
+        canonicalStatus = 'COMPLETED';
+      } else if (req.status === 'REJECTED' || req.status === 'CANCELLED') {
+        canonicalStatus = 'CANCELLED';
+      }
+
+      mappedMentorship.push({
+        id: reqId,
+        userId,
+        title: req.title || (isMentor ? `Mentorship Session: ${req.studentName || 'Student'}` : `Mentorship Session: ${req.mentorName || 'Mentor'}`),
+        category: 'Student Mentorship',
+        scheduledDate: req.confirmedDate || req.preferredDate || 'TBD',
+        scheduledTime: req.confirmedTime || req.preferredTime || '11:00 AM',
+        mode: 'VIRTUAL_MEET',
+        modeLabel: req.meetingMode === 'ONLINE' ? 'Virtual Video Meet' : 'In-Person Consultation',
+        locationOrUrl: req.locationOrUrl,
+        facilitatorName: isMentor ? (req.studentName || 'Student') : (req.mentorName || 'Accredited Mentor'),
+        facilitatorRole: isMentor ? 'Registered Student' : 'Accredited FIC Mentor',
+        agenda: req.reason || '1-on-1 mentorship consultation session',
+        status: canonicalStatus,
+        createdAt: req.createdAt ? new Date(req.createdAt).toLocaleDateString() : 'Today',
+        isMentorship: true,
+        mentorshipReq: req
+      });
+    }
+
+    return [...meetings, ...mappedMentorship];
+  }, [meetings, mentorshipRequests, isMentor, userId]);
+
+  // KPI Calculations based on unified consultations
+  const totalCount = unifiedConsultations.length;
+  const scheduledCount = unifiedConsultations.filter((m) => m.status === 'SCHEDULED').length;
+  const pendingCount = unifiedConsultations.filter((m) => m.status === 'PENDING_COORDINATION').length;
+  const completedCount = unifiedConsultations.filter((m) => m.status === 'COMPLETED').length;
+
+  // Filtered Meetings from unified consultations
+  const filteredMeetings = unifiedConsultations.filter((m) => {
     if (filterTab === 'scheduled' && m.status !== 'SCHEDULED') return false;
     if (filterTab === 'pending' && m.status !== 'PENDING_COORDINATION') return false;
     if (filterTab === 'completed' && m.status !== 'COMPLETED') return false;
@@ -547,275 +588,7 @@ export const MeetingsPage: React.FC = () => {
         />
       </div>
 
-      {/* ========================================================
-          2.1 DEDICATED MENTORSHIP REQUESTS SECTION (MENTOR & STUDENT)
-         ======================================================== */}
-      {(isMentor || isStudent) && (
-        <WorkspaceCard variant="glass" padded={false} className="overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-[#EDE2D7] bg-white/70 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#8064A9]" />
-              <h3 className="text-sm font-black text-[#51463F]">
-                {isMentor ? 'Incoming Student Mentorship Requests & Sessions' : 'My 1-on-1 Mentorship Sessions & Applications'}
-              </h3>
-            </div>
-            {isStudent && (
-              <WorkspaceButton
-                variant="primary"
-                size="sm"
-                icon={<CalendarIcon size={13} />}
-                onClick={() => handleOpenBookModal()}
-              >
-                Book a Mentor
-              </WorkspaceButton>
-            )}
-          </div>
-
-          <div className="p-4 sm:p-5 space-y-3.5">
-            {mentorshipRequests.length === 0 ? (
-              <div className="py-8 text-center text-[#82776E] text-xs">
-                {isMentor ? (
-                  <p>No student mentorship requests received yet. When students book a session, it will appear here.</p>
-                ) : (
-                  <div className="space-y-2">
-                    <p>You haven't scheduled any 1-on-1 mentorship sessions yet.</p>
-                    <WorkspaceButton
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleOpenBookModal()}
-                    >
-                      Book Your First Mentor Session
-                    </WorkspaceButton>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {mentorshipRequests.map((req) => {
-                  const isPending = req.status === 'PENDING';
-                  const isRescheduled = req.status === 'RESCHEDULE_REQUESTED';
-                  const isConfirmed = req.status === 'CONFIRMED' || req.status === 'SCHEDULED';
-                  const isCompleted = req.status === 'COMPLETED';
-                  const isRejected = req.status === 'REJECTED';
-
-                  return (
-                    <div
-                      key={req.id || req._id || req.requestId}
-                      className="p-4 rounded-xl border border-[#EDE2D7] bg-white hover:border-[#8064A9]/40 transition-all space-y-3 shadow-2xs"
-                    >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EDE2D7]/60 pb-2.5">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-black uppercase text-[#8064A9] bg-[#8064A9]/10 px-2 py-0.5 rounded-md">
-                              {req.purpose}
-                            </span>
-                            <span className="text-xs font-mono font-bold text-[#82776E]">
-                              {req.requestId}
-                            </span>
-                          </div>
-                          <h4 className="text-sm font-black text-[#51463F] mt-1">
-                            {req.title}
-                          </h4>
-                        </div>
-
-                        {/* Status Badge */}
-                        <div>
-                          {isPending && (
-                            <span className="text-[11px] font-black text-[#D99B43] bg-[#D99B43]/10 border border-[#D99B43]/30 px-2.5 py-1 rounded-lg">
-                              Pending Mentor Confirmation
-                            </span>
-                          )}
-                          {isRescheduled && (
-                            <span className="text-[11px] font-black text-[#8064A9] bg-[#8064A9]/10 border border-[#8064A9]/30 px-2.5 py-1 rounded-lg animate-pulse">
-                              Reschedule Proposal Sent
-                            </span>
-                          )}
-                          {isConfirmed && (
-                            <span className="text-[11px] font-black text-[#27AE60] bg-[#27AE60]/10 border border-[#27AE60]/30 px-2.5 py-1 rounded-lg">
-                              Confirmed & Scheduled
-                            </span>
-                          )}
-                          {isCompleted && (
-                            <span className="text-[11px] font-black text-[#51463F] bg-[#51463F]/10 border border-[#51463F]/30 px-2.5 py-1 rounded-lg">
-                              Session Completed
-                            </span>
-                          )}
-                          {isRejected && (
-                            <span className="text-[11px] font-black text-[#C66B52] bg-[#C66B52]/10 border border-[#C66B52]/30 px-2.5 py-1 rounded-lg">
-                              Declined
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Details Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-                        <div>
-                          <span className="text-[10.5px] font-bold text-[#82776E] block">
-                            {isMentor ? 'Student Name:' : 'Mentor:'}
-                          </span>
-                          <strong className="text-[#51463F]">
-                            {isMentor ? req.studentName : req.mentorName}
-                          </strong>
-                        </div>
-                        <div>
-                          <span className="text-[10.5px] font-bold text-[#82776E] block">
-                            Requested Slot:
-                          </span>
-                          <span className="text-[#51463F] font-semibold">
-                            {req.preferredDate} at {req.preferredTime}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[10.5px] font-bold text-[#82776E] block">
-                            Confirmed Slot:
-                          </span>
-                          <span className="text-[#51463F] font-semibold">
-                            {req.confirmedDate ? `${req.confirmedDate} at ${req.confirmedTime}` : 'Not confirmed'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="text-[10.5px] font-bold text-[#82776E] block">
-                            Meeting Mode:
-                          </span>
-                          <span className="text-[#51463F] font-semibold">
-                            {req.meetingMode === 'ONLINE' ? 'Virtual Video Meet' : 'In-Person Hub Meet'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Student Reason / Doubts */}
-                      <div className="p-2.5 rounded-lg bg-[#FAF7F2] text-xs text-[#51463F] border border-[#EDE2D7]/70">
-                        <strong className="text-[#8064A9] mr-1">Discussion Details:</strong>
-                        <span>{req.reason}</span>
-                      </div>
-
-                      {/* Reschedule Proposal Box */}
-                      {isRescheduled && req.rescheduleProposal && (
-                        <div className="p-3 rounded-xl bg-[#F3EEFA] border border-[#8064A9]/30 text-xs space-y-2">
-                          <div className="flex items-center gap-1.5 font-bold text-[#8064A9]">
-                            <ClockIcon size={14} />
-                            <span>
-                              {req.rescheduleProposal.proposedBy === 'MENTOR' ? 'Mentor Proposed New Slot:' : 'Student Proposed Reschedule:'}
-                            </span>
-                            <span className="text-[#51463F]">
-                              {req.rescheduleProposal.proposedDate} at {req.rescheduleProposal.proposedTime}
-                            </span>
-                          </div>
-                          {req.rescheduleProposal.proposedNotes && (
-                            <p className="text-[11.5px] text-[#51463F] italic">
-                              "{req.rescheduleProposal.proposedNotes}"
-                            </p>
-                          )}
-
-                          {/* Student Actions for Reschedule */}
-                          {isStudent && req.rescheduleProposal.proposedBy === 'MENTOR' && (
-                            <div className="flex items-center gap-2 pt-1">
-                              <WorkspaceButton
-                                variant="primary"
-                                size="sm"
-                                onClick={() => handleStudentRescheduleResponse(req.id || req._id || '', 'ACCEPT')}
-                              >
-                                Accept New Slot
-                              </WorkspaceButton>
-                              <WorkspaceButton
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleStudentRescheduleResponse(req.id || req._id || '', 'DECLINE')}
-                              >
-                                Decline
-                              </WorkspaceButton>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Mentor Notes (if provided) */}
-                      {req.mentorNotes && (
-                        <div className="p-2.5 rounded-lg bg-[#FAF7F2] text-xs text-[#51463F] border border-[#EDE2D7]/70">
-                          <strong className="text-[#3B9C91] mr-1">Mentor Note:</strong>
-                          <span>{req.mentorNotes}</span>
-                        </div>
-                      )}
-
-                      {/* Actions Row */}
-                      <div className="pt-2 border-t border-[#EDE2D7] flex flex-wrap items-center justify-between gap-2">
-                        {isConfirmed && req.locationOrUrl && (
-                          <a
-                            href={req.locationOrUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="px-3 py-1.5 bg-[#27AE60] hover:bg-[#219653] text-white text-xs font-bold rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors"
-                          >
-                            <VideoIcon size={13} />
-                            Join Virtual Session
-                          </a>
-                        )}
-
-                        {isCompleted && (
-                          <WorkspaceButton
-                            variant="outline"
-                            size="sm"
-                            icon={<CheckCircleIcon size={13} />}
-                            onClick={() => setViewingCompletedRequest(req)}
-                          >
-                            View Summary & Study Materials
-                          </WorkspaceButton>
-                        )}
-
-                        {/* MENTOR ACTION BUTTONS */}
-                        {isMentor && (
-                          <div className="flex items-center gap-2 ml-auto">
-                            {isPending && (
-                              <>
-                                <WorkspaceButton
-                                  variant="primary"
-                                  size="sm"
-                                  icon={<CheckCircleIcon size={13} />}
-                                  onClick={() => handleOpenAcceptModal(req)}
-                                >
-                                  Accept & Confirm
-                                </WorkspaceButton>
-                                <WorkspaceButton
-                                  variant="outline"
-                                  size="sm"
-                                  icon={<ClockIcon size={13} />}
-                                  onClick={() => handleOpenRescheduleModal(req)}
-                                >
-                                  Propose Reschedule
-                                </WorkspaceButton>
-                                <WorkspaceButton
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-[#C66B52]"
-                                  onClick={() => handleOpenRejectModal(req)}
-                                >
-                                  Decline
-                                </WorkspaceButton>
-                              </>
-                            )}
-
-                            {isConfirmed && (
-                              <WorkspaceButton
-                                variant="primary"
-                                size="sm"
-                                icon={<CheckCircleIcon size={13} />}
-                                onClick={() => handleOpenCompleteModal(req)}
-                              >
-                                Complete & Log Session
-                              </WorkspaceButton>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </WorkspaceCard>
-      )}
+      
 
       {/* ========================================================
           3. TABS & SEARCH / FILTER CONTROLS WITH GLIDING INDICATOR
@@ -918,7 +691,213 @@ export const MeetingsPage: React.FC = () => {
               />
             </motion.div>
           ) : (
-            filteredMeetings.map((meeting) => {
+            filteredMeetings.map((meeting: any) => {
+              if (meeting.isMentorship && meeting.mentorshipReq) {
+                const req = meeting.mentorshipReq;
+                const isPending = req.status === 'PENDING';
+                const isRescheduled = req.status === 'RESCHEDULE_REQUESTED';
+                const isConfirmed = req.status === 'CONFIRMED' || req.status === 'SCHEDULED' || req.status === 'ACCEPTED';
+                const isCompleted = req.status === 'COMPLETED';
+                const isRejected = req.status === 'REJECTED' || req.status === 'CANCELLED';
+
+                return (
+                  <motion.div
+                    key={meeting.id}
+                    layout
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    whileHover={{ y: -3 }}
+                    transition={{ type: 'spring', stiffness: 350, damping: 25 }}
+                  >
+                    <div className="bg-white/95 rounded-2xl border border-[#EADFCF] p-4 sm:p-5 shadow-[0_4px_20px_-4px_rgba(41,48,45,0.05)] hover:border-[#8064A9]/40 transition-all flex flex-col justify-between gap-3.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EDE2D7]/60 pb-2.5">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase text-[#8064A9] bg-[#8064A9]/10 px-2 py-0.5 rounded-md">
+                              {req.purpose || 'Student Mentorship'}
+                            </span>
+                            <span className="text-xs font-mono font-bold text-[#82776E]">
+                              {req.requestId || req.id}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-black text-[#51463F] mt-1">
+                            {req.title}
+                          </h4>
+                        </div>
+
+                        <div>
+                          {isConfirmed && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#E8F8F5] text-[#27AE60] border border-[#27AE60]/30 flex items-center gap-1.5">
+                              <CheckCircleIcon size={12} />
+                              Confirmed & Scheduled
+                            </span>
+                          )}
+                          {isPending && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#FFF9F0] text-[#D99B43] border border-[#D99B43]/30 flex items-center gap-1.5">
+                              <ClockIcon size={12} />
+                              Awaiting Mentor Action
+                            </span>
+                          )}
+                          {isRescheduled && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F4ECFB] text-[#8064A9] border border-[#8064A9]/30 flex items-center gap-1.5">
+                              <CalendarIcon size={12} />
+                              Reschedule Proposed
+                            </span>
+                          )}
+                          {isCompleted && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#F4ECFB] text-[#6E529F] border border-[#6E529F]/30 flex items-center gap-1.5">
+                              <CheckCircleIcon size={12} />
+                              Session Completed
+                            </span>
+                          )}
+                          {isRejected && (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-600 border border-rose-200">
+                              Declined
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs text-[#82776E]">
+                        <div className="bg-[#FAF7F2] p-2.5 rounded-lg border border-[#EDE2D7]/70">
+                          <span className="text-[10px] uppercase font-bold text-[#82776E] block">
+                            {isMentor ? 'Student Name:' : 'Mentor Name:'}
+                          </span>
+                          <span className="font-bold text-[#51463F] text-xs">
+                            {isMentor ? req.studentName : req.mentorName}
+                          </span>
+                        </div>
+
+                        <div className="bg-[#FAF7F2] p-2.5 rounded-lg border border-[#EDE2D7]/70">
+                          <span className="text-[10px] uppercase font-bold text-[#82776E] block">
+                            Requested Slot:
+                          </span>
+                          <span className="font-bold text-[#51463F] text-xs">
+                            {req.preferredDate} at {req.preferredTime}
+                          </span>
+                        </div>
+
+                        <div className="bg-[#FAF7F2] p-2.5 rounded-lg border border-[#EDE2D7]/70">
+                          <span className="text-[10px] uppercase font-bold text-[#82776E] block">
+                            {isConfirmed ? 'Confirmed Slot:' : 'Meeting Mode:'}
+                          </span>
+                          <span className="font-bold text-[#51463F] text-xs">
+                            {isConfirmed
+                              ? `${req.confirmedDate || req.preferredDate} at ${req.confirmedTime || req.preferredTime}`
+                              : req.meetingMode === 'ONLINE'
+                              ? 'Virtual Video Meet'
+                              : 'In-Person Consultation'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {req.reason && (
+                        <div className="p-2.5 rounded-lg bg-[#FAF7F2] text-xs text-[#51463F] border border-[#EDE2D7]/70">
+                          <strong className="text-[#8064A9] mr-1">Discussion Details:</strong>
+                          <span>{req.reason}</span>
+                        </div>
+                      )}
+
+                      {req.mentorNotes && (
+                        <div className="p-2.5 rounded-lg bg-[#FAF7F2] text-xs text-[#51463F] border border-[#EDE2D7]/70">
+                          <strong className="text-[#3B9C91] mr-1">Mentor Note:</strong>
+                          <span>{req.mentorNotes}</span>
+                        </div>
+                      )}
+
+                      <div className="pt-2 border-t border-[#EDE2D7] flex flex-wrap items-center justify-between gap-2">
+                        {isConfirmed && req.locationOrUrl && (
+                          <a
+                            href={req.locationOrUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 bg-[#27AE60] hover:bg-[#219653] text-white text-xs font-bold rounded-lg shadow-2xs flex items-center gap-1.5 transition-colors"
+                          >
+                            <VideoIcon size={13} />
+                            Join Virtual Session
+                          </a>
+                        )}
+
+                        {isCompleted && (
+                          <WorkspaceButton
+                            variant="outline"
+                            size="sm"
+                            icon={<CheckCircleIcon size={13} />}
+                            onClick={() => setViewingCompletedRequest(req)}
+                          >
+                            View Summary & Study Materials
+                          </WorkspaceButton>
+                        )}
+
+                        {isMentor && (
+                          <div className="flex items-center gap-2 ml-auto">
+                            {isPending && (
+                              <>
+                                <WorkspaceButton
+                                  variant="outline"
+                                  size="sm"
+                                  className="border-rose-200 text-rose-600 hover:bg-rose-50"
+                                  onClick={() => handleOpenRejectModal(req)}
+                                >
+                                  Decline
+                                </WorkspaceButton>
+                                <WorkspaceButton
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleOpenRescheduleModal(req)}
+                                >
+                                  Propose Alternate Time
+                                </WorkspaceButton>
+                                <WorkspaceButton
+                                  variant="primary"
+                                  size="sm"
+                                  icon={<CheckCircleIcon size={13} />}
+                                  onClick={() => handleOpenAcceptModal(req)}
+                                >
+                                  Accept & Confirm
+                                </WorkspaceButton>
+                              </>
+                            )}
+
+                            {isConfirmed && (
+                              <WorkspaceButton
+                                variant="primary"
+                                size="sm"
+                                className="bg-[#E8795B] hover:bg-[#D96B4D]"
+                                icon={<CheckCircleIcon size={13} />}
+                                onClick={() => handleOpenCompleteModal(req)}
+                              >
+                                Complete & Log Session
+                              </WorkspaceButton>
+                            )}
+                          </div>
+                        )}
+
+                        {isStudent && isRescheduled && req.rescheduleProposal && (
+                          <div className="flex items-center gap-2 ml-auto">
+                            <WorkspaceButton
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleStudentRescheduleResponse(req.id || req._id || '', 'ACCEPT')}
+                            >
+                              Accept Reschedule ({req.rescheduleProposal.proposedDate})
+                            </WorkspaceButton>
+                            <WorkspaceButton
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleStudentRescheduleResponse(req.id || req._id || '', 'DECLINE')}
+                            >
+                              Decline
+                            </WorkspaceButton>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              }
+
               const isScheduled = meeting.status === 'SCHEDULED';
               const isPending = meeting.status === 'PENDING_COORDINATION';
               const isCompleted = meeting.status === 'COMPLETED';

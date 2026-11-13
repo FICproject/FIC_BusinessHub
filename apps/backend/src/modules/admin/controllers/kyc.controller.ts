@@ -909,6 +909,10 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
       {
         $set: {
           isKycApproved: isApproved,
+          status: isApproved
+            ? (member?.paymentStatus === 'PAID' ? AccountStatus.ACTIVE : AccountStatus.PENDING)
+            : AccountStatus.PENDING,
+          isMembershipActive: isApproved && member?.paymentStatus === 'PAID',
           ...(isApproved
             ? {
                 kycLocked: true,
