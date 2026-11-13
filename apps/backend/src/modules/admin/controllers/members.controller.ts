@@ -15,19 +15,36 @@ import { getOrCreateMemberWallet } from './funding.controller';
 
 const router = Router();
 
-// GET /api/admin/members - List members with filters
+// GET /api/admin/members - List members with filters (Strictly Approved KYC Only)
 router.get('/', authenticateAdmin, async (req, res) => {
   try {
     const { status, categoryId, search } = req.query;
-    const filter: any = { $nor: [{ kycStatus: 'NOT_SUBMITTED', paymentStatus: 'PENDING' }] };
-    if (status && status !== 'ALL') filter.status = status;
+
+    // Strict Rule: New registrations appear ONLY in KYC Verification until approved.
+    // Members Directory displays ONLY members whose KYC status is Approved.
+    // If KYC is pending, under review, or requires resubmission, the member must not appear here.
+    if (status && ['UNDER_REVIEW', 'PENDING_KYC', 'PENDING_REGISTRATION', 'SUBMITTED', 'RESUBMISSION_REQUESTED'].includes(status as string)) {
+      res.json({ success: true, data: [] });
+      return;
+    }
+
+    const filter: any = {
+      kycStatus: 'APPROVED'
+    };
+
+    if (status && status !== 'ALL') {
+      filter.status = status;
+    }
     if (categoryId) filter.primaryCategory = categoryId;
     if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { phone: { $regex: search, $options: 'i' } },
-      ];
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { phone: { $regex: search, $options: 'i' } },
+        ]
+      });
     }
 
     const members = await MemberModel.find(filter)
@@ -37,10 +54,6 @@ router.get('/', authenticateAdmin, async (req, res) => {
     const sanitizedMembers = members.map((m) => {
       const obj: any = m.toObject();
       const isEligibleForActive = m.kycStatus === 'APPROVED' && m.paymentStatus === 'PAID';
-      // If KYC is not approved or payment is pending, status CANNOT be ACTIVE
-      if (!isEligibleForActive && obj.status === 'ACTIVE') {
-        obj.status = m.kycStatus === 'SUBMITTED' ? 'UNDER_REVIEW' : (m.kycStatus === 'RESUBMISSION_REQUESTED' ? 'UNDER_REVIEW' : 'PENDING_KYC');
-      }
       obj.canActivate = isEligibleForActive;
       return obj;
     });
