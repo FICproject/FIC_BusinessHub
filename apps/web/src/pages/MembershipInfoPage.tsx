@@ -1,8 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheckIcon, CheckCircleIcon } from '../components/Icons';
+import { fetchPlatformPricingConfig } from '../services/api';
 
 export const MembershipInfoPage: React.FC = () => {
+  const [pricing, setPricing] = useState({ firstYearMembershipFee: 99, renewalMembershipFee: 5999 });
+
+  useEffect(() => {
+    fetchPlatformPricingConfig().then((cfg) => {
+      if (cfg) {
+        setPricing({
+          firstYearMembershipFee: cfg.firstYearMembershipFee,
+          renewalMembershipFee: cfg.renewalMembershipFee
+        });
+      }
+    });
+  }, []);
   return (
     <div className="bg-[#FCFAF6] text-[#29302D] py-12 lg:py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-12">
@@ -32,7 +45,7 @@ export const MembershipInfoPage: React.FC = () => {
               </span>
               <h3 className="text-2xl font-black text-[#29302D] mt-1">First-Year Access Pass</h3>
               <div className="mt-4 flex items-baseline gap-2">
-                <span className="text-4xl sm:text-5xl font-black text-[#29302D]">₹99</span>
+                <span className="text-4xl sm:text-5xl font-black text-[#29302D]">₹{pricing.firstYearMembershipFee}</span>
                 <span className="text-xs text-[#77786E] font-medium">/ 365 days full access</span>
               </div>
             </div>
@@ -60,7 +73,7 @@ export const MembershipInfoPage: React.FC = () => {
               to="/get-started"
               className="block w-full py-3 text-center rounded-xl font-bold text-sm bg-[#C66B52] hover:bg-[#D99B43] text-white shadow-md transition-all"
             >
-              Get Started for ₹99 &rarr;
+              Get Started for ₹{pricing.firstYearMembershipFee} &rarr;
             </Link>
           </div>
 
@@ -72,7 +85,7 @@ export const MembershipInfoPage: React.FC = () => {
               </span>
               <h3 className="text-2xl font-black text-[#29302D] mt-1">Annual Renewal (Year 2+)</h3>
               <div className="mt-4 flex items-baseline gap-2">
-                <span className="text-4xl sm:text-5xl font-black text-[#29302D]">₹5,999</span>
+                <span className="text-4xl sm:text-5xl font-black text-[#29302D]">₹{pricing.renewalMembershipFee.toLocaleString('en-IN')}</span>
                 <span className="text-xs text-[#77786E] font-medium">/ year standard renewal</span>
               </div>
             </div>
@@ -97,7 +110,7 @@ export const MembershipInfoPage: React.FC = () => {
             </ul>
 
             <div className="pt-2 text-[11px] text-[#77786E] italic">
-              * Renewal fee applies only after completing your first year of ₹99 introductory access.
+              * Renewal fee applies only after completing your first year of ₹{pricing.firstYearMembershipFee} introductory access.
             </div>
           </div>
         </div>

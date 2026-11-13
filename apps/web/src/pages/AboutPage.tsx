@@ -1,8 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheckIcon, CheckCircleIcon } from '../components/Icons';
+import { fetchPlatformPricingConfig } from '../services/api';
 
 export const AboutPage: React.FC = () => {
+  const [fee, setFee] = useState<number>(99);
+
+  useEffect(() => {
+    fetchPlatformPricingConfig().then((cfg) => {
+      if (cfg?.firstYearMembershipFee) setFee(cfg.firstYearMembershipFee);
+    });
+  }, []);
   return (
     <div className="bg-[#FCFAF6] text-[#29302D] py-12 lg:py-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-12">
@@ -66,14 +74,14 @@ export const AboutPage: React.FC = () => {
         <div className="bg-[#29302D] text-[#FCFAF6] p-8 sm:p-10 rounded-3xl text-center space-y-5">
           <h2 className="text-2xl font-black text-[#FCFAF6]">Ready to build your business network?</h2>
           <p className="text-xs sm:text-sm text-[#E8DBC8] max-w-lg mx-auto">
-            Get first-year access for introductory ₹99 and unlock verified discovery across all 10 sectors.
+            Get first-year access for introductory ₹{fee} and unlock verified discovery across all 10 sectors.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Link
               to="/get-started"
               className="px-6 py-2.5 rounded-xl font-bold text-sm bg-[#C66B52] hover:bg-[#D99B43] text-white shadow-md transition-all"
             >
-              Become a Member (₹99)
+              Become a Member (₹{fee})
             </Link>
             <Link
               to="/contact"

@@ -29,6 +29,7 @@ import {
   checkEmailAvailability,
   checkMobileAvailability,
   lookupIndianPinCodeApi,
+  fetchPlatformPricingConfig,
   UploadedDocumentAsset
 } from '../services/api';
 import {
@@ -522,13 +523,14 @@ export const RegisterPage: React.FC = () => {
   const [paymentDone, setPaymentDone] = useState(false);
   const [showRazorpayModal, setShowRazorpayModal] = useState(false);
   const [membershipPrice, setMembershipPrice] = useState<number>(99);
+  const [renewalPrice, setRenewalPrice] = useState<number>(5999);
 
   useEffect(() => {
-    fetch('/api/v1/config/pricing')
-      .then((r) => r.json())
-      .then((res) => {
-        if (res?.success && res.data?.firstYearMembershipFee) {
-          setMembershipPrice(Number(res.data.firstYearMembershipFee));
+    fetchPlatformPricingConfig()
+      .then((cfg) => {
+        if (cfg) {
+          setMembershipPrice(cfg.firstYearMembershipFee);
+          setRenewalPrice(cfg.renewalMembershipFee);
         }
       })
       .catch((err) => console.warn('Could not load dynamic pricing, using default:', err));
@@ -2801,7 +2803,7 @@ export const RegisterPage: React.FC = () => {
                     Back to Profile
                   </Button>
                   <Button variant="primary" type="submit" className="bg-[#C66B52] hover:bg-[#D99B43] text-white">
-                    Save Documents & Proceed to ₹99 Checkout
+                    Save Documents & Proceed to ₹{membershipPrice} Checkout
                     <ArrowRightIcon className="ml-2" size={16} />
                   </Button>
                 </div>
@@ -2839,7 +2841,7 @@ export const RegisterPage: React.FC = () => {
 
                   <p className="text-xs text-[#E8DBC8] leading-relaxed max-w-lg">
                     Introductory onboarding pass for <strong>{fullName}</strong> in{' '}
-                    <strong>{selectedCategory.name}</strong>. Transparent pricing identical across all 10 sectors. Standard annual renewal of ₹5,999/yr applies from year 2.
+                    <strong>{selectedCategory.name}</strong>. Transparent pricing identical across all 10 sectors. Standard annual renewal of ₹{renewalPrice.toLocaleString('en-IN')}/yr applies from year 2.
                   </p>
                 </div>
 
@@ -2991,7 +2993,7 @@ export const RegisterPage: React.FC = () => {
 
                     <div className="flex items-center justify-between text-[#29302D]">
                       <span className="flex items-center gap-2">
-                        <CheckCircleIcon size={14} className="text-[#8064A9]" /> 4. 1st Year Membership Fee (₹99)
+                        <CheckCircleIcon size={14} className="text-[#8064A9]" /> 4. 1st Year Membership Fee (₹{membershipPrice})
                       </span>
                       <strong className="text-[11px] font-semibold text-[#8064A9]">PAID</strong>
                     </div>
@@ -3018,7 +3020,7 @@ export const RegisterPage: React.FC = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[#77786E]">2. Payment Status:</span>
-                      <strong className="text-emerald-700 font-semibold">1st Year Pass Paid (₹99)</strong>
+                      <strong className="text-emerald-700 font-semibold">1st Year Pass Paid (₹{membershipPrice})</strong>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-[#77786E]">3. KYC Status:</span>

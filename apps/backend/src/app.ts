@@ -9,6 +9,7 @@ import { apiRouter } from './routes';
 import { adminRouter } from './modules/admin';
 import { paymentsRouter } from './modules/payments/payments.routes';
 import { documentsRouter } from './modules/documents/documents.routes';
+import { publicPricingRouter } from './modules/admin/controllers/pricing.controller';
 import { errorHandler } from './common/middleware/error.middleware';
 
 export const createApp = (): Application => {
@@ -55,6 +56,8 @@ export const createApp = (): Application => {
   app.use('/api/v1', apiRouter);
   app.use('/api/payments', paymentsRouter);
   app.use('/api/documents', documentsRouter);
+  app.use('/api/config/pricing', publicPricingRouter);
+  app.use('/api/pricing', publicPricingRouter);
 
   // Consolidated Admin API Routes (accessible via /api/admin or /api/v1/admin)
   app.use('/api/admin', adminRouter);

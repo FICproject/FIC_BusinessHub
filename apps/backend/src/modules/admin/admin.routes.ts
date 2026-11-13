@@ -14,10 +14,12 @@ import referralRoutes from './controllers/referrals.controller';
 import fundingRoutes from './controllers/funding.controller';
 import { adminDocumentsRouter } from './controllers/documents.controller';
 import { adminPricingRouter } from './controllers/pricing.controller';
+import { adminProfileRouter } from './controllers/profile.controller';
 
 export const adminRouter = Router();
 
 adminRouter.use('/auth', authRoutes);
+adminRouter.use('/profile', adminProfileRouter);
 adminRouter.use('/categories', categoryRoutes);
 adminRouter.use('/kyc', kycRoutes);
 adminRouter.use('/members', memberRoutes);

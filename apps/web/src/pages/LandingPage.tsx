@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { getStoredUser } from '../services/api';
+import { getStoredUser, fetchPlatformPricingConfig } from '../services/api';
 import {
   BriefcaseIcon,
   FactoryIcon,
@@ -46,6 +46,24 @@ export const LandingPage: React.FC = () => {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   // Logged-in member status
   const user = getStoredUser();
+
+  const [platformPricing, setPlatformPricing] = useState({
+    firstYearMembershipFee: 99,
+    renewalMembershipFee: 5999
+  });
+
+  useEffect(() => {
+    fetchPlatformPricingConfig()
+      .then((cfg) => {
+        if (cfg) {
+          setPlatformPricing({
+            firstYearMembershipFee: cfg.firstYearMembershipFee,
+            renewalMembershipFee: cfg.renewalMembershipFee
+          });
+        }
+      })
+      .catch((err) => console.warn('Could not load dynamic pricing in landing page:', err));
+  }, []);
 
   // Rotate text every 2.8 seconds
   useEffect(() => {
@@ -275,7 +293,7 @@ export const LandingPage: React.FC = () => {
       step: '02',
       title: 'Complete Membership & Verification',
       time: '~2 minutes',
-      desc: 'Activate 365 days of full ecosystem access with the transparent ₹99 pass and upload category proof.',
+      desc: `Activate 365 days of full ecosystem access with the transparent ₹${platformPricing.firstYearMembershipFee} pass and upload category proof.`,
       icon: ShieldCheckIcon,
       accent: '#D99B43'
     },
@@ -402,8 +420,8 @@ export const LandingPage: React.FC = () => {
       a: 'FIC Business Hub is an authenticated national business ecosystem connecting entrepreneurs, established enterprises, manufacturers, investors, and professionals across India. FIC acts as the central intermediary coordinator to help you discover verified services, submit business ideas, explore funding, and form B2B partnerships with complete privacy.'
     },
     {
-      q: 'How does the ₹99 first-year membership fee work?',
-      a: 'The first-year introductory membership fee is flat ₹99 for a full 365 days of universal ecosystem access (GST and transaction processing included). From the second year onwards, the standard annual renewal is ₹5,999/year. The pricing is completely identical across all 10 business sectors with zero hidden fees or fake countdown discounts.'
+      q: `How does the ₹${platformPricing.firstYearMembershipFee} first-year membership fee work?`,
+      a: `The first-year introductory membership fee is flat ₹${platformPricing.firstYearMembershipFee} for a full 365 days of universal ecosystem access (GST and transaction processing included). From the second year onwards, the standard annual renewal is ₹${platformPricing.renewalMembershipFee.toLocaleString('en-IN')}/year. The pricing is completely identical across all 10 business sectors with zero hidden fees or fake countdown discounts.`
     },
     {
       q: 'Why are provider contact numbers hidden in the public marketplace?',
@@ -415,7 +433,7 @@ export const LandingPage: React.FC = () => {
     },
     {
       q: 'How does the category KYC verification process operate?',
-      a: 'After selecting your primary sector and completing the ₹99 membership payment, you attach your sector verification document (e.g. Aadhaar, GSTIN, Udyam Certificate, Patta, or Student ID). Our Verification Executives review submissions within 24 business hours to activate your full Member Dashboard.'
+      a: `After selecting your primary sector and completing the ₹${platformPricing.firstYearMembershipFee} membership payment, you attach your sector verification document (e.g. Aadhaar, GSTIN, Udyam Certificate, Patta, or Student ID). Our Verification Executives review submissions within 24 business hours to activate your full Member Dashboard.`
     }
   ];
 
@@ -513,7 +531,7 @@ export const LandingPage: React.FC = () => {
             {/* Trust Metrics Bar */}
             <div className="pt-6 border-t border-[#E8DBC8] grid grid-cols-3 gap-4 text-xs">
               <div>
-                <span className="block font-black text-xl text-[#29302D]">₹99</span>
+                <span className="block font-black text-xl text-[#29302D]">₹{platformPricing.firstYearMembershipFee}</span>
                 <span className="text-[#77786E] font-medium">First-Year Access</span>
               </div>
               <div>
@@ -930,11 +948,10 @@ export const LandingPage: React.FC = () => {
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(0)}
-              className={`p-7 rounded-3xl border cursor-pointer transition-all duration-200 md:col-span-2 ${
-                activeCapability === 0
+              className={`p-7 rounded-3xl border cursor-pointer transition-all duration-200 md:col-span-2 ${activeCapability === 0
                   ? 'bg-[#29302D] text-[#FCFAF6] border-[#D99B43] shadow-lg shadow-[#D99B43]/15'
                   : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#D99B43]/50'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between mb-4">
                 <span className="text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-[#D99B43]/20 text-[#D99B43] border border-[#D99B43]/30">
@@ -956,11 +973,10 @@ export const LandingPage: React.FC = () => {
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(2)}
-              className={`p-7 rounded-3xl border cursor-pointer transition-all duration-200 md:col-span-2 ${
-                activeCapability === 2
+              className={`p-7 rounded-3xl border cursor-pointer transition-all duration-200 md:col-span-2 ${activeCapability === 2
                   ? 'bg-[#29302D] text-[#FCFAF6] border-[#E58C72] shadow-lg shadow-[#E58C72]/15'
                   : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#E58C72]/50'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between mb-4">
                 <span className="text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-[#E58C72]/20 text-[#E58C72] border border-[#E58C72]/30">
@@ -982,11 +998,10 @@ export const LandingPage: React.FC = () => {
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(1)}
-              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${
-                activeCapability === 1
+              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${activeCapability === 1
                   ? 'bg-[#29302D] text-[#FCFAF6] border-[#C66B52]'
                   : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#C66B52]/50'
-              }`}
+                }`}
             >
               <RocketIcon size={22} className="text-[#C66B52]" />
               <h3 className="text-base font-bold mt-3 mb-1 text-white">Scaling & Growth</h3>
@@ -999,11 +1014,10 @@ export const LandingPage: React.FC = () => {
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(3)}
-              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${
-                activeCapability === 3
+              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${activeCapability === 3
                   ? 'bg-[#29302D] text-[#FCFAF6] border-[#8064A9]'
                   : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#8064A9]/50'
-              }`}
+                }`}
             >
               <TrendingUpIcon size={22} className="text-[#8064A9]" />
               <h3 className="text-base font-bold mt-3 mb-1 text-white">Private Funding</h3>
@@ -1016,11 +1030,10 @@ export const LandingPage: React.FC = () => {
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(4)}
-              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${
-                activeCapability === 4
+              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${activeCapability === 4
                   ? 'bg-[#29302D] text-[#FCFAF6] border-[#D78E9A]'
                   : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#D78E9A]/50'
-              }`}
+                }`}
             >
               <HandshakeIcon size={22} className="text-[#D78E9A]" />
               <h3 className="text-base font-bold mt-3 mb-1 text-white">B2B Trade & Scaling</h3>
@@ -1033,11 +1046,10 @@ export const LandingPage: React.FC = () => {
             <motion.div
               whileHover={{ y: -4 }}
               onClick={() => setActiveCapability(5)}
-              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${
-                activeCapability === 5
+              className={`p-6 rounded-2xl border cursor-pointer transition-all duration-200 ${activeCapability === 5
                   ? 'bg-[#29302D] text-[#FCFAF6] border-[#B7A5D1]'
                   : 'bg-[#29302D]/70 text-[#E8DBC8] border-[#E8DBC8]/20 hover:border-[#B7A5D1]/50'
-              }`}
+                }`}
             >
               <UsersIcon size={22} className="text-[#B7A5D1]" />
               <h3 className="text-base font-bold mt-3 mb-1 text-white">Verified Network</h3>
@@ -1176,11 +1188,10 @@ export const LandingPage: React.FC = () => {
                   <button
                     key={entity.name}
                     onClick={() => setSelectedEcosystemNode(idx)}
-                    className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${
-                      isSelected
+                    className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${isSelected
                         ? 'bg-[#29302D] border-[#D99B43] text-white shadow-md'
                         : 'bg-[#29302D]/60 border-[#E8DBC8]/20 text-[#A7AAA0] hover:bg-[#29302D]/90 hover:text-white'
-                    }`}
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <div
@@ -1312,7 +1323,7 @@ export const LandingPage: React.FC = () => {
                 </div>
                 <div className="text-left sm:text-right">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-4xl sm:text-5xl font-black text-[#D99B43]">₹99</span>
+                    <span className="text-4xl sm:text-5xl font-black text-[#D99B43]">₹{platformPricing.firstYearMembershipFee}</span>
                     <span className="text-xs text-[#E8DBC8] font-medium">/ first 365 days</span>
                   </div>
                   <span className="text-[11px] text-[#A7AAA0] block mt-0.5">
@@ -1324,7 +1335,7 @@ export const LandingPage: React.FC = () => {
               {/* Renewal note */}
               <div className="p-3.5 rounded-xl bg-[#29302D]/90 border border-[#D99B43]/30 text-xs text-[#E8DBC8] flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span>Standard annual renewal from Year 2 onwards:</span>
-                <span className="font-bold text-[#D99B43]">₹5,999 / year</span>
+                <span className="font-bold text-[#D99B43]">₹{platformPricing.renewalMembershipFee.toLocaleString('en-IN')} / year</span>
               </div>
 
               {/* 6 Included Core Features */}
@@ -1364,7 +1375,7 @@ export const LandingPage: React.FC = () => {
                   to="/get-started"
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl bg-[#C66B52] text-white font-bold text-sm shadow-lg hover:bg-[#D99B43] transition-all duration-200"
                 >
-                  <span>Activate ₹99 Membership</span>
+                  <span>Activate ₹{platformPricing.firstYearMembershipFee} Membership</span>
                   <ArrowRightIcon size={16} />
                 </Link>
               </div>
@@ -1502,7 +1513,7 @@ export const LandingPage: React.FC = () => {
           </div>
 
           <p className="text-xs text-white/70 pt-4">
-            First-year introductory access at flat ₹99 • Verification required • 18+ Adult Policy
+            First-year introductory access at flat ₹{platformPricing.firstYearMembershipFee} • Verification required • 18+ Adult Policy
           </p>
         </div>
       </section>

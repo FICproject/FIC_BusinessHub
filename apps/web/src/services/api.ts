@@ -1367,11 +1367,12 @@ export const saveBankToBackendApi = async (params: {
 };
 
 export const renewMembershipWithWallet = (
-  userId: string
+  userId: string,
+  overrideRenewalFee?: number
 ): { success: boolean; newExpiryDate?: string; transaction?: IWalletTransaction; wallet: IMemberWallet; error?: string } => {
   const wallets = getStoredWallets();
   const wallet = getUserWallet(userId);
-  const renewalFee = 5999;
+  const renewalFee = typeof overrideRenewalFee === 'number' && overrideRenewalFee > 0 ? overrideRenewalFee : 5999;
 
   if (wallet.availableBalance < renewalFee) {
     const shortfall = renewalFee - wallet.availableBalance;
@@ -2926,6 +2927,54 @@ export const fetchRazorpayCheckoutConfig = async (): Promise<RazorpayCheckoutCon
   } catch {
     return null;
   }
+};
+
+export interface PlatformPricingConfig {
+  firstYearMembershipFee: number;
+  renewalMembershipFee: number;
+  referralRewardAmount: number;
+  referralProgramEnabled: boolean;
+  minWithdrawalAmount: number;
+  currency: string;
+  pricingVersion?: number;
+  updatedAt?: string;
+}
+
+export const fetchPlatformPricingConfig = async (): Promise<PlatformPricingConfig> => {
+  try {
+    const url = `${BASE_URL}/config/pricing?_t=${Date.now()}`;
+    const response = await fetch(url, {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache'
+      }
+    });
+    if (response.ok) {
+      const payload = await response.json().catch(() => null);
+      if (payload?.success && payload?.data) {
+        return {
+          firstYearMembershipFee: Number(payload.data.firstYearMembershipFee) || 99,
+          renewalMembershipFee: Number(payload.data.renewalMembershipFee) || 5999,
+          referralRewardAmount: Number(payload.data.referralRewardAmount) ?? 500,
+          referralProgramEnabled: payload.data.referralProgramEnabled !== false,
+          minWithdrawalAmount: Number(payload.data.minWithdrawalAmount) || 500,
+          currency: payload.data.currency || 'INR',
+          pricingVersion: payload.data.pricingVersion,
+          updatedAt: payload.data.updatedAt
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('Could not load dynamic platform pricing, using fallback defaults:', err);
+  }
+  return {
+    firstYearMembershipFee: 99,
+    renewalMembershipFee: 5999,
+    referralRewardAmount: 500,
+    referralProgramEnabled: true,
+    minWithdrawalAmount: 500,
+    currency: 'INR'
+  };
 };
 
 export interface RazorpayCreateOrderResponse {

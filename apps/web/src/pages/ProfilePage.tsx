@@ -26,6 +26,7 @@ import {
   requestWalletWithdrawalApi,
   saveBankToBackendApi,
   renewMembershipWithWallet,
+  fetchPlatformPricingConfig,
   getUserReferrals,
   getUserBankAccount,
   saveUserBankAccount,
@@ -144,16 +145,15 @@ export const ProfilePage: React.FC = () => {
   });
 
   useEffect(() => {
-    fetch('/api/v1/config/pricing')
-      .then((r) => r.json())
-      .then((res) => {
-        if (res?.success && res.data) {
+    fetchPlatformPricingConfig()
+      .then((cfg) => {
+        if (cfg) {
           setPlatformPricing({
-            firstYearMembershipFee: Number(res.data.firstYearMembershipFee) || 99,
-            renewalMembershipFee: Number(res.data.renewalMembershipFee) || 5999,
-            referralRewardAmount: Number(res.data.referralRewardAmount) ?? 500,
-            referralProgramEnabled: res.data.referralProgramEnabled !== false,
-            minWithdrawalAmount: Number(res.data.minWithdrawalAmount) || 500
+            firstYearMembershipFee: cfg.firstYearMembershipFee,
+            renewalMembershipFee: cfg.renewalMembershipFee,
+            referralRewardAmount: cfg.referralRewardAmount,
+            referralProgramEnabled: cfg.referralProgramEnabled,
+            minWithdrawalAmount: cfg.minWithdrawalAmount
           });
         }
       })
@@ -459,8 +459,14 @@ export const ProfilePage: React.FC = () => {
   };
 
   // Membership Renewal with Wallet Handler
-  const handleRenewWithWallet = () => {
-    const res = renewMembershipWithWallet(userId);
+  const handleRenewWithWallet = async () => {
+    try {
+      const token = getAuthToken();
+      if (token) {
+        await apiRequest('/membership/renew-with-wallet', { method: 'POST' }).catch(() => null);
+      }
+    } catch (_err) {}
+    const res = renewMembershipWithWallet(userId, renewalFee);
     if (res.success) {
       setIsRenewModalOpen(false);
       refreshFinancialData(userId);

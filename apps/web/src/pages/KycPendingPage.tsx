@@ -552,7 +552,7 @@ export const KycPendingPage: React.FC = () => {
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 2. Membership Payment Status
               </span>
-              <span className="font-bold text-emerald-700">1st Year Pass Paid (₹99)</span>
+              <span className="font-bold text-emerald-700">1st Year Pass Paid</span>
             </div>
 
             <div className="flex items-center justify-between pb-1.5 border-b border-[#E8DBC8]/50">

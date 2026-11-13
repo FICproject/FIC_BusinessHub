@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { getStoredUser, removeAuthToken } from '../services/api';
+import { getStoredUser, removeAuthToken, fetchPlatformPricingConfig } from '../services/api';
 import { MemberHeader } from './MemberHeader';
 
 export const Navbar: React.FC = () => {
@@ -8,6 +8,15 @@ export const Navbar: React.FC = () => {
   const location = useLocation();
   const user = getStoredUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [firstYearFee, setFirstYearFee] = useState<number>(99);
+
+  useEffect(() => {
+    fetchPlatformPricingConfig().then((cfg) => {
+      if (cfg?.firstYearMembershipFee) {
+        setFirstYearFee(cfg.firstYearMembershipFee);
+      }
+    });
+  }, []);
 
   // If on any authenticated member workspace page, delegate strictly to the shared global MemberHeader
   const memberRoutes = [
@@ -79,7 +88,7 @@ export const Navbar: React.FC = () => {
           <Link to="/membership" className="hover:text-[#D99B43] transition-colors flex items-center gap-1.5">
             <span>Membership</span>
             <span className="text-[11px] font-black bg-[#D99B43]/20 text-[#B87A28] px-2 py-0.5 rounded-full border border-[#D99B43]/30">
-              ₹99
+              ₹{firstYearFee}
             </span>
           </Link>
           <a href="/#why-fic" className="hover:text-[#C66B52] transition-colors">
@@ -175,7 +184,7 @@ export const Navbar: React.FC = () => {
             >
               <span>Membership</span>
               <span className="text-[11px] font-black bg-[#D99B43]/20 text-[#B87A28] px-2 py-0.5 rounded-full border border-[#D99B43]/30">
-                ₹99
+                ₹{firstYearFee}
               </span>
             </Link>
             <a href="/#why-fic" onClick={closeMenu} className="px-3 py-2 rounded-lg hover:bg-[#FFF9F0]">
@@ -217,7 +226,7 @@ export const Navbar: React.FC = () => {
                     type="button"
                     className="w-full py-2.5 rounded-xl text-sm font-bold bg-[#C66B52] text-white shadow-md shadow-[#C66B52]/20 transition-colors"
                   >
-                    Become a Member (₹99)
+                    Become a Member (₹{firstYearFee})
                   </button>
                 </Link>
               </>

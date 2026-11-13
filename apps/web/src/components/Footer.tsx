@@ -1,8 +1,21 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ShieldCheckIcon } from './Icons';
+import { fetchPlatformPricingConfig } from '../services/api';
 
 export const Footer: React.FC = () => {
+  const [pricing, setPricing] = useState({ firstYearMembershipFee: 99, renewalMembershipFee: 5999 });
+
+  useEffect(() => {
+    fetchPlatformPricingConfig().then((cfg) => {
+      if (cfg) {
+        setPricing({
+          firstYearMembershipFee: cfg.firstYearMembershipFee,
+          renewalMembershipFee: cfg.renewalMembershipFee
+        });
+      }
+    });
+  }, []);
   return (
     <footer className="bg-[#29302D] text-[#FCFAF6] pt-16 pb-12 border-t border-[#D99B43]/20 selection:bg-[#C66B52] selection:text-white select-none">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -73,13 +86,13 @@ export const Footer: React.FC = () => {
             <ul className="space-y-2.5 text-xs text-[#E8DBC8]">
               <li>
                 <Link to="/membership" className="hover:text-[#D99B43] transition-colors flex items-center gap-2">
-                  <span className="text-[#D99B43] font-bold">First-Year Access: ₹99</span>
+                  <span className="text-[#D99B43] font-bold">First-Year Access: ₹{pricing.firstYearMembershipFee}</span>
                   <span className="text-[10px] bg-[#D99B43]/20 text-[#D99B43] px-2 py-0.5 rounded-full font-semibold border border-[#D99B43]/30">
                     Introductory
                   </span>
                 </Link>
               </li>
-              <li className="text-[#A7AAA0]">Annual Renewal: ₹5,999/yr (Year 2+)</li>
+              <li className="text-[#A7AAA0]">Annual Renewal: ₹{pricing.renewalMembershipFee.toLocaleString('en-IN')}/yr (Year 2+)</li>
               <li>
                 <Link to="/membership" className="hover:text-[#FCFAF6] transition-colors">
                   Category KYC Guidelines

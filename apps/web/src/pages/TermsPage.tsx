@@ -26,7 +26,7 @@ export const TermsPage: React.FC = () => {
         <section className="space-y-3 text-xs sm:text-sm text-[#29302D]/85 leading-relaxed">
           <h2 className="text-base sm:text-lg font-bold text-[#29302D]">2. Membership Fees & Validity</h2>
           <p>
-            First-year onboarding access is granted at an introductory rate of ₹99 for a period of 365 calendar days following account activation and successful KYC verification. Renewal for subsequent years is billed at the standard annual rate of ₹5,999/year. Membership fees are non-refundable once verification processing commences.
+            First-year onboarding access is granted at the prevailing introductory rate (published under Membership Pricing) for a period of 365 calendar days following account activation and successful KYC verification. Renewal for subsequent years is billed at the standard annual rate as configured under platform pricing. Membership fees are non-refundable once verification processing commences.
           </p>
         </section>
 

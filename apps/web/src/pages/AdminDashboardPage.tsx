@@ -5,6 +5,7 @@ import {
   adminRejectReferralReward,
   adminAdjustWallet,
   apiRequest,
+  fetchPlatformPricingConfig,
   IReferral,
   IMemberWallet,
   IWalletTransaction
@@ -135,6 +136,13 @@ const INITIAL_ADMIN_INVESTORS: AdminInvestorItem[] = [];
 
 export const AdminDashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'referrals' | 'wallets' | 'renewals' | 'investment'>('referrals');
+  const [renewalFee, setRenewalFee] = useState<number>(5999);
+
+  useEffect(() => {
+    fetchPlatformPricingConfig().then((cfg) => {
+      if (cfg?.renewalMembershipFee) setRenewalFee(cfg.renewalMembershipFee);
+    });
+  }, []);
 
   // Live Admin Data
   const [wallets, setWallets] = useState<IMemberWallet[]>([]);
@@ -793,7 +801,7 @@ export const AdminDashboardPage: React.FC = () => {
             </div>
             <div className="bg-[#29302D] border border-white/10 rounded-2xl p-5">
               <span className="text-xs text-slate-400 uppercase font-bold block">Renewal Pricing Policy</span>
-              <span className="text-2xl font-black text-[#D99B43] block mt-1">₹5,999/yr</span>
+              <span className="text-2xl font-black text-[#D99B43] block mt-1">₹{renewalFee.toLocaleString('en-IN')}/yr</span>
             </div>
             <div className="bg-[#29302D] border border-white/10 rounded-2xl p-5">
               <span className="text-xs text-slate-400 uppercase font-bold block">Wallet-Based Renewals</span>
@@ -804,7 +812,7 @@ export const AdminDashboardPage: React.FC = () => {
             <div className="bg-[#29302D] border border-white/10 rounded-2xl p-5">
               <span className="text-xs text-slate-400 uppercase font-bold block">Total Renewal Revenue</span>
               <span className="text-2xl font-black text-emerald-400 block mt-1">
-                ₹{(renewalTransactions.length * 5999).toLocaleString('en-IN')}
+                ₹{(renewalTransactions.length * renewalFee).toLocaleString('en-IN')}
               </span>
             </div>
           </div>

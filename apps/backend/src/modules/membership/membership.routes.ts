@@ -8,27 +8,41 @@ import { MembershipStatus, PaymentStatus } from '@fic/shared-types';
 
 export const membershipRouter = Router();
 
-// Membership Pricing details (Blueprint Section 2.4: 1st Year ₹99, 2nd Year ₹5,999)
-membershipRouter.get('/plans', (_req: Request, res: Response) => {
-  res.status(200).json({
-    success: true,
-    data: {
-      firstYearOffer: {
-        fee: 99,
-        currency: 'INR',
-        billingPeriod: '1 Year',
-        label: 'First-Year Introductory Membership Offer',
-        description: 'Exclusive 1st year fee of ₹99. Transparent annual access to the entire FIC ecosystem.'
-      },
-      renewalPlan: {
-        fee: 5999,
-        currency: 'INR',
-        billingPeriod: '1 Year',
-        label: 'Annual Renewal Plan',
-        description: 'Standard membership fee from second year onwards.'
+// Dynamic Membership Pricing details
+membershipRouter.get('/plans', async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { ensureFinancialConfig } = await import('../admin/models/FinancialConfig');
+    const config = await ensureFinancialConfig();
+    const firstYear = Number(config.firstYearMembershipFee) || 99;
+    const renewal = Number(config.renewalMembershipFee) || 5999;
+    const currency = config.currency || 'INR';
+
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
+    res.status(200).json({
+      success: true,
+      data: {
+        firstYearOffer: {
+          fee: firstYear,
+          currency,
+          billingPeriod: '1 Year',
+          label: 'First-Year Introductory Membership Offer',
+          description: `Exclusive 1st year fee of ₹${firstYear.toLocaleString('en-IN')}. Transparent annual access to the entire FIC ecosystem.`
+        },
+        renewalPlan: {
+          fee: renewal,
+          currency,
+          billingPeriod: '1 Year',
+          label: 'Annual Renewal Plan',
+          description: `Standard membership fee of ₹${renewal.toLocaleString('en-IN')} from second year onwards.`
+        }
       }
-    }
-  });
+    });
+  } catch (error) {
+    next(error);
+  }
 });
 
 // Check user membership status

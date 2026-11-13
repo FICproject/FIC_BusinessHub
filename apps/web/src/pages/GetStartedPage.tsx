@@ -10,6 +10,7 @@ import {
   FileTextIcon,
   SparklesIcon
 } from '../components/Icons';
+import { fetchPlatformPricingConfig } from '../services/api';
 
 // ========================================================
 // 1. SHARED STEP & COLOUR CONFIGURATION
@@ -486,6 +487,18 @@ export const OnboardingTimeline: React.FC = () => {
 // 6. MAIN PAGE COMPONENT
 // ========================================================
 export const GetStartedPage: React.FC = () => {
+  const [pricing, setPricing] = useState({ firstYearMembershipFee: 99, renewalMembershipFee: 5999 });
+
+  useEffect(() => {
+    fetchPlatformPricingConfig().then((cfg) => {
+      if (cfg) {
+        setPricing({
+          firstYearMembershipFee: cfg.firstYearMembershipFee,
+          renewalMembershipFee: cfg.renewalMembershipFee
+        });
+      }
+    });
+  }, []);
   return (
     <div className="w-full min-h-screen py-8 sm:py-12 px-4 sm:px-6 lg:px-8 selection:bg-[#C66B52] selection:text-white">
       <div className="max-w-[880px] mx-auto space-y-6 sm:space-y-8">
@@ -671,7 +684,7 @@ export const GetStartedPage: React.FC = () => {
                     }}
                     className="text-4xl sm:text-5xl font-black text-[#D99B43] drop-shadow-md tracking-tight inline-block"
                   >
-                    ₹99
+                    ₹{pricing.firstYearMembershipFee}
                   </motion.span>
                   <span className="text-xs text-[#EADFCF]/80 font-medium">/ first 365 days</span>
                 </div>
@@ -685,18 +698,18 @@ export const GetStartedPage: React.FC = () => {
                 <span className="flex items-center gap-1.5">
                   <SparklesIcon size={14} /> 365 Days Full Access
                 </span>
-                <span className="text-[#EADFCF]/70 font-medium">Renewal: ₹5,999/yr</span>
+                <span className="text-[#EADFCF]/70 font-medium">Renewal: ₹{pricing.renewalMembershipFee.toLocaleString('en-IN')}/yr</span>
               </div>
             </motion.div>
 
-            {/* Standard Annual Renewal Card (₹5,999) */}
+            {/* Standard Annual Renewal Card */}
             <div className="p-5 sm:p-7 rounded-2xl bg-white/[0.03] border border-white/10 flex flex-col justify-between">
               <div>
                 <span className="text-xs text-[#EADFCF]/60 block font-bold uppercase tracking-wider">
                   Annual Renewal (Year 2 onwards)
                 </span>
                 <div className="flex items-baseline gap-2 mt-2.5">
-                  <span className="text-3xl sm:text-4xl font-black text-white">₹5,999</span>
+                  <span className="text-3xl sm:text-4xl font-black text-white">₹{pricing.renewalMembershipFee.toLocaleString('en-IN')}</span>
                   <span className="text-xs text-[#EADFCF]/60 font-medium">/ year</span>
                 </div>
                 <p className="text-xs text-[#EADFCF]/70 mt-3 leading-relaxed font-medium">
@@ -714,7 +727,7 @@ export const GetStartedPage: React.FC = () => {
           {/* Included Features Grid */}
           <div className="pt-2 relative z-10">
             <span className="text-xs font-bold uppercase tracking-wider text-[#EADFCF]/70 block mb-3">
-              Included in Your ₹99 Membership:
+              Included in Your ₹{pricing.firstYearMembershipFee} Membership:
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-[#EADFCF]/90">
               <div className="flex items-center gap-2">

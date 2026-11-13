@@ -13,6 +13,9 @@ export const publicPricingRouter = Router();
 publicPricingRouter.get('/', async (_req: Request, res: Response) => {
   try {
     const config = await ensureFinancialConfig();
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.status(200).json({
       success: true,
       data: {
