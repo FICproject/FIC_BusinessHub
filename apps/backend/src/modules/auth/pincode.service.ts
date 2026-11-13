@@ -53,10 +53,10 @@ function cleanPostOfficeCity(office: any): string {
 export async function lookupIndianPinCode(rawPinCode: string): Promise<IndianPinCodeLocation> {
   const pin = String(rawPinCode || '').trim();
 
-  // Indian civilian residential PIN codes are strictly 6 digits starting with 1-8
-  if (!/^[1-8][0-9]{5}$/.test(pin)) {
+  // Indian civilian residential PIN codes are strictly 6 digits starting with 1-9
+  if (!/^[1-9][0-9]{5}$/.test(pin)) {
     throw new AppError(
-      'Invalid or non-Indian postal code. Please enter a valid 6-digit Indian PIN code (e.g., 600028).',
+      'Please enter a valid 6-digit Indian PIN Code.',
       400,
       'INVALID_INDIAN_PINCODE'
     );
@@ -75,7 +75,7 @@ export async function lookupIndianPinCode(rawPinCode: string): Promise<IndianPin
 
       if (!entry || entry.Status !== 'Success' || postOffices.length === 0) {
         throw new AppError(
-          `PIN code "${pin}" is not a valid Indian PIN code. Please verify and try again.`,
+          'This PIN Code is not recognised. Please verify and try again.',
           404,
           'PINCODE_NOT_FOUND'
         );
@@ -86,7 +86,7 @@ export async function lookupIndianPinCode(rawPinCode: string): Promise<IndianPin
       );
       if (indianOffices.length === 0) {
         throw new AppError(
-          `Postal code "${pin}" does not belong to India. Only Indian residential addresses are supported.`,
+          'This PIN Code is not recognised. Please verify and try again.',
           400,
           'NON_INDIAN_PINCODE'
         );
@@ -133,7 +133,7 @@ export async function lookupIndianPinCode(rawPinCode: string): Promise<IndianPin
   }
 
   throw new AppError(
-    `PIN code "${pin}" is not recognized as a valid Indian PIN code.`,
+    'This PIN Code is not recognised. Please verify and try again.',
     404,
     'PINCODE_NOT_FOUND'
   );

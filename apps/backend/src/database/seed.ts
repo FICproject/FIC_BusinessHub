@@ -105,7 +105,7 @@ const INITIAL_CATEGORIES = [
       { fieldKey: 'areasOfInterest', label: 'Career or Research Interests', type: 'text', required: true, placeholder: 'e.g. AI Entrepreneurship, Renewable Energy' }
     ],
     kycRequiredDocuments: [
-      { documentType: 'STUDENT_OR_EMP_ID', label: 'College ID or Employment Certificate', description: 'Valid educational institution proof', required: true }
+      { documentType: 'COLLEGE_ID', label: 'College ID Card', description: 'Upload a clear image or PDF of your current college identity card.', required: true }
     ]
   },
   {

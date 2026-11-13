@@ -13,6 +13,7 @@ export interface KycDocRequirement {
   label: string;
   required: boolean;
   description?: string;
+  hideDocNumber?: boolean;
 }
 
 export interface SubcategoryFormConfig {
@@ -68,16 +69,11 @@ export const SUBCATEGORY_CONFIGS: Record<string, SubcategoryFormConfig> = {
     ],
     kycDocuments: [
       {
-        type: 'STUDENT_ID',
-        label: 'College ID Card or Bonafide Certificate',
+        type: 'COLLEGE_ID',
+        label: 'College ID Card',
         required: true,
-        description: 'Clear photo or PDF of current college identity card or enrollment proof'
-      },
-      {
-        type: 'GOVT_ID',
-        label: 'Aadhaar Card / Government Photo ID',
-        required: true,
-        description: 'Mandatory 18+ adult age & identity verification'
+        description: 'Upload a clear image or PDF of your current college identity card.',
+        hideDocNumber: true
       }
     ]
   },

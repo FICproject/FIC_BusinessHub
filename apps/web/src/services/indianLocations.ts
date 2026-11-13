@@ -262,7 +262,7 @@ export const getDistrictsForState = (stateName: string): string[] => {
 export const validateIndianPinCode = (pinCode: string): boolean => {
   if (!pinCode) return false;
   const clean = pinCode.trim();
-  // Indian civilian residential PIN codes are strictly 6 numeric digits starting with 1-8
-  return /^[1-8][0-9]{5}$/.test(clean);
+  // Indian civilian residential PIN codes are strictly 6 numeric digits starting with 1-9
+  return /^[1-9][0-9]{5}$/.test(clean);
 };
 

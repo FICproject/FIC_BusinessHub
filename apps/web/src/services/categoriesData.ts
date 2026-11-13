@@ -92,7 +92,7 @@ export const INITIAL_CATEGORIES_DATA = [
       { key: 'careerGoals', label: 'Career or Research Focus', type: 'text', required: true, placeholder: 'e.g. Artificial Intelligence, Renewable Energy' }
     ],
     kycDocuments: [
-      { type: 'STUDENT_OR_EMP_ID', label: 'College ID or Employment Certificate', required: true }
+      { type: 'COLLEGE_ID', label: 'College ID Card', description: 'Upload a clear image or PDF of your current college identity card.', required: true }
     ]
   },
   {

@@ -84,7 +84,7 @@ export function validatePasswordStrength(raw: unknown): string {
 export function validatePinCode(raw: unknown): string {
   const pin = typeof raw === 'string' ? raw.trim() : '';
   if (!pin || !/^[1-9][0-9]{5}$/.test(pin)) {
-    throw new AppError('Valid 6-digit Indian PIN code is required (cannot start with 0).', 400, 'PINCODE_INVALID');
+    throw new AppError('Please enter a valid 6-digit Indian PIN Code.', 400, 'PINCODE_INVALID');
   }
   return pin;
 }

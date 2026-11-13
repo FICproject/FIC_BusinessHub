@@ -762,111 +762,97 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* 4 Primary Balance Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* 5 Primary Balance Cards in a Single Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {/* 1. Available Balance */}
           <motion.div
             whileHover={{ y: -2, transition: motionSprings.cardHover }}
-            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-[#8064B1] via-[#6F52A3] to-[#593E8A] text-white shadow-md border border-[#8064B1]/40"
+            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-[#8064B1] via-[#6F52A3] to-[#593E8A] text-white shadow-md border border-[#8064B1]/40 flex flex-col justify-between"
           >
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#F8EBD0] block mb-0.5">
-              Available Balance
-            </span>
-            <div className="text-xl sm:text-2xl font-black text-white">
-              <AnimatedCounter value={wallet?.availableBalance || 0} prefix="₹" />
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#F8EBD0] block mb-0.5">
+                Available Balance
+              </span>
+              <div className="text-xl sm:text-2xl font-black text-white">
+                <AnimatedCounter value={wallet?.availableBalance || 0} prefix="₹" />
+              </div>
             </div>
             <span className="text-[10.5px] text-white/80 block mt-1 font-medium">
               Ready for renewal & services
             </span>
           </motion.div>
 
-          {/* 2. Pending Referral Rewards */}
+          {/* 2. Pending Rewards */}
           <motion.div
             whileHover={{ y: -2, transition: motionSprings.cardHover }}
-            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#FCFAF6] to-[#FDF6E9] border border-[#D99B43]/30 shadow-2xs"
+            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#FCFAF6] to-[#FDF6E9] border border-[#D99B43]/30 shadow-2xs flex flex-col justify-between"
           >
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#9C6818] block mb-0.5">
-              Pending Rewards
-            </span>
-            <div className="text-xl sm:text-2xl font-black text-[#9C6818]">
-              <AnimatedCounter value={wallet?.pendingBalance || 0} prefix="₹" />
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#9C6818] block mb-0.5">
+                Pending Rewards
+              </span>
+              <div className="text-xl sm:text-2xl font-black text-[#9C6818]">
+                <AnimatedCounter value={wallet?.pendingBalance || 0} prefix="₹" />
+              </div>
             </div>
             <span className="text-[10.5px] text-[#B87A28] block mt-1 font-medium">
               Under verification review
             </span>
           </motion.div>
 
-          {/* 3. Total Referral Earnings */}
+          {/* 3. Referral Earnings */}
           <motion.div
             whileHover={{ y: -2, transition: motionSprings.cardHover }}
-            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#FAF8FD] to-[#F4EEFB] border border-[#8064A9]/30 shadow-2xs"
+            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#FAF8FD] to-[#F4EEFB] border border-[#8064A9]/30 shadow-2xs flex flex-col justify-between"
           >
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#8064A9] block mb-0.5">
-              Referral Earnings
-            </span>
-            <div className="text-xl sm:text-2xl font-black text-[#8064A9]">
-              <AnimatedCounter value={wallet?.totalReferralEarnings || 0} prefix="₹" />
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#8064A9] block mb-0.5">
+                Referral Earnings
+              </span>
+              <div className="text-xl sm:text-2xl font-black text-[#8064A9]">
+                <AnimatedCounter value={wallet?.totalReferralEarnings || 0} prefix="₹" />
+              </div>
             </div>
             <span className="text-[10.5px] text-[#8064A9]/80 block mt-1 font-medium">
               Approved rewards to date
             </span>
           </motion.div>
 
-          {/* 4. Total Wallet Credits */}
+          {/* 4. Total Credits */}
           <motion.div
             whileHover={{ y: -2, transition: motionSprings.cardHover }}
-            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#F6FBF7] to-[#E8F5E9] border border-[#2E7D32]/30 shadow-2xs"
+            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#F6FBF7] to-[#E8F5E9] border border-[#2E7D32]/30 shadow-2xs flex flex-col justify-between"
           >
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#1B5E20] block mb-0.5">
-              Total Credits
-            </span>
-            <div className="text-xl sm:text-2xl font-black text-[#1B5E20]">
-              <AnimatedCounter value={(wallet?.totalAdded || 0) + (wallet?.totalReferralEarnings || 0)} prefix="₹" />
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#1B5E20] block mb-0.5">
+                Total Credits
+              </span>
+              <div className="text-xl sm:text-2xl font-black text-[#1B5E20]">
+                <AnimatedCounter value={(wallet?.totalAdded || 0) + (wallet?.totalReferralEarnings || 0)} prefix="₹" />
+              </div>
             </div>
             <span className="text-[10.5px] text-[#2E7D32] block mt-1 font-medium">
               Lifetime inflows & top-ups
             </span>
           </motion.div>
-        </div>
 
-        {/* Secondary Ledger Breakdown */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-1 text-xs">
-          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
-            <span className="text-[#5A4F47] block font-bold text-[11px]">For Renewal</span>
-            <strong className="text-[#51463F] font-black block mt-0.5 text-xs sm:text-sm">
-              ₹{(wallet?.membershipEligibleBalance || 0).toLocaleString('en-IN')}
-            </strong>
-          </div>
-          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
-            <span className="text-[#5A4F47] block font-bold text-[11px]">For Withdrawal</span>
-            <strong className="text-[#51463F] font-black block mt-0.5 text-xs sm:text-sm">
-              ₹{(wallet?.withdrawalEligibleBalance || 0).toLocaleString('en-IN')}
-            </strong>
-          </div>
-          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
-            <span className="text-[#5A4F47] block font-bold text-[11px]">Total Added</span>
-            <strong className="text-[#3B9C91] font-black block mt-0.5 text-xs sm:text-sm">
-              ₹{(wallet?.totalAdded || 0).toLocaleString('en-IN')}
-            </strong>
-          </div>
-          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
-            <span className="text-[#5A4F47] block font-bold text-[11px]">Total Withdrawn</span>
-            <strong className="text-[#51463F] font-black block mt-0.5 text-xs sm:text-sm">
-              ₹{(wallet?.totalWithdrawn || 0).toLocaleString('en-IN')}
-            </strong>
-          </div>
-          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
-            <span className="text-[#5A4F47] block font-bold text-[11px]">Renewal Debits</span>
-            <strong className="text-[#51463F] font-black block mt-0.5 text-xs sm:text-sm">
-              ₹{(wallet?.totalRenewalSpent || 0).toLocaleString('en-IN')}
-            </strong>
-          </div>
-          <div className="p-2.5 sm:p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
-            <span className="text-[#5A4F47] block font-bold text-[11px]">Wallet Standing</span>
-            <strong className="text-[#3B9C91] font-black block mt-0.5 text-xs sm:text-sm">
-              ● {wallet?.status || 'ACTIVE'}
-            </strong>
-          </div>
+          {/* 5. Total Withdrawn */}
+          <motion.div
+            whileHover={{ y: -2, transition: motionSprings.cardHover }}
+            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#FAF7F2] to-[#F5ECE1] border border-[#C66B52]/30 shadow-2xs flex flex-col justify-between"
+          >
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#9E4A35] block mb-0.5">
+                Total Withdrawn
+              </span>
+              <div className="text-xl sm:text-2xl font-black text-[#9E4A35]">
+                <AnimatedCounter value={wallet?.totalWithdrawn || 0} prefix="₹" />
+              </div>
+            </div>
+            <span className="text-[10.5px] text-[#A85842] block mt-1 font-medium">
+              Disbursed to bank account
+            </span>
+          </motion.div>
         </div>
 
         {/* Community Investment Pools & Fixed Interest Returns Card */}

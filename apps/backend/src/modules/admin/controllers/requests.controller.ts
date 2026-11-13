@@ -17,7 +17,11 @@ router.get('/', authenticateAdmin, async (req, res) => {
     const { type, status, search } = req.query;
     const filter: any = {};
     if (type && type !== 'ALL') filter.type = type;
-    if (status && status !== 'ALL') filter.status = status;
+    if (status === 'ACTIVE') {
+      filter.status = { $nin: ['COMPLETED', 'REJECTED', 'CANCELLED'] };
+    } else if (status && status !== 'ALL') {
+      filter.status = status;
+    }
 
     let requests = await FicRequestModel.find(filter)
       .populate('requesterId', 'name email phone primaryCategoryName')

@@ -281,7 +281,7 @@ router.get('/', authenticateAdmin, requirePermission('KYC_VERIFY'), async (req, 
       const s = String(status).trim().toUpperCase();
       if (s === 'RESUBMISSION_REQUESTED') {
         filter.status = { $in: ['RESUBMISSION_REQUESTED', 'RESUBMIT_REQUIRED'] };
-      } else if (s === 'SUBMITTED') {
+      } else if (s === 'SUBMITTED' || s === 'PENDING' || s === 'PENDING_REVIEW') {
         filter.status = { $in: ['SUBMITTED', 'PENDING', 'UNDER_REVIEW'] };
       } else {
         filter.status = s;

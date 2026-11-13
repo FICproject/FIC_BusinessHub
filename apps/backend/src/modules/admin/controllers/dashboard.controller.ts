@@ -17,10 +17,10 @@ router.get('/stats', authenticateAdmin, async (_req, res) => {
       await Promise.all([
         MemberModel.countDocuments({ $nor: [{ kycStatus: 'NOT_SUBMITTED', paymentStatus: 'PENDING' }] }),
         MemberModel.countDocuments({ status: 'ACTIVE' }),
-        KycSubmissionModel.countDocuments({ status: { $in: ['SUBMITTED', 'UNDER_REVIEW'] } }),
+        KycSubmissionModel.countDocuments({ status: { $in: ['SUBMITTED', 'PENDING', 'UNDER_REVIEW'] } }),
         ServiceListingModel.countDocuments({ status: 'PENDING_APPROVAL' }),
         ServiceListingModel.countDocuments({ status: 'APPROVED' }),
-        FicRequestModel.countDocuments({ status: { $in: ['NEW', 'UNDER_REVIEW', 'PROVIDER_CONTACTED'] } }),
+        FicRequestModel.countDocuments({ status: { $nin: ['COMPLETED', 'REJECTED', 'CANCELLED'] } }),
         AuditLogModel.find().sort({ timestamp: -1 }).limit(10),
       ]);
 

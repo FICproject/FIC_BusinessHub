@@ -133,7 +133,19 @@ kycRouter.post('/submit', authenticate, async (req: AuthenticatedRequest, res: R
           ['GOVT_ID', 'PAN_CARD', 'AADHAAR', 'AADHAAR_CARD', 'ID_PROOF', 'OWNER_ID'].includes(reqKey) ||
           titleLower.includes('aadhaar') ||
           /\bpan\b/.test(titleLower);
-        if (reqDoc.required && !submittedKeys.has(reqKey) && !(isGenericIdentity && hasPanAndIdFallback)) {
+        const isCollegeDoc =
+          ['COLLEGE_ID', 'STUDENT_ID', 'STUDENT_OR_EMP_ID'].includes(reqKey) ||
+          titleLower.includes('college');
+        const hasCollegeSubmitted =
+          submittedKeys.has('COLLEGE_ID') ||
+          submittedKeys.has('STUDENT_ID') ||
+          submittedKeys.has('STUDENT_OR_EMP_ID');
+        if (
+          reqDoc.required &&
+          !submittedKeys.has(reqKey) &&
+          !(isGenericIdentity && hasPanAndIdFallback) &&
+          !(isCollegeDoc && hasCollegeSubmitted)
+        ) {
           throw new AppError(
             `Required category document "${reqDoc.title || reqKey}" is missing.`,
             400,

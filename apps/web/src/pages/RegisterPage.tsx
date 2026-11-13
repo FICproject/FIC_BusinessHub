@@ -340,16 +340,31 @@ export const RegisterPage: React.FC = () => {
       const t = String(typeOrKey || '').toUpperCase();
       const l = String(label || '').toLowerCase();
       if (t === 'GOVT_ID' || t === 'AADHAAR' || t === 'AADHAAR_CARD' || t === 'PAN' || t === 'PAN_CARD') return true;
-      if (l.includes('aadhaar') || /pan/.test(l) || l.includes('pan card')) return true;
+      if (l.includes('aadhaar') || / pan /.test(l) || l.includes('pan card')) return true;
       return false;
     };
-    const list: Array<{ type: string; label: string; required: boolean; description?: string; allowedExtensions?: string[]; maxSizeMB?: number }> = [];
+    const isCollegeDoc = (typeOrKey: string, label: string) => {
+      const t = String(typeOrKey || '').toUpperCase();
+      const l = String(label || '').toLowerCase();
+      return t === 'COLLEGE_ID' || t === 'STUDENT_ID' || t === 'STUDENT_OR_EMP_ID' || l.includes('college id');
+    };
+    const list: Array<{ type: string; label: string; required: boolean; description?: string; allowedExtensions?: string[]; maxSizeMB?: number; hideDocNumber?: boolean }> = [];
     const seenTypes = new Set<string>();
+    let hasCollegeDoc = false;
+
     for (const doc of subcategoryConfig.kycDocuments) {
       if (isIdentitySlot(doc.type, doc.label)) continue;
+      const isCollege = isCollegeDoc(doc.type, doc.label);
+      if (isCollege && hasCollegeDoc) continue;
+      if (isCollege) hasCollegeDoc = true;
+
       seenTypes.add(doc.type.toUpperCase());
       list.push({
         ...doc,
+        type: isCollege ? 'COLLEGE_ID' : doc.type,
+        label: isCollege ? 'College ID Card' : doc.label,
+        description: isCollege ? 'Upload a clear image or PDF of your current college identity card.' : doc.description,
+        hideDocNumber: isCollege ? true : Boolean((doc as any).hideDocNumber),
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
         maxSizeMB: 2
       });
@@ -361,12 +376,17 @@ export const RegisterPage: React.FC = () => {
       const key = String(reqDoc.docKey || reqDoc.documentType || reqDoc.type || reqDoc.title || '').trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_');
       const label = String(reqDoc.title || reqDoc.label || reqDoc.documentType || 'Category Document').trim();
       if (!key || isIdentitySlot(key, label) || seenTypes.has(key)) continue;
+      const isCollege = isCollegeDoc(key, label);
+      if (isCollege && hasCollegeDoc) continue;
+      if (isCollege) hasCollegeDoc = true;
+
       seenTypes.add(key);
       list.push({
-        type: key,
-        label,
+        type: isCollege ? 'COLLEGE_ID' : key,
+        label: isCollege ? 'College ID Card' : label,
         required: Boolean(reqDoc.required ?? true),
-        description: reqDoc.description || 'Mandatory category compliance proof',
+        description: isCollege ? 'Upload a clear image or PDF of your current college identity card.' : (reqDoc.description || 'Mandatory category compliance proof'),
+        hideDocNumber: isCollege ? true : false,
         allowedExtensions: Array.isArray(reqDoc.allowedExtensions) && reqDoc.allowedExtensions.length > 0
           ? reqDoc.allowedExtensions.map((e: string) => e.toLowerCase()).filter((e: string) => ['pdf', 'jpg', 'jpeg', 'png'].includes(e))
           : ['pdf', 'jpg', 'jpeg', 'png'],
@@ -399,10 +419,11 @@ export const RegisterPage: React.FC = () => {
   };
 
   const handlePinCodeInput = async (rawValue: string) => {
-    setPinCode(rawValue);
-    const trimmed = rawValue.trim();
+    const hasNonDigits = /[^0-9]/.test(rawValue);
+    const sanitized = rawValue.replace(/\D/g, '').slice(0, 6);
+    setPinCode(hasNonDigits ? rawValue.slice(0, 6) : sanitized);
 
-    if (!trimmed) {
+    if (!rawValue) {
       setCountry('');
       setStateName('');
       setDistrict('');
@@ -412,27 +433,33 @@ export const RegisterPage: React.FC = () => {
       return;
     }
 
-    if (!/^[0-9]+$/.test(trimmed) || (trimmed.length >= 1 && !/^[1-8]/.test(trimmed)) || trimmed.length > 6) {
+    if (hasNonDigits || (rawValue.length > 0 && rawValue.startsWith('0'))) {
       setCountry('');
+      setStateName('');
+      setDistrict('');
+      setCity('');
       setPinLookupInfo('');
-      setPinCodeError('Invalid or non-Indian PIN code. Please enter a valid 6-digit Indian PIN code (e.g., 600028).');
+      setPinCodeError('Please enter a valid 6-digit Indian PIN Code.');
       return;
     }
 
-    if (trimmed.length < 6) {
+    if (sanitized.length < 6) {
       setCountry('');
+      setStateName('');
+      setDistrict('');
+      setCity('');
       setPinLookupInfo('');
-      setPinCodeError('Enter all 6 digits of your Indian PIN code (e.g., 600028).');
+      setPinCodeError('PIN Code must contain exactly 6 digits.');
       return;
     }
 
-    latestPinLookupRef.current = trimmed;
+    latestPinLookupRef.current = sanitized;
     setPinCodeError('');
     setPinLookupInfo('');
     setIsLookingUpPin(true);
     try {
-      const resolved = await lookupIndianPinCodeApi(trimmed);
-      if (latestPinLookupRef.current !== trimmed) return;
+      const resolved = await lookupIndianPinCodeApi(sanitized);
+      if (latestPinLookupRef.current !== sanitized) return;
 
       const normalizedState = matchIndianStateName(resolved.state);
       const stateDistricts = getDistrictsForState(normalizedState);
@@ -451,17 +478,15 @@ export const RegisterPage: React.FC = () => {
         `Auto-filled: ${resolved.city || matchedDistrict}, ${matchedDistrict}, ${normalizedState}, India`
       );
     } catch (err: any) {
-      if (latestPinLookupRef.current !== trimmed) return;
+      if (latestPinLookupRef.current !== sanitized) return;
       setCountry('');
       setStateName('');
       setDistrict('');
       setCity('');
       setPinLookupInfo('');
-      setPinCodeError(
-        err?.message || 'Non-Indian or unrecognized PIN code. Please enter a valid 6-digit Indian PIN code.'
-      );
+      setPinCodeError('This PIN Code is not recognised. Please verify and try again.');
     } finally {
-      if (latestPinLookupRef.current === trimmed) {
+      if (latestPinLookupRef.current === sanitized) {
         setIsLookingUpPin(false);
       }
     }
@@ -804,8 +829,20 @@ export const RegisterPage: React.FC = () => {
     }
     setFieldError('landmark', null);
 
-    if (!pinCode.trim() || !validateIndianPinCode(pinCode) || pinCodeError || country.trim().toLowerCase() !== 'india') {
-      const msg = pinCodeError || 'Please enter a valid 6-digit Indian PIN Code (e.g., 600028) to auto-fill location details.';
+    if (!pinCode.trim() || pinCode.trim().length < 6) {
+      const msg = 'PIN Code must contain exactly 6 digits.';
+      setPinCodeError(msg);
+      setErrorMessage(msg);
+      return;
+    }
+    if (!/^[1-9][0-9]{5}$/.test(pinCode.trim())) {
+      const msg = 'Please enter a valid 6-digit Indian PIN Code.';
+      setPinCodeError(msg);
+      setErrorMessage(msg);
+      return;
+    }
+    if (pinCodeError || country.trim().toLowerCase() !== 'india') {
+      const msg = pinCodeError || 'This PIN Code is not recognised. Please verify and try again.';
       setPinCodeError(msg);
       setErrorMessage(msg);
       return;
@@ -837,7 +874,7 @@ export const RegisterPage: React.FC = () => {
     e.preventDefault();
     setErrorMessage('');
 
-    // 1. Validate Primary Identity Section (Aadhaar or Alternative Govt ID)
+    // 1. Validate Primary Identity Section (Aadhaar Card)
     if (identityMode === 'AADHAAR') {
       const aadhaarErr = validateAadhaarClient(docNumbers['AADHAAR_CARD'] || '');
       if (aadhaarErr) {
@@ -846,13 +883,6 @@ export const RegisterPage: React.FC = () => {
         return;
       }
       setDocError('AADHAAR_CARD_NUM', null);
-      if (!aadhaarConsent) {
-        const msg = 'Please confirm voluntary UIDAI Aadhaar consent or switch to an Alternative Govt ID.';
-        setDocError('AADHAAR_CONSENT', msg);
-        setErrorMessage(msg);
-        return;
-      }
-      setDocError('AADHAAR_CONSENT', null);
       if (!attachedFiles['AADHAAR_CARD']) {
         const msg = 'Please attach your Aadhaar Card copy (PDF, JPG, JPEG, or PNG up to 2 MB).';
         setDocError('AADHAAR_CARD', msg);
@@ -893,13 +923,16 @@ export const RegisterPage: React.FC = () => {
     // 3. Check Category / Role-Specific Dynamic Documents
     for (const doc of dynamicRoleDocs) {
       if (doc.required) {
-        if (!docNumbers[doc.type]?.trim()) {
-          const msg = `Please enter the document / registration number for "${doc.label}".`;
-          setDocError(`${doc.type}_NUM`, msg);
-          setErrorMessage(msg);
-          return;
+        const isCollege = doc.hideDocNumber || doc.type === 'COLLEGE_ID' || doc.type.toLowerCase().includes('college') || doc.label.toLowerCase().includes('college id');
+        if (!isCollege) {
+          if (!docNumbers[doc.type]?.trim()) {
+            const msg = `Please enter the document / registration number for "${doc.label}".`;
+            setDocError(`${doc.type}_NUM`, msg);
+            setErrorMessage(msg);
+            return;
+          }
+          setDocError(`${doc.type}_NUM`, null);
         }
-        setDocError(`${doc.type}_NUM`, null);
         if (!attachedFiles[doc.type]) {
           const msg = `Please attach the document file (max 2 MB) for "${doc.label}".`;
           setDocError(doc.type, msg);
@@ -1961,7 +1994,7 @@ export const RegisterPage: React.FC = () => {
                       <input
                         type="text"
                         inputMode="numeric"
-                        maxLength={12}
+                        maxLength={6}
                         placeholder="e.g., 600028"
                         value={pinCode}
                         onChange={(e) => {
@@ -1969,7 +2002,11 @@ export const RegisterPage: React.FC = () => {
                         }}
                         onBlur={() => {
                           if (!pinCode.trim()) {
-                            setPinCodeError('Please enter a valid 6-digit Indian PIN code.');
+                            setPinCodeError('PIN Code must contain exactly 6 digits.');
+                          } else if (/[^0-9]/.test(pinCode.trim()) || pinCode.trim().startsWith('0')) {
+                            setPinCodeError('Please enter a valid 6-digit Indian PIN Code.');
+                          } else if (pinCode.trim().length < 6) {
+                            setPinCodeError('PIN Code must contain exactly 6 digits.');
                           }
                         }}
                         required
@@ -2501,27 +2538,29 @@ export const RegisterPage: React.FC = () => {
                           )}
                         </div>
 
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-semibold text-[#29302D] block">
-                            Document / Registration Number {doc.required && <span className="text-red-500">*</span>}
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g. GSTIN / Udyam / License / Certificate Reg No."
-                            className={`w-full text-xs px-3.5 py-2.5 border rounded-xl bg-white focus:outline-none focus:ring-2 ${
-                              docFieldErrors[`${doc.type}_NUM`] ? 'border-red-400 focus:ring-red-400' : 'border-[#E8DBC8] focus:ring-[#C66B52]'
-                            }`}
-                            value={docNumbers[doc.type] || ''}
-                            onChange={(e) => {
-                              setDocNumbers({ ...docNumbers, [doc.type]: e.target.value });
-                              if (e.target.value.trim()) setDocError(`${doc.type}_NUM`, null);
-                            }}
-                            required={doc.required}
-                          />
-                          {docFieldErrors[`${doc.type}_NUM`] && (
-                            <p className="text-[11px] text-red-600 font-semibold">{docFieldErrors[`${doc.type}_NUM`]}</p>
-                          )}
-                        </div>
+                        {!doc.hideDocNumber && !doc.type.toLowerCase().includes('college') && !doc.label.toLowerCase().includes('college id') && (
+                          <div className="space-y-1">
+                            <label className="text-[11px] font-semibold text-[#29302D] block">
+                              Document / Registration Number {doc.required && <span className="text-red-500">*</span>}
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. GSTIN / Udyam / License / Certificate Reg No."
+                              className={`w-full text-xs px-3.5 py-2.5 border rounded-xl bg-white focus:outline-none focus:ring-2 ${
+                                docFieldErrors[`${doc.type}_NUM`] ? 'border-red-400 focus:ring-red-400' : 'border-[#E8DBC8] focus:ring-[#C66B52]'
+                              }`}
+                              value={docNumbers[doc.type] || ''}
+                              onChange={(e) => {
+                                setDocNumbers({ ...docNumbers, [doc.type]: e.target.value });
+                                if (e.target.value.trim()) setDocError(`${doc.type}_NUM`, null);
+                              }}
+                              required={doc.required}
+                            />
+                            {docFieldErrors[`${doc.type}_NUM`] && (
+                              <p className="text-[11px] text-red-600 font-semibold">{docFieldErrors[`${doc.type}_NUM`]}</p>
+                            )}
+                          </div>
+                        )}
 
                         <div className="space-y-1.5 pt-1">
                           <label className="text-[11px] font-semibold text-[#29302D] block">
