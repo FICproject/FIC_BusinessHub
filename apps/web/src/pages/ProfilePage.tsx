@@ -871,8 +871,8 @@ export const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {/* 5 Primary Balance Cards in a Single Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        {/* 4 Primary Balance Cards in a Single Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {/* 1. Available Balance */}
           <motion.div
             whileHover={{ y: -2, transition: motionSprings.cardHover }}
@@ -891,25 +891,7 @@ export const ProfilePage: React.FC = () => {
             </span>
           </motion.div>
 
-          {/* 2. Pending Rewards */}
-          <motion.div
-            whileHover={{ y: -2, transition: motionSprings.cardHover }}
-            className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#FCFAF6] to-[#FDF6E9] border border-[#D99B43]/30 shadow-2xs flex flex-col justify-between"
-          >
-            <div>
-              <span className="text-[10px] font-black uppercase tracking-wider text-[#9C6818] block mb-0.5">
-                Pending Rewards
-              </span>
-              <div className="text-xl sm:text-2xl font-black text-[#9C6818]">
-                <AnimatedCounter value={wallet?.pendingBalance || 0} prefix="₹" />
-              </div>
-            </div>
-            <span className="text-[10.5px] text-[#B87A28] block mt-1 font-medium">
-              Under verification review
-            </span>
-          </motion.div>
-
-          {/* 3. Referral Earnings */}
+          {/* 2. Referral Earnings */}
           <motion.div
             whileHover={{ y: -2, transition: motionSprings.cardHover }}
             className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#FAF8FD] to-[#F4EEFB] border border-[#8064A9]/30 shadow-2xs flex flex-col justify-between"
@@ -927,7 +909,7 @@ export const ProfilePage: React.FC = () => {
             </span>
           </motion.div>
 
-          {/* 4. Total Credits */}
+          {/* 3. Total Credits */}
           <motion.div
             whileHover={{ y: -2, transition: motionSprings.cardHover }}
             className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#F6FBF7] to-[#E8F5E9] border border-[#2E7D32]/30 shadow-2xs flex flex-col justify-between"
@@ -945,7 +927,7 @@ export const ProfilePage: React.FC = () => {
             </span>
           </motion.div>
 
-          {/* 5. Total Withdrawn */}
+          {/* 4. Total Withdrawn */}
           <motion.div
             whileHover={{ y: -2, transition: motionSprings.cardHover }}
             className="p-4 sm:p-4.5 rounded-2xl bg-gradient-to-br from-white via-[#FAF7F2] to-[#F5ECE1] border border-[#C66B52]/30 shadow-2xs flex flex-col justify-between"
@@ -955,7 +937,18 @@ export const ProfilePage: React.FC = () => {
                 Total Withdrawn
               </span>
               <div className="text-xl sm:text-2xl font-black text-[#9E4A35]">
-                <AnimatedCounter value={wallet?.totalWithdrawn || 0} prefix="₹" />
+                <AnimatedCounter
+                  value={Math.max(
+                    wallet?.totalWithdrawn || 0,
+                    (allUserTransactions || [])
+                      .filter((tx) => {
+                        const type = String(tx?.transactionType || '').toUpperCase();
+                        return type === 'WITHDRAWAL' || (WalletTransactionType && type === WalletTransactionType.WITHDRAWAL);
+                      })
+                      .reduce((acc, tx) => acc + (Number(tx?.amount) || 0), 0)
+                  )}
+                  prefix="₹"
+                />
               </div>
             </div>
             <span className="text-[10.5px] text-[#A85842] block mt-1 font-medium">

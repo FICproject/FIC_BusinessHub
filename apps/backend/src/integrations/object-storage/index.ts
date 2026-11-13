@@ -80,8 +80,30 @@ export class LocalPrivateStorageProvider implements IStorageProvider {
 
   async getObjectBuffer(key: string): Promise<StorageGetResult> {
     const targetPath = this.resolveSafePath(key);
-    const buffer = await fs.promises.readFile(targetPath);
-    return { buffer };
+    try {
+      const buffer = await fs.promises.readFile(targetPath);
+      return { buffer };
+    } catch (err: any) {
+      if (err?.code === 'ENOENT') {
+        const safeKey = sanitizeStorageKey(key);
+        const candidates = [
+          path.resolve(process.cwd(), 'storage/private', safeKey),
+          path.resolve(process.cwd(), 'apps/backend/storage/private', safeKey),
+          path.resolve(this.baseDir, '..', safeKey),
+          path.resolve(__dirname, '../../storage/private', safeKey),
+          path.resolve(__dirname, '../../../storage/private', safeKey)
+        ];
+        for (const candidate of candidates) {
+          try {
+            if (fs.existsSync(candidate)) {
+              const buffer = await fs.promises.readFile(candidate);
+              return { buffer };
+            }
+          } catch {}
+        }
+      }
+      throw err;
+    }
   }
 
   async getObjectStream(key: string): Promise<Readable> {

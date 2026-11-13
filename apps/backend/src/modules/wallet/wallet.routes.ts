@@ -168,6 +168,7 @@ walletRouter.post('/withdraw', authenticate, requireActiveVerifiedMember, async 
     // Atomically reserve funds (deduct from available and withdrawable, put into pending)
     wallet.availableBalance -= numericAmount;
     wallet.pendingBalance += numericAmount;
+    wallet.totalWithdrawn = (wallet.totalWithdrawn || 0) + numericAmount;
     wallet.withdrawalEligibleBalance = Math.max(0, (wallet.availableBalance || 0) - (wallet.restrictedBalance || 0));
     await wallet.save();
 

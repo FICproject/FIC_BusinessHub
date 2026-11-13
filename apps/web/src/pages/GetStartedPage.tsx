@@ -80,7 +80,7 @@ const ONBOARDING_STEPS = [
   {
     num: '04',
     number: 4,
-    title: 'First-Year Membership Pass (₹99) & Activation',
+    title: 'First-Year Membership Pass & Activation',
     description: 'Complete the introductory membership payment to activate the application review process.',
     colorHex: '#E8795B', // Coral-Red
     tagColor: 'text-[#E8795B]',
@@ -290,8 +290,35 @@ export const TimelineStep: React.FC<TimelineStepProps> = ({ step, state, align }
 // ========================================================
 const TIMELINE_THRESHOLDS = [0.125, 0.375, 0.625, 0.875] as const;
 
-export const OnboardingTimeline: React.FC = () => {
+export const OnboardingTimeline: React.FC<{ firstYearFee?: number }> = ({ firstYearFee }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [fee, setFee] = useState<number | null>(firstYearFee ? Number(firstYearFee) : null);
+
+  useEffect(() => {
+    if (firstYearFee) {
+      setFee(Number(firstYearFee));
+    }
+  }, [firstYearFee]);
+
+  useEffect(() => {
+    fetchPlatformPricingConfig().then((cfg) => {
+      if (cfg?.firstYearMembershipFee) {
+        setFee(Number(cfg.firstYearMembershipFee));
+      }
+    });
+  }, []);
+
+  const steps = ONBOARDING_STEPS.map((s) =>
+    s.number === 4
+      ? {
+          ...s,
+          title:
+            fee !== null && fee !== undefined
+              ? `First-Year Membership Pass (₹${fee.toLocaleString('en-IN')}) & Activation`
+              : 'First-Year Membership Pass & Activation'
+        }
+      : s
+  );
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -355,7 +382,7 @@ export const OnboardingTimeline: React.FC = () => {
         <div className="h-[200px] grid grid-cols-12 items-center gap-6 relative">
           <div className="col-span-5">
             <TimelineStep
-              step={ONBOARDING_STEPS[0]}
+              step={steps[0]}
               state={getStepState(1)}
               align="right"
             />
@@ -364,11 +391,11 @@ export const OnboardingTimeline: React.FC = () => {
           <div className="col-span-2 flex items-center justify-center relative">
             <TimelineMarker
               stepNumber={1}
-              colorHex={ONBOARDING_STEPS[0].colorHex}
-              circleRing={ONBOARDING_STEPS[0].circleRing}
-              circleShadow={ONBOARDING_STEPS[0].circleShadow}
+              colorHex={steps[0].colorHex}
+              circleRing={steps[0].circleRing}
+              circleShadow={steps[0].circleShadow}
               state={getStepState(1)}
-              offsetX={ONBOARDING_STEPS[0].markerOffset}
+              offsetX={steps[0].markerOffset}
             />
           </div>
 
@@ -382,17 +409,17 @@ export const OnboardingTimeline: React.FC = () => {
           <div className="col-span-2 flex items-center justify-center relative">
             <TimelineMarker
               stepNumber={2}
-              colorHex={ONBOARDING_STEPS[1].colorHex}
-              circleRing={ONBOARDING_STEPS[1].circleRing}
-              circleShadow={ONBOARDING_STEPS[1].circleShadow}
+              colorHex={steps[1].colorHex}
+              circleRing={steps[1].circleRing}
+              circleShadow={steps[1].circleShadow}
               state={getStepState(2)}
-              offsetX={ONBOARDING_STEPS[1].markerOffset}
+              offsetX={steps[1].markerOffset}
             />
           </div>
 
           <div className="col-span-5">
             <TimelineStep
-              step={ONBOARDING_STEPS[1]}
+              step={steps[1]}
               state={getStepState(2)}
               align="left"
             />
@@ -403,7 +430,7 @@ export const OnboardingTimeline: React.FC = () => {
         <div className="h-[200px] grid grid-cols-12 items-center gap-6 relative">
           <div className="col-span-5">
             <TimelineStep
-              step={ONBOARDING_STEPS[2]}
+              step={steps[2]}
               state={getStepState(3)}
               align="right"
             />
@@ -412,11 +439,11 @@ export const OnboardingTimeline: React.FC = () => {
           <div className="col-span-2 flex items-center justify-center relative">
             <TimelineMarker
               stepNumber={3}
-              colorHex={ONBOARDING_STEPS[2].colorHex}
-              circleRing={ONBOARDING_STEPS[2].circleRing}
-              circleShadow={ONBOARDING_STEPS[2].circleShadow}
+              colorHex={steps[2].colorHex}
+              circleRing={steps[2].circleRing}
+              circleShadow={steps[2].circleShadow}
               state={getStepState(3)}
-              offsetX={ONBOARDING_STEPS[2].markerOffset}
+              offsetX={steps[2].markerOffset}
             />
           </div>
 
@@ -430,17 +457,17 @@ export const OnboardingTimeline: React.FC = () => {
           <div className="col-span-2 flex items-center justify-center relative">
             <TimelineMarker
               stepNumber={4}
-              colorHex={ONBOARDING_STEPS[3].colorHex}
-              circleRing={ONBOARDING_STEPS[3].circleRing}
-              circleShadow={ONBOARDING_STEPS[3].circleShadow}
+              colorHex={steps[3].colorHex}
+              circleRing={steps[3].circleRing}
+              circleShadow={steps[3].circleShadow}
               state={getStepState(4)}
-              offsetX={ONBOARDING_STEPS[3].markerOffset}
+              offsetX={steps[3].markerOffset}
             />
           </div>
 
           <div className="col-span-5">
             <TimelineStep
-              step={ONBOARDING_STEPS[3]}
+              step={steps[3]}
               state={getStepState(4)}
               align="left"
             />
@@ -450,7 +477,7 @@ export const OnboardingTimeline: React.FC = () => {
 
       {/* MOBILE SINGLE-COLUMN TIMELINE (< md) */}
       <div className="md:hidden space-y-7 relative z-10">
-        {ONBOARDING_STEPS.map((step) => {
+        {steps.map((step) => {
           const stepState = getStepState(step.number);
 
           return (
@@ -589,7 +616,7 @@ export const GetStartedPage: React.FC = () => {
           </div>
 
           {/* ONBOARDING TIMELINE CONTAINER */}
-          <OnboardingTimeline />
+          <OnboardingTimeline firstYearFee={pricing.firstYearMembershipFee} />
 
           {/* ACTION BUTTON RIGHT AFTER STEP 04 */}
           <div className="pt-6 sm:pt-8 text-center border-t border-[#E8DBC8]/60 relative z-10 space-y-3">
