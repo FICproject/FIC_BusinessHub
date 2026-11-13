@@ -3,6 +3,10 @@ import { FicRequestModel } from '../models/FicRequest';
 import { ServiceListingModel } from '../models/ServiceListing';
 import { MemberModel } from '../models/Member';
 import { MeetingModel } from '../models/Meeting';
+import { BusinessIdeaModel } from '../../business-ideas/business-ideas.model';
+import { BusinessDevRequestModel } from '../../business-development/business-development.model';
+import { UserModel } from '../../users/users.model';
+import { notifyMember } from '../../notifications/notifications.service';
 import { authenticateAdmin, AuthenticatedAdminRequest, logAdminAction } from '../middleware/admin-auth.middleware';
 
 const router = Router();
@@ -10,18 +14,29 @@ const router = Router();
 // GET /api/admin/requests - List FIC-mediated requests
 router.get('/', authenticateAdmin, async (req, res) => {
   try {
-    const { type, status } = req.query;
+    const { type, status, search } = req.query;
     const filter: any = {};
     if (type && type !== 'ALL') filter.type = type;
     if (status && status !== 'ALL') filter.status = status;
 
-    const requests = await FicRequestModel.find(filter)
+    let requests = await FicRequestModel.find(filter)
       .populate('requesterId', 'name email phone primaryCategoryName')
       .populate('targetServiceId', 'title categoryName pricingEstimate locationState')
       .populate('targetProviderId', 'name email phone primaryCategoryName')
       .populate('assignedStaffId', 'name email')
       .populate('scheduledMeetingId')
       .sort({ createdAt: -1 });
+
+    if (search && typeof search === 'string' && search.trim()) {
+      const q = search.trim().toLowerCase();
+      requests = requests.filter(
+        (r: any) =>
+          r.title?.toLowerCase().includes(q) ||
+          r.description?.toLowerCase().includes(q) ||
+          r.requesterName?.toLowerCase().includes(q) ||
+          r.requesterEmail?.toLowerCase().includes(q)
+      );
+    }
 
     res.json({ success: true, data: requests });
   } catch (err: any) {
@@ -396,11 +411,11 @@ router.patch('/:id/reschedule-meeting', authenticateAdmin, async (req: Authentic
   }
 });
 
-// PATCH /api/admin/requests/:id - Update status, assign staff, add internal note
+// PATCH /api/admin/requests/:id - Update status, assign staff, add response or internal note
 router.patch('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { status, assignedStaffId, note } = req.body;
+    const { status, assignedStaffId, assignedStaffName, adminResponse, note } = req.body;
 
     const ficReq = await FicRequestModel.findById(id);
     if (!ficReq) {
@@ -408,22 +423,96 @@ router.patch('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, r
       return;
     }
 
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const author = req.admin ? req.admin.name : 'FIC Administrator';
+
     if (status) ficReq.status = status;
-    if (assignedStaffId) ficReq.assignedStaffId = assignedStaffId;
+    if (assignedStaffId) {
+      ficReq.assignedStaffId = assignedStaffId;
+      if (assignedStaffName) ficReq.assignedStaffName = assignedStaffName;
+    }
+    if (adminResponse && adminResponse.trim()) {
+      ficReq.adminResponse = adminResponse.trim();
+      ficReq.adminRespondedAt = new Date();
+      ficReq.adminRespondedByName = author;
+      if (!status) {
+        ficReq.status = 'RESPONDED';
+      }
+      ficReq.internalNotes.push(`[${timestamp} by ${author}]: Sent member response: "${adminResponse.trim()}"`);
+    }
+
     if (note && note.trim()) {
-      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
-      const author = req.admin ? req.admin.name : 'Admin';
       ficReq.internalNotes.push(`[${timestamp} by ${author}]: ${note.trim()}`);
     }
 
     await ficReq.save();
 
-    await logAdminAction(req, 'UPDATE_FIC_REQUEST', 'FicRequest', id, { status, assignedStaffId });
+    // Synchronize to underlying models if sourceRefId is present
+    if (ficReq.sourceRefId) {
+      const updateMsg = adminResponse?.trim() || note?.trim() || `Status updated to ${ficReq.status}`;
+      const nowStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+
+      if (ficReq.sourceModule === 'BUSINESS_IDEAS' || ficReq.type === 'BUSINESS_IDEAS') {
+        await BusinessIdeaModel.findByIdAndUpdate(ficReq.sourceRefId, {
+          latestFicUpdate: updateMsg,
+          status: ficReq.status === 'COMPLETED' ? 'APPROVED' : (ficReq.status === 'REJECTED' ? 'CLOSED' : 'UNDER_REVIEW'),
+          $push: {
+            updateHistory: {
+              date: nowStr,
+              status: ficReq.status,
+              update: updateMsg,
+              updatedBy: author
+            }
+          }
+        });
+      } else if (ficReq.sourceModule === 'SCALING_SUPPORT' || ficReq.type === 'SCALING_SUPPORT') {
+        await BusinessDevRequestModel.findByIdAndUpdate(ficReq.sourceRefId, {
+          latestFicUpdate: updateMsg,
+          status: ficReq.status === 'COMPLETED' ? 'COMPLETED' : 'UNDER_REVIEW',
+          $push: {
+            updateHistory: {
+              date: nowStr,
+              status: ficReq.status,
+              update: updateMsg,
+              updatedBy: author
+            }
+          }
+        });
+      }
+    }
+
+    // Notify member
+    try {
+      let recipientUserId = null;
+      if (ficReq.requesterEmail) {
+        const u = await UserModel.findOne({ email: ficReq.requesterEmail.toLowerCase().trim() });
+        if (u) recipientUserId = u._id;
+      }
+      if (!recipientUserId && ficReq.requesterId) {
+        recipientUserId = ficReq.requesterId;
+      }
+
+      if (recipientUserId) {
+        await notifyMember({
+          userId: recipientUserId,
+          eventType: 'REQUEST_UPDATE',
+          title: `Update on Request: ${ficReq.title}`,
+          message: adminResponse?.trim() || `Your request "${ficReq.title}" status is now ${ficReq.status}.`,
+          link: '/requests',
+          priority: 'HIGH'
+        });
+      }
+    } catch (notifErr) {
+      console.warn('Failed to dispatch member notification:', notifErr);
+    }
+
+    await logAdminAction(req, 'UPDATE_FIC_REQUEST', 'FicRequest', id, { status, assignedStaffId, adminResponse });
 
     const populated = await FicRequestModel.findById(id)
       .populate('requesterId', 'name email phone primaryCategoryName')
       .populate('targetServiceId', 'title categoryName pricingEstimate locationState')
       .populate('targetProviderId', 'name email phone primaryCategoryName')
+      .populate('assignedStaffId', 'name email')
       .populate('scheduledMeetingId');
 
     res.json({ success: true, message: 'FIC request updated', data: populated });

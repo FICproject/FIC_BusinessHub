@@ -1,5 +1,10 @@
 import { Router, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { BusinessDevRequestModel } from './business-development.model';
+import { FicRequestModel } from '../admin/models/FicRequest';
+import { MemberModel } from '../admin/models/Member';
+import { UserModel } from '../users/users.model';
+import { notifyAdmins } from '../notifications/notifications.service';
 import { authenticate, requireActiveVerifiedMember, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { UserRole } from '@fic/shared-types';
 import { AppError } from '../../common/errors/app-error';
@@ -42,6 +47,61 @@ businessDevRouter.post('/', authenticate, requireActiveVerifiedMember, async (re
         }
       ]
     });
+
+    // Synchronize to FicRequestModel for Admin FIC Request Desk visibility
+    try {
+      const user = await UserModel.findById(req.user.userId);
+      const requesterEmail = (user?.email || req.user.email || '').toLowerCase().trim();
+      const requesterName = user?.fullName || 'FIC Member';
+
+      let member = await MemberModel.findOne({
+        $or: [{ _id: req.user.userId }, { email: requesterEmail }]
+      });
+
+      if (!member) {
+        member = await MemberModel.create({
+          name: requesterName,
+          email: requesterEmail,
+          phone: user?.phoneNumber || '9876543210',
+          primaryCategory: user?.primaryCategoryId || new mongoose.Types.ObjectId(),
+          primaryCategoryName: user?.primaryCategoryName || 'Business & Entrepreneurship',
+          subcategories: user?.subCategory ? [user.subCategory] : [],
+          status: 'ACTIVE',
+          kycStatus: 'APPROVED',
+          membershipPlan: 'FIRST_YEAR_INTRO',
+          membershipFeePaid: 99,
+          paymentStatus: 'PAID'
+        });
+      }
+
+      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+      await FicRequestModel.create({
+        type: 'SCALING_SUPPORT',
+        sourceModule: 'SCALING_SUPPORT',
+        sourceRefId: request._id,
+        title: `${request.businessName} - ${request.supportType}`,
+        description: `Current Challenges: ${request.currentChallenges}. Expected Outcomes: ${request.expectedOutcomes}`,
+        requesterId: member._id,
+        requesterName,
+        requesterEmail,
+        requesterPhone: member.phone || user?.phoneNumber,
+        requesterCategory: member.primaryCategoryName,
+        status: 'NEW',
+        internalNotes: [
+          `[${timestamp} by System]: Scaling Support requested (${request.refNumber}). Enterprise desk notified.`
+        ]
+      });
+
+      await notifyAdmins({
+        eventType: 'NEW_REQUEST',
+        title: `New Scaling Support Request: ${request.businessName}`,
+        message: `Member ${requesterName} requested enterprise scaling support (${request.supportType}).`,
+        link: '/requests',
+        priority: 'HIGH'
+      });
+    } catch (syncErr) {
+      console.warn('Failed to sync scaling request with FicRequest:', syncErr);
+    }
 
     res.status(201).json({
       success: true,

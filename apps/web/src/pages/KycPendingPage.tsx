@@ -185,7 +185,8 @@ export const KycPendingPage: React.FC = () => {
           : [];
         setDocuments(docList);
         setAdditionalRequests(
-          Array.isArray(liveKycData?.additionalDocumentRequests) ? liveKycData.additionalDocumentRequests : []
+          (Array.isArray(liveKycData?.additionalDocumentRequests) ? liveKycData.additionalDocumentRequests : [])
+            .filter((r: any) => String(r?.status || '').toUpperCase() !== 'CANCELLED')
         );
         setIsLocked(Boolean(liveKycData?.isLocked || resolvedState === 'APPROVED'));
         setApprovedAt(liveKycData?.approvedAt || null);
@@ -704,25 +705,27 @@ export const KycPendingPage: React.FC = () => {
           </div>
         )}
 
-        {/* Additional Documents Requested by Admin */}
-        {additionalRequests.length > 0 && (
+        {/* Additional Documents Requested by Admin (Only active, non-cancelled requests) */}
+        {additionalRequests.filter((r: any) => String(r?.status || '').toUpperCase() !== 'CANCELLED').length > 0 && (() => {
+          const activeReqs = additionalRequests.filter((r: any) => String(r?.status || '').toUpperCase() !== 'CANCELLED');
+          return (
           <div className="p-5 rounded-2xl bg-[#FAF7F2] border border-[#8064A9]/30 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-[#29302D]">
                 <Upload className="w-4 h-4 text-[#8064A9]" />
-                <span>Additional Documents Requested by Admin ({additionalRequests.length})</span>
+                <span>Additional Documents Requested by Admin ({activeReqs.length})</span>
               </div>
               <span className="text-[10px] font-semibold text-[#77786E]">Max 2 MB • PDF/JPG/PNG</span>
             </div>
 
-            {additionalRequests.some((r: any) => ['PENDING', 'REUPLOAD_REQUIRED'].includes(String(r.status || '').toUpperCase())) && (
+            {activeReqs.some((r: any) => ['PENDING', 'REUPLOAD_REQUIRED'].includes(String(r.status || '').toUpperCase())) && (
               <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium">
                 FIC Admin has requested an additional document. Please review the instructions and upload the requested document.
               </div>
             )}
 
             <div className="space-y-3">
-              {additionalRequests.map((reqItem: any) => {
+              {activeReqs.map((reqItem: any) => {
                 const reqStatus = String(reqItem.status || 'PENDING').toUpperCase();
                 const canUpload = reqStatus === 'PENDING' || reqStatus === 'REUPLOAD_REQUIRED';
                 const isUploadingReq = uploadingRequestId === reqItem.requestId;
@@ -844,7 +847,8 @@ export const KycPendingPage: React.FC = () => {
               })}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Initial Document Upload Section ONLY when user has NOT submitted any KYC documents yet */}
         {kycStatus === 'NOT_SUBMITTED' && documents.length === 0 && (

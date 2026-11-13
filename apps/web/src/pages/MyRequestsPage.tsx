@@ -175,16 +175,16 @@ export const MyRequestsPage: React.FC = () => {
   // Initial load
   useEffect(() => {
     if (user) {
-      // 1. Services: Fetch live requests from backend and merge with local
+      // 1. Services: Fetch live requests from backend
       const loadServiceRequests = async () => {
         try {
           const res = await apiRequest('/connections/me');
-          if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+          if (res && res.success && Array.isArray(res.data)) {
             setServices(res.data);
             return;
           }
         } catch {
-          // Fallback to local
+          // Fallback to local user requests
         }
 
         const userRequests = getUserRequests(userId);
@@ -203,58 +203,100 @@ export const MyRequestsPage: React.FC = () => {
         );
       };
 
-      loadServiceRequests();
+      // 2. Ideas: Fetch live from backend
+      const loadIdeas = async () => {
+        try {
+          const res = await apiRequest('/business-ideas/me');
+          if (res && res.success && Array.isArray(res.data)) {
+            setIdeas(
+              res.data.map((item: any) => ({
+                id: item.refNumber || item._id,
+                title: item.title,
+                stage: item.stage,
+                status: item.status,
+                statusLabel: item.status ? item.status.replace(/_/g, ' ') : 'Under Review',
+                date: item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'Recent',
+                notes: item.description,
+                ficRemark: item.latestFicUpdate || 'Under preliminary evaluation by FIC incubation desk.',
+                updateHistory: item.updateHistory || [],
+                memberAction: item.memberAction
+              }))
+            );
+            return;
+          }
+        } catch {}
 
-      // Poll every 5s to keep customer live when admin updates statuses or adds notes
-      const pollTimer = setInterval(loadServiceRequests, 5000);
+        try {
+          const storedIdeas = localStorage.getItem(`fic_user_ideas_${userId}`);
+          if (storedIdeas) {
+            const parsed = JSON.parse(storedIdeas);
+            setIdeas(
+              parsed.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                stage: item.stage,
+                status: item.status,
+                statusLabel: item.statusLabel,
+                date: item.submittedDate || 'Recent',
+                notes: item.description,
+                ficRemark: item.reviewNotes || 'Under preliminary evaluation by FIC incubation desk.'
+              }))
+            );
+          }
+        } catch {}
+      };
 
-      // 2. Ideas from localStorage or seed
-      try {
-        const storedIdeas = localStorage.getItem(`fic_user_ideas_${userId}`);
-        if (storedIdeas) {
-          const parsed = JSON.parse(storedIdeas);
-          setIdeas(
-            parsed.map((item: any) => ({
-              id: item.id,
-              title: item.title,
-              stage: item.stage,
-              status: item.status,
-              statusLabel: item.statusLabel,
-              date: item.submittedDate || 'Recent',
-              notes: item.description,
-              ficRemark: item.reviewNotes || 'Under preliminary evaluation by FIC incubation desk.'
-            }))
-          );
-        } else {
-          setIdeas([]);
-        }
-      } catch {
-        setIdeas([]);
-      }
+      // 3. Scaling: Fetch live from backend
+      const loadScaling = async () => {
+        try {
+          const res = await apiRequest('/business-development-requests/me');
+          if (res && res.success && Array.isArray(res.data)) {
+            setScaling(
+              res.data.map((item: any) => ({
+                id: item.refNumber || item._id,
+                businessName: item.businessName,
+                supportType: item.supportType ? item.supportType.replace(/_/g, ' ') : 'Enterprise Support',
+                status: item.status,
+                statusLabel: item.status ? item.status.replace(/_/g, ' ') : 'Under Review',
+                date: item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'Recent',
+                notes: item.currentChallenges,
+                ficRemark: item.latestFicUpdate || 'Diagnostic assessment under evaluation by domain specialist.',
+                updateHistory: item.updateHistory || [],
+                memberAction: item.memberAction
+              }))
+            );
+            return;
+          }
+        } catch {}
 
-      // 3. Scaling
-      try {
-        const storedScaling = localStorage.getItem(`fic_user_scaling_${userId}`);
-        if (storedScaling) {
-          const parsed = JSON.parse(storedScaling);
-          setScaling(
-            parsed.map((item: any) => ({
-              id: item.id,
-              businessName: item.businessName,
-              supportType: item.supportTypeLabel || item.supportType,
-              status: item.status,
-              statusLabel: item.statusLabel,
-              date: item.submittedDate || 'Recent',
-              notes: item.currentChallenges,
-              ficRemark: item.diagnosticNotes || 'Diagnostic assessment under evaluation by domain specialist.'
-            }))
-          );
-        } else {
-          setScaling([]);
-        }
-      } catch {
-        setScaling([]);
-      }
+        try {
+          const storedScaling = localStorage.getItem(`fic_user_scaling_${userId}`);
+          if (storedScaling) {
+            const parsed = JSON.parse(storedScaling);
+            setScaling(
+              parsed.map((item: any) => ({
+                id: item.id,
+                businessName: item.businessName,
+                supportType: item.supportTypeLabel || item.supportType,
+                status: item.status,
+                statusLabel: item.statusLabel,
+                date: item.submittedDate || 'Recent',
+                notes: item.currentChallenges,
+                ficRemark: item.diagnosticNotes || 'Diagnostic assessment under evaluation by domain specialist.'
+              }))
+            );
+          }
+        } catch {}
+      };
+
+      const loadAllRequests = () => {
+        loadServiceRequests();
+        loadIdeas();
+        loadScaling();
+      };
+
+      loadAllRequests();
+      const pollTimer = setInterval(loadAllRequests, 5000);
 
       // Mentorship requests
       if (isMentor || isStudent) {

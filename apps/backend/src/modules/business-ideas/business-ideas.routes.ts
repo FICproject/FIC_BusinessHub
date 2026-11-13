@@ -1,5 +1,10 @@
 import { Router, Response, NextFunction } from 'express';
+import mongoose from 'mongoose';
 import { BusinessIdeaModel } from './business-ideas.model';
+import { FicRequestModel } from '../admin/models/FicRequest';
+import { MemberModel } from '../admin/models/Member';
+import { UserModel } from '../users/users.model';
+import { notifyAdmins } from '../notifications/notifications.service';
 import { authenticate, requireActiveVerifiedMember, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { UserRole } from '@fic/shared-types';
 import { AppError } from '../../common/errors/app-error';
@@ -48,6 +53,61 @@ businessIdeasRouter.post('/', authenticate, requireActiveVerifiedMember, async (
         }
       ]
     });
+
+    // Synchronize to FicRequestModel for Admin FIC Request Desk visibility
+    try {
+      const user = await UserModel.findById(req.user.userId);
+      const requesterEmail = (user?.email || req.user.email || '').toLowerCase().trim();
+      const requesterName = user?.fullName || 'FIC Member';
+
+      let member = await MemberModel.findOne({
+        $or: [{ _id: req.user.userId }, { email: requesterEmail }]
+      });
+
+      if (!member) {
+        member = await MemberModel.create({
+          name: requesterName,
+          email: requesterEmail,
+          phone: user?.phoneNumber || '9876543210',
+          primaryCategory: user?.primaryCategoryId || new mongoose.Types.ObjectId(),
+          primaryCategoryName: user?.primaryCategoryName || 'Business & Entrepreneurship',
+          subcategories: user?.subCategory ? [user.subCategory] : [],
+          status: 'ACTIVE',
+          kycStatus: 'APPROVED',
+          membershipPlan: 'FIRST_YEAR_INTRO',
+          membershipFeePaid: 99,
+          paymentStatus: 'PAID'
+        });
+      }
+
+      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+      await FicRequestModel.create({
+        type: 'BUSINESS_IDEAS',
+        sourceModule: 'BUSINESS_IDEAS',
+        sourceRefId: idea._id,
+        title: idea.title,
+        description: `Stage: ${idea.stage}. Target Market: ${idea.targetMarket || 'N/A'}. Support: ${resolvedSupport}. Details: ${idea.description}`,
+        requesterId: member._id,
+        requesterName,
+        requesterEmail,
+        requesterPhone: member.phone || user?.phoneNumber,
+        requesterCategory: member.primaryCategoryName,
+        status: 'NEW',
+        internalNotes: [
+          `[${timestamp} by System]: Business Idea submitted (${idea.refNumber}). Incubation desk notified.`
+        ]
+      });
+
+      await notifyAdmins({
+        eventType: 'NEW_REQUEST',
+        title: `New Business Idea: ${idea.title}`,
+        message: `Member ${requesterName} submitted a new business idea (${idea.refNumber}).`,
+        link: '/requests',
+        priority: 'HIGH'
+      });
+    } catch (syncErr) {
+      console.warn('Failed to sync business idea with FicRequest:', syncErr);
+    }
 
     res.status(201).json({
       success: true,

@@ -1,6 +1,8 @@
 import { Router, Response, NextFunction } from 'express';
 import { authenticate, requireActiveVerifiedMember, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { ServiceListingModel } from './services.model';
+import { CategoryModel } from '../categories/categories.model';
+import { UserModel } from '../users/users.model';
 import { ServiceListingStatus, UserRole } from '@fic/shared-types';
 
 export const servicesRouter = Router();
@@ -58,16 +60,29 @@ servicesRouter.post('/', authenticate, requireActiveVerifiedMember, async (req: 
       submitNow
     } = req.body;
 
+    const userDoc = await UserModel.findById(userId);
+    let resolvedCategoryId = categoryId;
+    if (!resolvedCategoryId && userDoc?.primaryCategoryId) {
+      resolvedCategoryId = userDoc.primaryCategoryId;
+    }
+    if (!resolvedCategoryId) {
+      const defaultCat = await CategoryModel.findOne({});
+      resolvedCategoryId = defaultCat?._id;
+    }
+
+    const resolvedCategoryName = categoryName || userDoc?.primaryCategoryName || 'General Business';
+    const resolvedCategorySlug = categorySlug || 'general-business';
+
     const newService = await ServiceListingModel.create({
       providerId: userId,
-      categoryId,
+      categoryId: resolvedCategoryId,
       subcategoryId,
-      categoryName,
-      categorySlug,
+      categoryName: resolvedCategoryName,
+      categorySlug: resolvedCategorySlug,
       subcategoryName,
       title,
-      shortDescription: shortDescription || description.substring(0, 150),
-      description,
+      shortDescription: shortDescription || (description ? description.substring(0, 150) : title),
+      description: description || title,
       servicesOffered: servicesOffered || [],
       skills: skills || [],
       tags: tags || [],
@@ -92,9 +107,9 @@ servicesRouter.post('/', authenticate, requireActiveVerifiedMember, async (req: 
             _id: newService._id,
             title,
             description,
-            categoryId: categoryId || undefined,
-            categoryName: categoryName || user?.primaryCategoryName || 'General Sector',
-            categorySlug: categorySlug || '',
+            categoryId: resolvedCategoryId || undefined,
+            categoryName: resolvedCategoryName,
+            categorySlug: resolvedCategorySlug,
             subcategoryId: subcategoryId || undefined,
             subcategoryName: subcategoryName || '',
             providerId: userId,
@@ -294,7 +309,17 @@ servicesRouter.delete('/:id', authenticate, requireActiveVerifiedMember, async (
     }
 
     service.isActive = false;
+    service.status = 'DELETED' as any;
     await service.save();
+
+    // Mirror deletion to Admin ServiceListing
+    try {
+      const { ServiceListingModel: AdminServiceListingModel } = await import('../admin/models/ServiceListing');
+      await AdminServiceListingModel.findByIdAndUpdate(id, {
+        status: 'DELETED',
+        isActive: false
+      });
+    } catch {}
 
     res.status(200).json({
       success: true,

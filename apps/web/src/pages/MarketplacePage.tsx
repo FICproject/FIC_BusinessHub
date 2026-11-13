@@ -36,14 +36,12 @@ export const MarketplacePage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string>('');
 
-  // Load approved marketplace services from backend API & catalog
+  // Load approved marketplace services strictly from backend API
   useEffect(() => {
     const loadServices = async () => {
-      const localApproved = getMarketplaceServices();
       try {
         const res = await apiRequest('/marketplace/services');
         if (res?.success && res?.data?.items && Array.isArray(res.data.items)) {
-          // Normalize server items to ServiceListing structure
           const remoteApproved: ServiceListing[] = res.data.items.map((item: any) => ({
             id: item._id,
             ownerUserId: item.providerId || item.providerEmail || '',
@@ -66,26 +64,15 @@ export const MarketplacePage: React.FC = () => {
             createdAt: new Date(item.createdAt || Date.now()).toLocaleDateString('en-GB'),
             updatedAt: new Date(item.updatedAt || Date.now()).toLocaleDateString('en-GB')
           }));
-
-          // Merge without duplicates
-          const combined = [...remoteApproved];
-          localApproved.forEach((loc) => {
-            if (!combined.some((r) => r.id === loc.id || r.title.toLowerCase() === loc.title.toLowerCase())) {
-              combined.push(loc);
-            }
-          });
-          setServices(combined);
+          setServices(remoteApproved);
           return;
         }
       } catch (_err) {
-        // Fallback to local catalog
+        setServices([]);
       }
-      setServices(localApproved);
     };
 
     loadServices();
-
-    // Listen to storage changes if services are added/approved in another tab
     window.addEventListener('storage', loadServices);
     return () => window.removeEventListener('storage', loadServices);
   }, []);
@@ -136,7 +123,7 @@ export const MarketplacePage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      const res = await apiRequest('/connections', {
+      await apiRequest('/connections', {
         method: 'POST',
         body: JSON.stringify({
           serviceId: selectedService.id,
@@ -147,38 +134,12 @@ export const MarketplacePage: React.FC = () => {
         })
       });
 
-      const user = getStoredUser();
-      if (user) {
-        saveUserRequest(user.id || user.userId, {
-          id: res?.data?.id || `req-${Date.now()}`,
-          serviceTitle: selectedService.title,
-          category: selectedService.categoryName,
-          notes: requirementNotes,
-          statusText: 'Under FIC Review',
-          status: 'SUBMITTED',
-          ficRemark: 'Request received. Assigned to FIC Coordinator for requirement validation.'
-        });
-      }
-
       setSuccessMessage(
         'Your service requirement has been routed directly to the FIC Intermediary Desk. Our coordinator will evaluate specifications and prepare compliant proposals within 24 hours.'
       );
-    } catch {
-      const user = getStoredUser();
-      if (user) {
-        saveUserRequest(user.id || user.userId, {
-          serviceTitle: selectedService.title,
-          category: selectedService.categoryName,
-          notes: requirementNotes,
-          statusText: 'Under FIC Review',
-          status: 'SUBMITTED',
-          ficRemark: 'Requirement securely logged with FIC Intermediary Coordinator.'
-        });
-      }
-
-      setSuccessMessage(
-        'Requirement securely logged. An authorized FIC Intermediary Coordinator will initiate scope alignment.'
-      );
+      setRequirementNotes('');
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit service request. Please ensure you are an active member.');
     } finally {
       setIsSubmitting(false);
     }

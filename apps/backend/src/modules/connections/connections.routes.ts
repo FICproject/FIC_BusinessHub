@@ -5,6 +5,7 @@ import { ServiceListingModel } from '../services/services.model';
 import { FicRequestModel } from '../admin/models/FicRequest';
 import { MemberModel } from '../admin/models/Member';
 import { UserModel } from '../users/users.model';
+import { notifyAdmins } from '../notifications/notifications.service';
 import { authenticate, requireActiveVerifiedMember, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
 import { ServiceRequestStatus } from '@fic/shared-types';
@@ -95,6 +96,16 @@ connectionsRouter.post('/', authenticate, requireActiveVerifiedMember, async (re
       ]
     });
 
+    try {
+      await notifyAdmins({
+        eventType: 'NEW_REQUEST',
+        title: `New Service Request: ${title}`,
+        message: `Member ${requesterName} submitted a service inquiry for "${title}".`,
+        link: '/requests',
+        priority: 'HIGH'
+      });
+    } catch {}
+
     // 2. Also keep ServiceRequestModel updated for legacy backward compatibility
     let legacyRequest: any = null;
     try {
@@ -184,12 +195,17 @@ connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (r
           statusLabel = r.status;
       }
 
-      // Latest coordinator remark from internal notes
-      const notes = Array.isArray(r.internalNotes) && r.internalNotes.length > 0
-        ? r.internalNotes[r.internalNotes.length - 1]
-        : 'FIC Coordinator assigned. Evaluating verified providers and preparing confidential proposals.';
+      // Latest coordinator remark from internal notes or direct admin response
+      const notes = r.adminResponse || (
+        Array.isArray(r.internalNotes) && r.internalNotes.length > 0
+          ? r.internalNotes[r.internalNotes.length - 1]
+          : 'FIC Coordinator assigned. Evaluating verified providers and preparing confidential proposals.'
+      );
 
       return {
+        adminResponse: r.adminResponse,
+        adminRespondedAt: r.adminRespondedAt,
+        adminRespondedByName: r.adminRespondedByName,
         id: r._id.toString(),
         _id: r._id.toString(),
         title: r.title,

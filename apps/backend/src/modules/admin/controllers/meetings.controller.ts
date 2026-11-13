@@ -3,6 +3,8 @@ import { MeetingModel } from '../models/Meeting';
 import { MemberModel } from '../models/Member';
 import { AdminUserModel } from '../models/AdminUser';
 import { FundingApplicationModel } from '../models/FundingApplication';
+import { UserModel } from '../../users/users.model';
+import { notifyMember } from '../../notifications/notifications.service';
 import { authenticateAdmin, AuthenticatedAdminRequest, logAdminAction } from '../middleware/admin-auth.middleware';
 
 const router = Router();
@@ -138,17 +140,21 @@ router.post('/', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: 
       notificationSent: false,
     });
 
-    // Mock notification dispatch (SMS / Email / WhatsApp) to customer
+    // Dispatch live notification and email invites to members
     try {
       const members = await MemberModel.find({ _id: { $in: participantMemberIds } });
-      const recipientPhones = members.map((m) => m.phone).filter(Boolean);
-      const recipientEmails = members.map((m) => m.email).filter(Boolean);
-
-      console.log(
-        `[NOTIFICATION DISPATCH] Scheduled meeting "${title}" with customers: ${members.map((m) => m.name).join(', ')}.`
-      );
-      console.log(`[SMS/Email Gateway] Sent invites to Emails: [${recipientEmails.join(', ')}] Phones: [${recipientPhones.join(', ')}] with Link: ${finalMeetingLink}`);
-
+      for (const m of members) {
+        let u = await UserModel.findOne({ email: m.email.toLowerCase().trim() });
+        const targetUserId = u?._id || m._id;
+        await notifyMember({
+          userId: targetUserId,
+          eventType: 'MEETING_SCHEDULED',
+          title: `New Meeting Scheduled: ${title}`,
+          message: `FIC Admin has scheduled a consultation: "${title}" on ${new Date(scheduledAt).toLocaleString()}.`,
+          link: '/meetings',
+          priority: 'HIGH'
+        });
+      }
       meeting.notificationSent = true;
       await meeting.save();
     } catch (notifErr) {
@@ -202,6 +208,22 @@ router.patch('/:id/status', authenticateAdmin, async (req: AuthenticatedAdminReq
     meeting.status = status;
     await meeting.save();
 
+    try {
+      const members = await MemberModel.find({ _id: { $in: meeting.participantMemberIds } });
+      for (const m of members) {
+        let u = await UserModel.findOne({ email: m.email.toLowerCase().trim() });
+        const targetUserId = u?._id || m._id;
+        await notifyMember({
+          userId: targetUserId,
+          eventType: `MEETING_${status}`,
+          title: `Meeting ${status === 'COMPLETED' ? 'Completed' : 'Cancelled'}: ${meeting.title}`,
+          message: `Your meeting "${meeting.title}" has been marked as ${status.toLowerCase()}.`,
+          link: '/meetings',
+          priority: 'MEDIUM'
+        });
+      }
+    } catch {}
+
     await logAdminAction(req, `MEETING_STATUS_${status}`, 'Meeting', id, {
       previousStatus,
       newStatus: status,
@@ -248,6 +270,22 @@ router.patch('/:id/reschedule', authenticateAdmin, async (req: AuthenticatedAdmi
     if (meetingLink) meeting.meetingLink = meetingLink;
     meeting.status = 'SCHEDULED';
     await meeting.save();
+
+    try {
+      const members = await MemberModel.find({ _id: { $in: meeting.participantMemberIds } });
+      for (const m of members) {
+        let u = await UserModel.findOne({ email: m.email.toLowerCase().trim() });
+        const targetUserId = u?._id || m._id;
+        await notifyMember({
+          userId: targetUserId,
+          eventType: 'MEETING_RESCHEDULED',
+          title: `Meeting Rescheduled: ${meeting.title}`,
+          message: `Your meeting "${meeting.title}" has been rescheduled to ${new Date(scheduledAt).toLocaleString()}.`,
+          link: '/meetings',
+          priority: 'HIGH'
+        });
+      }
+    } catch {}
 
     await logAdminAction(req, 'RESCHEDULE_MEETING', 'Meeting', id, {
       prevScheduledAt,

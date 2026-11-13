@@ -18,6 +18,7 @@ import {
   calculateAgeFromDob,
   formatDisplayDob,
   validateReferralCode,
+  validateReferralCodeApi,
   saveRegisteredAccount,
   UserAddress,
   uploadDocumentFile,
@@ -93,25 +94,31 @@ export const RegisterPage: React.FC = () => {
 
   // Step 1: Basic
   const [searchParams] = useSearchParams();
-  const refParam = searchParams.get('ref') || '';
+  const urlRef = searchParams.get('ref');
+  if (urlRef) {
+    try { sessionStorage.setItem('fic_registration_ref', urlRef); } catch {}
+  }
+  const refParam = urlRef || (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('fic_registration_ref') || '' : '');
   const [referralCode, setReferralCode] = useState(refParam);
   const [referrerInfo, setReferrerInfo] = useState<{ valid: boolean; referrerName?: string; referrerUserId?: string } | null>(null);
 
   useEffect(() => {
     if (refParam) {
-      const res = validateReferralCode(refParam);
-      setReferrerInfo(res);
-      if (res.valid) {
-        setReferralCode(refParam.toUpperCase());
-      }
+      validateReferralCodeApi(refParam).then((res) => {
+        setReferrerInfo(res);
+        if (res.valid) {
+          setReferralCode(refParam.toUpperCase());
+        }
+      });
     }
   }, [refParam]);
 
   const handleManualReferralCheck = (code: string) => {
     setReferralCode(code);
     if (code.trim()) {
-      const res = validateReferralCode(code.trim());
-      setReferrerInfo(res);
+      validateReferralCodeApi(code.trim()).then((res) => {
+        setReferrerInfo(res);
+      });
     } else {
       setReferrerInfo(null);
     }

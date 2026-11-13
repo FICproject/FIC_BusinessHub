@@ -112,7 +112,7 @@ export interface Member {
 }
 
 // Services Moderation
-export type ServiceListingStatusAdmin = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'SUSPENDED';
+export type ServiceListingStatusAdmin = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'ARCHIVED' | 'DELETED';
 
 export interface ServiceListingAdmin {
   id: string;

@@ -1356,6 +1356,25 @@ export const getUserReferrals = (userId: string) => {
   };
 };
 
+export const validateReferralCodeApi = async (
+  code: string
+): Promise<{ valid: boolean; referrerName?: string; referrerUserId?: string }> => {
+  if (!code || !code.trim()) return { valid: false };
+  const clean = code.trim().toUpperCase();
+  try {
+    const res = await fetch(`${BASE_URL}/referrals/validate-code/${encodeURIComponent(clean)}`);
+    const json = await res.json();
+    if (json?.success && json?.valid && json?.data) {
+      return {
+        valid: true,
+        referrerName: json.data.referrerName,
+        referrerUserId: json.data.referrerUserId
+      };
+    }
+  } catch {}
+  return validateReferralCode(clean);
+};
+
 export const validateReferralCode = (
   code: string
 ): { valid: boolean; referrerName?: string; referrerUserId?: string } => {

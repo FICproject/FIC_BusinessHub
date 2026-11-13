@@ -292,6 +292,8 @@ export const register = async (req: Request, res: Response, next: NextFunction):
           subcategories: [newUser.subCategory].filter(Boolean),
           address: newUser.address,
           referralCode: newUser.referralCode,
+          referralSource: newUser.referralSource,
+          referredByCode: newUser.referredByCode,
           status: newUser.status,
           kycStatus: 'NOT_SUBMITTED',
           isKycApproved: newUser.isKycApproved,

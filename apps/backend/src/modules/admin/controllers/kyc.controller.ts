@@ -208,6 +208,47 @@ async function syncMissingKycSubmissionsFromSharedDb() {
   }
 }
 
+
+async function resolveReferralAttribution(userDoc: any) {
+  if (!userDoc) {
+    return {
+      source: 'DIRECT',
+      sourceLabel: 'Direct Registration',
+      referredByName: '',
+      referralCode: ''
+    };
+  }
+
+  const isReferred = Boolean(userDoc.referredByCode || userDoc.referrerUserId || userDoc.referralSource === 'REFERRED');
+  if (!isReferred) {
+    return {
+      source: 'DIRECT',
+      sourceLabel: 'Direct Registration',
+      referredByName: '',
+      referralCode: ''
+    };
+  }
+
+  let referrerName = '';
+  if (userDoc.referrerUserId) {
+    const refUser = await UserModel.findById(userDoc.referrerUserId).select('fullName email').lean();
+    if (refUser) referrerName = (refUser as any).fullName;
+  }
+  if (!referrerName && userDoc.referredByCode) {
+    const refUser = await UserModel.findOne({
+      $or: [{ referralCode: userDoc.referredByCode }, { email: userDoc.referredByCode.toLowerCase() }]
+    }).select('fullName email').lean();
+    if (refUser) referrerName = (refUser as any).fullName;
+  }
+
+  return {
+    source: 'REFERRAL',
+    sourceLabel: 'Referral',
+    referredByName: referrerName || 'Registered Referrer',
+    referralCode: userDoc.referredByCode || ''
+  };
+}
+
 function summarizeSubmissionDocs(docs: any[] = []) {
   const normalizedDocs = buildNormalizedKycDocuments(docs, [], []);
   const approvedDocsCount = normalizedDocs.filter((d) => d.status === 'APPROVED').length;
@@ -283,9 +324,11 @@ router.get('/', authenticateAdmin, requirePermission('KYC_VERIFY'), async (req, 
         }).lean()) as any;
 
         const { normalizedDocs, docSummary } = summarizeSubmissionDocs(sub.documents || []);
+        const referralInfo = await resolveReferralAttribution(user);
 
         return {
           ...sub,
+          referralInfo,
           status: normalizedStatus,
           adminNotes: sub.adminNotes || sub.reviewerNotes,
           memberPhone: sub.memberPhone || sub.memberId?.phone || user?.phoneNumber || '',
@@ -355,6 +398,7 @@ router.get('/:id', authenticateAdmin, requirePermission('KYC_VERIFY'), async (re
       fileUrl: d.adminViewUrl || d.fileUrl
     }));
     subObj.docSummary = docSummary;
+    subObj.referralInfo = await resolveReferralAttribution(ownerUser);
 
     res.json({ success: true, data: subObj });
   } catch (err: any) {

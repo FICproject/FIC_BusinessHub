@@ -61,7 +61,7 @@ const ServiceListingSchema = new Schema<IServiceListingDocument>(
     deliveryTimeline: { type: String },
     status: {
       type: String,
-      enum: Object.values(ServiceListingStatus),
+      enum: [...Object.values(ServiceListingStatus), 'DELETED', 'ARCHIVED'],
       default: ServiceListingStatus.DRAFT
     },
     adminFeedback: { type: String, trim: true },

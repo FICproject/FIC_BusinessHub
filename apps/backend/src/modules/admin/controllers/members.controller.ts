@@ -220,9 +220,37 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       console.warn('Wallet retrieval fallback used:', wErr);
     }
 
+    // Resolve referral attribution
+    let referralInfo = {
+      source: 'DIRECT',
+      sourceLabel: 'Direct Registration',
+      referredByName: '',
+      referralCode: ''
+    };
+    if (user?.referredByCode || user?.referrerUserId || user?.referralSource === 'REFERRED') {
+      let referrerName = '';
+      if (user.referrerUserId) {
+        const refUser = await UserModel.findById(user.referrerUserId).select('fullName email').lean();
+        if (refUser) referrerName = (refUser as any).fullName;
+      }
+      if (!referrerName && user.referredByCode) {
+        const refUser = await UserModel.findOne({
+          $or: [{ referralCode: user.referredByCode }, { email: user.referredByCode.toLowerCase() }]
+        }).select('fullName email').lean();
+        if (refUser) referrerName = (refUser as any).fullName;
+      }
+      referralInfo = {
+        source: 'REFERRAL',
+        sourceLabel: 'Referral',
+        referredByName: referrerName || 'Registered Referrer',
+        referralCode: user.referredByCode || ''
+      };
+    }
+
     // Enrich member response object with User fields
     const enrichedMember = {
       ...member.toObject(),
+      referralInfo,
       phone: member.phone || user?.phoneNumber || '',
       dob: user?.dob || (kycSubmission as any)?.memberDob || '',
       address: user?.address || (kycSubmission as any)?.address || '',

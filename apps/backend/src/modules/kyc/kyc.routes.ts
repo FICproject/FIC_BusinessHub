@@ -778,6 +778,13 @@ kycRouter.post(
       }
 
       const targetReq = reqList[reqIndex] as any;
+      if (String(targetReq.status || '').toUpperCase() === 'CANCELLED') {
+        throw new AppError(
+          'This document request was cancelled by the administrator and does not accept uploads.',
+          409,
+          'ADDITIONAL_REQUEST_CANCELLED'
+        );
+      }
       if (!['PENDING', 'REUPLOAD_REQUIRED'].includes(String(targetReq.status || '').toUpperCase())) {
         throw new AppError(
           `This document request is currently "${targetReq.status}" and does not accept new uploads.`,
@@ -962,7 +969,7 @@ kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Re
       privateDocs
     );
 
-    const additionalDocumentRequests =
+    const rawAdditionalDocumentRequests =
       Array.isArray(adminSubmission?.additionalDocumentRequests) && adminSubmission.additionalDocumentRequests.length > 0
         ? adminSubmission.additionalDocumentRequests
         : Array.isArray(submission?.additionalDocumentRequests)
@@ -971,8 +978,13 @@ kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Re
 
     const approvedDocuments = buildApprovedProfileDocuments(
       normalizedDocuments,
-      additionalDocumentRequests,
+      rawAdditionalDocumentRequests,
       privateDocs
+    );
+
+    // Cancelled additional document requests must never be visible to the member or allow uploads
+    const additionalDocumentRequests = rawAdditionalDocumentRequests.filter(
+      (r: any) => String(r?.status || '').toUpperCase() !== 'CANCELLED'
     );
 
     const basePayload = submission || {};

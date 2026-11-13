@@ -9,6 +9,7 @@ import { FundingApplicationModel } from '../admin/models/FundingApplication';
 import { InvestmentPoolModel } from '../admin/models/InvestmentPool';
 import { MemberModel } from '../admin/models/Member';
 import { UserModel } from '../users/users.model';
+import { notifyAdmins } from '../notifications/notifications.service';
 import { MeetingModel } from '../admin/models/Meeting';
 import { getOrCreateMemberWallet } from '../admin/controllers/funding.controller';
 import { authenticate, requireActiveVerifiedMember, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
@@ -125,6 +126,11 @@ investmentRouter.post('/funding', authenticate, requireActiveVerifiedMember, asy
 
     // 2. Synchronize immediately into FundingApplicationModel for Admin Portal's FIC Funding Desk
     try {
+      const { fundingType, tenureMonths, expectedInterestRate, proposedEquityPercent, valuation } = req.body;
+      const resolvedFundingType = ['EQUITY', 'DEBT', 'REVENUE_SHARE', 'WORKING_CAPITAL'].includes(String(fundingType || '').toUpperCase())
+        ? String(fundingType).toUpperCase()
+        : 'DEBT';
+
       await FundingApplicationModel.create({
         applicantName: resolvedName,
         applicantEmail: resolvedEmail.toLowerCase(),
@@ -133,11 +139,24 @@ investmentRouter.post('/funding', authenticate, requireActiveVerifiedMember, asy
         industryCategory: industry || 'Business & Entrepreneurship',
         businessPitch: businessDescription?.trim() || useOfFundsExplanation?.trim() || 'Venture funding request submitted via FIC Portal.',
         requestedAmount: parsedFundingAmount,
-        interestRateAnnual: 12,
-        tenureMonths: 12,
+        fundingType: resolvedFundingType as any,
+        interestRateAnnual: resolvedFundingType === 'DEBT' ? (Number(expectedInterestRate) || 12) : undefined,
+        tenureMonths: Number(tenureMonths) || 12,
+        proposedEquityPercent: resolvedFundingType === 'EQUITY' ? (Number(proposedEquityPercent) || undefined) : undefined,
+        valuation: Number(valuation) || undefined,
+        memberUserId: req.user.userId,
+        fundingRequestId: newFunding._id,
         stage: 'USER_REQUEST',
         repaidAmount: 0,
         accruedInterestCollected: 0
+      });
+
+      await notifyAdmins({
+        eventType: 'NEW_FUNDING_REQUEST',
+        title: `Funding Proposal: ${businessName || 'New Venture'}`,
+        message: `Member ${resolvedName} submitted a ${resolvedFundingType} proposal for ₹${parsedFundingAmount.toLocaleString('en-IN')}.`,
+        link: '/funding',
+        priority: 'HIGH'
       });
     } catch (adminSyncErr) {
       console.warn('FundingApplicationModel admin sync warning:', adminSyncErr);
@@ -252,6 +271,16 @@ investmentRouter.post('/investor', authenticate, requireActiveVerifiedMember, as
         }
       ]
     });
+
+    try {
+      await notifyAdmins({
+        eventType: 'NEW_INVESTOR_PROFILE',
+        title: `Investor Profile: ${investorName || 'New Investor'}`,
+        message: `Member submitted investor interest with capacity: ${totalCapacity || 'Flexible'}.`,
+        link: '/funding',
+        priority: 'HIGH'
+      });
+    } catch {}
 
     res.status(201).json({
       success: true,
@@ -646,17 +675,144 @@ investmentRouter.get(['/my-meetings', '/'], authenticate, requireActiveVerifiedM
     if (!req.user) throw new AppError('Unauthorized', 401);
 
     const userDoc = await UserModel.findById(req.user.userId);
-    const userEmail = (userDoc?.email || (req.user as any).email || '').toLowerCase();
+    const userEmail = (userDoc?.email || (req.user as any).email || '').toLowerCase().trim();
     const userIdObj = new mongoose.Types.ObjectId(req.user.userId);
 
-    const meetings = await MeetingModel.find({
-      $or: [
-        { participantMemberIds: userIdObj },
-        { 'externalParticipants.email': { $regex: new RegExp(`^${userEmail}$`, 'i') } }
-      ]
-    }).sort({ scheduledAt: -1 });
+    const memberDoc = await MemberModel.findOne({
+      $or: [{ _id: req.user.userId }, { email: userEmail }]
+    });
+
+    const orClauses: any[] = [
+      { participantMemberIds: userIdObj },
+      { 'externalParticipants.email': { $regex: new RegExp('^' + userEmail + '$', 'i') } }
+    ];
+    if (memberDoc) {
+      orClauses.push({ participantMemberIds: memberDoc._id });
+    }
+
+    const meetings = await MeetingModel.find({ $or: orClauses })
+      .populate('hostAdminId', 'name email role')
+      .sort({ scheduledAt: -1 });
 
     res.status(200).json({ success: true, data: meetings });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/v1/investment/my-meetings or /api/v1/meetings/schedule (Direct user consultation booking)
+investmentRouter.post(['/my-meetings', '/schedule', '/book'], authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Unauthorized', 401);
+
+    const { title, category, scheduledDate, scheduledTime, mode, agenda, durationMinutes } = req.body;
+
+    if (!title || !scheduledDate) {
+      throw new AppError('Title and scheduled date are required.', 400);
+    }
+
+    const userDoc = await UserModel.findById(req.user.userId);
+    const resolvedName = userDoc?.fullName || (req.user as any).name || 'FIC Member';
+    const resolvedEmail = (userDoc?.email || (req.user as any).email || 'member@fic.com').toLowerCase();
+    const resolvedPhone = userDoc?.phoneNumber || (req.user as any).phone || '9876543210';
+    const resolvedCategory = userDoc?.primaryCategory || (req.user as any).categoryName || category || 'General Member';
+
+    // Parse scheduled date/time into valid Date
+    let scheduledAtDate = new Date(scheduledDate);
+    if (isNaN(scheduledAtDate.getTime())) {
+      scheduledAtDate = new Date();
+    }
+    if (scheduledTime) {
+      const timeMatch = scheduledTime.match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        scheduledAtDate.setHours(parseInt(timeMatch[1], 10), parseInt(timeMatch[2], 10), 0, 0);
+      }
+    }
+
+    // Lookup Super Admin to set as default host
+    const { AdminUserModel } = await import('../admin/models/AdminUser');
+    const defaultAdmin = (await AdminUserModel.findOne({ role: 'SUPER_ADMIN' })) || (await AdminUserModel.findOne());
+
+    // Check or get member ID
+    const memberDoc = await MemberModel.findOne({
+      $or: [{ _id: req.user.userId }, { email: resolvedEmail }]
+    });
+
+    const participantMemberIds = memberDoc ? [memberDoc._id] : [];
+
+    const meetingLink =
+      mode === 'IN_PERSON'
+        ? 'FIC Regional Hub Center'
+        : mode === 'PHONE_CONSULTATION'
+        ? '+91 80 4567 8900 (Coordinator Extension)'
+        : undefined;
+
+    const newMeeting = await MeetingModel.create({
+      title: title.trim(),
+      description: agenda?.trim() || `Consultation on ${category || 'Service Scope'} requested by member.`,
+      hostAdminId: defaultAdmin?._id || new mongoose.Types.ObjectId(),
+      participantMemberIds,
+      externalParticipants: [
+        {
+          name: resolvedName,
+          email: resolvedEmail,
+          phone: resolvedPhone,
+          roleOrCompany: resolvedCategory
+        }
+      ],
+      meetingType: 'CONSULTATION',
+      scheduledAt: scheduledAtDate,
+      durationMinutes: durationMinutes ? Number(durationMinutes) : 45,
+      meetingLink,
+      status: 'PENDING_COORDINATION',
+      notificationSent: false
+    });
+
+    try {
+      await notifyAdmins({
+        eventType: 'NEW_MEETING_REQUEST',
+        title: `Meeting Requested: ${title}`,
+        message: `Member ${resolvedName} requested a consultation: "${title}" on ${scheduledAtDate.toLocaleString()}.`,
+        link: '/meetings',
+        priority: 'HIGH'
+      });
+    } catch {}
+
+    res.status(201).json({
+      success: true,
+      message: 'Consultation meeting requested and scheduled with FIC Admin Desk.',
+      data: newMeeting
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ========================================================
+// 6. LEGACY ROUTE FALLBACK
+// ========================================================
+investmentRouter.post('/', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Unauthorized', 401);
+
+    const { profileType, sectors, amountRange, stagePreference, pitchSummary } = req.body;
+
+    const record = await InvestmentProfileModel.create({
+      userId: req.user.userId,
+      profileType: profileType || 'FUNDING_SEEKER',
+      sectors: sectors || [],
+      amountRange: amountRange || '₹25 Lakhs - ₹1 Crore',
+      stagePreference,
+      pitchSummary,
+      isConfidential: true,
+      status: 'SUBMITTED'
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Investment/Funding interest recorded securely. Handled under FIC strict confidentiality.',
+      data: record
+    });
   } catch (error) {
     next(error);
   }

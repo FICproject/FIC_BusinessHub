@@ -193,12 +193,16 @@ export const ProfilePage: React.FC = () => {
 
     // Sync real backend MongoDB wallet, strictly Admin-approved KYC documents, and Razorpay payment history
     try {
-      const [liveWallet, liveTxs, kycData, payments] = await Promise.all([
+      const [liveWallet, liveTxs, kycData, payments, liveRefs] = await Promise.all([
         fetchLiveWalletSummary(),
         fetchLiveWalletTransactions(),
         fetchMyKycStatus(),
-        getMyPaymentHistory()
+        getMyPaymentHistory(),
+        apiRequest('/referrals/my-referrals').catch(() => null)
       ]);
+      if (liveRefs?.success && liveRefs.data) {
+        setReferralData(liveRefs.data);
+      }
       if (liveWallet) setWallet(liveWallet);
       if (liveTxs && liveTxs.length > 0) {
         setAllUserTransactions(liveTxs);

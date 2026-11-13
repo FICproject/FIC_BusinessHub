@@ -6,6 +6,8 @@ import { InvestmentPoolModel } from '../models/InvestmentPool';
 import { MeetingModel } from '../models/Meeting';
 import { MemberModel } from '../models/Member';
 import { AdminMemberWalletModel, IMemberWallet } from '../models/MemberWallet';
+import { UserModel } from '../../users/users.model';
+import { notifyMember } from '../../notifications/notifications.service';
 
 const router = Router();
 
@@ -100,9 +102,16 @@ router.post('/request', authenticateAdmin, requireRole('SUPER_ADMIN'), async (re
       businessPitch,
       pitchDeckUrl,
       requestedAmount,
+      fundingType,
       interestRateAnnual,
       tenureMonths,
+      proposedEquityPercent,
+      valuation,
     } = req.body;
+
+    const resolvedFundingType = ['EQUITY', 'DEBT', 'REVENUE_SHARE', 'WORKING_CAPITAL'].includes(String(fundingType || '').toUpperCase())
+      ? String(fundingType).toUpperCase()
+      : 'DEBT';
 
     const newApp = await FundingApplicationModel.create({
       applicantName,
@@ -113,8 +122,11 @@ router.post('/request', authenticateAdmin, requireRole('SUPER_ADMIN'), async (re
       businessPitch,
       pitchDeckUrl,
       requestedAmount: Number(requestedAmount),
-      interestRateAnnual: Number(interestRateAnnual) || 12,
+      fundingType: resolvedFundingType as any,
+      interestRateAnnual: resolvedFundingType === 'DEBT' ? (Number(interestRateAnnual) || 12) : undefined,
       tenureMonths: Number(tenureMonths) || 12,
+      proposedEquityPercent: resolvedFundingType === 'EQUITY' ? (Number(proposedEquityPercent) || undefined) : undefined,
+      valuation: Number(valuation) || undefined,
       stage: 'USER_REQUEST',
     });
 
@@ -201,6 +213,20 @@ router.patch('/:id/schedule-meeting', authenticateAdmin, requireRole('SUPER_ADMI
       { action: 'SCHEDULE_MEETING', meetingScheduledAt }
     );
 
+    try {
+      const u = await UserModel.findOne({ email: app.applicantEmail.toLowerCase().trim() });
+      if (u) {
+        await notifyMember({
+          userId: u._id,
+          eventType: 'FUNDING_DILIGENCE',
+          title: `Funding Pitch Scheduled: ${app.businessName}`,
+          message: `Your funding diligence pitch has been scheduled for ${app.meetingScheduledAt ? new Date(app.meetingScheduledAt).toLocaleString() : 'upcoming slot'}.`,
+          link: '/meetings',
+          priority: 'HIGH'
+        });
+      }
+    } catch {}
+
     res.json({ success: true, message: 'Meeting scheduled & application moved to Diligence Review', application: app, data: app });
   } catch (err: any) {
     console.error('Failed to schedule pitch meeting:', err);
@@ -223,7 +249,8 @@ router.patch('/:id/disburse', authenticateAdmin, requireRole('SUPER_ADMIN'), asy
 
     // Calculate interest
     const years = (app.tenureMonths || 12) / 12;
-    app.expectedTotalInterest = Math.round((app.approvedPrincipal * app.interestRateAnnual * years) / 100);
+    const rate = app.interestRateAnnual || 0;
+    app.expectedTotalInterest = Math.round((app.approvedPrincipal * rate * years) / 100);
 
     app.disbursementDate = new Date();
     app.disbursementReference = disbursementReference || `FIC-FUND-${Date.now().toString().slice(-6)}`;
@@ -240,6 +267,20 @@ router.patch('/:id/disburse', authenticateAdmin, requireRole('SUPER_ADMIN'), asy
       app._id.toString(),
       { action: 'FUNDED', principal: app.approvedPrincipal, interestRate: app.interestRateAnnual }
     );
+
+    try {
+      const u = await UserModel.findOne({ email: app.applicantEmail.toLowerCase().trim() });
+      if (u) {
+        await notifyMember({
+          userId: u._id,
+          eventType: 'FUNDING_APPROVED',
+          title: `Funding Approved: ${app.businessName}`,
+          message: `Congratulations! Principal investment of ₹${app.approvedPrincipal?.toLocaleString('en-IN')} has been approved and disbursed.`,
+          link: '/funding',
+          priority: 'HIGH'
+        });
+      }
+    } catch {}
 
     res.json({ success: true, message: 'Capital investment disbursed successfully', application: app, data: app });
   } catch (err: any) {

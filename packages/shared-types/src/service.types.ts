@@ -3,7 +3,9 @@ export enum ServiceListingStatus {
   PENDING_APPROVAL = 'PENDING_APPROVAL',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
-  INACTIVE = 'INACTIVE'
+  INACTIVE = 'INACTIVE',
+  ARCHIVED = 'ARCHIVED',
+  DELETED = 'DELETED'
 }
 
 export enum ServiceRequestStatus {

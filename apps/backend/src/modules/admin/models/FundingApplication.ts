@@ -7,6 +7,8 @@ export type FundingStage =
   | 'REPAID'         // Step 4: Fully settled with interest
   | 'REJECTED';      // Declined
 
+export type FundingType = 'DEBT' | 'EQUITY' | 'REVENUE_SHARE' | 'WORKING_CAPITAL';
+
 export interface IFundingApplication extends Document {
   applicantName: string;
   applicantEmail: string;
@@ -17,16 +19,23 @@ export interface IFundingApplication extends Document {
   pitchDeckUrl?: string;
 
   // Financial terms
+  fundingType?: FundingType;
   requestedAmount: number; // Principal requested by applicant
   approvedPrincipal?: number; // Actual principal funded by FIC
-  interestRateAnnual: number; // Superadmin interest rate % per year (e.g., 12%)
-  tenureMonths: number; // e.g. 12 months
+  interestRateAnnual?: number; // Superadmin interest rate % per year (e.g., 12%)
+  tenureMonths?: number; // e.g. 12 months
+  proposedEquityPercent?: number; // Proposed equity %
+  valuation?: number; // Proposed company valuation
   expectedTotalInterest?: number; // Calculated interest yield
   repaidAmount: number; // Amount collected so far
   accruedInterestCollected: number; // Portion of interest realized
 
   // Workflow stage
   stage: FundingStage;
+
+  // Link to member & request
+  memberUserId?: mongoose.Types.ObjectId;
+  fundingRequestId?: mongoose.Types.ObjectId;
 
   // Meeting & Diligence details
   meetingScheduledAt?: Date;
@@ -55,10 +64,17 @@ const FundingApplicationSchema = new Schema<IFundingApplication>(
     businessPitch: { type: String, required: true },
     pitchDeckUrl: { type: String },
 
+    fundingType: {
+      type: String,
+      enum: ['DEBT', 'EQUITY', 'REVENUE_SHARE', 'WORKING_CAPITAL'],
+      default: 'DEBT',
+    },
     requestedAmount: { type: Number, required: true },
     approvedPrincipal: { type: Number },
     interestRateAnnual: { type: Number, default: 12 },
     tenureMonths: { type: Number, default: 12 },
+    proposedEquityPercent: { type: Number },
+    valuation: { type: Number },
     expectedTotalInterest: { type: Number, default: 0 },
     repaidAmount: { type: Number, default: 0 },
     accruedInterestCollected: { type: Number, default: 0 },
@@ -69,6 +85,9 @@ const FundingApplicationSchema = new Schema<IFundingApplication>(
       default: 'USER_REQUEST',
       required: true,
     },
+
+    memberUserId: { type: Schema.Types.ObjectId, ref: 'User' },
+    fundingRequestId: { type: Schema.Types.ObjectId, ref: 'FundingRequest' },
 
     meetingScheduledAt: { type: Date },
     meetingLink: { type: String },

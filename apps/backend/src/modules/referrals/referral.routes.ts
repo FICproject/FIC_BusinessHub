@@ -19,7 +19,7 @@ referralsRouter.get('/validate-code/:code', async (req: Request, res: Response, 
     const referrer = await UserModel.findOne({
       $or: [
         { referralCode: cleanCode },
-        // Fallback matching
+        { referralCode: new RegExp(`^${cleanCode}$`, 'i') },
         { email: cleanCode.toLowerCase() }
       ]
     });
@@ -54,8 +54,13 @@ referralsRouter.get('/my-referrals', authenticate, requireActiveVerifiedMember, 
     const user = await UserModel.findById(req.user.userId);
     if (!user) throw new AppError('User not found', 404);
 
-    // Generate referral code if user doesn't have one yet
-    const referralCode = `FIC-${user.fullName.toUpperCase().replace(/\s+/g, '')}-${user._id.toString().slice(-4).toUpperCase()}`;
+    // Use user's authoritative stored referral code or generate and persist if missing
+    let referralCode = user.referralCode;
+    if (!referralCode) {
+      referralCode = `FIC-${user.fullName.toUpperCase().replace(/[^A-Z0-9]/g, '')}-${user._id.toString().slice(-4).toUpperCase()}`;
+      user.referralCode = referralCode;
+      await user.save();
+    }
 
     const referrals = await ReferralModel.find({ referrerUserId: req.user.userId })
       .populate('referredUserId', 'fullName primaryCategoryName primarySubcategoryName subCategory createdAt')

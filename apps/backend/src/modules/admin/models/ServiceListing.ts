@@ -47,7 +47,7 @@ const AdminServiceListingSchema = new Schema<IAdminServiceListing>(
     deliveryMode: { type: String },
     status: {
       type: String,
-      enum: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'SUSPENDED'],
+      enum: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'SUSPENDED', 'ARCHIVED', 'DELETED'],
       default: 'PENDING_APPROVAL',
       required: true,
     },
