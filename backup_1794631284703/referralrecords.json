@@ -1,0 +1,36 @@
+[
+  {
+    "_id": "6af6a9a36a292d4767bc388d",
+    "referredMemberId": "6af6a9a2be2ca4f26e49b5c9",
+    "__v": 0,
+    "bonusAmount": 500,
+    "createdAt": "2026-11-13T06:09:39.550Z",
+    "notes": "Referral bonus automatically attributed to adddoc User for onboarding member Vikram Sridhar",
+    "payoutDate": "2026-11-13T06:09:39.550Z",
+    "payoutReference": "REF-TXN-B3ECB5C9",
+    "referredEmail": "referred_1794550178213@example.com",
+    "referredName": "Vikram Sridhar",
+    "referrerEmail": "adddoc_1794550170061@example.com",
+    "referrerMemberId": "6af6a999be2ca4f26e49b3ec",
+    "referrerName": "adddoc User",
+    "status": "PAID",
+    "updatedAt": "2026-11-13T06:09:39.550Z"
+  },
+  {
+    "_id": "6af7e2d96a292d4767bd2249",
+    "referredMemberId": "6af7e2d3bc1c3562bafcafce",
+    "__v": 0,
+    "bonusAmount": 300,
+    "createdAt": "2026-11-14T04:26:01.055Z",
+    "notes": "Referral bonus auto-credited to wallet upon KYC approval (Referred via FIC-BALA-569594)",
+    "payoutDate": "2026-11-14T04:33:15.318Z",
+    "payoutReference": "REF-PAY-792932",
+    "referredEmail": "podadei@gmail.com",
+    "referredName": "podadei",
+    "referrerEmail": "bala@gmail.com",
+    "referrerMemberId": "6af6951945e599fea212e2a7",
+    "referrerName": "Bala",
+    "status": "PAID",
+    "updatedAt": "2026-11-14T04:33:15.319Z"
+  }
+]

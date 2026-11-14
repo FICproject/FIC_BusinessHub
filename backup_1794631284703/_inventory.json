@@ -1,0 +1,170 @@
+[
+  {
+    "collection": "walletwithdrawals",
+    "count": 5
+  },
+  {
+    "collection": "referralprogrammeconfigs",
+    "count": 0
+  },
+  {
+    "collection": "categories",
+    "count": 11
+  },
+  {
+    "collection": "wallettransactions",
+    "count": 74
+  },
+  {
+    "collection": "users",
+    "count": 80
+  },
+  {
+    "collection": "investmentpools",
+    "count": 2
+  },
+  {
+    "collection": "documentassets",
+    "count": 152
+  },
+  {
+    "collection": "financialconfigs",
+    "count": 1
+  },
+  {
+    "collection": "adminpayments",
+    "count": 196
+  },
+  {
+    "collection": "legacyinvestmentprofiles",
+    "count": 0
+  },
+  {
+    "collection": "servicerequests",
+    "count": 20
+  },
+  {
+    "collection": "referralrecords",
+    "count": 2
+  },
+  {
+    "collection": "kycsubmissions",
+    "count": 132
+  },
+  {
+    "collection": "referralconfigs",
+    "count": 1
+  },
+  {
+    "collection": "adminmemberwallets",
+    "count": 18
+  },
+  {
+    "collection": "auditlogs",
+    "count": 725
+  },
+  {
+    "collection": "memberwallets",
+    "count": 18
+  },
+  {
+    "collection": "learningvideos",
+    "count": 0
+  },
+  {
+    "collection": "payments",
+    "count": 163
+  },
+  {
+    "collection": "ficrequests",
+    "count": 34
+  },
+  {
+    "collection": "memberbankaccounts",
+    "count": 3
+  },
+  {
+    "collection": "fundingrequests",
+    "count": 0
+  },
+  {
+    "collection": "members",
+    "count": 66
+  },
+  {
+    "collection": "servicelistings",
+    "count": 27
+  },
+  {
+    "collection": "memberships",
+    "count": 62
+  },
+  {
+    "collection": "notifications",
+    "count": 614
+  },
+  {
+    "collection": "walletfundings",
+    "count": 67
+  },
+  {
+    "collection": "adminusers",
+    "count": 3
+  },
+  {
+    "collection": "registrationsubmissions",
+    "count": 0
+  },
+  {
+    "collection": "categoryconfigurations",
+    "count": 10
+  },
+  {
+    "collection": "referrals",
+    "count": 2
+  },
+  {
+    "collection": "partnershiprequests",
+    "count": 0
+  },
+  {
+    "collection": "fundingapplications",
+    "count": 10
+  },
+  {
+    "collection": "teachingservices",
+    "count": 0
+  },
+  {
+    "collection": "businessideas",
+    "count": 8
+  },
+  {
+    "collection": "mentorshiprequests",
+    "count": 3
+  },
+  {
+    "collection": "supporttickets",
+    "count": 3
+  },
+  {
+    "collection": "adminservicelistings",
+    "count": 27
+  },
+  {
+    "collection": "subcategories",
+    "count": 59
+  },
+  {
+    "collection": "businessdevrequests",
+    "count": 7
+  },
+  {
+    "collection": "meetings",
+    "count": 33
+  },
+  {
+    "collection": "investorprofiles",
+    "count": 0
+  }
+]

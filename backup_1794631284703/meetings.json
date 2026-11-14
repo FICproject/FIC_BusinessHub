@@ -1,0 +1,860 @@
+[
+  {
+    "_id": "6af5b00233d005b640f8b349",
+    "title": "discuss about business",
+    "description": "",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af5aa0c33d005b640f87aea",
+      "6af5a907e389db5939b6d8ce",
+      "6af5a633e389db5939b6c315",
+      "6af5a5d2e389db5939b6be5b",
+      "6af5a3aee389db5939b6a34e",
+      "6af5a286e389db5939b69807",
+      "6af596572daf2afeb6ec79a4",
+      "6af5963b2daf2afeb6ec7986",
+      "6af596052daf2afeb6ec7968",
+      "6af593b832aecb2516f8aca5",
+      "6af43b107287f195d86f21df",
+      "6af2a50e6a292d4767b9b513",
+      "6af2a4ae6a292d4767b9b504",
+      "6aedaee7178af30f3a94bad2",
+      "6aed8271178af30f3a94b00f",
+      "6aed8271178af30f3a94b00e",
+      "6aed8271178af30f3a94b00d",
+      "6aed8271178af30f3a94b00c"
+    ],
+    "meetingType": "MEMBER_CALL",
+    "scheduledAt": "2026-11-12T05:54:00.000Z",
+    "durationMinutes": 30,
+    "meetingLink": "https://meet.google.com/fic-17fm-p4v",
+    "status": "IN_PROGRESS",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-12T12:24:34.163Z",
+    "updatedAt": "2026-11-12T12:27:11.696Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af5b0d033d005b640f8b9bf",
+    "title": "rtfgyhj",
+    "description": "",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af5aa0c33d005b640f87aea",
+      "6af5a907e389db5939b6d8ce",
+      "6af5a633e389db5939b6c315",
+      "6af5a5d2e389db5939b6be5b",
+      "6af5a3aee389db5939b6a34e",
+      "6af5a286e389db5939b69807",
+      "6af596572daf2afeb6ec79a4",
+      "6af5963b2daf2afeb6ec7986",
+      "6af596052daf2afeb6ec7968",
+      "6af593b832aecb2516f8aca5",
+      "6af43b107287f195d86f21df",
+      "6af2a50e6a292d4767b9b513",
+      "6af2a4ae6a292d4767b9b504",
+      "6aedaee7178af30f3a94bad2",
+      "6aed8271178af30f3a94b00f",
+      "6aed8271178af30f3a94b00e",
+      "6aed8271178af30f3a94b00d",
+      "6aed8271178af30f3a94b00c"
+    ],
+    "meetingType": "MEMBER_CALL",
+    "scheduledAt": "2026-11-18T21:55:00.000Z",
+    "durationMinutes": 30,
+    "meetingLink": "https://meet.google.com/fic-caqs-d7k",
+    "status": "COMPLETED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-12T12:28:00.424Z",
+    "updatedAt": "2026-11-13T04:22:22.734Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af5c7bd59ede501534a7e00",
+    "title": "business",
+    "description": "business",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af5bb31e0d2583ba9b91427",
+      "6af5b8043417e10aa0731cab",
+      "6af5b7203417e10aa0731a58"
+    ],
+    "meetingType": "MEMBER_CALL",
+    "scheduledAt": "2026-11-13T19:35:00.000Z",
+    "durationMinutes": 15,
+    "meetingLink": "https://meet.google.com/fic-4mib-y52",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-12T14:05:49.873Z",
+    "updatedAt": "2026-11-12T14:05:50.049Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af5cbe259ede501534a90fd",
+    "title": "FIC Funding Pitch: Business & Entrepreneurship",
+    "description": "Venture capital pitch consultation with water. Requested: ₹10,000.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af5aa0c33d005b640f87aea"
+    ],
+    "externalParticipants": [
+      {
+        "name": "water",
+        "email": "water@gmail.com",
+        "phone": "6787897897",
+        "roleOrCompany": "Business & Entrepreneurship",
+        "_id": "6af5cbe259ede501534a90fe"
+      }
+    ],
+    "meetingType": "FUNDING_PITCH",
+    "relatedFundingApplicationId": "6af5afe933d005b640f8b288",
+    "scheduledAt": "2026-11-14T19:53:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-pitch-l5di",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "createdAt": "2026-11-12T14:23:30.713Z",
+    "updatedAt": "2026-11-12T14:23:30.713Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6999e45e599fea2130a92",
+    "title": "test the meeting",
+    "description": "",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6951945e599fea212e2a7",
+      "6af6933645e599fea212c91f",
+      "6af690b845e599fea212a826",
+      "6af5cdd259ede501534a964a",
+      "6af5ccc8b95113ce182872e6",
+      "6af5c8e059ede501534a849b",
+      "6af5c28183e7345a58b2053d",
+      "6af5c28083e7345a58b20521",
+      "6af5c25283e7345a58b203de",
+      "6af5bb31e0d2583ba9b91427",
+      "6af5b8043417e10aa0731cab",
+      "6af5b7203417e10aa0731a58",
+      "6af5b7023417e10aa0731929",
+      "6af5b6623417e10aa073185e",
+      "6af5b61c3417e10aa07317df",
+      "6af5b5fa3417e10aa0731775",
+      "6af5b4ff33d005b640f8d75c",
+      "6af5b31933d005b640f8c667",
+      "6af5aa0c33d005b640f87aea",
+      "6af5a907e389db5939b6d8ce",
+      "6af5a633e389db5939b6c315",
+      "6af5a5d2e389db5939b6be5b",
+      "6af5a3aee389db5939b6a34e",
+      "6af5a286e389db5939b69807",
+      "6af596572daf2afeb6ec79a4",
+      "6af5963b2daf2afeb6ec7986",
+      "6af596052daf2afeb6ec7968",
+      "6af593b832aecb2516f8aca5",
+      "6af43b107287f195d86f21df",
+      "6af2a50e6a292d4767b9b513",
+      "6af2a4ae6a292d4767b9b504",
+      "6aedaee7178af30f3a94bad2",
+      "6aed8271178af30f3a94b00f",
+      "6aed8271178af30f3a94b00e",
+      "6aed8271178af30f3a94b00d",
+      "6aed8271178af30f3a94b00c"
+    ],
+    "meetingType": "MEMBER_CALL",
+    "scheduledAt": "2026-11-13T10:31:00.000Z",
+    "durationMinutes": 30,
+    "meetingLink": "https://meet.google.com/wzi-cvds-ara",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-13T05:01:18.321Z",
+    "updatedAt": "2026-11-13T05:01:18.523Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a4f445e599fea2138821",
+    "title": "FIC Funding Pitch: Bridgeway",
+    "description": "Venture capital pitch consultation with Bala. Requested: ₹50,000. jhvuyyuguy",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6951945e599fea212e2a7"
+    ],
+    "externalParticipants": [
+      {
+        "name": "Bala",
+        "email": "bala@gmail.com",
+        "phone": "7387389347",
+        "roleOrCompany": "Bridgeway",
+        "_id": "6af6a4f445e599fea2138822"
+      }
+    ],
+    "meetingType": "FUNDING_PITCH",
+    "relatedFundingApplicationId": "6af6a35845e599fea2136f44",
+    "scheduledAt": "2026-11-14T11:19:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-pitch-guq2",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "createdAt": "2026-11-13T05:49:40.269Z",
+    "updatedAt": "2026-11-13T05:49:40.269Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a5be4eb6fa2e0adac258",
+    "title": "Venture Incubation Strategy Session",
+    "description": "Discuss seed funding readiness and agritech patent portfolio.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a5b94eb6fa2e0adac13e"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794549177411@example.com",
+        "phone": "9849177411",
+        "roleOrCompany": "Incubation & Diligence",
+        "_id": "6af6a5be4eb6fa2e0adac259"
+      }
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-20T10:00:00.000Z",
+    "durationMinutes": 45,
+    "status": "PENDING_COORDINATION",
+    "notificationSent": false,
+    "createdAt": "2026-11-13T05:53:02.711Z",
+    "updatedAt": "2026-11-13T05:53:02.711Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a5bf4eb6fa2e0adac26e",
+    "title": "FIC Advisory Call: Agritech Diligence",
+    "description": "Formal consultation with Super Admin and domain expert.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a5b94eb6fa2e0adac13e"
+    ],
+    "meetingType": "MEMBER_CALL",
+    "scheduledAt": "2026-11-25T11:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-advisory-call",
+    "status": "COMPLETED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-13T05:53:03.050Z",
+    "updatedAt": "2026-11-13T05:53:03.465Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a5fc4eb6fa2e0adac3c5",
+    "title": "Venture Incubation Strategy Session",
+    "description": "Discuss seed funding readiness and agritech patent portfolio.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a5f64eb6fa2e0adac2aa"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794549239080@example.com",
+        "phone": "9849239080",
+        "roleOrCompany": "Incubation & Diligence",
+        "_id": "6af6a5fc4eb6fa2e0adac3c6"
+      }
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-20T10:00:00.000Z",
+    "durationMinutes": 45,
+    "status": "PENDING_COORDINATION",
+    "notificationSent": false,
+    "createdAt": "2026-11-13T05:54:04.161Z",
+    "updatedAt": "2026-11-13T05:54:04.161Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a5fc4eb6fa2e0adac3dc",
+    "title": "FIC Advisory Call: Agritech Diligence",
+    "description": "Formal consultation with Super Admin and domain expert.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a5f64eb6fa2e0adac2aa"
+    ],
+    "meetingType": "MEMBER_CALL",
+    "scheduledAt": "2026-11-25T11:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-advisory-call",
+    "status": "COMPLETED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-13T05:54:04.496Z",
+    "updatedAt": "2026-11-13T05:54:04.910Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a64a4eb6fa2e0adac534",
+    "title": "Venture Incubation Strategy Session",
+    "description": "Discuss seed funding readiness and agritech patent portfolio.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a6454eb6fa2e0adac418"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794549317659@example.com",
+        "phone": "9849317659",
+        "roleOrCompany": "Incubation & Diligence",
+        "_id": "6af6a64a4eb6fa2e0adac535"
+      }
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-20T10:00:00.000Z",
+    "durationMinutes": 45,
+    "status": "PENDING_COORDINATION",
+    "notificationSent": false,
+    "createdAt": "2026-11-13T05:55:22.660Z",
+    "updatedAt": "2026-11-13T05:55:22.660Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a64a4eb6fa2e0adac54c",
+    "title": "FIC Advisory Call: Agritech Diligence",
+    "description": "Formal consultation with Super Admin and domain expert.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a6454eb6fa2e0adac418"
+    ],
+    "meetingType": "MEMBER_CALL",
+    "scheduledAt": "2026-11-25T11:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-advisory-call",
+    "status": "COMPLETED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-13T05:55:22.991Z",
+    "updatedAt": "2026-11-13T05:55:23.397Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a64c4eb6fa2e0adac58f",
+    "title": "FIC Funding Pitch: Solar Cold Chain Tech",
+    "description": "Venture capital pitch consultation with adddoc User. Requested: ₹25,00,000. Initial review passed. Ready for formal credit diligence.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a6454eb6fa2e0adac418"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794549317659@example.com",
+        "phone": "9849317659",
+        "roleOrCompany": "Solar Cold Chain Tech",
+        "_id": "6af6a64c4eb6fa2e0adac590"
+      }
+    ],
+    "meetingType": "FUNDING_PITCH",
+    "relatedFundingApplicationId": "6af6a64b4eb6fa2e0adac584",
+    "scheduledAt": "2026-11-28T14:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-diligence-pitch",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "createdAt": "2026-11-13T05:55:24.091Z",
+    "updatedAt": "2026-11-13T05:55:24.091Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a6fb662b7d4b73748522",
+    "title": "Venture Incubation Strategy Session",
+    "description": "Discuss seed funding readiness and agritech patent portfolio.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a6f3662b7d4b73748405"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794549491943@example.com",
+        "phone": "9849491943",
+        "roleOrCompany": "Incubation & Diligence",
+        "_id": "6af6a6fb662b7d4b73748523"
+      }
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-20T10:00:00.000Z",
+    "durationMinutes": 45,
+    "status": "PENDING_COORDINATION",
+    "notificationSent": false,
+    "createdAt": "2026-11-13T05:58:19.576Z",
+    "updatedAt": "2026-11-13T05:58:19.576Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a6fc662b7d4b7374853e",
+    "title": "FIC Advisory Call: Agritech Diligence",
+    "description": "Formal consultation with Super Admin and domain expert.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a6f3662b7d4b73748405"
+    ],
+    "meetingType": "MEMBER_CALL",
+    "scheduledAt": "2026-11-25T11:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-advisory-call",
+    "status": "COMPLETED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-13T05:58:20.733Z",
+    "updatedAt": "2026-11-13T05:58:22.027Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a6ff662b7d4b73748581",
+    "title": "FIC Funding Pitch: Solar Cold Chain Tech",
+    "description": "Venture capital pitch consultation with adddoc User. Requested: ₹25,00,000. Initial review passed. Ready for formal credit diligence.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a6f3662b7d4b73748405"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794549491943@example.com",
+        "phone": "9849491943",
+        "roleOrCompany": "Solar Cold Chain Tech",
+        "_id": "6af6a6ff662b7d4b73748582"
+      }
+    ],
+    "meetingType": "FUNDING_PITCH",
+    "relatedFundingApplicationId": "6af6a6ff662b7d4b73748576",
+    "scheduledAt": "2026-11-28T14:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-diligence-pitch",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "createdAt": "2026-11-13T05:58:23.872Z",
+    "updatedAt": "2026-11-13T05:58:23.872Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a8789f45f068ab3c2aba",
+    "title": "Venture Incubation Strategy Session",
+    "description": "Discuss seed funding readiness and agritech patent portfolio.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a8739f45f068ab3c299c"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794549875628@example.com",
+        "phone": "9849875628",
+        "roleOrCompany": "Incubation & Diligence",
+        "_id": "6af6a8789f45f068ab3c2abb"
+      }
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-20T10:00:00.000Z",
+    "durationMinutes": 45,
+    "status": "PENDING_COORDINATION",
+    "notificationSent": false,
+    "createdAt": "2026-11-13T06:04:40.739Z",
+    "updatedAt": "2026-11-13T06:04:40.739Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a8799f45f068ab3c2ada",
+    "title": "FIC Advisory Call: Agritech Diligence",
+    "description": "Formal consultation with Super Admin and domain expert.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a8739f45f068ab3c299c"
+    ],
+    "meetingType": "MEMBER_CALL",
+    "scheduledAt": "2026-11-25T11:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-advisory-call",
+    "status": "COMPLETED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-13T06:04:41.118Z",
+    "updatedAt": "2026-11-13T06:04:41.519Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a87a9f45f068ab3c2b1d",
+    "title": "FIC Funding Pitch: Solar Cold Chain Tech",
+    "description": "Venture capital pitch consultation with adddoc User. Requested: ₹25,00,000. Initial review passed. Ready for formal credit diligence.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a8739f45f068ab3c299c"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794549875628@example.com",
+        "phone": "9849875628",
+        "roleOrCompany": "Solar Cold Chain Tech",
+        "_id": "6af6a87a9f45f068ab3c2b1e"
+      }
+    ],
+    "meetingType": "FUNDING_PITCH",
+    "relatedFundingApplicationId": "6af6a8799f45f068ab3c2b12",
+    "scheduledAt": "2026-11-28T14:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-diligence-pitch",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "createdAt": "2026-11-13T06:04:42.197Z",
+    "updatedAt": "2026-11-13T06:04:42.197Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a927e469ab2fbfd89f30",
+    "title": "Venture Incubation Strategy Session",
+    "description": "Discuss seed funding readiness and agritech patent portfolio.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a921e469ab2fbfd89e11"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794550030968@example.com",
+        "phone": "9850030968",
+        "roleOrCompany": "Incubation & Diligence",
+        "_id": "6af6a927e469ab2fbfd89f31"
+      }
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-20T10:00:00.000Z",
+    "durationMinutes": 45,
+    "status": "PENDING_COORDINATION",
+    "notificationSent": false,
+    "createdAt": "2026-11-13T06:07:35.702Z",
+    "updatedAt": "2026-11-13T06:07:35.702Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a928e469ab2fbfd89f54",
+    "title": "FIC Advisory Call: Agritech Diligence",
+    "description": "Formal consultation with Super Admin and domain expert.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a921e469ab2fbfd89e11"
+    ],
+    "meetingType": "MEMBER_CALL",
+    "scheduledAt": "2026-11-25T11:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-advisory-call",
+    "status": "COMPLETED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-13T06:07:36.105Z",
+    "updatedAt": "2026-11-13T06:07:36.492Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a929e469ab2fbfd89f97",
+    "title": "FIC Funding Pitch: Solar Cold Chain Tech",
+    "description": "Venture capital pitch consultation with adddoc User. Requested: ₹25,00,000. Initial review passed. Ready for formal credit diligence.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a921e469ab2fbfd89e11"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794550030968@example.com",
+        "phone": "9850030968",
+        "roleOrCompany": "Solar Cold Chain Tech",
+        "_id": "6af6a929e469ab2fbfd89f98"
+      }
+    ],
+    "meetingType": "FUNDING_PITCH",
+    "relatedFundingApplicationId": "6af6a928e469ab2fbfd89f8c",
+    "scheduledAt": "2026-11-28T14:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-diligence-pitch",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "createdAt": "2026-11-13T06:07:37.157Z",
+    "updatedAt": "2026-11-13T06:07:37.157Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a99fbe2ca4f26e49b50c",
+    "title": "Venture Incubation Strategy Session",
+    "description": "Discuss seed funding readiness and agritech patent portfolio.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a999be2ca4f26e49b3ec"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794550170061@example.com",
+        "phone": "9850170061",
+        "roleOrCompany": "Incubation & Diligence",
+        "_id": "6af6a99fbe2ca4f26e49b50d"
+      }
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-20T10:00:00.000Z",
+    "durationMinutes": 45,
+    "status": "PENDING_COORDINATION",
+    "notificationSent": false,
+    "createdAt": "2026-11-13T06:09:35.188Z",
+    "updatedAt": "2026-11-13T06:09:35.188Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a99fbe2ca4f26e49b534",
+    "title": "FIC Advisory Call: Agritech Diligence",
+    "description": "Formal consultation with Super Admin and domain expert.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a999be2ca4f26e49b3ec"
+    ],
+    "meetingType": "MEMBER_CALL",
+    "scheduledAt": "2026-11-25T11:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-advisory-call",
+    "status": "COMPLETED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-13T06:09:35.613Z",
+    "updatedAt": "2026-11-13T06:09:36.023Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a9a0be2ca4f26e49b577",
+    "title": "FIC Funding Pitch: Solar Cold Chain Tech",
+    "description": "Venture capital pitch consultation with adddoc User. Requested: ₹25,00,000. Initial review passed. Ready for formal credit diligence.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a999be2ca4f26e49b3ec"
+    ],
+    "externalParticipants": [
+      {
+        "name": "adddoc User",
+        "email": "adddoc_1794550170061@example.com",
+        "phone": "9850170061",
+        "roleOrCompany": "Solar Cold Chain Tech",
+        "_id": "6af6a9a0be2ca4f26e49b578"
+      }
+    ],
+    "meetingType": "FUNDING_PITCH",
+    "relatedFundingApplicationId": "6af6a9a0be2ca4f26e49b56c",
+    "scheduledAt": "2026-11-28T14:00:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-diligence-pitch",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "createdAt": "2026-11-13T06:09:36.723Z",
+    "updatedAt": "2026-11-13T06:09:36.723Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6b62b275b946ea876ef60",
+    "title": "FIC Funding Pitch: textile",
+    "description": "Venture capital pitch consultation with suman. Requested: ₹60,000.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [],
+    "externalParticipants": [
+      {
+        "name": "suman",
+        "email": "suman@gmail.com",
+        "phone": "8907654356",
+        "roleOrCompany": "textile",
+        "_id": "6af6b62b275b946ea876ef61"
+      }
+    ],
+    "meetingType": "FUNDING_PITCH",
+    "relatedFundingApplicationId": "6af5715ba888e7494f441133",
+    "scheduledAt": "2026-11-17T12:33:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-pitch-10z8",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "createdAt": "2026-11-13T07:03:07.595Z",
+    "updatedAt": "2026-11-13T07:03:07.595Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6b7f2275b946ea8770afb",
+    "title": "FIC Intro: mentor & lakha",
+    "description": "Facilitated 1-on-1 meeting for request \"tiger\". Client: mentor (mentor@gmail.com), Provider: lakha (lakha@gmail.com).",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a30045e599fea2136950",
+      "6af6ae36275b946ea8766e5d"
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-14T05:30:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-hsp9-scf",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-13T07:10:42.755Z",
+    "updatedAt": "2026-11-13T07:10:42.755Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6b95ae6f957aab3b6bda0",
+    "title": "FIC Funding Pitch: Karthi  Garments",
+    "description": "Venture capital pitch consultation with Karthikeyan. Requested: ₹5,00,000. we will disscuss about this in detail at meeyting",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af5a5d2e389db5939b6be5b"
+    ],
+    "externalParticipants": [
+      {
+        "name": "Karthikeyan",
+        "email": "karthi@gmail.com",
+        "phone": "6454322211",
+        "roleOrCompany": "Karthi  Garments",
+        "_id": "6af6b95ae6f957aab3b6bda1"
+      }
+    ],
+    "meetingType": "FUNDING_PITCH",
+    "relatedFundingApplicationId": "6af6b8f9e6f957aab3b6b5c2",
+    "scheduledAt": "2026-11-14T09:18:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-pitch-xpo2",
+    "status": "COMPLETED",
+    "notificationSent": true,
+    "createdAt": "2026-11-13T07:16:42.779Z",
+    "updatedAt": "2026-11-13T07:20:15.149Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6c0d4e6f957aab3b7317c",
+    "title": "FIC Intro: mentor & lakha",
+    "description": "Facilitated 1-on-1 meeting for request \"tiger\". Client: mentor (mentor@gmail.com), Provider: lakha (lakha@gmail.com).",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6a30045e599fea2136950",
+      "6af6ae36275b946ea8766e5d"
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-14T05:30:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-uh96-k8e",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "externalParticipants": [],
+    "createdAt": "2026-11-13T07:48:36.337Z",
+    "updatedAt": "2026-11-13T07:48:36.337Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6d7b7e6f957aab3b7b5e9",
+    "title": "uyik",
+    "description": "qwetryuiop'\\",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6c1b9e6f957aab3b73781"
+    ],
+    "externalParticipants": [
+      {
+        "name": "fic",
+        "email": "fic@gmail.com",
+        "phone": "7678788898",
+        "roleOrCompany": "Investment Pitch Review",
+        "_id": "6af6d7b7e6f957aab3b7b5ea"
+      }
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-15T11:00:00.000Z",
+    "durationMinutes": 45,
+    "status": "PENDING_COORDINATION",
+    "notificationSent": false,
+    "createdAt": "2026-11-13T09:26:15.627Z",
+    "updatedAt": "2026-11-13T09:26:15.627Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6d913e6f957aab3b7d28c",
+    "title": "test meeting",
+    "description": "i rhejkdw",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6c1b9e6f957aab3b73781"
+    ],
+    "externalParticipants": [
+      {
+        "name": "fic",
+        "email": "fic@gmail.com",
+        "phone": "7678788898",
+        "roleOrCompany": "Business Scaling Advisory",
+        "_id": "6af6d913e6f957aab3b7d28d"
+      }
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-29T11:00:00.000Z",
+    "durationMinutes": 45,
+    "status": "SCHEDULED",
+    "notificationSent": false,
+    "createdAt": "2026-11-13T09:32:03.066Z",
+    "updatedAt": "2026-11-13T09:39:03.950Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6e4417826932bf6c92654",
+    "title": "FIC Funding Pitch: fic",
+    "description": "Venture capital pitch consultation with fic. Requested: ₹50,00,000.",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af6c1b9e6f957aab3b73781"
+    ],
+    "externalParticipants": [
+      {
+        "name": "fic",
+        "email": "fic@gmail.com",
+        "phone": "7678788898",
+        "roleOrCompany": "fic",
+        "_id": "6af6e4417826932bf6c92655"
+      }
+    ],
+    "meetingType": "FUNDING_PITCH",
+    "relatedFundingApplicationId": "6af6e3337826932bf6c91bea",
+    "scheduledAt": "2026-11-14T15:49:00.000Z",
+    "durationMinutes": 45,
+    "meetingLink": "https://meet.google.com/fic-pitch-hkqq",
+    "status": "SCHEDULED",
+    "notificationSent": true,
+    "createdAt": "2026-11-13T10:19:45.149Z",
+    "updatedAt": "2026-11-13T10:19:45.149Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af71c466e692521e3aa449a",
+    "title": "wwe",
+    "description": "poh",
+    "hostAdminId": "6aed809d825ccac29ad5c064",
+    "participantMemberIds": [
+      "6af700dd8e021b895a831e3b"
+    ],
+    "externalParticipants": [
+      {
+        "name": "dei",
+        "email": "dei@gmail.com",
+        "phone": "8978888989",
+        "roleOrCompany": "Service Scope Alignment",
+        "_id": "6af71c466e692521e3aa449b"
+      }
+    ],
+    "meetingType": "CONSULTATION",
+    "scheduledAt": "2026-11-14T11:00:00.000Z",
+    "durationMinutes": 45,
+    "status": "PENDING_COORDINATION",
+    "notificationSent": false,
+    "createdAt": "2026-11-13T14:18:46.515Z",
+    "updatedAt": "2026-11-13T14:18:46.515Z",
+    "__v": 0
+  }
+]

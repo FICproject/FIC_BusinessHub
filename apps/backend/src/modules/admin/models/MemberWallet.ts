@@ -41,7 +41,7 @@ const MemberWalletSchema = new Schema<IMemberWallet>(
   {
     memberId: { type: Schema.Types.ObjectId, ref: 'Member', required: true, unique: true },
     memberEmail: { type: String, required: true, lowercase: true },
-    balance: { type: Number, default: 50000 },
+    balance: { type: Number, default: 0 },
     currency: { type: String, default: 'INR' },
     currencySymbol: { type: String, default: '₹' },
     status: { type: String, enum: ['ACTIVE', 'FROZEN'], default: 'ACTIVE' },

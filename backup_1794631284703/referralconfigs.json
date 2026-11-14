@@ -1,0 +1,14 @@
+[
+  {
+    "_id": "6aed809d825ccac29ad5c068",
+    "key": "DEFAULT_CONFIG",
+    "bonusPerReferral": 700,
+    "currency": "INR",
+    "minimumPayoutAmount": 1000,
+    "isActive": true,
+    "updatedBy": "Rahul",
+    "createdAt": "2026-11-06T07:24:13.707Z",
+    "updatedAt": "2026-11-14T04:34:54.577Z",
+    "__v": 0
+  }
+]

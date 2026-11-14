@@ -1,0 +1,310 @@
+[
+  {
+    "_id": "6af6a5be4eb6fa2e0adac228",
+    "userId": "6af6a5b94eb6fa2e0adac13e",
+    "refNumber": "SCALE-2026-391",
+    "businessName": "Apex Agro Logistics",
+    "supportType": "EXPANSION_SCALING",
+    "currentChallenges": "Warehouse throughput bottleneck and cold chain logistics.",
+    "expectedOutcomes": "Double supply capacity across southern states within 6 months.",
+    "status": "SUBMITTED",
+    "latestFicUpdate": "Your scaling request has been received. Our team is reviewing your business requirements.",
+    "whatHappensNext": "FIC will review your request and share an update.",
+    "updateHistory": [
+      {
+        "date": "13 November 2026",
+        "status": "Submitted",
+        "update": "Your scaling request has been received. Our team is reviewing your business requirements.",
+        "updatedBy": "FIC Enterprise Desk",
+        "_id": "6af6a5be4eb6fa2e0adac229"
+      }
+    ],
+    "assignedSpecialist": {
+      "isApprovedForMember": false
+    },
+    "assessmentSummary": {
+      "mainChallenges": [],
+      "areasToImprove": [],
+      "isCompleted": false
+    },
+    "memberAction": {
+      "isRequired": false
+    },
+    "activityHistory": [
+      {
+        "title": "Request Submitted",
+        "description": "Enterprise scaling request received by FIC Scaling Desk under strict non-disclosure.",
+        "timestamp": "Today",
+        "_id": "6af6a5be4eb6fa2e0adac22a"
+      }
+    ],
+    "milestones": [],
+    "createdAt": "2026-11-13T05:53:02.033Z",
+    "updatedAt": "2026-11-13T05:53:02.033Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a5fb4eb6fa2e0adac395",
+    "userId": "6af6a5f64eb6fa2e0adac2aa",
+    "refNumber": "SCALE-2026-489",
+    "businessName": "Apex Agro Logistics",
+    "supportType": "EXPANSION_SCALING",
+    "currentChallenges": "Warehouse throughput bottleneck and cold chain logistics.",
+    "expectedOutcomes": "Double supply capacity across southern states within 6 months.",
+    "status": "SUBMITTED",
+    "latestFicUpdate": "Your scaling request has been received. Our team is reviewing your business requirements.",
+    "whatHappensNext": "FIC will review your request and share an update.",
+    "updateHistory": [
+      {
+        "date": "13 November 2026",
+        "status": "Submitted",
+        "update": "Your scaling request has been received. Our team is reviewing your business requirements.",
+        "updatedBy": "FIC Enterprise Desk",
+        "_id": "6af6a5fb4eb6fa2e0adac396"
+      }
+    ],
+    "assignedSpecialist": {
+      "isApprovedForMember": false
+    },
+    "assessmentSummary": {
+      "mainChallenges": [],
+      "areasToImprove": [],
+      "isCompleted": false
+    },
+    "memberAction": {
+      "isRequired": false
+    },
+    "activityHistory": [
+      {
+        "title": "Request Submitted",
+        "description": "Enterprise scaling request received by FIC Scaling Desk under strict non-disclosure.",
+        "timestamp": "Today",
+        "_id": "6af6a5fb4eb6fa2e0adac397"
+      }
+    ],
+    "milestones": [],
+    "createdAt": "2026-11-13T05:54:03.453Z",
+    "updatedAt": "2026-11-13T05:54:03.453Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a6494eb6fa2e0adac504",
+    "userId": "6af6a6454eb6fa2e0adac418",
+    "refNumber": "SCALE-2026-927",
+    "businessName": "Apex Agro Logistics",
+    "supportType": "EXPANSION_SCALING",
+    "currentChallenges": "Warehouse throughput bottleneck and cold chain logistics.",
+    "expectedOutcomes": "Double supply capacity across southern states within 6 months.",
+    "status": "SUBMITTED",
+    "latestFicUpdate": "Your scaling request has been received. Our team is reviewing your business requirements.",
+    "whatHappensNext": "FIC will review your request and share an update.",
+    "updateHistory": [
+      {
+        "date": "13 November 2026",
+        "status": "Submitted",
+        "update": "Your scaling request has been received. Our team is reviewing your business requirements.",
+        "updatedBy": "FIC Enterprise Desk",
+        "_id": "6af6a6494eb6fa2e0adac505"
+      }
+    ],
+    "assignedSpecialist": {
+      "isApprovedForMember": false
+    },
+    "assessmentSummary": {
+      "mainChallenges": [],
+      "areasToImprove": [],
+      "isCompleted": false
+    },
+    "memberAction": {
+      "isRequired": false
+    },
+    "activityHistory": [
+      {
+        "title": "Request Submitted",
+        "description": "Enterprise scaling request received by FIC Scaling Desk under strict non-disclosure.",
+        "timestamp": "Today",
+        "_id": "6af6a6494eb6fa2e0adac506"
+      }
+    ],
+    "milestones": [],
+    "createdAt": "2026-11-13T05:55:21.942Z",
+    "updatedAt": "2026-11-13T05:55:21.942Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a6f9662b7d4b737484f2",
+    "userId": "6af6a6f3662b7d4b73748405",
+    "refNumber": "SCALE-2026-297",
+    "businessName": "Apex Agro Logistics",
+    "supportType": "EXPANSION_SCALING",
+    "currentChallenges": "Warehouse throughput bottleneck and cold chain logistics.",
+    "expectedOutcomes": "Double supply capacity across southern states within 6 months.",
+    "status": "SUBMITTED",
+    "latestFicUpdate": "Your scaling request has been received. Our team is reviewing your business requirements.",
+    "whatHappensNext": "FIC will review your request and share an update.",
+    "updateHistory": [
+      {
+        "date": "13 November 2026",
+        "status": "Submitted",
+        "update": "Your scaling request has been received. Our team is reviewing your business requirements.",
+        "updatedBy": "FIC Enterprise Desk",
+        "_id": "6af6a6f9662b7d4b737484f3"
+      }
+    ],
+    "assignedSpecialist": {
+      "isApprovedForMember": false
+    },
+    "assessmentSummary": {
+      "mainChallenges": [],
+      "areasToImprove": [],
+      "isCompleted": false
+    },
+    "memberAction": {
+      "isRequired": false
+    },
+    "activityHistory": [
+      {
+        "title": "Request Submitted",
+        "description": "Enterprise scaling request received by FIC Scaling Desk under strict non-disclosure.",
+        "timestamp": "Today",
+        "_id": "6af6a6f9662b7d4b737484f4"
+      }
+    ],
+    "milestones": [],
+    "createdAt": "2026-11-13T05:58:17.487Z",
+    "updatedAt": "2026-11-13T05:58:17.487Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a8789f45f068ab3c2a8a",
+    "userId": "6af6a8739f45f068ab3c299c",
+    "refNumber": "SCALE-2026-659",
+    "businessName": "Apex Agro Logistics",
+    "supportType": "EXPANSION_SCALING",
+    "currentChallenges": "Warehouse throughput bottleneck and cold chain logistics.",
+    "expectedOutcomes": "Double supply capacity across southern states within 6 months.",
+    "status": "SUBMITTED",
+    "latestFicUpdate": "Your scaling request has been received. Our team is reviewing your business requirements.",
+    "whatHappensNext": "FIC will review your request and share an update.",
+    "updateHistory": [
+      {
+        "date": "13 November 2026",
+        "status": "Submitted",
+        "update": "Your scaling request has been received. Our team is reviewing your business requirements.",
+        "updatedBy": "FIC Enterprise Desk",
+        "_id": "6af6a8789f45f068ab3c2a8b"
+      }
+    ],
+    "assignedSpecialist": {
+      "isApprovedForMember": false
+    },
+    "assessmentSummary": {
+      "mainChallenges": [],
+      "areasToImprove": [],
+      "isCompleted": false
+    },
+    "memberAction": {
+      "isRequired": false
+    },
+    "activityHistory": [
+      {
+        "title": "Request Submitted",
+        "description": "Enterprise scaling request received by FIC Scaling Desk under strict non-disclosure.",
+        "timestamp": "Today",
+        "_id": "6af6a8789f45f068ab3c2a8c"
+      }
+    ],
+    "milestones": [],
+    "createdAt": "2026-11-13T06:04:40.052Z",
+    "updatedAt": "2026-11-13T06:04:40.052Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a926e469ab2fbfd89f00",
+    "userId": "6af6a921e469ab2fbfd89e11",
+    "refNumber": "SCALE-2026-916",
+    "businessName": "Apex Agro Logistics",
+    "supportType": "EXPANSION_SCALING",
+    "currentChallenges": "Warehouse throughput bottleneck and cold chain logistics.",
+    "expectedOutcomes": "Double supply capacity across southern states within 6 months.",
+    "status": "SUBMITTED",
+    "latestFicUpdate": "Your scaling request has been received. Our team is reviewing your business requirements.",
+    "whatHappensNext": "FIC will review your request and share an update.",
+    "updateHistory": [
+      {
+        "date": "13 November 2026",
+        "status": "Submitted",
+        "update": "Your scaling request has been received. Our team is reviewing your business requirements.",
+        "updatedBy": "FIC Enterprise Desk",
+        "_id": "6af6a926e469ab2fbfd89f01"
+      }
+    ],
+    "assignedSpecialist": {
+      "isApprovedForMember": false
+    },
+    "assessmentSummary": {
+      "mainChallenges": [],
+      "areasToImprove": [],
+      "isCompleted": false
+    },
+    "memberAction": {
+      "isRequired": false
+    },
+    "activityHistory": [
+      {
+        "title": "Request Submitted",
+        "description": "Enterprise scaling request received by FIC Scaling Desk under strict non-disclosure.",
+        "timestamp": "Today",
+        "_id": "6af6a926e469ab2fbfd89f02"
+      }
+    ],
+    "milestones": [],
+    "createdAt": "2026-11-13T06:07:34.982Z",
+    "updatedAt": "2026-11-13T06:07:34.982Z",
+    "__v": 0
+  },
+  {
+    "_id": "6af6a99ebe2ca4f26e49b4dc",
+    "userId": "6af6a999be2ca4f26e49b3ec",
+    "refNumber": "SCALE-2026-968",
+    "businessName": "Apex Agro Logistics",
+    "supportType": "EXPANSION_SCALING",
+    "currentChallenges": "Warehouse throughput bottleneck and cold chain logistics.",
+    "expectedOutcomes": "Double supply capacity across southern states within 6 months.",
+    "status": "SUBMITTED",
+    "latestFicUpdate": "Your scaling request has been received. Our team is reviewing your business requirements.",
+    "whatHappensNext": "FIC will review your request and share an update.",
+    "updateHistory": [
+      {
+        "date": "13 November 2026",
+        "status": "Submitted",
+        "update": "Your scaling request has been received. Our team is reviewing your business requirements.",
+        "updatedBy": "FIC Enterprise Desk",
+        "_id": "6af6a99ebe2ca4f26e49b4dd"
+      }
+    ],
+    "assignedSpecialist": {
+      "isApprovedForMember": false
+    },
+    "assessmentSummary": {
+      "mainChallenges": [],
+      "areasToImprove": [],
+      "isCompleted": false
+    },
+    "memberAction": {
+      "isRequired": false
+    },
+    "activityHistory": [
+      {
+        "title": "Request Submitted",
+        "description": "Enterprise scaling request received by FIC Scaling Desk under strict non-disclosure.",
+        "timestamp": "Today",
+        "_id": "6af6a99ebe2ca4f26e49b4de"
+      }
+    ],
+    "milestones": [],
+    "createdAt": "2026-11-13T06:09:34.512Z",
+    "updatedAt": "2026-11-13T06:09:34.512Z",
+    "__v": 0
+  }
+]

@@ -1,0 +1,677 @@
+[
+  {
+    "_id": "6aed7fa3b088226ebfc7fdad",
+    "name": "Business & Entrepreneurship",
+    "slug": "business-entrepreneurship",
+    "description": "Businesses, startups, retail, wholesale, distribution, franchises, and entrepreneurs.",
+    "iconName": "Briefcase",
+    "displayOrder": 1,
+    "isActive": true,
+    "createdAt": "2026-11-06T07:20:03.916Z",
+    "updatedAt": "2026-11-14T03:59:52.067Z",
+    "__v": 0,
+    "allowMultipleSubcategories": true,
+    "icon": "Briefcase",
+    "kycRequirements": [
+      {
+        "docKey": "govt_id",
+        "title": "Proprietor / Director Aadhaar or PAN",
+        "description": "Clear photo or PDF of government issued ID",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      },
+      {
+        "docKey": "business_proof",
+        "title": "Business Registration / GST / Udyam Certificate",
+        "description": "Document showing business registration",
+        "required": false,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      }
+    ],
+    "subcategories": [
+      {
+        "name": "Business Owner",
+        "slug": "business-owner",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b59"
+      },
+      {
+        "name": "Startup Founder",
+        "slug": "startup-founder",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b5a"
+      },
+      {
+        "name": "Retailer",
+        "slug": "retailer",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b5b"
+      },
+      {
+        "name": "Wholesaler",
+        "slug": "wholesaler",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b5c"
+      },
+      {
+        "name": "Distributor",
+        "slug": "distributor",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b5d"
+      },
+      {
+        "name": "Franchise Owner",
+        "slug": "franchise-owner",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b5e"
+      },
+      {
+        "name": "Business Idea Owner",
+        "slug": "business-idea-owner",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b5f"
+      }
+    ]
+  },
+  {
+    "_id": "6aed7fa4b088226ebfc7fdc0",
+    "name": "Manufacturing & Industrial",
+    "slug": "manufacturing-industrial",
+    "description": "Textile, garments, machinery, food processing, industrial supply, and factories.",
+    "iconName": "Factory",
+    "displayOrder": 2,
+    "isActive": true,
+    "createdAt": "2026-11-06T07:20:04.239Z",
+    "updatedAt": "2026-11-14T03:59:52.759Z",
+    "__v": 0,
+    "allowMultipleSubcategories": true,
+    "icon": "Factory",
+    "kycRequirements": [
+      {
+        "docKey": "factory_license",
+        "title": "Factory License / Udyam Registration",
+        "description": "Valid industrial registration proof",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      },
+      {
+        "docKey": "gst_certificate",
+        "title": "GST Registration Certificate",
+        "description": "Mandatory for industrial manufacturers",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      }
+    ],
+    "subcategories": [
+      {
+        "name": "Textile Manufacturer",
+        "slug": "textile-manufacturer",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b87"
+      },
+      {
+        "name": "Garment Manufacturer",
+        "slug": "garment-manufacturer",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b88"
+      },
+      {
+        "name": "Factory Owner",
+        "slug": "factory-owner",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b89"
+      },
+      {
+        "name": "Machinery Manufacturer",
+        "slug": "machinery-manufacturer",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b8a"
+      },
+      {
+        "name": "Food Processor",
+        "slug": "food-processor",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b8b"
+      },
+      {
+        "name": "Industrial Supplier",
+        "slug": "industrial-supplier",
+        "isActive": true,
+        "_id": "6af7dcb8bc1c3562bafc9b8c"
+      }
+    ]
+  },
+  {
+    "_id": "6aed7fa4b088226ebfc7fdd0",
+    "name": "Technology & Digital",
+    "slug": "technology-digital",
+    "description": "Software development, IT services, AI, cybersecurity, freelancers, and digital agencies.",
+    "iconName": "Code",
+    "displayOrder": 3,
+    "isActive": true,
+    "createdAt": "2026-11-06T07:20:04.534Z",
+    "updatedAt": "2026-11-14T03:59:53.353Z",
+    "__v": 1,
+    "allowMultipleSubcategories": true,
+    "icon": "Code",
+    "kycRequirements": [
+      {
+        "docKey": "govt_id",
+        "title": "Government ID (Aadhaar / PAN)",
+        "description": "ID proof of the professional",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      }
+    ],
+    "subcategories": [
+      {
+        "name": "Software Developer",
+        "slug": "software-developer",
+        "isActive": true,
+        "_id": "6af7dcb9bc1c3562bafc9baa"
+      },
+      {
+        "name": "IT Professional",
+        "slug": "it-professional",
+        "isActive": true,
+        "_id": "6af7dcb9bc1c3562bafc9bab"
+      },
+      {
+        "name": "Freelancer",
+        "slug": "freelancer",
+        "isActive": true,
+        "_id": "6af7dcb9bc1c3562bafc9bac"
+      },
+      {
+        "name": "AI Professional",
+        "slug": "ai-professional",
+        "isActive": true,
+        "_id": "6af7dcb9bc1c3562bafc9bad"
+      },
+      {
+        "name": "Cybersecurity Specialist",
+        "slug": "cybersecurity-specialist",
+        "isActive": true,
+        "_id": "6af7dcb9bc1c3562bafc9bae"
+      },
+      {
+        "name": "Technology Startup",
+        "slug": "technology-startup",
+        "isActive": true,
+        "_id": "6af7dcb9bc1c3562bafc9baf"
+      }
+    ],
+    "customFields": []
+  },
+  {
+    "_id": "6aed7fa4b088226ebfc7fdde",
+    "name": "Education & Knowledge",
+    "slug": "education-knowledge",
+    "description": "Students, professors, mentors, trainers, researchers, and educational consultants.",
+    "iconName": "GraduationCap",
+    "displayOrder": 4,
+    "isActive": true,
+    "createdAt": "2026-11-06T07:20:04.876Z",
+    "updatedAt": "2026-11-14T03:59:53.879Z",
+    "__v": 0,
+    "allowMultipleSubcategories": true,
+    "icon": "GraduationCap",
+    "kycRequirements": [
+      {
+        "docKey": "college_id",
+        "title": "College ID Card",
+        "description": "Upload a clear image or PDF of your current college identity card.",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      }
+    ],
+    "subcategories": [
+      {
+        "name": "Student",
+        "slug": "student",
+        "isActive": true,
+        "_id": "6af7dcb9bc1c3562bafc9bcb"
+      },
+      {
+        "name": "Teacher / Professor",
+        "slug": "teacher-professor",
+        "isActive": true,
+        "_id": "6af7dcb9bc1c3562bafc9bcc"
+      },
+      {
+        "name": "Mentor / Trainer",
+        "slug": "mentor-trainer",
+        "isActive": true,
+        "_id": "6af7dcb9bc1c3562bafc9bcd"
+      },
+      {
+        "name": "Researcher",
+        "slug": "researcher",
+        "isActive": true,
+        "_id": "6af7dcb9bc1c3562bafc9bce"
+      },
+      {
+        "name": "Educational Consultant",
+        "slug": "educational-consultant",
+        "isActive": true,
+        "_id": "6af7dcb9bc1c3562bafc9bcf"
+      }
+    ]
+  },
+  {
+    "_id": "6aed7fa5b088226ebfc7fdeb",
+    "name": "Professional & Personal Services",
+    "slug": "professional-personal-services",
+    "description": "Consultants, chartered accountants, legal advocates, architects, designers, and technicians.",
+    "iconName": "FileCheck",
+    "displayOrder": 5,
+    "isActive": true,
+    "createdAt": "2026-11-06T07:20:05.118Z",
+    "updatedAt": "2026-11-14T03:59:54.419Z",
+    "__v": 0,
+    "allowMultipleSubcategories": true,
+    "icon": "FileCheck",
+    "kycRequirements": [
+      {
+        "docKey": "professional_credential",
+        "title": "Professional Body Certificate or Degree",
+        "description": "License to practice or degree certificate",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      }
+    ],
+    "subcategories": [
+      {
+        "name": "Chartered Accountant",
+        "slug": "chartered-accountant",
+        "isActive": true,
+        "_id": "6af7dcbabc1c3562bafc9be8"
+      },
+      {
+        "name": "Legal Consultant / Advocate",
+        "slug": "legal-consultant-advocate",
+        "isActive": true,
+        "_id": "6af7dcbabc1c3562bafc9be9"
+      },
+      {
+        "name": "Architect & Civil Engineer",
+        "slug": "architect-civil-engineer",
+        "isActive": true,
+        "_id": "6af7dcbabc1c3562bafc9bea"
+      },
+      {
+        "name": "Corporate Consultant",
+        "slug": "corporate-consultant",
+        "isActive": true,
+        "_id": "6af7dcbabc1c3562bafc9beb"
+      },
+      {
+        "name": "Skilled Technician",
+        "slug": "skilled-technician",
+        "isActive": true,
+        "_id": "6af7dcbabc1c3562bafc9bec"
+      }
+    ]
+  },
+  {
+    "_id": "6aed7fa5b088226ebfc7fdf7",
+    "name": "Agriculture & Natural Resources",
+    "slug": "agriculture-natural-resources",
+    "description": "Farmers, agri-enterprises, dairy, fisheries, organic producers, and allied agri-supply chain.",
+    "iconName": "Sprout",
+    "displayOrder": 6,
+    "isActive": true,
+    "createdAt": "2026-11-06T07:20:05.384Z",
+    "updatedAt": "2026-11-14T03:59:54.945Z",
+    "__v": 0,
+    "allowMultipleSubcategories": true,
+    "icon": "Sprout",
+    "kycRequirements": [
+      {
+        "docKey": "agri_id",
+        "title": "Kisan Passbook / Land Patta or Farmer Govt ID",
+        "description": "Agricultural verification proof",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      }
+    ],
+    "subcategories": [
+      {
+        "name": "Farmer / Landowner",
+        "slug": "farmer-landowner",
+        "isActive": true,
+        "_id": "6af7dcbabc1c3562bafc9c05"
+      },
+      {
+        "name": "Agri-Business Owner",
+        "slug": "agri-business-owner",
+        "isActive": true,
+        "_id": "6af7dcbabc1c3562bafc9c06"
+      },
+      {
+        "name": "Dairy & Livestock",
+        "slug": "dairy-livestock",
+        "isActive": true,
+        "_id": "6af7dcbabc1c3562bafc9c07"
+      },
+      {
+        "name": "Fisheries",
+        "slug": "fisheries",
+        "isActive": true,
+        "_id": "6af7dcbabc1c3562bafc9c08"
+      },
+      {
+        "name": "Agri-Consultant",
+        "slug": "agri-consultant",
+        "isActive": true,
+        "_id": "6af7dcbabc1c3562bafc9c09"
+      }
+    ]
+  },
+  {
+    "_id": "6aed7fa5b088226ebfc7fe03",
+    "name": "Investment & Finance",
+    "slug": "investment-finance",
+    "description": "Private investors, seed syndicates, financial consultants, and funding seekers.",
+    "iconName": "TrendingUp",
+    "displayOrder": 7,
+    "isActive": true,
+    "createdAt": "2026-11-06T07:20:05.643Z",
+    "updatedAt": "2026-11-14T03:59:55.404Z",
+    "__v": 0,
+    "allowMultipleSubcategories": true,
+    "icon": "TrendingUp",
+    "kycRequirements": [
+      {
+        "docKey": "pan_card",
+        "title": "PAN Card (Mandatory for Investment/Funding)",
+        "description": "Government PAN card",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      }
+    ],
+    "subcategories": [
+      {
+        "name": "Angel / Private Investor",
+        "slug": "angel-private-investor",
+        "isActive": true,
+        "_id": "6af7dcbbbc1c3562bafc9c20"
+      },
+      {
+        "name": "Funding Seeker",
+        "slug": "funding-seeker",
+        "isActive": true,
+        "_id": "6af7dcbbbc1c3562bafc9c21"
+      },
+      {
+        "name": "Financial Consultant",
+        "slug": "financial-consultant",
+        "isActive": true,
+        "_id": "6af7dcbbbc1c3562bafc9c22"
+      },
+      {
+        "name": "Wealth & Investment Advisory",
+        "slug": "wealth-investment-advisory",
+        "isActive": true,
+        "_id": "6af7dcbbbc1c3562bafc9c23"
+      }
+    ]
+  },
+  {
+    "_id": "6aed7fa5b088226ebfc7fe0e",
+    "name": "Healthcare & Wellness",
+    "slug": "healthcare-wellness",
+    "description": "Doctors, hospitals, wellness clinics, pharma distributors, and health practitioners.",
+    "iconName": "HeartPulse",
+    "displayOrder": 8,
+    "isActive": true,
+    "createdAt": "2026-11-06T07:20:05.888Z",
+    "updatedAt": "2026-11-14T03:59:55.864Z",
+    "__v": 0,
+    "allowMultipleSubcategories": true,
+    "icon": "HeartPulse",
+    "kycRequirements": [
+      {
+        "docKey": "medical_license",
+        "title": "Medical Council Registration or Drug License",
+        "description": "Valid healthcare verification",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      }
+    ],
+    "subcategories": [
+      {
+        "name": "Doctor / Medical Professional",
+        "slug": "doctor-medical-professional",
+        "isActive": true,
+        "_id": "6af7dcbbbc1c3562bafc9c39"
+      },
+      {
+        "name": "Clinic / Hospital Owner",
+        "slug": "clinic-hospital-owner",
+        "isActive": true,
+        "_id": "6af7dcbbbc1c3562bafc9c3a"
+      },
+      {
+        "name": "Wellness & Fitness Expert",
+        "slug": "wellness-fitness-expert",
+        "isActive": true,
+        "_id": "6af7dcbbbc1c3562bafc9c3b"
+      },
+      {
+        "name": "Pharmaceutical Distributor",
+        "slug": "pharmaceutical-distributor",
+        "isActive": true,
+        "_id": "6af7dcbbbc1c3562bafc9c3c"
+      }
+    ]
+  },
+  {
+    "_id": "6aed7fa6b088226ebfc7fe19",
+    "name": "Creative, Media & Lifestyle",
+    "slug": "creative-media-lifestyle",
+    "description": "Content creators, media producers, fashion designers, photographers, and event managers.",
+    "iconName": "Camera",
+    "displayOrder": 9,
+    "isActive": true,
+    "createdAt": "2026-11-06T07:20:06.104Z",
+    "updatedAt": "2026-11-14T03:59:56.324Z",
+    "__v": 0,
+    "allowMultipleSubcategories": true,
+    "icon": "Camera",
+    "kycRequirements": [
+      {
+        "docKey": "govt_id",
+        "title": "Government Photo ID",
+        "description": "Aadhaar / Voter ID / Passport",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      }
+    ],
+    "subcategories": [
+      {
+        "name": "Content Creator / Media Producer",
+        "slug": "content-creator-media-producer",
+        "isActive": true,
+        "_id": "6af7dcbcbc1c3562bafc9c50"
+      },
+      {
+        "name": "Fashion Designer",
+        "slug": "fashion-designer",
+        "isActive": true,
+        "_id": "6af7dcbcbc1c3562bafc9c51"
+      },
+      {
+        "name": "Event Manager",
+        "slug": "event-manager",
+        "isActive": true,
+        "_id": "6af7dcbcbc1c3562bafc9c52"
+      },
+      {
+        "name": "Photographer / Videographer",
+        "slug": "photographer-videographer",
+        "isActive": true,
+        "_id": "6af7dcbcbc1c3562bafc9c53"
+      }
+    ]
+  },
+  {
+    "_id": "6aed7fa6b088226ebfc7fe23",
+    "name": "Employment, Community & Social Development",
+    "slug": "employment-community-social",
+    "description": "Job seekers, skill development, NGOs, community leaders, and retired professionals.",
+    "iconName": "Users",
+    "displayOrder": 10,
+    "isActive": true,
+    "createdAt": "2026-11-06T07:20:06.317Z",
+    "updatedAt": "2026-11-14T03:59:56.794Z",
+    "__v": 0,
+    "allowMultipleSubcategories": true,
+    "icon": "Users",
+    "kycRequirements": [
+      {
+        "docKey": "govt_id",
+        "title": "Government Photo ID",
+        "description": "Aadhaar / Driving License",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      }
+    ],
+    "subcategories": [
+      {
+        "name": "Job Seeker / Fresher",
+        "slug": "job-seeker-fresher",
+        "isActive": true,
+        "_id": "6af7dcbcbc1c3562bafc9c67"
+      },
+      {
+        "name": "Experienced Professional",
+        "slug": "experienced-professional",
+        "isActive": true,
+        "_id": "6af7dcbcbc1c3562bafc9c68"
+      },
+      {
+        "name": "NGO & Social Enterprise",
+        "slug": "ngo-social-enterprise",
+        "isActive": true,
+        "_id": "6af7dcbcbc1c3562bafc9c69"
+      },
+      {
+        "name": "Retired Professional Advisor",
+        "slug": "retired-professional-advisor",
+        "isActive": true,
+        "_id": "6af7dcbcbc1c3562bafc9c6a"
+      }
+    ]
+  },
+  {
+    "_id": "6af6b06a275b946ea876991a",
+    "name": "new category",
+    "slug": "miuy",
+    "description": "new category category",
+    "isActive": true,
+    "allowMultipleSubcategories": true,
+    "subcategories": [
+      {
+        "name": "first",
+        "slug": "first",
+        "isActive": true,
+        "_id": "6af6b06a275b946ea876991b"
+      },
+      {
+        "name": "second",
+        "slug": "second",
+        "isActive": true,
+        "_id": "6af6b06a275b946ea876991c"
+      }
+    ],
+    "customFields": [],
+    "kycRequirements": [
+      {
+        "docKey": "pan_card",
+        "title": "PAN Card",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      },
+      {
+        "docKey": "business_registration_certificate",
+        "title": "Business Registration Certificate",
+        "required": true,
+        "allowedExtensions": [
+          "pdf",
+          "jpg",
+          "png"
+        ],
+        "maxSizeMB": 5
+      }
+    ],
+    "createdAt": "2026-11-13T06:38:34.468Z",
+    "updatedAt": "2026-11-13T06:38:34.554Z",
+    "__v": 0
+  }
+]

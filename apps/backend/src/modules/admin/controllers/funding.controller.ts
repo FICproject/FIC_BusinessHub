@@ -25,7 +25,7 @@ export const getOrCreateMemberWallet = async (
     wallet = await AdminMemberWalletModel.create({
       memberId: new mongoose.Types.ObjectId(memberId.toString()),
       memberEmail: memberEmail.toLowerCase(),
-      balance: 50000,
+      balance: 0,
       currency: 'INR',
       currencySymbol: '₹',
       status: 'ACTIVE',
@@ -591,21 +591,9 @@ router.post('/pools/:id/invest', authenticateAdmin, requireRole('SUPER_ADMIN', '
     // 3. Update & Deduct from Member Wallet with persistent ledger transaction
     try {
       const wallet = await getOrCreateMemberWallet(member._id, member.email, member.name);
-      // Ensure wallet has enough funds for mock testing
       if (wallet.balance < amount) {
-        wallet.balance += amount + 50000; // Top-up automatically for smooth mock experience
-        wallet.transactions.unshift({
-          id: `TXN-TOPUP-${Date.now()}`,
-          type: 'CREDIT',
-          title: 'Wallet Balance Auto-Refill',
-          category: 'Account Funding',
-          amount: amount + 50000,
-          currency: 'INR',
-          status: 'SUCCESS',
-          reference: `TOPUP-${Date.now()}`,
-          date: new Date().toISOString(),
-          description: 'Automatic test balance top-up for investment demo',
-        });
+        res.status(400).json({ success: false, error: 'Insufficient wallet balance for this investment pledge' });
+        return;
       }
 
       // Deduct invested principal

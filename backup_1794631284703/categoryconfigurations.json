@@ -1,0 +1,572 @@
+[
+  {
+    "_id": "6aed7fa4178af30f3a94af27",
+    "categoryId": "6aed7fa3b088226ebfc7fdad",
+    "__v": 0,
+    "createdAt": "2026-11-06T07:20:04.171Z",
+    "dashboardWidgets": [
+      "overview-stats",
+      "active-requests",
+      "category-insights",
+      "opportunity-bulletin"
+    ],
+    "featuresEnabled": [
+      "services-discovery",
+      "business-ideas",
+      "investment-readiness",
+      "partnerships"
+    ],
+    "kycRequiredDocuments": [
+      {
+        "documentType": "GOVT_ID",
+        "label": "Proprietor / Director Aadhaar or PAN",
+        "description": "Clear photo or PDF of government issued ID",
+        "required": true,
+        "_id": "6af7dcb7bc1c3562bafc9b4e"
+      },
+      {
+        "documentType": "BUSINESS_PROOF",
+        "label": "Business Registration / GST / Udyam Certificate",
+        "description": "Document showing business registration",
+        "required": false,
+        "_id": "6af7dcb7bc1c3562bafc9b4f"
+      }
+    ],
+    "registrationFields": [
+      {
+        "fieldKey": "businessName",
+        "label": "Registered Entity / Trade Name",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. Apex Enterprises",
+        "_id": "6af7dcb7bc1c3562bafc9b4a"
+      },
+      {
+        "fieldKey": "businessStage",
+        "label": "Current Stage",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Idea Stage",
+          "Early Stage (1-3 yrs)",
+          "Established (3+ yrs)",
+          "Expansion Stage"
+        ],
+        "_id": "6af7dcb7bc1c3562bafc9b4b"
+      },
+      {
+        "fieldKey": "annualTurnover",
+        "label": "Approximate Annual Turnover",
+        "type": "select",
+        "required": false,
+        "options": [
+          "Below ₹10 Lakhs",
+          "₹10L - ₹50L",
+          "₹50L - ₹2 Cr",
+          "Above ₹2 Cr"
+        ],
+        "_id": "6af7dcb7bc1c3562bafc9b4c"
+      },
+      {
+        "fieldKey": "gstNumber",
+        "label": "GSTIN (if applicable)",
+        "type": "text",
+        "required": false,
+        "options": [],
+        "placeholder": "33AAAAA0000A1Z5",
+        "_id": "6af7dcb7bc1c3562bafc9b4d"
+      }
+    ],
+    "status": "PUBLISHED",
+    "updatedAt": "2026-11-14T03:59:51.649Z",
+    "version": 1
+  },
+  {
+    "_id": "6aed7fa4178af30f3a94af2e",
+    "categoryId": "6aed7fa4b088226ebfc7fdc0",
+    "__v": 0,
+    "createdAt": "2026-11-06T07:20:04.464Z",
+    "dashboardWidgets": [
+      "overview-stats",
+      "active-requests",
+      "category-insights",
+      "opportunity-bulletin"
+    ],
+    "featuresEnabled": [
+      "services-discovery",
+      "business-ideas",
+      "investment-readiness",
+      "partnerships"
+    ],
+    "kycRequiredDocuments": [
+      {
+        "documentType": "FACTORY_LICENSE",
+        "label": "Factory License / Udyam Registration",
+        "description": "Valid industrial registration proof",
+        "required": true,
+        "_id": "6af7dcb8bc1c3562bafc9b7e"
+      },
+      {
+        "documentType": "GST_CERTIFICATE",
+        "label": "GST Registration Certificate",
+        "description": "Mandatory for industrial manufacturers",
+        "required": true,
+        "_id": "6af7dcb8bc1c3562bafc9b7f"
+      }
+    ],
+    "registrationFields": [
+      {
+        "fieldKey": "factoryName",
+        "label": "Factory / Unit Name",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. TexFab Mills",
+        "_id": "6af7dcb8bc1c3562bafc9b7a"
+      },
+      {
+        "fieldKey": "manufacturingType",
+        "label": "Primary Products Manufactured",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. Cotton Yarns, Knitted Garments",
+        "_id": "6af7dcb8bc1c3562bafc9b7b"
+      },
+      {
+        "fieldKey": "monthlyCapacity",
+        "label": "Monthly Production Capacity",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. 50,000 units / month",
+        "_id": "6af7dcb8bc1c3562bafc9b7c"
+      },
+      {
+        "fieldKey": "factoryLocation",
+        "label": "Factory District & State",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. Tiruppur, Tamil Nadu",
+        "_id": "6af7dcb8bc1c3562bafc9b7d"
+      }
+    ],
+    "status": "PUBLISHED",
+    "updatedAt": "2026-11-14T03:59:52.691Z",
+    "version": 1
+  },
+  {
+    "_id": "6aed7fa4178af30f3a94af35",
+    "categoryId": "6aed7fa4b088226ebfc7fdd0",
+    "__v": 0,
+    "createdAt": "2026-11-06T07:20:04.781Z",
+    "dashboardWidgets": [
+      "overview-stats",
+      "active-requests",
+      "category-insights",
+      "opportunity-bulletin"
+    ],
+    "featuresEnabled": [
+      "services-discovery",
+      "business-ideas",
+      "investment-readiness",
+      "partnerships"
+    ],
+    "kycRequiredDocuments": [
+      {
+        "documentType": "GOVT_ID",
+        "label": "Government ID (Aadhaar / PAN)",
+        "description": "ID proof of the professional",
+        "required": true,
+        "_id": "6af7dcb9bc1c3562bafc9ba4"
+      }
+    ],
+    "registrationFields": [
+      {
+        "fieldKey": "primarySkillset",
+        "label": "Core Technical Skills",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. React, Node.js, Cloud Architecture",
+        "_id": "6af7dcb9bc1c3562bafc9ba1"
+      },
+      {
+        "fieldKey": "portfolioUrl",
+        "label": "Portfolio / GitHub / Website",
+        "type": "text",
+        "required": false,
+        "options": [],
+        "placeholder": "https://github.com/username",
+        "_id": "6af7dcb9bc1c3562bafc9ba2"
+      },
+      {
+        "fieldKey": "yearsOfExperience",
+        "label": "Years in Industry",
+        "type": "select",
+        "required": true,
+        "options": [
+          "0-1 year",
+          "1-3 years",
+          "3-7 years",
+          "7+ years"
+        ],
+        "_id": "6af7dcb9bc1c3562bafc9ba3"
+      }
+    ],
+    "status": "PUBLISHED",
+    "updatedAt": "2026-11-14T03:59:53.285Z",
+    "version": 1
+  },
+  {
+    "_id": "6aed7fa5178af30f3a94af3b",
+    "categoryId": "6aed7fa4b088226ebfc7fdde",
+    "__v": 0,
+    "createdAt": "2026-11-06T07:20:05.061Z",
+    "dashboardWidgets": [
+      "overview-stats",
+      "active-requests",
+      "category-insights",
+      "opportunity-bulletin"
+    ],
+    "featuresEnabled": [
+      "services-discovery",
+      "business-ideas",
+      "investment-readiness",
+      "partnerships"
+    ],
+    "kycRequiredDocuments": [
+      {
+        "documentType": "COLLEGE_ID",
+        "label": "College ID Card",
+        "description": "Upload a clear image or PDF of your current college identity card.",
+        "required": true,
+        "_id": "6af7dcb9bc1c3562bafc9bc5"
+      }
+    ],
+    "registrationFields": [
+      {
+        "fieldKey": "institutionName",
+        "label": "Institution / College / University",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. Anna University",
+        "_id": "6af7dcb9bc1c3562bafc9bc2"
+      },
+      {
+        "fieldKey": "educationLevel",
+        "label": "Current Qualification / Role",
+        "type": "select",
+        "required": true,
+        "options": [
+          "Undergraduate Student",
+          "Postgraduate Student",
+          "Faculty Member",
+          "Professional Trainer"
+        ],
+        "_id": "6af7dcb9bc1c3562bafc9bc3"
+      },
+      {
+        "fieldKey": "areasOfInterest",
+        "label": "Career or Research Interests",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. AI Entrepreneurship, Renewable Energy",
+        "_id": "6af7dcb9bc1c3562bafc9bc4"
+      }
+    ],
+    "status": "PUBLISHED",
+    "updatedAt": "2026-11-14T03:59:53.812Z",
+    "version": 1
+  },
+  {
+    "_id": "6aed7fa5178af30f3a94af41",
+    "categoryId": "6aed7fa5b088226ebfc7fdeb",
+    "__v": 0,
+    "createdAt": "2026-11-06T07:20:05.321Z",
+    "dashboardWidgets": [
+      "overview-stats",
+      "active-requests",
+      "category-insights",
+      "opportunity-bulletin"
+    ],
+    "featuresEnabled": [
+      "services-discovery",
+      "business-ideas",
+      "investment-readiness",
+      "partnerships"
+    ],
+    "kycRequiredDocuments": [
+      {
+        "documentType": "PROFESSIONAL_CREDENTIAL",
+        "label": "Professional Body Certificate or Degree",
+        "description": "License to practice or degree certificate",
+        "required": true,
+        "_id": "6af7dcbabc1c3562bafc9be3"
+      }
+    ],
+    "registrationFields": [
+      {
+        "fieldKey": "professionalLicense",
+        "label": "Bar Council / ICAI / Council of Architecture Reg No",
+        "type": "text",
+        "required": false,
+        "options": [],
+        "placeholder": "Membership / Reg number",
+        "_id": "6af7dcbabc1c3562bafc9be1"
+      },
+      {
+        "fieldKey": "practiceCity",
+        "label": "Primary City of Practice",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. Chennai, Coimbatore",
+        "_id": "6af7dcbabc1c3562bafc9be2"
+      }
+    ],
+    "status": "PUBLISHED",
+    "updatedAt": "2026-11-14T03:59:54.352Z",
+    "version": 1
+  },
+  {
+    "_id": "6aed7fa5178af30f3a94af47",
+    "categoryId": "6aed7fa5b088226ebfc7fdf7",
+    "__v": 0,
+    "createdAt": "2026-11-06T07:20:05.583Z",
+    "dashboardWidgets": [
+      "overview-stats",
+      "active-requests",
+      "category-insights",
+      "opportunity-bulletin"
+    ],
+    "featuresEnabled": [
+      "services-discovery",
+      "business-ideas",
+      "investment-readiness",
+      "partnerships"
+    ],
+    "kycRequiredDocuments": [
+      {
+        "documentType": "AGRI_ID",
+        "label": "Kisan Passbook / Land Patta or Farmer Govt ID",
+        "description": "Agricultural verification proof",
+        "required": true,
+        "_id": "6af7dcbabc1c3562bafc9c00"
+      }
+    ],
+    "registrationFields": [
+      {
+        "fieldKey": "cropOrProduct",
+        "label": "Primary Crop or Agri Product",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. Organic Paddy, Coconut, Dairy",
+        "_id": "6af7dcbabc1c3562bafc9bfe"
+      },
+      {
+        "fieldKey": "landArea",
+        "label": "Operational Land Area (Acres) / Facility Size",
+        "type": "text",
+        "required": false,
+        "options": [],
+        "placeholder": "e.g. 5 Acres",
+        "_id": "6af7dcbabc1c3562bafc9bff"
+      }
+    ],
+    "status": "PUBLISHED",
+    "updatedAt": "2026-11-14T03:59:54.877Z",
+    "version": 1
+  },
+  {
+    "_id": "6aed7fa5178af30f3a94af4c",
+    "categoryId": "6aed7fa5b088226ebfc7fe03",
+    "__v": 0,
+    "createdAt": "2026-11-06T07:20:05.826Z",
+    "dashboardWidgets": [
+      "overview-stats",
+      "active-requests",
+      "category-insights",
+      "opportunity-bulletin"
+    ],
+    "featuresEnabled": [
+      "services-discovery",
+      "business-ideas",
+      "investment-readiness",
+      "partnerships"
+    ],
+    "kycRequiredDocuments": [
+      {
+        "documentType": "PAN_CARD",
+        "label": "PAN Card (Mandatory for Investment/Funding)",
+        "description": "Government PAN card",
+        "required": true,
+        "_id": "6af7dcbbbc1c3562bafc9c1b"
+      }
+    ],
+    "registrationFields": [
+      {
+        "fieldKey": "ticketSize",
+        "label": "Investment Range / Funding Appetite",
+        "type": "select",
+        "required": true,
+        "options": [
+          "₹5 Lakhs - ₹25 Lakhs",
+          "₹25 Lakhs - ₹1 Crore",
+          "₹1 Crore - ₹5 Crores",
+          "Above ₹5 Crores"
+        ],
+        "_id": "6af7dcbbbc1c3562bafc9c19"
+      },
+      {
+        "fieldKey": "preferredIndustries",
+        "label": "Preferred Industries",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. Tech, Manufacturing, Agri-tech",
+        "_id": "6af7dcbbbc1c3562bafc9c1a"
+      }
+    ],
+    "status": "PUBLISHED",
+    "updatedAt": "2026-11-14T03:59:55.337Z",
+    "version": 1
+  },
+  {
+    "_id": "6aed7fa6178af30f3a94af51",
+    "categoryId": "6aed7fa5b088226ebfc7fe0e",
+    "__v": 0,
+    "createdAt": "2026-11-06T07:20:06.044Z",
+    "dashboardWidgets": [
+      "overview-stats",
+      "active-requests",
+      "category-insights",
+      "opportunity-bulletin"
+    ],
+    "featuresEnabled": [
+      "services-discovery",
+      "business-ideas",
+      "investment-readiness",
+      "partnerships"
+    ],
+    "kycRequiredDocuments": [
+      {
+        "documentType": "MEDICAL_LICENSE",
+        "label": "Medical Council Registration or Drug License",
+        "description": "Valid healthcare verification",
+        "required": true,
+        "_id": "6af7dcbbbc1c3562bafc9c34"
+      }
+    ],
+    "registrationFields": [
+      {
+        "fieldKey": "medicalSpeciality",
+        "label": "Medical Speciality or Service Area",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. General Medicine, Physiotherapy",
+        "_id": "6af7dcbbbc1c3562bafc9c32"
+      },
+      {
+        "fieldKey": "councilRegistration",
+        "label": "State Medical Council / Pharmacy Reg No",
+        "type": "text",
+        "required": false,
+        "options": [],
+        "placeholder": "Reg Number",
+        "_id": "6af7dcbbbc1c3562bafc9c33"
+      }
+    ],
+    "status": "PUBLISHED",
+    "updatedAt": "2026-11-14T03:59:55.797Z",
+    "version": 1
+  },
+  {
+    "_id": "6aed7fa6178af30f3a94af56",
+    "categoryId": "6aed7fa6b088226ebfc7fe19",
+    "__v": 0,
+    "createdAt": "2026-11-06T07:20:06.258Z",
+    "dashboardWidgets": [
+      "overview-stats",
+      "active-requests",
+      "category-insights",
+      "opportunity-bulletin"
+    ],
+    "featuresEnabled": [
+      "services-discovery",
+      "business-ideas",
+      "investment-readiness",
+      "partnerships"
+    ],
+    "kycRequiredDocuments": [
+      {
+        "documentType": "GOVT_ID",
+        "label": "Government Photo ID",
+        "description": "Aadhaar / Voter ID / Passport",
+        "required": true,
+        "_id": "6af7dcbcbc1c3562bafc9c4c"
+      }
+    ],
+    "registrationFields": [
+      {
+        "fieldKey": "creativeNiche",
+        "label": "Creative Specialization",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. Commercial Ad Production, Haute Couture",
+        "_id": "6af7dcbcbc1c3562bafc9c4b"
+      }
+    ],
+    "status": "PUBLISHED",
+    "updatedAt": "2026-11-14T03:59:56.257Z",
+    "version": 1
+  },
+  {
+    "_id": "6aed7fa6178af30f3a94af5b",
+    "categoryId": "6aed7fa6b088226ebfc7fe23",
+    "__v": 0,
+    "createdAt": "2026-11-06T07:20:06.475Z",
+    "dashboardWidgets": [
+      "overview-stats",
+      "active-requests",
+      "category-insights",
+      "opportunity-bulletin"
+    ],
+    "featuresEnabled": [
+      "services-discovery",
+      "business-ideas",
+      "investment-readiness",
+      "partnerships"
+    ],
+    "kycRequiredDocuments": [
+      {
+        "documentType": "GOVT_ID",
+        "label": "Government Photo ID",
+        "description": "Aadhaar / Driving License",
+        "required": true,
+        "_id": "6af7dcbcbc1c3562bafc9c63"
+      }
+    ],
+    "registrationFields": [
+      {
+        "fieldKey": "careerDomain",
+        "label": "Target Career Domain or Social Initiative",
+        "type": "text",
+        "required": true,
+        "options": [],
+        "placeholder": "e.g. Accounts & Finance, Rural Education",
+        "_id": "6af7dcbcbc1c3562bafc9c62"
+      }
+    ],
+    "status": "PUBLISHED",
+    "updatedAt": "2026-11-14T03:59:56.725Z",
+    "version": 1
+  }
+]

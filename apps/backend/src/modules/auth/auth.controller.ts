@@ -591,7 +591,7 @@ export const awardReferralBonusIfApplicable = async (newUser: any): Promise<void
       await MemberWalletModel.create({
         memberId: referrerUser._id,
         memberEmail: referrerUser.email.toLowerCase(),
-        balance: 50500,
+        balance: 500,
         currency: 'INR',
         currencySymbol: '₹',
         status: 'ACTIVE',

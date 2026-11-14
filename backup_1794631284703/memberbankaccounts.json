@@ -1,0 +1,44 @@
+[
+  {
+    "_id": "6af700ea6a292d4767bc8635",
+    "userId": "6af690b845e599fea212a826",
+    "__v": 0,
+    "accountHolderName": "Batha Member",
+    "accountNumberMasked": "XXXX XXXX 9012",
+    "accountType": "SAVINGS",
+    "bankName": "State Bank of India",
+    "createdAt": "2026-11-13T12:22:02.313Z",
+    "ifscCode": "SBIN0001234",
+    "updatedAt": "2026-11-13T12:22:02.313Z",
+    "verificationStatus": "VERIFIED",
+    "verifiedAt": "2026-11-13T12:22:02.313Z"
+  },
+  {
+    "_id": "6af70dcb6a292d4767bc8f77",
+    "userId": "6af700dd8e021b895a831e3b",
+    "__v": 0,
+    "accountHolderName": "dei",
+    "accountNumberMasked": "XXXX XXXX 4321",
+    "accountType": "SAVINGS",
+    "bankName": "SBI",
+    "createdAt": "2026-11-13T13:16:59.556Z",
+    "ifscCode": "SBIN0001234",
+    "updatedAt": "2026-11-13T13:16:59.556Z",
+    "verificationStatus": "VERIFIED",
+    "verifiedAt": "2026-11-13T13:16:59.556Z"
+  },
+  {
+    "_id": "6af714a26a292d4767bc943b",
+    "userId": "6af7126ac2f5ec096cf689b2",
+    "__v": 0,
+    "accountHolderName": "Punniyamoorthy",
+    "accountNumberMasked": "XXXX XXXX 7890",
+    "accountType": "SAVINGS",
+    "bankName": "SBI",
+    "createdAt": "2026-11-13T13:46:10.603Z",
+    "ifscCode": "HDFC0002343",
+    "updatedAt": "2026-11-13T13:46:10.603Z",
+    "verificationStatus": "VERIFIED",
+    "verifiedAt": "2026-11-13T13:46:10.603Z"
+  }
+]

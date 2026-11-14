@@ -20,7 +20,6 @@ import {
   ShieldCheckIcon,
   AlertCircleIcon,
   UserIcon,
-  EditIcon,
   LogOutIcon
 } from './Icons';
 import { LifeBuoy } from 'lucide-react';
@@ -452,28 +451,6 @@ export const MemberHeader: React.FC = () => {
                       </div>
                     </button>
 
-                    {/* Option 2: Edit Profile */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setProfileMenuOpen(false);
-                        navigate('/profile?edit=true');
-                      }}
-                      className="w-full p-2.5 rounded-xl hover:bg-[#FAF7F2] text-left transition-colors flex items-center gap-3 cursor-pointer group"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-[#3B9C91]/10 text-[#3B9C91] flex items-center justify-center shrink-0 group-hover:bg-[#3B9C91] group-hover:text-white transition-colors">
-                        <EditIcon size={16} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <span className="text-xs font-bold text-[#51463F] block leading-tight">
-                          Edit Profile
-                        </span>
-                        <span className="text-[10px] text-[#82776E] block mt-0.5">
-                          Update contact, address & bio details
-                        </span>
-                      </div>
-                    </button>
-
                     {/* Option 3: Help & Support Live Desk */}
                     <button
                       type="button"
@@ -641,13 +618,6 @@ export const MemberHeader: React.FC = () => {
               >
                 <span>View Profile & Wallet</span>
                 {location.pathname === '/profile' && <span className="text-xs text-white">●</span>}
-              </Link>
-              <Link
-                to="/profile?edit=true"
-                onClick={closeMenu}
-                className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13.5px] font-bold transition-colors min-h-[44px] text-[#51463F] hover:bg-[#EAE3F4]/50"
-              >
-                <span>Edit Profile</span>
               </Link>
             </div>
 

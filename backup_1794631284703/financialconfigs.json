@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "6af6ef4ed74f1878dbb4743e",
+    "key": "DEFAULT_FINANCIAL_CONFIG",
+    "firstYearMembershipFee": 99,
+    "renewalMembershipFee": 5999,
+    "referralRewardAmount": 700,
+    "referralProgramEnabled": true,
+    "minWithdrawalAmount": 500,
+    "currency": "INR",
+    "pricingVersion": 20,
+    "updatedByAdminName": "Rahul",
+    "createdAt": "2026-11-13T11:06:54.510Z",
+    "updatedAt": "2026-11-14T04:34:54.490Z",
+    "__v": 0,
+    "updatedByAdminId": "6af5906d3c9c72f7886ec6ec"
+  }
+]

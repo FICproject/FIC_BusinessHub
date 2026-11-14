@@ -439,8 +439,8 @@ export const getSubcategoryDashboardConfig = (
   // 1. STUDENT
   // ==========================================
   if (subLower.includes('student')) {
-    const availableMentors = ecosystemStats?.availableMentors || 16;
-    const learningVideos = ecosystemStats?.learningVideosCount || 3;
+    const availableMentors = ecosystemStats?.availableMentors ?? 0;
+    const learningVideos = ecosystemStats?.learningVideosCount ?? 0;
     const myMentorRequests = ecosystemStats?.studentRequestsCount ?? 2;
 
     return {
@@ -469,7 +469,7 @@ export const getSubcategoryDashboardConfig = (
         },
         {
           title: 'Internships & Projects',
-          value: '18 Active',
+          value: 'Live',
           subtitle: 'Verified Ecosystem Roles',
           accent: 'amber',
           trend: 'Opportunities',
@@ -495,9 +495,9 @@ export const getSubcategoryDashboardConfig = (
         buttonLabel: 'Schedule Mentorship Session',
         buttonPath: '/meetings?action=book',
         metrics: [
-          { label: 'Active Mentors Ready', value: `${availableMentors}+` },
-          { label: 'Verified Internships', value: '18' },
-          { label: 'Incubation Grants', value: 'Up to ₹2L' }
+          { label: 'Active Mentors Ready', value: `${availableMentors}` },
+          { label: 'Marketplace Roles', value: 'Live' },
+          { label: 'Incubation Grants', value: 'Available' },
         ]
       }
     };
@@ -507,10 +507,10 @@ export const getSubcategoryDashboardConfig = (
   // 2. MENTOR / TRAINER
   // ==========================================
   if (subLower.includes('mentor') || subLower.includes('trainer')) {
-    const registeredStudents = ecosystemStats?.registeredStudents || 48;
-    const myServices = ecosystemStats?.myServicesCount ?? 2;
-    const myVideos = ecosystemStats?.myVideosCount ?? 3;
-    const completedSessions = ecosystemStats?.completedSessions ?? 1;
+    const registeredStudents = ecosystemStats?.registeredStudents ?? 0;
+    const myServices = ecosystemStats?.myServicesCount ?? 0;
+    const myVideos = ecosystemStats?.myVideosCount ?? 0;
+    const completedSessions = ecosystemStats?.completedSessions ?? 0;
 
     return {
       roleBadge: 'MENTOR / TRAINER',
@@ -564,8 +564,8 @@ export const getSubcategoryDashboardConfig = (
         buttonLabel: 'Manage Teaching Offerings',
         buttonPath: '/my-services',
         metrics: [
-          { label: 'Registered Students', value: `${registeredStudents}+` },
-          { label: 'Avg Rating', value: '4.9 ★' },
+          { label: 'Registered Students', value: `${registeredStudents}` },
+          { label: 'Quality Standard', value: 'Audited' },
           { label: 'Avg Session Length', value: '45 mins' }
         ]
       }
@@ -684,9 +684,9 @@ export const getSubcategoryDashboardConfig = (
         buttonLabel: 'Explore Research Grants & Advisory',
         buttonPath: '/investment',
         metrics: [
-          { label: 'Research Schemes', value: '12 Active' },
-          { label: 'Active Mentees', value: '34' },
-          { label: 'Incubation Success', value: '92%' }
+          { label: 'Research Schemes', value: 'Active' },
+          { label: 'Active Mentees', value: 'Available' },
+          { label: 'Incubation Support', value: 'Active' }
         ]
       }
     };
@@ -727,7 +727,7 @@ export const getSubcategoryDashboardConfig = (
         },
         {
           title: 'Marketplace Deals',
-          value: '26 In Demand',
+          value: 'In Demand',
           subtitle: 'Enterprise Projects',
           accent: 'amber',
           trend: 'Open Requests',
@@ -861,7 +861,7 @@ export const getSubcategoryDashboardConfig = (
         },
         {
           title: 'Trade Inquiries',
-          value: '14 Active',
+          value: 'Active',
           subtitle: 'Verified OEM Requirements',
           accent: 'amber',
           trend: 'Intermediary Feed',
@@ -951,8 +951,8 @@ export const getSubcategoryDashboardConfig = (
         buttonLabel: 'Explore B2B Expansion Support',
         buttonPath: '/business-development',
         metrics: [
-          { label: 'Verified B2B Suppliers', value: '250+' },
-          { label: 'Active Distributors', value: '80+' },
+          { label: 'Verified B2B Suppliers', value: 'Ecosystem' },
+          { label: 'Active Distributors', value: 'Ecosystem' },
           { label: 'Escrow Protection', value: '100%' }
         ]
       }
@@ -1079,7 +1079,7 @@ export const getSubcategoryDashboardConfig = (
         buttonLabel: 'Submit Business Idea for Review',
         buttonPath: '/business-ideas',
         metrics: [
-          { label: 'Active Angel Syndicates', value: '12' },
+          { label: 'Angel Syndicates', value: 'Private' },
           { label: 'Average Review Time', value: '48 Hrs' },
           { label: 'IP Protection', value: '100% NDA' }
         ]
@@ -1099,7 +1099,7 @@ export const getSubcategoryDashboardConfig = (
       kpiCards: [
         {
           title: 'Deal Pipeline',
-          value: '9 Vetted',
+          value: 'Private',
           subtitle: 'Investment Pitches',
           accent: 'emerald',
           trend: 'Confidential Flow',
@@ -1108,7 +1108,7 @@ export const getSubcategoryDashboardConfig = (
         },
         {
           title: 'Active Deal Rooms',
-          value: '3 Open',
+          value: 'Deal Room',
           subtitle: 'Private Deal Rooms',
           accent: 'amber',
           trend: 'Private Flow',
@@ -1207,7 +1207,7 @@ export const getSubcategoryDashboardConfig = (
         buttonLabel: 'Access Private Deal Room',
         buttonPath: '/investment',
         metrics: [
-          { label: 'Active Deals in Pipeline', value: '14' },
+          { label: 'Deals in Pipeline', value: 'Private' },
           { label: 'Ticket Sizes', value: '₹10L - ₹5Cr' },
           { label: 'Verified Governance', value: '100%' }
         ]
@@ -1245,7 +1245,7 @@ export const getSubcategoryDashboardConfig = (
         },
         {
           title: 'Supply Chain Trade',
-          value: '22 Regional',
+          value: 'Regional',
           subtitle: 'Verified Distributor Leads',
           accent: 'amber',
           trend: 'FIC Network',
@@ -1335,8 +1335,8 @@ export const getSubcategoryDashboardConfig = (
         buttonLabel: 'Publish Manufacturing Line',
         buttonPath: '/my-services',
         metrics: [
-          { label: 'Verified OEM Facilities', value: '75+' },
-          { label: 'Bulk Orders Matched', value: '₹4.2 Cr' },
+          { label: 'OEM Facilities', value: 'Verified' },
+          { label: 'Order Governance', value: '100%' },
           { label: 'Intermediary Quality Audit', value: '100%' }
         ]
       }
@@ -1463,8 +1463,8 @@ export const getSubcategoryDashboardConfig = (
       buttonLabel: 'Explore Ecosystem Services',
       buttonPath: '/marketplace',
       metrics: [
-        { label: 'Ecosystem Members', value: '1,200+' },
-        { label: 'Active Opportunities', value: '45+' },
+        { label: 'Ecosystem Governance', value: '100% KYC' },
+        { label: 'Platform Moderation', value: 'Active' },
         { label: 'Escrow Protected', value: '100%' }
       ]
     }

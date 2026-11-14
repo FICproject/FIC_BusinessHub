@@ -1952,8 +1952,8 @@ export const getEcosystemCounts = async (): Promise<IEcosystemCounts> => {
   const teachingServices = getStoredTeachingServices();
 
   return {
-    registeredStudents: Math.max(studentsCount, 48),
-    availableMentors: Math.max(mentorsCount, 16),
+    registeredStudents: studentsCount,
+    availableMentors: mentorsCount,
     learningVideosCount: videos.filter((v) => v.status === 'PUBLISHED').length,
     completedSessions: requests.filter((r) => r.status === 'COMPLETED').length,
     totalTeachingServices: teachingServices.filter((s) => s.status === 'PUBLISHED').length
@@ -1969,51 +1969,7 @@ export const getMentorsDirectory = async (): Promise<IMentorDirectoryItem[]> => 
     }
   } catch (_e) {}
 
-  // Fallback
-  return [
-    {
-      _id: 'usr_mentor_sundaram',
-      fullName: 'Dr. R. Sundaram',
-      email: 'mentor@ficapp.in',
-      phoneNumber: '9840123456',
-      subCategory: 'Mentor / Trainer',
-      organization: 'FIC Academic & Career Council',
-      experience: '12+ Years Industry & Research',
-      servicesCount: 2,
-      services: [
-        {
-          _id: 'ts-1',
-          title: 'Full-Stack Cloud & System Architecture Mentorship',
-          subject: 'Full-Stack Engineering & Cloud Systems',
-          studentLevel: 'ALL_LEVELS'
-        },
-        {
-          _id: 'ts-2',
-          title: 'Student Startup Incubation & Tech Feasibility',
-          subject: 'Startup Mentorship & Product Validation',
-          studentLevel: 'BEGINNER'
-        }
-      ]
-    },
-    {
-      _id: 'usr_mentor_radhika',
-      fullName: 'Prof. Radhika Venkataraman',
-      email: 'radhika.mentor@ficapp.in',
-      phoneNumber: '9840234567',
-      subCategory: 'Mentor / Trainer',
-      organization: 'Center for Entrepreneurship & AI',
-      experience: '9+ Years Academic Mentorship',
-      servicesCount: 1,
-      services: [
-        {
-          _id: 'ts-3',
-          title: 'AI Product Prototyping & Academic Research',
-          subject: 'Artificial Intelligence & Data',
-          studentLevel: 'INTERMEDIATE'
-        }
-      ]
-    }
-  ];
+  return [];
 };
 
 // 3. Teaching Services
@@ -2029,7 +1985,7 @@ export const getMyTeachingServices = async (): Promise<ITeachingService[]> => {
   const all = getStoredTeachingServices();
   if (!user) return all;
   const filtered = all.filter((s) => s.mentorId === user.id || s.mentorId === user.userId || s.mentorName === user.fullName);
-  return filtered.length > 0 ? filtered : all;
+  return filtered;
 };
 
 export const getPublicTeachingServices = async (filters?: {
@@ -2083,7 +2039,7 @@ export const createTeachingService = async (
     id: `ts-${Date.now()}`,
     _id: `ts-${Date.now()}`,
     mentorId: user?.id || user?.userId || 'usr_mentor_demo',
-    mentorName: user?.fullName || 'Dr. R. Sundaram',
+    mentorName: user?.fullName || 'Mentor',
     title: data.title || 'Specialized Mentorship Session',
     subject: data.subject || 'General Mentorship',
     shortDescription: data.shortDescription,
@@ -2161,7 +2117,7 @@ export const getMyLearningVideos = async (): Promise<ILearningVideo[]> => {
   const all = getStoredLearningVideos();
   if (!user) return all;
   const filtered = all.filter((v) => v.mentorId === user.id || v.mentorId === user.userId || v.mentorName === user.fullName);
-  return filtered.length > 0 ? filtered : all;
+  return filtered;
 };
 
 export const getPublicLearningVideos = async (filters?: {
@@ -2321,9 +2277,9 @@ export const createMentorshipRequest = async (
     requestId: `REQ-MENTOR-${Date.now().toString().slice(-4)}${Math.floor(10 + Math.random() * 90)}`,
     studentId: user?.id || user?.userId || 'usr_student_demo',
     studentName: user?.fullName || 'Student Member',
-    studentEmail: user?.email || 'student@ficapp.in',
-    mentorId: data.mentorId || 'usr_mentor_sundaram',
-    mentorName: data.mentorName || 'Dr. R. Sundaram',
+    studentEmail: user?.email || '',
+    mentorId: data.mentorId || '',
+    mentorName: data.mentorName || 'Mentor',
     purpose: data.purpose || 'Career Guidance',
     title: data.title || `${data.purpose || 'Mentorship'} Session`,
     reason: data.reason || 'Seeking career and academic guidance.',
@@ -2352,7 +2308,7 @@ export const getStudentMentorshipRequests = async (): Promise<IMentorshipRequest
   const all = getStoredMentorshipRequests();
   if (!user) return all;
   const filtered = all.filter((r) => r.studentId === user.id || r.studentId === user.userId || r.studentName === user.fullName);
-  return filtered.length > 0 ? filtered : all;
+  return filtered;
 };
 
 export const getMentorMentorshipRequests = async (): Promise<IMentorshipRequest[]> => {
@@ -2367,7 +2323,7 @@ export const getMentorMentorshipRequests = async (): Promise<IMentorshipRequest[
   const all = getStoredMentorshipRequests();
   if (!user) return all;
   const filtered = all.filter((r) => r.mentorId === user.id || r.mentorId === user.userId || r.mentorName === user.fullName);
-  return filtered.length > 0 ? filtered : all;
+  return filtered;
 };
 
 export const acceptMentorshipRequest = async (

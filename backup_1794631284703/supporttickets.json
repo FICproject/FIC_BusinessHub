@@ -1,0 +1,146 @@
+[
+  {
+    "_id": "6af57012a888e7494f4409bd",
+    "ticketNumber": "TICK-01001",
+    "memberName": "Javeed",
+    "memberEmail": "javeed@gmail.com",
+    "memberPhone": "8765435676",
+    "subject": "oiuyghbjnkm",
+    "category": "GENERAL_INQUIRY",
+    "priority": "MEDIUM",
+    "status": "RESOLVED",
+    "messages": [
+      {
+        "sender": "MEMBER",
+        "senderName": "Javeed",
+        "message": "iugytfyrtewraearetdxfycguvhbjnkm",
+        "timestamp": "2026-11-12T07:51:46.344Z"
+      },
+      {
+        "sender": "ADMIN",
+        "senderId": "6aed809d825ccac29ad5c064",
+        "senderName": "FIC Super Administrator",
+        "message": "[Ticket Completed]: This support ticket has been reviewed and marked as completed/resolved by FIC Support.",
+        "timestamp": "2026-11-12T07:52:08.956Z"
+      },
+      {
+        "sender": "MEMBER",
+        "senderName": "Javeed",
+        "message": "iuytrdtgvhbjnk",
+        "timestamp": "2026-11-12T07:52:20.683Z"
+      },
+      {
+        "sender": "ADMIN",
+        "senderId": "6aed809d825ccac29ad5c064",
+        "message": "jhijjn",
+        "timestamp": "2026-11-12T07:52:30.859Z"
+      },
+      {
+        "sender": "MEMBER",
+        "senderName": "Javeed",
+        "message": "hi",
+        "timestamp": "2026-11-12T10:02:17.497Z"
+      },
+      {
+        "sender": "MEMBER",
+        "senderName": "Javeed",
+        "message": "i am the ready for your collabaration for your website to connect for business",
+        "timestamp": "2026-11-12T10:02:59.854Z"
+      },
+      {
+        "sender": "ADMIN",
+        "senderId": "6aed809d825ccac29ad5c064",
+        "senderName": "FIC Super Administrator",
+        "message": "[Ticket Completed]: This support ticket has been reviewed and marked as completed/resolved by FIC Support.",
+        "timestamp": "2026-11-12T10:05:45.336Z"
+      },
+      {
+        "sender": "ADMIN",
+        "senderId": "6aed809d825ccac29ad5c064",
+        "message": "yhvyihviyv",
+        "timestamp": "2026-11-12T10:05:58.365Z"
+      }
+    ],
+    "createdAt": "2026-11-12T07:51:46.351Z",
+    "updatedAt": "2026-11-12T10:05:58.366Z",
+    "__v": 7
+  },
+  {
+    "_id": "6af5be0ce0d2583ba9b93d60",
+    "ticketNumber": "TICK-01002",
+    "memberId": "6af5bb31e0d2583ba9b91427",
+    "memberName": "kaiju",
+    "memberEmail": "kaiju@gmail.com",
+    "memberPhone": "8987787877",
+    "subject": "wertyuhj",
+    "category": "KYC_QUERY",
+    "priority": "URGENT",
+    "status": "CLOSED",
+    "messages": [
+      {
+        "sender": "MEMBER",
+        "senderName": "kaiju",
+        "message": "sdtrfyguhji",
+        "timestamp": "2026-11-12T13:24:28.744Z"
+      },
+      {
+        "sender": "MEMBER",
+        "senderName": "kaiju",
+        "message": "its very urgent",
+        "timestamp": "2026-11-12T13:24:45.220Z"
+      },
+      {
+        "sender": "ADMIN",
+        "senderId": "6aed809d825ccac29ad5c064",
+        "senderName": "FIC Super Administrator",
+        "message": "[Ticket Completed]: This support ticket has been reviewed and marked as completed/resolved by FIC Support.",
+        "timestamp": "2026-11-12T13:25:00.767Z"
+      },
+      {
+        "sender": "ADMIN",
+        "senderId": "6aed809d825ccac29ad5c064",
+        "message": "eryu",
+        "timestamp": "2026-11-12T13:25:49.215Z"
+      },
+      {
+        "sender": "ADMIN",
+        "senderId": "6aed809d825ccac29ad5c064",
+        "message": "kij",
+        "timestamp": "2026-11-13T06:36:55.937Z"
+      }
+    ],
+    "createdAt": "2026-11-12T13:24:28.746Z",
+    "updatedAt": "2026-11-13T06:36:55.939Z",
+    "__v": 4
+  },
+  {
+    "_id": "6af6f8f78e021b895a8299de",
+    "ticketNumber": "TICK-01003",
+    "memberId": "6af6c1b9e6f957aab3b73781",
+    "memberName": "fic",
+    "memberEmail": "fic@gmail.com",
+    "memberPhone": "7678788898",
+    "subject": "mmmmm",
+    "category": "GENERAL_INQUIRY",
+    "priority": "MEDIUM",
+    "status": "RESOLVED",
+    "messages": [
+      {
+        "sender": "MEMBER",
+        "senderName": "fic",
+        "message": ",m,,.,",
+        "timestamp": "2026-11-13T11:48:07.763Z"
+      },
+      {
+        "sender": "ADMIN",
+        "senderId": "6aed809d825ccac29ad5c064",
+        "senderName": "FIC Super Administrator",
+        "message": "[Ticket Completed]: This support ticket has been reviewed and marked as completed/resolved by FIC Support.",
+        "timestamp": "2026-11-13T11:49:18.321Z"
+      }
+    ],
+    "createdAt": "2026-11-13T11:48:07.767Z",
+    "updatedAt": "2026-11-13T11:49:18.322Z",
+    "__v": 1
+  }
+]

@@ -234,26 +234,7 @@ export const seedDatabase = async (): Promise<void> => {
   try {
     console.log('🌱 Starting FIC Business Hub database seed...');
 
-    // 1. Create a platform demo provider account for seed marketplace listings
-    const salt = await bcrypt.genSalt(10);
-    const demoPasswordHash = await bcrypt.hash('FicPartner@2026', salt);
-
-    let providerUser = await UserModel.findOne({ email: 'verified-provider@ficapp.in' });
-    if (!providerUser) {
-      providerUser = await UserModel.create({
-        fullName: 'FIC Verified Partner Provider',
-        email: 'verified-provider@ficapp.in',
-        phoneNumber: '9876543210',
-        passwordHash: demoPasswordHash,
-        role: UserRole.MEMBER,
-        status: AccountStatus.ACTIVE,
-        isEmailVerified: true,
-        isPhoneVerified: true,
-        isKycApproved: true,
-        isMembershipActive: true
-      });
-      console.log('✅ Created Demo Provider account.');
-    }
+    // Demo provider creation removed
 
     // 2. Seed Categories, Subcategories, and Dynamic Configurations
     for (const catData of INITIAL_CATEGORIES) {
@@ -359,17 +340,7 @@ export const seedDatabase = async (): Promise<void> => {
       console.warn('Marketplace mock cleanup warning:', cleanupErr);
     }
 
-    // 4. Clean any demo/mock user data and only keep real registrations & superadmin
-    try {
-      await MentorshipRequestModel.deleteMany({});
-      await TeachingServiceModel.deleteMany({});
-      await LearningVideoModel.deleteMany({});
-      await FundingRequestModel.deleteMany({});
-      await InvestorProfileModel.deleteMany({});
-      console.log('✅ Cleaned all fake mentoring, videos, and investment demo records.');
-    } catch (cleanupErr) {
-      console.warn('Mentoring/Investment cleanup warning:', cleanupErr);
-    }
+    // Destructive wipes removed
 
     // 4.5 Seed initial Super Admin account if not present (supports default 'admin123' password)
     try {
@@ -415,84 +386,7 @@ export const seedDatabase = async (): Promise<void> => {
         });
       }
 
-      // Seed baseline immutable audit logs for operations tracking & compliance
-      const { AuditLogModel } = await import('../modules/admin/models/AuditLog');
-      const auditCount = await AuditLogModel.countDocuments();
-      if (auditCount === 0) {
-        const seededAdmin = await AdminUserModel.findOne({ email: adminEmail });
-        const adminId = seededAdmin?._id || new mongoose.Types.ObjectId();
-        const baseLogs = [
-          {
-            adminId,
-            adminName: 'FIC Super Administrator',
-            adminRole: 'SUPER_ADMIN',
-            action: 'SYSTEM_INITIALIZATION',
-            entityType: 'PLATFORM_CORE',
-            entityId: 'SYS_INIT_2026',
-            ipAddress: '127.0.0.1',
-            details: { message: 'FIC Opportunity Ecosystem initialized with 10 business sectors and KYC policy.' },
-            timestamp: new Date('2026-08-25T09:00:00.000Z')
-          },
-          {
-            adminId,
-            adminName: 'FIC Super Administrator',
-            adminRole: 'SUPER_ADMIN',
-            action: 'CATEGORIES_CONFIGURED',
-            entityType: 'SECTOR_CONFIG',
-            entityId: 'CAT_CONFIG_ALL',
-            ipAddress: '127.0.0.1',
-            details: { count: 10, policy: 'Dynamic fields & subcategory KYC rules applied.' },
-            timestamp: new Date('2026-09-01T10:30:00.000Z')
-          },
-          {
-            adminId,
-            adminName: 'FIC Super Administrator',
-            adminRole: 'SUPER_ADMIN',
-            action: 'MEMBERSHIP_FEE_SET',
-            entityType: 'PAYMENT_CONFIG',
-            entityId: 'PLAN_FIRST_YEAR',
-            ipAddress: '127.0.0.1',
-            details: { plan: 'FIRST_YEAR_INTRO', fee: 99, currency: 'INR' },
-            timestamp: new Date('2026-09-15T14:20:00.000Z')
-          },
-          {
-            adminId,
-            adminName: 'FIC Super Administrator',
-            adminRole: 'SUPER_ADMIN',
-            action: 'KYC_APPROVED',
-            entityType: 'MEMBER_KYC',
-            entityId: 'MBR_ARUN_KUMAR',
-            ipAddress: '127.0.0.1',
-            details: { member: 'Arun Kumar', email: 'arun.kumar01@gmail.com', result: 'Verified PAN & Registration' },
-            timestamp: new Date('2026-10-12T11:45:00.000Z')
-          },
-          {
-            adminId,
-            adminName: 'FIC Super Administrator',
-            adminRole: 'SUPER_ADMIN',
-            action: 'GATEWAY_INTEGRATION_SYNCED',
-            entityType: 'RAZORPAY_GATEWAY',
-            entityId: 'RZP_WEBHOOK_01',
-            ipAddress: '127.0.0.1',
-            details: { gateway: 'Razorpay UPI & Cards', currency: 'INR', status: 'ACTIVE' },
-            timestamp: new Date('2026-11-01T16:00:00.000Z')
-          },
-          {
-            adminId,
-            adminName: 'FIC Super Administrator',
-            adminRole: 'SUPER_ADMIN',
-            action: 'KYC_INSPECTION_PENDING',
-            entityType: 'KYC_DESK',
-            entityId: 'KYC_PENDING_QUEUE',
-            ipAddress: '127.0.0.1',
-            details: { queue: 'New onboarding registrations routed to desk for document inspection.' },
-            timestamp: new Date()
-          }
-        ];
-        await AuditLogModel.insertMany(baseLogs);
-        console.log(`✅ Seeded ${baseLogs.length} baseline Security & Audit Logs.`);
-      }
-    } catch (adminSeedErr) {
+      } catch (adminSeedErr) {
       console.warn('Super Admin seeding warning:', adminSeedErr);
     }
 

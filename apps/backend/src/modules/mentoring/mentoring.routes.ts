@@ -728,66 +728,7 @@ mentoringRouter.get('/requests/student', authenticate, requireActiveVerifiedMemb
       .sort({ createdAt: -1 })
       .lean();
 
-    if (requests.length === 0) {
-      const student = await UserModel.findById(userId);
-      if (student && (student.subCategory?.match(/student/i) || student.primaryCategoryName?.match(/education/i))) {
-        let mentor = await UserModel.findOne({ subCategory: { $regex: /mentor/i } });
-        if (!mentor) {
-          mentor = await UserModel.findOne({ email: 'mentor@ficapp.in' });
-        }
-        if (mentor) {
-          await MentorshipRequestModel.create([
-            {
-              requestId: `REQ-MENTOR-${Date.now().toString().slice(-4)}11`,
-              studentId: student._id,
-              studentName: student.fullName,
-              studentEmail: student.email,
-              mentorId: mentor._id,
-              mentorName: mentor.fullName,
-              purpose: 'Career Guidance',
-              title: 'Full-Stack Career Strategy & Portfolio Review',
-              reason: 'I am preparing for campus placements and need guidance on my GitHub projects and system design fundamentals.',
-              studentLevel: 'Undergraduate (3rd Year)',
-              preferredDate: '2026-11-12',
-              preferredTime: '18:00',
-              confirmedDate: '2026-11-12',
-              confirmedTime: '18:00',
-              meetingMode: 'ONLINE',
-              locationOrUrl: 'https://meet.google.com/fic-mentor-session',
-              status: 'CONFIRMED',
-              mentorNotes: 'Reviewed student portfolio. Solid foundations in React. Will focus on backend schema design during the call.'
-            },
-            {
-              requestId: `REQ-MENTOR-${Date.now().toString().slice(-4)}12`,
-              studentId: student._id,
-              studentName: student.fullName,
-              studentEmail: student.email,
-              mentorId: mentor._id,
-              mentorName: mentor.fullName,
-              purpose: 'Subject Doubt Clarification',
-              title: 'Machine Learning Model Deployment & FastAPI Roadmap',
-              reason: 'Need advice on deploying PyTorch models using ONNX and FastAPI.',
-              studentLevel: 'Undergraduate (Final Year)',
-              preferredDate: '2026-11-14',
-              preferredTime: '14:00',
-              meetingMode: 'ONLINE',
-              status: 'RESCHEDULE_REQUESTED',
-              rescheduleProposal: {
-                proposedDate: '2026-11-18',
-                proposedTime: '15:00',
-                proposedMode: 'ONLINE',
-                proposedNotes: 'Can we do Wednesday afternoon instead? I have a faculty meeting at the requested time.',
-                proposedBy: 'MENTOR'
-              }
-            }
-          ]);
-
-          requests = await MentorshipRequestModel.find({ studentId: userId })
-            .sort({ createdAt: -1 })
-            .lean();
-        }
-      }
-    }
+    
 
     res.status(200).json({
       success: true,
@@ -811,81 +752,7 @@ mentoringRouter.get('/requests/mentor', authenticate, requireActiveVerifiedMembe
       .sort({ createdAt: -1 })
       .lean();
 
-    if (requests.length === 0) {
-      const mentor = await UserModel.findById(userId);
-      if (mentor && (mentor.subCategory?.match(/mentor/i) || mentor.subCategory?.match(/trainer/i))) {
-        let student = await UserModel.findOne({ subCategory: { $regex: /student/i } });
-        if (!student) {
-          student = await UserModel.findOne({ email: 'student@ficapp.in' });
-        }
-        if (student) {
-          await MentorshipRequestModel.create([
-            {
-              requestId: `REQ-MENTOR-${Date.now().toString().slice(-4)}01`,
-              studentId: student._id,
-              studentName: student.fullName,
-              studentEmail: student.email,
-              mentorId: mentor._id,
-              mentorName: mentor.fullName,
-              purpose: 'Career Guidance',
-              title: 'Full-Stack Career Strategy & Portfolio Review',
-              reason: 'I am preparing for campus placements and need guidance on my GitHub projects and system design fundamentals.',
-              studentLevel: 'Undergraduate (3rd Year)',
-              preferredDate: '2026-11-12',
-              preferredTime: '18:00',
-              confirmedDate: '2026-11-12',
-              confirmedTime: '18:00',
-              meetingMode: 'ONLINE',
-              locationOrUrl: 'https://meet.google.com/fic-mentor-session',
-              status: 'CONFIRMED',
-              mentorNotes: 'Reviewed student portfolio. Solid foundations in React. Will focus on backend schema design during the call.'
-            },
-            {
-              requestId: `REQ-MENTOR-${Date.now().toString().slice(-4)}02`,
-              studentId: student._id,
-              studentName: student.fullName,
-              studentEmail: student.email,
-              mentorId: mentor._id,
-              mentorName: mentor.fullName,
-              purpose: 'Project Guidance',
-              title: 'Cloud Architecture & Microservices Transition Guidance',
-              reason: 'Need guidance on Docker, Kubernetes and Kafka for modern cloud-native architectures.',
-              studentLevel: 'Undergraduate (Final Year)',
-              preferredDate: '2026-11-15',
-              preferredTime: '16:30',
-              meetingMode: 'ONLINE',
-              status: 'PENDING'
-            },
-            {
-              requestId: `REQ-MENTOR-${Date.now().toString().slice(-4)}03`,
-              studentId: student._id,
-              studentName: student.fullName,
-              studentEmail: student.email,
-              mentorId: mentor._id,
-              mentorName: mentor.fullName,
-              purpose: 'Startup Guidance',
-              title: 'Campus Food Delivery Platform - Feasibility Discussion',
-              reason: 'Discussing MVP architecture for our campus hostel delivery startup project.',
-              studentLevel: 'Undergraduate (3rd Year)',
-              preferredDate: '2026-10-24',
-              preferredTime: '11:00',
-              confirmedDate: '2026-10-24',
-              confirmedTime: '11:00',
-              meetingMode: 'ONLINE',
-              status: 'COMPLETED',
-              mentorNotes: 'Great student initiative. Discussed keeping order tracking simple without real-time GPS initially.',
-              sessionSummary: 'Reviewed the campus food delivery product spec. Recommended starting with a simple WhatsApp notification bot before building custom native apps.',
-              recommendedMaterials: ['The Lean Startup by Eric Ries', 'FIC Incubator MVP Planning Checklist'],
-              followUpInstructions: 'Validate with 30 student orders on paper before developing software backend.'
-            }
-          ]);
-
-          requests = await MentorshipRequestModel.find({ mentorId: userId })
-            .sort({ createdAt: -1 })
-            .lean();
-        }
-      }
-    }
+    
 
     res.status(200).json({
       success: true,

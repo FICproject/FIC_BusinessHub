@@ -1,0 +1,57 @@
+[
+  {
+    "_id": "6aed809d825ccac29ad5c064",
+    "name": "FIC Super Administrator",
+    "email": "superadmin@ficapp.in",
+    "countryCode": "+91",
+    "passwordHash": "[REDACTED]",
+    "role": "SUPER_ADMIN",
+    "department": "OPERATIONS",
+    "regionScope": "All Regions",
+    "requirePasswordReset": true,
+    "isActive": true,
+    "permissions": [
+      "*"
+    ],
+    "createdAt": "2026-11-06T07:24:13.597Z",
+    "updatedAt": "2026-11-14T04:19:46.970Z",
+    "__v": 0,
+    "lastLoginAt": "2026-11-14T04:19:46.970Z"
+  },
+  {
+    "_id": "6af5906d3c9c72f7886ec6ec",
+    "name": "Rahul",
+    "email": "rahul@gmail.com",
+    "phone": "9876543210",
+    "countryCode": "+91",
+    "passwordHash": "[REDACTED]",
+    "role": "ADMIN",
+    "department": "OPERATIONS",
+    "regionScope": "All Regions",
+    "requirePasswordReset": true,
+    "isActive": true,
+    "permissions": [],
+    "createdAt": "2026-11-12T10:09:49.695Z",
+    "updatedAt": "2026-11-14T04:22:05.270Z",
+    "__v": 0,
+    "lastLoginAt": "2026-11-14T04:22:05.269Z"
+  },
+  {
+    "_id": "6af591d03c9c72f7886eccf4",
+    "name": "pushpa",
+    "email": "pushpa@gmail.com",
+    "phone": "9898989898",
+    "countryCode": "+91",
+    "passwordHash": "[REDACTED]",
+    "role": "SUPER_ADMIN",
+    "department": "OPERATIONS",
+    "regionScope": "All Regions",
+    "requirePasswordReset": true,
+    "isActive": false,
+    "permissions": [],
+    "createdAt": "2026-11-12T10:15:44.995Z",
+    "updatedAt": "2026-11-12T10:16:00.729Z",
+    "__v": 0,
+    "lastLoginAt": "2026-11-12T10:15:53.498Z"
+  }
+]
