@@ -852,6 +852,69 @@ export const deleteMemberService = async (serviceId: string, serviceTitle?: stri
 };
 
 // ============================================================================
+// PROVIDER INCOMING SERVICE REQUESTS & ASSIGNMENT WORKFLOW
+// ============================================================================
+export interface IIncomingServiceRequest {
+  id: string;
+  _id?: string;
+  title: string;
+  description: string;
+  requirementNotes: string;
+  serviceTitle: string;
+  serviceCategory: string;
+  requesterName: string;
+  requesterCategory: string;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+  providerResponse: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+  providerResponseAt?: string;
+  adminStatus: string;
+  date: string;
+  createdAt: string;
+}
+
+export const getIncomingServiceRequests = async (): Promise<IIncomingServiceRequest[]> => {
+  try {
+    const res = await apiRequest('/connections/incoming');
+    if (res?.success && Array.isArray(res.data)) {
+      return res.data;
+    }
+  } catch (_e) {}
+
+  try {
+    const fallbackRes = await apiRequest('/services/requests/incoming');
+    if (fallbackRes?.success && Array.isArray(fallbackRes.data)) {
+      return fallbackRes.data;
+    }
+  } catch (_e) {}
+
+  return [];
+};
+
+export const respondToIncomingServiceRequest = async (
+  requestId: string,
+  decision: 'ACCEPTED' | 'DECLINED',
+  reason?: string
+): Promise<{ success: boolean; message?: string }> => {
+  try {
+    const res = await apiRequest(`/connections/incoming/${encodeURIComponent(requestId)}/respond`, {
+      method: 'PATCH',
+      body: JSON.stringify({ decision, reason })
+    });
+    if (res?.success) return res;
+  } catch (_e) {}
+
+  try {
+    const res = await apiRequest(`/services/requests/${encodeURIComponent(requestId)}/respond`, {
+      method: 'PATCH',
+      body: JSON.stringify({ decision, reason })
+    });
+    return res;
+  } catch (err: any) {
+    return { success: false, message: err?.message || 'Failed to submit response' };
+  }
+};
+
+// ============================================================================
 // FIC MEMBER MEETINGS & FACILITATED CONSULTATIONS
 // ============================================================================
 export type MeetingStatus = 'SCHEDULED' | 'PENDING_COORDINATION' | 'COMPLETED' | 'CANCELLED';

@@ -51,12 +51,22 @@ router.get('/', authenticateAdmin, async (req, res) => {
       .populate('primaryCategory', 'name slug')
       .sort({ registeredAt: -1 });
 
-    const sanitizedMembers = members.map((m) => {
+    const sanitizedMembers = await Promise.all(members.map(async (m) => {
       const obj: any = m.toObject();
       const isEligibleForActive = m.kycStatus === 'APPROVED' && m.paymentStatus === 'PAID';
       obj.canActivate = isEligibleForActive;
+      try {
+        const u = await UserModel.findOne({
+          $or: [{ _id: m._id }, { email: m.email.toLowerCase() }]
+        }).select('dynamicProfile phoneNumber address').lean();
+        if (u) {
+          obj.dynamicProfile = (u as any).dynamicProfile || {};
+          obj.companyName = (u as any).dynamicProfile?.businessName || (u as any).dynamicProfile?.companyName || (u as any).dynamicProfile?.institutionName || '';
+          obj.companyRevenue = (u as any).dynamicProfile?.annualTurnover || (u as any).dynamicProfile?.companyRevenue || (u as any).dynamicProfile?.revenue || '';
+        }
+      } catch (_err) { }
       return obj;
-    });
+    }));
 
     res.json({ success: true, data: sanitizedMembers });
   } catch (err: any) {
@@ -107,7 +117,7 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       'status submittedAt verifiedAt reviewerNotes documents memberPhone memberDob subCategory address'
     );
 
-        if (!kycSubmission) {
+    if (!kycSubmission) {
       kycSubmission = {
         status: member.kycStatus || 'NOT_SUBMITTED',
         submittedAt: member.registeredAt,
@@ -270,6 +280,13 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       };
     }
 
+    // Dynamic Profile fields & company registration data
+    const dynamicProfile = user?.dynamicProfile || (kycSubmission as any)?.dynamicProfile || {};
+    const companyName = dynamicProfile.businessName || dynamicProfile.companyName || dynamicProfile.institutionName || dynamicProfile.startupName || dynamicProfile.firmName || '';
+    const companyRevenue = dynamicProfile.annualTurnover || dynamicProfile.companyRevenue || dynamicProfile.revenue || dynamicProfile.budget || '';
+    const businessStage = dynamicProfile.businessStage || dynamicProfile.stage || '';
+    const industrySector = dynamicProfile.industrySector || dynamicProfile.sector || '';
+
     // Enrich member response object with User fields
     const enrichedMember = {
       ...member.toObject(),
@@ -277,6 +294,11 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       phone: member.phone || user?.phoneNumber || '',
       dob: user?.dob || (kycSubmission as any)?.memberDob || '',
       address: user?.address || (kycSubmission as any)?.address || '',
+      dynamicProfile,
+      companyName,
+      companyRevenue,
+      businessStage,
+      industrySector,
       subcategories: (member.subcategories && member.subcategories.length > 0)
         ? member.subcategories
         : (user?.subCategory ? [user.subCategory] : (user?.primarySubcategoryName ? [user.primarySubcategoryName] : []))
@@ -336,14 +358,14 @@ router.patch('/:id/status', authenticateAdmin, requirePermission('MEMBERS_MANAGE
       normalized === 'SUSPENDED' || normalized === 'BLOCKED'
         ? AccountStatus.SUSPENDED
         : normalized === 'ACTIVE'
-        ? AccountStatus.ACTIVE
-        : undefined;
+          ? AccountStatus.ACTIVE
+          : undefined;
 
     const linkedUser = nextUserStatus
       ? await UserModel.findOneAndUpdate(
-          { $or: [{ _id: member._id }, { email: member.email.toLowerCase() }] },
-          { $set: { status: nextUserStatus } }
-        )
+        { $or: [{ _id: member._id }, { email: member.email.toLowerCase() }] },
+        { $set: { status: nextUserStatus } }
+      )
       : await UserModel.findOne({ $or: [{ _id: member._id }, { email: member.email.toLowerCase() }] });
 
     if (linkedUser) {

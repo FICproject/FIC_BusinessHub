@@ -23,7 +23,10 @@ import {
   deleteLearningVideo,
   ILearningVideo,
   uploadVideoFile,
-  uploadVideoThumbnail
+  uploadVideoThumbnail,
+  IIncomingServiceRequest,
+  getIncomingServiceRequests,
+  respondToIncomingServiceRequest
 } from '../services/api';
 import {
   WorkspaceShell,
@@ -59,8 +62,15 @@ export const MyServicesPage: React.FC = () => {
 
   const [services, setServices] = useState<ServiceListing[]>([]);
   const [activeTab, setActiveTab] = useState<
-    'ALL' | 'APPROVED' | 'PENDING_APPROVAL' | 'DRAFT' | 'REJECTED'
+    'ALL' | 'APPROVED' | 'PENDING_APPROVAL' | 'DRAFT' | 'REJECTED' | 'REQUESTS'
   >('ALL');
+
+  // Incoming Service Requests assigned by FIC / Members
+  const [incomingRequests, setIncomingRequests] = useState<IIncomingServiceRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [declineModalReq, setDeclineModalReq] = useState<IIncomingServiceRequest | null>(null);
+  const [declineReason, setDeclineReason] = useState('');
 
   // Modal State for Add / Edit Service
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -546,10 +556,66 @@ export const MyServicesPage: React.FC = () => {
     setServices(localList);
   };
 
+  const loadIncomingRequests = async () => {
+    try {
+      setLoadingRequests(true);
+      const data = await getIncomingServiceRequests();
+      setIncomingRequests(data);
+    } catch (_err) {
+      setIncomingRequests([]);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  const handleAcceptRequest = async (id: string) => {
+    setRespondingId(id);
+    try {
+      const res = await respondToIncomingServiceRequest(id, 'ACCEPTED');
+      if (res.success) {
+        setIncomingRequests((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, status: 'ACCEPTED', providerResponse: 'ACCEPTED' } : r))
+        );
+        showToast('Service assignment request accepted successfully.', 'success');
+      } else {
+        showToast(res.message || 'Failed to accept request.', 'info');
+      }
+    } catch (_err) {
+      showToast('Error accepting request.', 'info');
+    } finally {
+      setRespondingId(null);
+    }
+  };
+
+  const handleDeclineRequest = async (id: string, reason?: string) => {
+    setRespondingId(id);
+    try {
+      const res = await respondToIncomingServiceRequest(id, 'DECLINED', reason);
+      if (res.success) {
+        setIncomingRequests((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, status: 'DECLINED', providerResponse: 'DECLINED' } : r))
+        );
+        setDeclineModalReq(null);
+        setDeclineReason('');
+        showToast('Service assignment request declined.', 'info');
+      } else {
+        showToast(res.message || 'Failed to decline request.', 'info');
+      }
+    } catch (_err) {
+      showToast('Error declining request.', 'info');
+    } finally {
+      setRespondingId(null);
+    }
+  };
+
   useEffect(() => {
     loadUserServices();
+    loadIncomingRequests();
     // Auto-poll every 6 seconds to reflect Admin's approval or rejection immediately
-    const interval = setInterval(loadUserServices, 6000);
+    const interval = setInterval(() => {
+      loadUserServices();
+      loadIncomingRequests();
+    }, 6000);
     return () => clearInterval(interval);
   }, [user?.id, user?.userId, user?.email]);
 
@@ -1173,8 +1239,10 @@ export const MyServicesPage: React.FC = () => {
               {[
                 { key: 'ALL', label: 'All Services', count: totalCount },
                 { key: 'APPROVED', label: 'Active & Live', count: approvedCount },
+                { key: 'PENDING_APPROVAL', label: 'Under Review', count: pendingCount },
                 { key: 'DRAFT', label: 'Drafts', count: draftCount },
-                { key: 'REJECTED', label: 'Needs Revision', count: rejectedCount }
+                { key: 'REJECTED', label: 'Needs Revision', count: rejectedCount },
+                { key: 'REQUESTS', label: 'Service Requests', count: incomingRequests.length }
               ].map((tab) => {
                 const isActive = activeTab === tab.key;
                 return (
@@ -1209,14 +1277,149 @@ export const MyServicesPage: React.FC = () => {
           </WorkspaceCard>
 
           {/* ========================================================
-          4. SERVICES LISTINGS GRID
+          4. SERVICES LISTINGS GRID / SERVICE REQUESTS VIEW
          ======================================================== */}
-          <div className="space-y-4">
-            {filteredServices.length === 0 ? (
-              <WorkspaceEmptyState
-                icon={<BriefcaseIcon size={28} />}
-                title={
-                  activeTab === 'ALL'
+          {activeTab === 'REQUESTS' ? (
+            <div className="space-y-4">
+              {incomingRequests.length === 0 ? (
+                <WorkspaceEmptyState
+                  icon={<FileTextIcon size={28} />}
+                  title="No Service Requests Received Yet"
+                  description="When other FIC members request your verified capabilities from the Universal Marketplace or Admin assigns requirements to you, they will appear here with instant Accept or Decline actions."
+                  accent="violet"
+                />
+              ) : (
+                <motion.div
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="show"
+                  className="space-y-3"
+                >
+                  {incomingRequests.map((req) => (
+                    <motion.div
+                      key={req.id}
+                      variants={staggerItem}
+                      className="p-5 rounded-2xl bg-white border border-[#EDE2D7] shadow-sm hover:shadow-md transition-shadow duration-200 space-y-4"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-[#F4EFE8]">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-black uppercase text-[#E8795B] tracking-wider">
+                              {req.serviceCategory || 'Service Assignment'}
+                            </span>
+                            <span className="text-[#D3C7BC]">•</span>
+                            <span className="text-xs text-[#82776E] font-medium font-mono">
+                              Ref: {req.id.substring(req.id.length - 8)}
+                            </span>
+                          </div>
+                          <h4 className="text-base font-black text-[#51463F]">
+                            {req.serviceTitle || req.title}
+                          </h4>
+                        </div>
+
+                        <div>
+                          {req.status === 'ACCEPTED' ? (
+                            <WorkspaceBadge variant="active">
+                              <CheckCircleIcon size={13} />
+                              Assignment Accepted
+                            </WorkspaceBadge>
+                          ) : req.status === 'DECLINED' ? (
+                            <WorkspaceBadge variant="urgent">
+                              <AlertCircleIcon size={13} />
+                              Assignment Declined
+                            </WorkspaceBadge>
+                          ) : (
+                            <WorkspaceBadge variant="pending">
+                              <ClockIcon size={13} />
+                              Pending Decision
+                            </WorkspaceBadge>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Requester & Scope */}
+                      <div className="bg-[#FAF7F2] p-3.5 rounded-xl border border-[#EDE2D7] space-y-2">
+                        <div className="flex flex-wrap items-center justify-between text-xs text-[#6B5E55] gap-2">
+                          <div>
+                            <span className="font-bold text-[#51463F]">Requester:</span>{' '}
+                            <span>{req.requesterName}</span>
+                            {req.requesterCategory && (
+                              <span className="ml-1 text-[11px] text-[#82776E]">({req.requesterCategory})</span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-[#82776E]">
+                            Received: {req.date}
+                          </div>
+                        </div>
+
+                        <div className="text-xs text-[#51463F] leading-relaxed pt-1 border-t border-[#EDE2D7]/60">
+                          <span className="font-bold block text-[11px] uppercase tracking-wider text-[#82776E] mb-0.5">
+                            Project Scope & Requirements:
+                          </span>
+                          <p className="whitespace-pre-wrap">{req.requirementNotes || req.description || 'No detailed scope provided.'}</p>
+                        </div>
+                      </div>
+
+                      {/* Action Decision Area */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                        <div className="text-xs text-[#82776E] flex items-center gap-1.5">
+                          <LockIcon size={13} className="text-[#8064B1]" />
+                          <span>Coordinated under FIC Governance Desk</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {req.status === 'PENDING' ? (
+                            <>
+                              <button
+                                type="button"
+                                disabled={respondingId === req.id}
+                                onClick={() => {
+                                  setDeclineModalReq(req);
+                                  setDeclineReason('');
+                                }}
+                                className="px-3.5 py-1.5 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+                              >
+                                Decline
+                              </button>
+                              <button
+                                type="button"
+                                disabled={respondingId === req.id}
+                                onClick={() => handleAcceptRequest(req.id)}
+                                className="px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                              >
+                                {respondingId === req.id ? (
+                                  <ClockIcon size={13} className="animate-spin" />
+                                ) : (
+                                  <CheckCircleIcon size={13} />
+                                )}
+                                <span>Accept Request</span>
+                              </button>
+                            </>
+                          ) : req.status === 'ACCEPTED' ? (
+                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 flex items-center gap-1.5">
+                              <CheckCircleIcon size={13} />
+                              Accepted • FIC Coordinator Connecting You
+                            </span>
+                          ) : (
+                            <span className="text-xs font-bold text-rose-700 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200 flex items-center gap-1.5">
+                              <AlertCircleIcon size={13} />
+                              Declined by Provider
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredServices.length === 0 ? (
+                <WorkspaceEmptyState
+                  icon={<BriefcaseIcon size={28} />}
+                  title={
+                    activeTab === 'ALL'
                     ? 'You have not added any services yet'
                     : `No services found in "${activeTab}" status`
                 }
@@ -1432,8 +1635,54 @@ export const MyServicesPage: React.FC = () => {
               </motion.div>
             )}
           </div>
+        )}
+      </div>
+    )}
+
+      {/* ========================================================
+          DECLINE SERVICE ASSIGNMENT MODAL
+         ======================================================== */}
+      <AnimatedModal
+        isOpen={!!declineModalReq}
+        onClose={() => setDeclineModalReq(null)}
+        title="Decline Service Assignment"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-[#82776E] leading-relaxed">
+            Please provide a brief reason for declining this service assignment. FIC Coordinators will evaluate and reassign another suitable provider.
+          </p>
+          <div>
+            <label className="block text-xs font-bold text-[#51463F] mb-1">
+              Reason / Remarks (Optional)
+            </label>
+            <textarea
+              rows={3}
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              placeholder="e.g. Schedule at full capacity, capability mismatch, outside coverage area..."
+              className="w-full text-xs p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E8795B] bg-white resize-none"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setDeclineModalReq(null)}
+              className="px-3 py-1.5 text-xs font-bold text-[#6B5E55] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={respondingId === declineModalReq?.id}
+              onClick={() => declineModalReq && handleDeclineRequest(declineModalReq.id, declineReason)}
+              className="px-4 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Confirm Decline
+            </button>
+          </div>
         </div>
-      )}
+      </AnimatedModal>
 
       {/* ========================================================
           5. ADD / EDIT SERVICE MODAL

@@ -336,3 +336,133 @@ servicesRouter.delete('/:id', authenticate, requireActiveVerifiedMember, async (
     next(error);
   }
 });
+
+// 9. Provider Incoming Service Requests (dispatched by FIC Admin Desk / Members)
+servicesRouter.get('/requests/incoming', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'User not authenticated' });
+      return;
+    }
+
+    const { FicRequestModel } = await import('../admin/models/FicRequest');
+    const { MemberModel } = await import('../admin/models/Member');
+
+    const myServices = await ServiceListingModel.find({ providerId: userId }).select('_id title categoryName').lean();
+    const myServiceIds = myServices.map((s: any) => s._id);
+
+    const member = await MemberModel.findOne({
+      $or: [{ _id: userId }, { email: req.user?.email }]
+    });
+
+    const targetProviderOr = [
+      { targetProviderId: userId },
+      ...(member ? [{ targetProviderId: member._id }] : []),
+      { targetServiceId: { $in: myServiceIds } }
+    ];
+
+    const ficRequests = await FicRequestModel.find({ $or: targetProviderOr })
+      .populate('targetServiceId', 'title categoryName pricingEstimate locationState')
+      .populate('requesterId', 'name email phone primaryCategoryName')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const formatted = ficRequests.map((r: any) => {
+      const responseStatus = r.providerResponse || 'PENDING';
+      return {
+        id: r._id.toString(),
+        _id: r._id.toString(),
+        title: r.title,
+        description: r.description,
+        requirementNotes: r.description,
+        serviceTitle: (r.targetServiceId as any)?.title || r.title,
+        serviceCategory: (r.targetServiceId as any)?.categoryName || 'Marketplace Capability',
+        requesterName: r.requesterName || (r.requesterId as any)?.name || 'Confidential FIC Member',
+        requesterCategory: r.requesterCategory || (r.requesterId as any)?.primaryCategoryName || 'FIC Member',
+        status: responseStatus,
+        providerResponse: responseStatus,
+        providerResponseAt: r.providerResponseAt,
+        adminStatus: r.status,
+        date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today',
+        createdAt: r.createdAt
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: formatted
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 10. Provider Decision: Accept or Decline service request
+servicesRouter.patch('/requests/:id/respond', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, message: 'User not authenticated' });
+      return;
+    }
+
+    const { id } = req.params;
+    const { decision, reason } = req.body;
+
+    if (!decision || !['ACCEPTED', 'DECLINED'].includes(decision)) {
+      res.status(400).json({ success: false, message: 'Valid decision ("ACCEPTED" or "DECLINED") is required.' });
+      return;
+    }
+
+    const { FicRequestModel } = await import('../admin/models/FicRequest');
+    const { MemberModel } = await import('../admin/models/Member');
+    const { notifyAdmins } = await import('../notifications/notifications.service');
+
+    const member = await MemberModel.findOne({ $or: [{ _id: userId }, { email: req.user?.email }] });
+    const ficReq = await FicRequestModel.findById(id).populate('targetServiceId');
+    if (!ficReq) {
+      res.status(404).json({ success: false, message: 'Service request not found.' });
+      return;
+    }
+
+    ficReq.providerResponse = decision;
+    ficReq.providerResponseAt = new Date();
+
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const providerName = member?.name || req.user?.email || 'Assigned Provider';
+    ficReq.internalNotes.push(
+      `[${timestamp} by ${providerName}]: Provider responded with ${decision}.${reason ? ` Reason: ${reason}` : ''}`
+    );
+
+    if (decision === 'ACCEPTED') {
+      ficReq.status = 'IN_PROGRESS';
+    } else {
+      ficReq.status = 'UNDER_REVIEW';
+    }
+
+    await ficReq.save();
+
+    try {
+      await notifyAdmins({
+        eventType: 'PROVIDER_RESPONDED',
+        title: `Provider ${decision}: ${ficReq.title}`,
+        message: `Provider ${providerName} has ${decision} the service assignment for "${ficReq.title}".`,
+        link: '/requests',
+        priority: 'MEDIUM'
+      });
+    } catch {}
+
+    res.status(200).json({
+      success: true,
+      message: `Service request has been successfully ${decision.toLowerCase()}.`,
+      data: {
+        id: ficReq._id.toString(),
+        providerResponse: ficReq.providerResponse,
+        status: ficReq.status
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});

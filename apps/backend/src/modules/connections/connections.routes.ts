@@ -241,4 +241,158 @@ connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (r
   }
 });
 
+// Provider views all incoming service requests dispatched to them
+connectionsRouter.get('/incoming', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Unauthorized', 401);
+
+    const userId = req.user.userId;
+    const user = await UserModel.findById(userId);
+    const userEmail = (user?.email || req.user.email || '').toLowerCase().trim();
+
+    // Find services owned by this provider
+    const myServices = await ServiceListingModel.find({
+      $or: [{ providerId: userId }, { providerEmail: userEmail }]
+    }).select('_id title categoryName').lean();
+    const myServiceIds = myServices.map((s: any) => s._id);
+
+    // Find Member record
+    const member = await MemberModel.findOne({
+      $or: [{ _id: userId }, { email: userEmail }]
+    });
+
+    const targetProviderOr = [
+      { targetProviderId: userId },
+      ...(member ? [{ targetProviderId: member._id }] : []),
+      { targetServiceId: { $in: myServiceIds } }
+    ];
+
+    const ficRequests = await FicRequestModel.find({ $or: targetProviderOr })
+      .populate('targetServiceId', 'title categoryName pricingEstimate locationState')
+      .populate('requesterId', 'name email phone primaryCategoryName')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const formatted = ficRequests.map((r: any) => {
+      const responseStatus = r.providerResponse || 'PENDING';
+      return {
+        id: r._id.toString(),
+        _id: r._id.toString(),
+        title: r.title,
+        description: r.description,
+        requirementNotes: r.description,
+        serviceTitle: (r.targetServiceId as any)?.title || r.title,
+        serviceCategory: (r.targetServiceId as any)?.categoryName || 'Marketplace Capability',
+        requesterName: r.requesterName || (r.requesterId as any)?.name || 'Confidential FIC Member',
+        requesterCategory: r.requesterCategory || (r.requesterId as any)?.primaryCategoryName || 'FIC Member',
+        status: responseStatus,
+        providerResponse: responseStatus,
+        providerResponseAt: r.providerResponseAt,
+        adminStatus: r.status,
+        date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today',
+        createdAt: r.createdAt
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: formatted
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Provider responds to incoming service request (Accept or Decline)
+connectionsRouter.patch('/incoming/:id/respond', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Unauthorized', 401);
+
+    const { id } = req.params;
+    const { decision, reason } = req.body; // decision: 'ACCEPTED' | 'DECLINED'
+
+    if (!decision || !['ACCEPTED', 'DECLINED'].includes(decision)) {
+      throw new AppError('Valid decision ("ACCEPTED" or "DECLINED") is required.', 400);
+    }
+
+    const userId = req.user.userId;
+    const user = await UserModel.findById(userId);
+    const userEmail = (user?.email || req.user.email || '').toLowerCase().trim();
+    const member = await MemberModel.findOne({ $or: [{ _id: userId }, { email: userEmail }] });
+
+    const ficReq = await FicRequestModel.findById(id).populate('targetServiceId');
+    if (!ficReq) {
+      throw new AppError('Service request not found.', 404);
+    }
+
+    // Verify provider authorization
+    const isTargetProvider =
+      (ficReq.targetProviderId && (ficReq.targetProviderId.toString() === userId.toString() || (member && ficReq.targetProviderId.toString() === member._id.toString()))) ||
+      ((ficReq.targetServiceId as any)?.providerId && (ficReq.targetServiceId as any).providerId.toString() === userId.toString());
+
+    if (!isTargetProvider) {
+      // If target provider is unassigned, allow owner of target service to respond
+      const myServices = await ServiceListingModel.find({
+        $or: [{ providerId: userId }, { providerEmail: userEmail }]
+      }).select('_id');
+      const isOwnerOfTarget = myServices.some((s) => ficReq.targetServiceId && s._id.toString() === ficReq.targetServiceId.toString());
+      if (!isOwnerOfTarget) {
+        throw new AppError('You are not authorized to respond to this service request.', 403);
+      }
+    }
+
+    ficReq.providerResponse = decision;
+    ficReq.providerResponseAt = new Date();
+
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    const providerName = user?.fullName || member?.name || 'Assigned Provider';
+    ficReq.internalNotes.push(
+      `[${timestamp} by ${providerName}]: Provider marked service assignment as ${decision}.${reason ? ` Reason / Remarks: ${reason}` : ''}`
+    );
+
+    if (decision === 'ACCEPTED') {
+      ficReq.status = 'IN_PROGRESS';
+    } else {
+      ficReq.status = 'UNDER_REVIEW';
+    }
+
+    await ficReq.save();
+
+    // Sync to legacy ServiceRequestModel if present
+    try {
+      await ServiceRequestModel.updateMany(
+        { $or: [{ serviceId: ficReq.targetServiceId }, { providerId: userId }] },
+        {
+          status: decision === 'ACCEPTED' ? ServiceRequestStatus.IN_PROGRESS : ServiceRequestStatus.CANCELLED,
+          ficNotes: `Provider responded with ${decision}.${reason ? ` Remarks: ${reason}` : ''}`
+        }
+      );
+    } catch {}
+
+    // Notify admins
+    try {
+      await notifyAdmins({
+        eventType: 'PROVIDER_RESPONDED',
+        title: `Provider ${decision}: ${ficReq.title}`,
+        message: `Provider ${providerName} has ${decision} the project assignment for "${ficReq.title}".`,
+        link: '/requests',
+        priority: 'MEDIUM'
+      });
+    } catch {}
+
+    res.status(200).json({
+      success: true,
+      message: `Service request has been successfully ${decision.toLowerCase()}.`,
+      data: {
+        id: ficReq._id.toString(),
+        providerResponse: ficReq.providerResponse,
+        providerResponseAt: ficReq.providerResponseAt,
+        status: ficReq.status
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 

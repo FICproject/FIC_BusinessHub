@@ -55,7 +55,7 @@ marketplaceRouter.get('/services', async (req: Request, res: Response, next: Nex
     const [listings, total] = await Promise.all([
       ServiceListingModel.find(filter)
         .select(
-          '_id title shortDescription description categoryId subcategoryId categoryName categorySlug subcategoryName servicesOffered skills tags targetCustomers coverageArea deliveryMode createdAt'
+          '_id providerId title shortDescription description categoryId subcategoryId categoryName categorySlug subcategoryName servicesOffered skills tags targetCustomers coverageArea deliveryMode createdAt'
         )
         .populate('categoryId', 'name slug iconName')
         .populate('subcategoryId', 'name slug')

@@ -44,7 +44,8 @@ export const MarketplacePage: React.FC = () => {
         if (res?.success && res?.data?.items && Array.isArray(res.data.items)) {
           const remoteApproved: ServiceListing[] = res.data.items.map((item: any) => ({
             id: item._id,
-            ownerUserId: item.providerId || item.providerEmail || '',
+            ownerUserId: String(item.providerId || item.providerEmail || ''),
+            providerId: item.providerId,
             ownerName: item.providerPrivateName || 'FIC Verified Provider',
             ownerEmail: item.providerEmail,
             categoryId: typeof item.categoryId === 'object' ? item.categoryId?._id : item.categoryId,
@@ -96,9 +97,9 @@ export const MarketplacePage: React.FC = () => {
 
   const isOwnService = (service: ServiceListing) => {
     if (!currentUser) return false;
-    const sOwnerId = String(service.ownerUserId || '').trim();
-    const sOwnerEmail = String((service as any).ownerEmail || '').toLowerCase().trim();
-    if (currentUserId && sOwnerId && (sOwnerId === currentUserId || sOwnerId === currentUser.id)) return true;
+    const sOwnerId = String(service.ownerUserId || (service as any).providerId || '').trim();
+    const sOwnerEmail = String((service as any).ownerEmail || (service as any).providerEmail || '').toLowerCase().trim();
+    if (currentUserId && sOwnerId && (sOwnerId === currentUserId || sOwnerId === currentUser.id || sOwnerId === currentUser.userId)) return true;
     if (currentUserEmail && sOwnerEmail && sOwnerEmail === currentUserEmail) return true;
     return false;
   };
@@ -320,8 +321,8 @@ export const MarketplacePage: React.FC = () => {
                     </span>
 
                     {isOwnService(service) ? (
-                      <span className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 cursor-not-allowed">
-                        Your Service Listing
+                      <span className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 select-none">
+                        Your Listing
                       </span>
                     ) : (
                       <WorkspaceButton
