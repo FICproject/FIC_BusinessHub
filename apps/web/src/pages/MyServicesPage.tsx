@@ -72,6 +72,8 @@ export const MyServicesPage: React.FC = () => {
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [declineModalReq, setDeclineModalReq] = useState<IIncomingServiceRequest | null>(null);
   const [declineReason, setDeclineReason] = useState('');
+  const [acceptModalReq, setAcceptModalReq] = useState<IIncomingServiceRequest | null>(null);
+  const [acceptMessage, setAcceptMessage] = useState('');
 
   // Modal State for Add / Edit Service
   const [selectedDetailService, setSelectedDetailService] = useState<ServiceListing | null>(null);
@@ -570,14 +572,26 @@ export const MyServicesPage: React.FC = () => {
     }
   };
 
-  const handleAcceptRequest = async (id: string) => {
+  const handleAcceptRequest = async (id: string, message?: string) => {
     setRespondingId(id);
     try {
-      const res = await respondToIncomingServiceRequest(id, 'ACCEPTED');
+      const res = await respondToIncomingServiceRequest(id, 'ACCEPTED', undefined, message);
       if (res.success) {
         setIncomingRequests((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, status: 'ACCEPTED', providerResponse: 'ACCEPTED' } : r))
+          prev.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  status: 'ACCEPTED',
+                  providerResponse: 'ACCEPTED',
+                  providerDecision: 'ACCEPTED',
+                  providerResponseMessage: message
+                }
+              : r
+          )
         );
+        setAcceptModalReq(null);
+        setAcceptMessage('');
         showToast('Service assignment request accepted successfully.', 'success');
       } else {
         showToast(res.message || 'Failed to accept request.', 'info');
@@ -590,12 +604,26 @@ export const MyServicesPage: React.FC = () => {
   };
 
   const handleDeclineRequest = async (id: string, reason?: string) => {
+    if (!reason || !reason.trim()) {
+      showToast('A clear rejection reason is required.', 'info');
+      return;
+    }
     setRespondingId(id);
     try {
-      const res = await respondToIncomingServiceRequest(id, 'DECLINED', reason);
+      const res = await respondToIncomingServiceRequest(id, 'DECLINED', reason.trim());
       if (res.success) {
         setIncomingRequests((prev) =>
-          prev.map((r) => (r.id === id ? { ...r, status: 'DECLINED', providerResponse: 'DECLINED' } : r))
+          prev.map((r) =>
+            r.id === id
+              ? {
+                  ...r,
+                  status: 'DECLINED',
+                  providerResponse: 'DECLINED',
+                  providerDecision: 'REJECTED',
+                  providerRejectionReason: reason.trim()
+                }
+              : r
+          )
         );
         setDeclineModalReq(null);
         setDeclineReason('');
@@ -1371,8 +1399,8 @@ export const MyServicesPage: React.FC = () => {
                       <div className="bg-[#FAF7F2] p-3.5 rounded-xl border border-[#EDE2D7] space-y-2">
                         <div className="flex flex-wrap items-center justify-between text-xs text-[#6B5E55] gap-2">
                           <div>
-                            <span className="font-bold text-[#51463F]">Requester:</span>{' '}
-                            <span>{req.requesterName}</span>
+                            <span className="font-bold text-[#51463F]">Client:</span>{' '}
+                            <span className="text-[#82776E] italic font-semibold">Protected by FIC (Confidential)</span>
                             {req.requesterCategory && (
                               <span className="ml-1 text-[11px] text-[#82776E]">({req.requesterCategory})</span>
                             )}
@@ -1398,7 +1426,7 @@ export const MyServicesPage: React.FC = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          {req.status === 'PENDING' ? (
+                          {req.status === 'PENDING' || req.status === 'AWAITING' || (req as any).providerDecision === 'AWAITING' ? (
                             <>
                               <button
                                 type="button"
@@ -1414,7 +1442,10 @@ export const MyServicesPage: React.FC = () => {
                               <button
                                 type="button"
                                 disabled={respondingId === req.id}
-                                onClick={() => handleAcceptRequest(req.id)}
+                                onClick={() => {
+                                  setAcceptModalReq(req);
+                                  setAcceptMessage('');
+                                }}
                                 className="px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                               >
                                 {respondingId === req.id ? (
@@ -1425,16 +1456,30 @@ export const MyServicesPage: React.FC = () => {
                                 <span>Accept Request</span>
                               </button>
                             </>
-                          ) : req.status === 'ACCEPTED' ? (
-                            <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 flex items-center gap-1.5">
-                              <CheckCircleIcon size={13} />
-                              Accepted • FIC Coordinator Connecting You
-                            </span>
+                          ) : req.status === 'ACCEPTED' || (req as any).providerDecision === 'ACCEPTED' || req.providerResponse === 'ACCEPTED' ? (
+                            <div className="space-y-1">
+                              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 flex items-center gap-1.5">
+                                <CheckCircleIcon size={13} />
+                                Accepted • FIC Coordinator Facilitating Introduction
+                              </span>
+                              {req.providerResponseMessage && (
+                                <p className="text-[11px] text-[#82776E] italic">
+                                  Your note: "{req.providerResponseMessage}"
+                                </p>
+                              )}
+                            </div>
                           ) : (
-                            <span className="text-xs font-bold text-rose-700 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200 flex items-center gap-1.5">
-                              <AlertCircleIcon size={13} />
-                              Declined by Provider
-                            </span>
+                            <div className="space-y-1">
+                              <span className="text-xs font-bold text-rose-700 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200 flex items-center gap-1.5">
+                                <AlertCircleIcon size={13} />
+                                Declined by Provider
+                              </span>
+                              {req.providerRejectionReason && (
+                                <p className="text-[11px] text-[#82776E] italic">
+                                  Reason: "{req.providerRejectionReason}"
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1617,6 +1662,51 @@ export const MyServicesPage: React.FC = () => {
     )}
 
       {/* ========================================================
+          ACCEPT SERVICE ASSIGNMENT MODAL
+         ======================================================== */}
+      <AnimatedModal
+        isOpen={!!acceptModalReq}
+        onClose={() => setAcceptModalReq(null)}
+        title="Accept Service Assignment"
+        maxWidth="md"
+      >
+        <div className="space-y-4">
+          <p className="text-xs text-[#82776E] leading-relaxed">
+            Confirm your acceptance of project <strong className="text-[#51463F]">"{acceptModalReq?.serviceTitle || acceptModalReq?.title}"</strong>. FIC Intermediary Desk will be notified immediately to proceed with client coordination.
+          </p>
+          <div>
+            <label className="block text-xs font-bold text-[#51463F] mb-1">
+              Response Note / Clarification (Optional)
+            </label>
+            <textarea
+              rows={3}
+              value={acceptMessage}
+              onChange={(e) => setAcceptMessage(e.target.value)}
+              placeholder="e.g. Confirmed capacity available. Typical turnaround is 7-10 business days..."
+              className="w-full text-xs p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#3B9C91] bg-white resize-none"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setAcceptModalReq(null)}
+              className="px-3 py-1.5 text-xs font-bold text-[#6B5E55] hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={respondingId === acceptModalReq?.id}
+              onClick={() => acceptModalReq && handleAcceptRequest(acceptModalReq.id, acceptMessage)}
+              className="px-4 py-1.5 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Confirm Acceptance
+            </button>
+          </div>
+        </div>
+      </AnimatedModal>
+
+      {/* ========================================================
           DECLINE SERVICE ASSIGNMENT MODAL
          ======================================================== */}
       <AnimatedModal
@@ -1627,18 +1717,19 @@ export const MyServicesPage: React.FC = () => {
       >
         <div className="space-y-4">
           <p className="text-xs text-[#82776E] leading-relaxed">
-            Please provide a brief reason for declining this service assignment. FIC Coordinators will evaluate and reassign another suitable provider.
+            Please state why you are unable to fulfill this requirement so FIC Admin can guide the client appropriately.
           </p>
           <div>
             <label className="block text-xs font-bold text-[#51463F] mb-1">
-              Reason / Remarks (Optional)
+              Rejection Reason <span className="text-rose-500">*</span>
             </label>
             <textarea
               rows={3}
+              required
               value={declineReason}
               onChange={(e) => setDeclineReason(e.target.value)}
-              placeholder="e.g. Schedule at full capacity, capability mismatch, outside coverage area..."
-              className="w-full text-xs p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#E8795B] bg-white resize-none"
+              placeholder="e.g. Schedule at full capacity, volume requirement exceeds available machinery, outside delivery territory..."
+              className="w-full text-xs p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white resize-none"
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -1651,7 +1742,7 @@ export const MyServicesPage: React.FC = () => {
             </button>
             <button
               type="button"
-              disabled={respondingId === declineModalReq?.id}
+              disabled={respondingId === declineModalReq?.id || !declineReason.trim()}
               onClick={() => declineModalReq && handleDeclineRequest(declineModalReq.id, declineReason)}
               className="px-4 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
             >

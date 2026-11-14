@@ -118,6 +118,7 @@ export const MyRequestsPage: React.FC = () => {
   const [rejectModalReq, setRejectModalReq] = useState<IMentorshipRequest | null>(null);
   const [rescheduleModalReq, setRescheduleModalReq] = useState<IMentorshipRequest | null>(null);
   const [completeModalReq, setCompleteModalReq] = useState<IMentorshipRequest | null>(null);
+  const [selectedServiceDetail, setSelectedServiceDetail] = useState<any | null>(null);
 
   // Form states for modals
   const [acceptForm, setAcceptForm] = useState({
@@ -1167,81 +1168,63 @@ export const MyRequestsPage: React.FC = () => {
               ) : (
                 services.map((req) => (
                   <motion.div key={req.id} variants={staggerItem} whileHover={{ y: -2, transition: motionSprings.cardHover }}>
-                    <WorkspaceCard variant="default" className="space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-2.5 gap-2">
+                    <WorkspaceCard variant="default" className="space-y-3.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#EADFCF]/70 pb-3 gap-2">
                         <div>
-                          <span className="text-[10px] text-[#82776E] block font-mono font-bold tracking-wider">
-                            REQ ID: {req.id}
-                          </span>
-                          <h3 className="text-sm sm:text-base font-black text-[#51463F] mt-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-[#8064B1] font-mono font-bold tracking-wider bg-[#8064B1]/10 px-2 py-0.5 rounded">
+                              {req.requestId || req.id}
+                            </span>
+                            <span className="text-xs text-[#82776E] font-medium">{req.date}</span>
+                          </div>
+                          <h3 className="text-base sm:text-lg font-black text-[#51463F] mt-1">
                             {req.title}
                           </h3>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-[#82776E] font-medium">{req.date}</span>
-                          <WorkspaceBadge variant={req.status === 'IN_PROGRESS' ? 'proposal' : 'pending'}>
-                            {req.statusLabel}
+                          <WorkspaceBadge variant={
+                            req.status === 'COMPLETED' ? 'active' :
+                            req.status === 'CANCELLED' || req.status === 'PROVIDER_REJECTED' ? 'urgent' :
+                            req.status === 'IN_PROGRESS' || req.status === 'MEETING_CONFIRMED' ? 'proposal' : 'pending'
+                          }>
+                            {req.statusLabel || req.status}
                           </WorkspaceBadge>
                         </div>
                       </div>
 
-                      <div className="space-y-2 text-xs sm:text-[13px]">
-                        <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]/60">
-                          <strong className="text-[#51463F] font-bold block mb-0.5">
-                            Your Stated Requirements:
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs sm:text-[13px]">
+                        <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]/80 space-y-1">
+                          <strong className="text-[11px] text-[#8064B1] uppercase font-bold tracking-wider block">
+                            Latest Update from FIC
                           </strong>
-                          <p className="text-[#82776E] leading-relaxed">{req.notes}</p>
-                        </div>
-
-                        {req.targetProvider && (
-                          <div className="p-3 rounded-xl bg-[#EAF7F2] border border-emerald-300 space-y-1">
-                            <div className="flex items-center gap-1.5 font-bold text-emerald-800 text-xs">
-                              <ShieldCheckIcon size={14} className="text-emerald-600" />
-                              Matched Service Provider:
-                            </div>
-                            <div className="text-xs text-[#51463F] font-bold">
-                              {req.targetProvider.name}
-                              {req.targetProvider.category ? ` (${req.targetProvider.category})` : ''}
-                            </div>
-                          </div>
-                        )}
-
-                        {req.scheduledMeeting && (
-                          <div className="p-3.5 rounded-xl bg-[#F4EEFB] border border-[#8064B1] space-y-2 text-xs">
-                            <div className="flex items-center justify-between flex-wrap gap-2">
-                              <span className="font-bold text-[#8064B1] flex items-center gap-1.5">
-                                <VideoIcon size={14} />
-                                Diligence & Scope Meeting Scheduled:
-                              </span>
-                              <span className="text-[11px] font-semibold text-[#51463F] bg-white px-2 py-0.5 rounded border border-[#8064B1]/30">
-                                {new Date(req.scheduledMeeting.scheduledAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} at {new Date(req.scheduledMeeting.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                            {req.scheduledMeeting.meetingLink && (
-                              <div className="pt-1">
-                                <a
-                                  href={req.scheduledMeeting.meetingLink}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#8064B1] hover:bg-[#6E529F] px-3.5 py-1.5 rounded-xl transition-all shadow-sm"
-                                >
-                                  <VideoIcon size={13} />
-                                  Join Video Conference
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="p-3 rounded-xl bg-[#F4EEFB] border border-[#8064B1]/30 space-y-1">
-                          <div className="flex items-center gap-1.5 font-bold text-[#8064B1] text-xs">
-                            <LockIcon size={13} />
-                            FIC Coordinator Progress & Notes:
-                          </div>
-                          <p className="text-xs text-[#51463F]/90 leading-relaxed font-medium">
-                            {req.ficRemark}
+                          <p className="text-[#51463F] font-medium leading-relaxed">
+                            {req.latestUpdate || req.ficRemark || req.adminResponse || 'Request under active coordination with FIC Admin Desk.'}
                           </p>
                         </div>
+
+                        <div className="p-3 rounded-xl bg-[#F0FAF7] border border-emerald-200/80 space-y-1">
+                          <strong className="text-[11px] text-emerald-800 uppercase font-bold tracking-wider block">
+                            Next Step / Action
+                          </strong>
+                          <p className="text-emerald-950 font-medium leading-relaxed">
+                            {req.nextAction || 'Awaiting service provider review via FIC intermediary.'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-between border-t border-[#EADFCF]/50">
+                        <div className="flex items-center gap-1.5 text-xs text-[#82776E]">
+                          <ShieldCheckIcon size={14} className="text-[#3B9C91]" />
+                          <span>Facilitated under FIC Intermediary Governance</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedServiceDetail(req)}
+                          className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-[#8064B1] to-[#6E529F] hover:from-[#6E529F] hover:to-[#5E448D] transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                        >
+                          <span>View Details</span>
+                          <ArrowRightIcon size={13} />
+                        </button>
                       </div>
                     </WorkspaceCard>
                   </motion.div>
@@ -1922,6 +1905,140 @@ export const MyRequestsPage: React.FC = () => {
                   </button>
                 </div>
               </form>
+            </motion.div>
+          </div>
+        )}
+      
+        {/* ========================================================
+            MODAL: SERVICE REQUEST DETAILS & ACTIVITY TIMELINE
+           ======================================================== */}
+        {selectedServiceDetail && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-[#EDE2D7] overflow-hidden max-h-[90vh] flex flex-col"
+            >
+              <div className="p-5 border-b border-[#EDE2D7] bg-gradient-to-r from-[#FAF7F2] to-white flex items-center justify-between shrink-0">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10.5px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-[#8064B1]/10 text-[#8064B1] border border-[#8064B1]/20">
+                      {selectedServiceDetail.requestId || selectedServiceDetail.id}
+                    </span>
+                    <span className="text-xs text-[#82776E]">
+                      Submitted on {selectedServiceDetail.date}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-[#51463F] mt-1.5">
+                    {selectedServiceDetail.title}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedServiceDetail(null)}
+                  className="w-8 h-8 rounded-full bg-[#FAF7F2] hover:bg-[#EDE2D7] flex items-center justify-center text-[#82776E] transition-colors cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm">
+                <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] space-y-1.5">
+                  <span className="text-[11px] font-bold text-[#8064B1] uppercase tracking-wider block">
+                    Your Stated Requirements
+                  </span>
+                  <p className="text-[#51463F] leading-relaxed whitespace-pre-line font-medium">
+                    {selectedServiceDetail.notes || 'No custom requirement description provided.'}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#F4EEFB] border border-[#8064B1]/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-[#8064B1] uppercase tracking-wider flex items-center gap-1.5">
+                      <ShieldCheckIcon size={14} className="text-[#8064B1]" />
+                      Official FIC Coordination Update
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-white text-[#8064B1] border border-[#8064B1]/20">
+                      {selectedServiceDetail.statusLabel || selectedServiceDetail.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#51463F] leading-relaxed">
+                    {selectedServiceDetail.adminResponse || selectedServiceDetail.ficRemark || selectedServiceDetail.latestUpdate || 'Request is currently actively managed by the FIC Admin Desk.'}
+                  </p>
+                </div>
+
+                {(selectedServiceDetail.scheduledMeeting || selectedServiceDetail.meetingDetails) && (
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-[#E8F8F5] border border-emerald-300 space-y-2.5">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="font-bold text-emerald-900 text-xs flex items-center gap-1.5">
+                        <VideoIcon size={14} className="text-emerald-700" />
+                        Diligence & Scope Meeting Scheduled
+                      </span>
+                      <span className="text-[11px] font-semibold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300">
+                        {selectedServiceDetail.scheduledMeeting?.scheduledAt
+                          ? new Date(selectedServiceDetail.scheduledMeeting.scheduledAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+                          : selectedServiceDetail.meetingDetails?.date
+                          ? `${selectedServiceDetail.meetingDetails.date} at ${selectedServiceDetail.meetingDetails.time}`
+                          : 'Scheduled Session'}
+                      </span>
+                    </div>
+
+                    {(selectedServiceDetail.scheduledMeeting?.meetingLink || selectedServiceDetail.meetingDetails?.meetingLink) && (
+                      <div className="pt-1">
+                        <a
+                          href={selectedServiceDetail.scheduledMeeting?.meetingLink || selectedServiceDetail.meetingDetails?.meetingLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 px-4 py-2 rounded-xl transition-all shadow-sm"
+                        >
+                          <VideoIcon size={14} />
+                          Join Google Meet Session
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-2.5 pt-1">
+                  <span className="text-[11px] font-bold text-[#82776E] uppercase tracking-wider block">
+                    Coordination Activity Timeline
+                  </span>
+
+                  {Array.isArray(selectedServiceDetail.activityTimeline) && selectedServiceDetail.activityTimeline.length > 0 ? (
+                    <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#EDE2D7]">
+                      {selectedServiceDetail.activityTimeline.map((item: any, idx: number) => (
+                        <div key={idx} className="relative text-xs">
+                          <div className="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full bg-[#8064B1] border-2 border-white shadow-2xs" />
+                          <div className="flex items-center justify-between text-[#82776E] text-[10.5px]">
+                            <span className="font-bold text-[#51463F]">{item.action || 'Activity Event'}</span>
+                            <span>{new Date(item.timestamp || Date.now()).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                          </div>
+                          {item.notes && (
+                            <p className="text-xs text-[#51463F]/90 mt-0.5 leading-relaxed bg-[#FAF7F2] p-2 rounded-lg border border-[#EDE2D7]/60">
+                              {item.notes}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-3 rounded-xl bg-[#FAF7F2] text-xs text-[#82776E] text-center border border-dashed border-[#EDE2D7]">
+                      Activity entries will log dynamically as the coordination progresses.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-[#EDE2D7] bg-[#FAF7F2] flex justify-end shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedServiceDetail(null)}
+                  className="px-5 py-2 rounded-xl text-xs font-bold text-[#51463F] bg-white border border-[#EDE2D7] hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Close Window
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

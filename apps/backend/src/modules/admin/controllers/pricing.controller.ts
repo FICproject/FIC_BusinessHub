@@ -129,73 +129,83 @@ adminPricingRouter.put('/', authenticateAdmin, async (req: AuthenticatedAdminReq
       }
     }
 
-    const config = await ensureFinancialConfig();
-    const previousState = {
-      firstYearMembershipFee: config.firstYearMembershipFee,
-      renewalMembershipFee: config.renewalMembershipFee,
-      referralRewardAmount: config.referralRewardAmount,
-      referralProgramEnabled: config.referralProgramEnabled,
-      minWithdrawalAmount: config.minWithdrawalAmount
+    const updateFields: any = {
+      firstYearMembershipFee: parsedFirstYear,
+      renewalMembershipFee: parsedRenewal,
+      updatedByAdminId: req.admin?.id || 'admin',
+      updatedByAdminName: req.admin?.name || 'Admin Operations'
     };
 
-    config.firstYearMembershipFee = parsedFirstYear;
-    config.renewalMembershipFee = parsedRenewal;
     if (referralRewardAmount !== undefined) {
-      config.referralRewardAmount = parsedReferral;
+      updateFields.referralRewardAmount = parsedReferral;
     }
     if (referralProgramEnabled !== undefined) {
-      config.referralProgramEnabled = Boolean(referralProgramEnabled);
+      updateFields.referralProgramEnabled = Boolean(referralProgramEnabled);
     }
     if (minWithdrawalAmount !== undefined) {
-      config.minWithdrawalAmount = parsedMinWithdrawal;
+      updateFields.minWithdrawalAmount = parsedMinWithdrawal;
     }
 
-    config.pricingVersion = (config.pricingVersion || 1) + 1;
-    config.updatedByAdminId = req.admin.id;
-    config.updatedByAdminName = req.admin.name || 'Admin Operations';
-    await config.save();
+    const updatedConfig = await FinancialConfigModel.findOneAndUpdate(
+      { key: 'DEFAULT_FINANCIAL_CONFIG' },
+      {
+        $set: updateFields,
+        $inc: { pricingVersion: 1 }
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     // Synchronize referral config model as well for backwards compatibility
-    await ReferralConfigModel.findOneAndUpdate(
-      { key: 'DEFAULT_CONFIG' },
-      {
-        bonusPerReferral: config.referralRewardAmount,
-        isActive: config.referralProgramEnabled,
-        updatedBy: req.admin.name || 'Admin Operations'
-      },
-      { upsert: true }
-    );
+    try {
+      await ReferralConfigModel.findOneAndUpdate(
+        { key: 'DEFAULT_CONFIG' },
+        {
+          $set: {
+            bonusPerReferral: updatedConfig.referralRewardAmount,
+            isActive: updatedConfig.referralProgramEnabled,
+            updatedBy: req.admin?.name || 'Admin Operations'
+          }
+        },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    } catch (refErr) {
+      console.warn('Non-fatal warning synchronizing ReferralConfigModel:', refErr);
+    }
 
     // Audit log
-    await logAdminAction(
-      req,
-      'UPDATE_PRICING',
-      'FinancialConfig',
-      config._id.toString(),
-      {
-        previous: previousState,
-        updated: {
-          firstYearMembershipFee: config.firstYearMembershipFee,
-          renewalMembershipFee: config.renewalMembershipFee,
-          referralRewardAmount: config.referralRewardAmount,
-          referralProgramEnabled: config.referralProgramEnabled,
-          minWithdrawalAmount: config.minWithdrawalAmount
-        },
-        changedBy: req.admin.name,
-        adminRole: req.admin.role,
-        pricingVersion: config.pricingVersion
-      }
-    );
+    try {
+      await logAdminAction(
+        req,
+        'UPDATE_PRICING',
+        'FinancialConfig',
+        updatedConfig._id.toString(),
+        {
+          updated: {
+            firstYearMembershipFee: updatedConfig.firstYearMembershipFee,
+            renewalMembershipFee: updatedConfig.renewalMembershipFee,
+            referralRewardAmount: updatedConfig.referralRewardAmount,
+            referralProgramEnabled: updatedConfig.referralProgramEnabled,
+            minWithdrawalAmount: updatedConfig.minWithdrawalAmount
+          },
+          changedBy: req.admin.name,
+          adminRole: req.admin.role,
+          pricingVersion: updatedConfig.pricingVersion
+        }
+      );
+    } catch (auditErr) {
+      console.warn('Non-fatal warning writing audit log for pricing update:', auditErr);
+    }
 
     res.status(200).json({
       success: true,
       message: 'Membership pricing updated successfully.',
-      data: config
+      data: updatedConfig
     });
   } catch (err: any) {
+    console.error('Failed to update pricing configuration:', err);
     res.status(500).json({
       success: false,
-      error: 'Failed to update pricing configuration',
+      error: err.message || 'Failed to update pricing configuration',
       details: err.message
     });
   }

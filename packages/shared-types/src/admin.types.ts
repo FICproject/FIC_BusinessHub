@@ -132,22 +132,89 @@ export interface ServiceListingAdmin {
 }
 
 // FIC Requests & Coordination Desk
-export type RequestType = 'SERVICE_INQUIRY' | 'BUSINESS_DEVELOPMENT' | 'INVESTMENT_INTEREST' | 'PARTNERSHIP';
-export type RequestStatus = 'NEW' | 'UNDER_REVIEW' | 'PROVIDER_CONTACTED' | 'MEETING_SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+export type RequestType =
+  | 'SERVICE_INQUIRY'
+  | 'BUSINESS_IDEAS'
+  | 'SCALING_SUPPORT'
+  | 'BUSINESS_DEVELOPMENT'
+  | 'INVESTMENT_INTEREST'
+  | 'PARTNERSHIP';
+
+export type RequestStatus =
+  | 'NEW'
+  | 'SUBMITTED'
+  | 'ADMIN_REVIEW'
+  | 'UNDER_REVIEW'
+  | 'ASSIGNED'
+  | 'SENT_TO_PROVIDER'
+  | 'AWAITING_PROVIDER_RESPONSE'
+  | 'PROVIDER_CONTACTED'
+  | 'PROVIDER_ACCEPTED'
+  | 'PROVIDER_REJECTED'
+  | 'ADMIN_RESPONSE_SENT'
+  | 'MEETING_PROPOSED'
+  | 'MEETING_CONFIRMED'
+  | 'MEETING_SCHEDULED'
+  | 'IN_PROGRESS'
+  | 'INFORMATION_REQUIRED'
+  | 'RESPONDED'
+  | 'COMPLETED'
+  | 'REJECTED'
+  | 'CANCELLED';
+
+export interface FicRequestActivityLog {
+  actorId?: string;
+  actorName?: string;
+  actorRole: 'REQUESTOR' | 'PROVIDER' | 'ADMIN' | 'SYSTEM';
+  action: string;
+  message?: string;
+  previousStatus?: string;
+  newStatus?: string;
+  timestamp: string | Date;
+}
+
+export interface FicRequestMeetingDetails {
+  scheduledDate?: string;
+  scheduledTime?: string;
+  durationMinutes?: number;
+  meetingLink?: string;
+  status?: string;
+  bookedAt?: string | Date;
+  bookedByAdminName?: string;
+}
 
 export interface FicRequest {
   id: string;
+  requestId?: string;
   type: RequestType;
+  sourceModule?: string;
+  sourceRefId?: string;
   title: string;
   description: string;
   requesterId: string;
   requesterName: string;
   requesterEmail: string;
+  requesterPhone?: string;
+  requesterCategory?: string;
   targetServiceId?: string;
   targetProviderId?: string;
   status: RequestStatus;
   assignedStaffId?: string;
   assignedStaffName?: string;
+  adminResponse?: string;
+  adminRespondedAt?: string | Date;
+  adminRespondedByName?: string;
+  projectInfoSentAt?: string | Date;
+  providerNotifiedAt?: string | Date;
+  providerDecision?: 'AWAITING' | 'ACCEPTED' | 'REJECTED' | 'PENDING' | 'DECLINED';
+  providerResponse?: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+  providerResponseMessage?: string;
+  providerRejectionReason?: string;
+  providerRespondedAt?: string | Date;
+  providerResponseAt?: string | Date;
+  scheduledMeetingId?: string;
+  meetingDetails?: FicRequestMeetingDetails;
+  activityTimeline?: FicRequestActivityLog[];
   internalNotes?: string[];
   createdAt: string;
   updatedAt: string;

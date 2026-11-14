@@ -72,27 +72,53 @@ connectionsRouter.post('/', authenticate, requireActiveVerifiedMember, async (re
     // 1. Create or link FicRequest document for FIC Client Service Desk in Admin Console
     const targetServiceId = service?._id || (serviceId && mongoose.isValidObjectId(serviceId) ? new mongoose.Types.ObjectId(serviceId) : undefined);
     
-    // Check if target provider is available
+    // Check if target provider is available and resolve to member record
     let targetProviderId: any = undefined;
     if (service?.providerId && mongoose.isValidObjectId(service.providerId)) {
-      targetProviderId = service.providerId;
+      const pMember = await MemberModel.findOne({
+        $or: [{ _id: service.providerId }, { email: service.providerEmail }]
+      });
+      targetProviderId = pMember ? pMember._id : service.providerId;
     } else if (providerUserId && mongoose.isValidObjectId(providerUserId)) {
-      targetProviderId = providerUserId;
+      const pMember = await MemberModel.findOne({ _id: providerUserId });
+      targetProviderId = pMember ? pMember._id : providerUserId;
     }
 
+    const year = new Date().getFullYear();
+    const rand = Math.floor(10000 + Math.random() * 90000);
+    const generatedReqId = `REQ-${year}-${rand}`;
     const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
     const ficRequest = await FicRequestModel.create({
+      requestId: generatedReqId,
       type: 'SERVICE_INQUIRY',
       title,
+      projectTitle: title,
       description: requirementNotes,
+      projectRequirements: requirementNotes,
       requesterId: member._id,
       requesterName,
       requesterEmail,
+      requesterPhone: user?.phoneNumber || '',
+      requesterCategory: user?.primaryCategoryName || categoryName,
       targetServiceId,
       targetProviderId,
-      status: 'NEW',
+      status: 'SUBMITTED',
+      providerDecision: 'AWAITING',
+      providerResponse: 'PENDING',
+      activityTimeline: [
+        {
+          actorId: req.user.userId,
+          actorName: requesterName,
+          actorRole: 'REQUESTOR',
+          action: 'REQUEST_SUBMITTED',
+          message: `Requirement registered for "${title}". Routed to FIC Desk.`,
+          newStatus: 'SUBMITTED',
+          timestamp: new Date()
+        }
+      ],
       internalNotes: [
-        `[${timestamp} by System]: New marketplace requirement registered by member ${requesterName} (${requesterEmail}). Category: ${resolvedCategory}.`
+        `[${timestamp} by System]: New marketplace requirement registered by member ${requesterName} (${requesterEmail}). Category: ${resolvedCategory}. Provider auto-bound to service listing owner.`
       ]
     });
 
@@ -161,41 +187,75 @@ connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (r
 
     // Format for customer portal consumption
     const formatted = ficRequests.map((r: any) => {
-      // Map FIC Request status to display status and label
       let statusLabel = 'Under FIC Review';
       let status = 'SUBMITTED';
+      let nextAction = 'FIC Desk is coordinating with the service provider';
 
       switch (r.status) {
         case 'NEW':
+        case 'SUBMITTED':
           status = 'SUBMITTED';
           statusLabel = 'Under FIC Review';
+          nextAction = 'FIC Desk is evaluating requirement specifications';
           break;
+        case 'ADMIN_REVIEW':
         case 'UNDER_REVIEW':
-          status = 'IN_PROGRESS';
-          statusLabel = 'Evaluating Providers';
+          status = 'UNDER_REVIEW';
+          statusLabel = 'Evaluating Scope & Providers';
+          nextAction = 'FIC Desk is reviewing technical scope';
           break;
+        case 'SENT_TO_PROVIDER':
+        case 'AWAITING_PROVIDER_RESPONSE':
         case 'PROVIDER_CONTACTED':
-          status = 'IN_PROGRESS';
-          statusLabel = 'Provider Contacted';
+          status = 'AWAITING_PROVIDER_RESPONSE';
+          statusLabel = 'Awaiting Provider Acceptance';
+          nextAction = 'Provider is reviewing the project brief';
           break;
+        case 'PROVIDER_ACCEPTED':
+          status = 'PROVIDER_ACCEPTED';
+          statusLabel = 'Provider Accepted';
+          nextAction = 'FIC is coordinating next steps & meeting';
+          break;
+        case 'PROVIDER_REJECTED':
+          status = 'PROVIDER_REJECTED';
+          statusLabel = 'Provider Unavailable';
+          nextAction = 'FIC will advise on alternative options';
+          break;
+        case 'ADMIN_RESPONSE_SENT':
+        case 'RESPONDED':
+          status = 'ADMIN_RESPONSE_SENT';
+          statusLabel = 'FIC Response Sent';
+          nextAction = 'Check official FIC response in details';
+          break;
+        case 'MEETING_PROPOSED':
+        case 'MEETING_CONFIRMED':
         case 'MEETING_SCHEDULED':
-          status = 'IN_PROGRESS';
+          status = 'MEETING_CONFIRMED';
           statusLabel = 'Consultation Call Scheduled';
+          nextAction = 'Join scheduled video conference';
+          break;
+        case 'IN_PROGRESS':
+          status = 'IN_PROGRESS';
+          statusLabel = 'In Progress';
+          nextAction = 'Project execution in progress';
           break;
         case 'COMPLETED':
           status = 'COMPLETED';
           statusLabel = 'Service Completed';
+          nextAction = 'Workflow completed';
           break;
         case 'CANCELLED':
+        case 'REJECTED':
           status = 'CANCELLED';
           statusLabel = 'Request Cancelled';
+          nextAction = 'No further action required';
           break;
         default:
           status = r.status;
-          statusLabel = r.status;
+          statusLabel = r.status ? r.status.replace(/_/g, ' ') : 'Under Review';
       }
 
-      // Latest coordinator remark from internal notes or direct admin response
+      // Latest coordinator remark from direct admin response or internal notes
       const notes = r.adminResponse || (
         Array.isArray(r.internalNotes) && r.internalNotes.length > 0
           ? r.internalNotes[r.internalNotes.length - 1]
@@ -203,19 +263,24 @@ connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (r
       );
 
       return {
-        adminResponse: r.adminResponse,
-        adminRespondedAt: r.adminRespondedAt,
-        adminRespondedByName: r.adminRespondedByName,
         id: r._id.toString(),
         _id: r._id.toString(),
+        requestId: r.requestId || ('REQ-' + r._id.toString().slice(-6).toUpperCase()),
         title: r.title,
         status,
         statusLabel,
         adminStatus: r.status,
+        nextAction,
+        latestUpdate: notes,
         notes: r.description,
         requirementNotes: r.description,
         ficRemark: notes,
-        internalNotes: r.internalNotes || [],
+        adminResponse: r.adminResponse,
+        adminRespondedAt: r.adminRespondedAt || r.adminResponseSentAt,
+        adminRespondedByName: r.adminRespondedByName,
+        providerOutcome: (r.providerDecision === 'ACCEPTED' || r.providerResponse === 'ACCEPTED')
+          ? 'ACCEPTED'
+          : ((r.providerDecision === 'REJECTED' || r.providerResponse === 'DECLINED') ? 'REJECTED' : 'PENDING'),
         assignedStaffName: r.assignedStaffName,
         targetProvider: r.targetProviderId ? {
           name: r.targetProviderId.name,
@@ -226,7 +291,14 @@ connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (r
           scheduledAt: r.scheduledMeetingId.scheduledAt,
           meetingLink: r.scheduledMeetingId.meetingLink,
           status: r.scheduledMeetingId.status
-        } : null,
+        } : (r.meetingDetails?.meetingLink ? {
+          title: 'FIC Introduction Call',
+          scheduledAt: `${r.meetingDetails.scheduledDate}T${r.meetingDetails.scheduledTime}`,
+          meetingLink: r.meetingDetails.meetingLink,
+          status: r.meetingDetails.status
+        } : null),
+        meetingDetails: r.meetingDetails,
+        activityTimeline: r.activityTimeline || [],
         date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today',
         createdAt: r.createdAt
       };
@@ -241,7 +313,7 @@ connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (r
   }
 });
 
-// Provider views all incoming service requests dispatched to them
+// Provider views all incoming service requests dispatched to them (Strictly anonymized client identity)
 connectionsRouter.get('/incoming', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
@@ -269,25 +341,36 @@ connectionsRouter.get('/incoming', authenticate, requireActiveVerifiedMember, as
 
     const ficRequests = await FicRequestModel.find({ $or: targetProviderOr })
       .populate('targetServiceId', 'title categoryName pricingEstimate locationState')
-      .populate('requesterId', 'name email phone primaryCategoryName')
       .sort({ createdAt: -1 })
       .lean();
 
     const formatted = ficRequests.map((r: any) => {
-      const responseStatus = r.providerResponse || 'PENDING';
+      const responseStatus = r.providerDecision === 'ACCEPTED' || r.providerResponse === 'ACCEPTED'
+        ? 'ACCEPTED'
+        : (r.providerDecision === 'REJECTED' || r.providerResponse === 'DECLINED' ? 'DECLINED' : 'PENDING');
+
       return {
         id: r._id.toString(),
         _id: r._id.toString(),
+        requestId: r.requestId || ('REQ-' + r._id.toString().slice(-6).toUpperCase()),
         title: r.title,
         description: r.description,
         requirementNotes: r.description,
         serviceTitle: (r.targetServiceId as any)?.title || r.title,
         serviceCategory: (r.targetServiceId as any)?.categoryName || 'Marketplace Capability',
-        requesterName: r.requesterName || (r.requesterId as any)?.name || 'Confidential FIC Member',
-        requesterCategory: r.requesterCategory || (r.requesterId as any)?.primaryCategoryName || 'FIC Member',
+        // Client identity strictly shielded from provider per FIC Intermediary Governance
+        requesterName: 'Confidential FIC Member (Protected)',
+        requesterCategory: r.requesterCategory || 'FIC Business Member',
+        requesterEmail: '',
+        requesterPhone: '',
+        clientShielded: true,
         status: responseStatus,
+        providerDecision: r.providerDecision || (responseStatus === 'ACCEPTED' ? 'ACCEPTED' : (responseStatus === 'DECLINED' ? 'REJECTED' : 'AWAITING')),
         providerResponse: responseStatus,
-        providerResponseAt: r.providerResponseAt,
+        providerResponseMessage: r.providerResponseMessage || '',
+        providerRejectionReason: r.providerRejectionReason || '',
+        providerResponseAt: r.providerResponseAt || r.providerRespondedAt,
+        providerRespondedAt: r.providerRespondedAt || r.providerResponseAt,
         adminStatus: r.status,
         date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today',
         createdAt: r.createdAt
@@ -303,16 +386,22 @@ connectionsRouter.get('/incoming', authenticate, requireActiveVerifiedMember, as
   }
 });
 
-// Provider responds to incoming service request (Accept or Decline)
-connectionsRouter.patch('/incoming/:id/respond', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Helper for provider response handling
+const handleProviderDecision = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.user) throw new AppError('Unauthorized', 401);
 
     const { id } = req.params;
-    const { decision, reason } = req.body; // decision: 'ACCEPTED' | 'DECLINED'
+    const { decision, reason, message } = req.body; // decision: 'ACCEPTED' | 'DECLINED' | 'REJECTED'
 
-    if (!decision || !['ACCEPTED', 'DECLINED'].includes(decision)) {
-      throw new AppError('Valid decision ("ACCEPTED" or "DECLINED") is required.', 400);
+    const normalizedDecision = (decision || '').toUpperCase();
+    if (!['ACCEPTED', 'DECLINED', 'REJECTED'].includes(normalizedDecision)) {
+      throw new AppError('Valid decision ("ACCEPTED" or "DECLINED" / "REJECTED") is required.', 400);
+    }
+
+    const isAccepted = normalizedDecision === 'ACCEPTED';
+    if (!isAccepted && !reason?.trim() && !message?.trim()) {
+      throw new AppError('A clear rejection reason is required when declining a service request.', 400);
     }
 
     const userId = req.user.userId;
@@ -331,7 +420,6 @@ connectionsRouter.patch('/incoming/:id/respond', authenticate, requireActiveVeri
       ((ficReq.targetServiceId as any)?.providerId && (ficReq.targetServiceId as any).providerId.toString() === userId.toString());
 
     if (!isTargetProvider) {
-      // If target provider is unassigned, allow owner of target service to respond
       const myServices = await ServiceListingModel.find({
         $or: [{ providerId: userId }, { providerEmail: userEmail }]
       }).select('_id');
@@ -341,20 +429,40 @@ connectionsRouter.patch('/incoming/:id/respond', authenticate, requireActiveVeri
       }
     }
 
-    ficReq.providerResponse = decision;
-    ficReq.providerResponseAt = new Date();
+    const prevStatus = ficReq.status;
+    const now = new Date();
+    ficReq.providerResponse = isAccepted ? 'ACCEPTED' : 'DECLINED';
+    ficReq.providerDecision = isAccepted ? 'ACCEPTED' : 'REJECTED';
+    ficReq.providerResponseAt = now;
+    ficReq.providerRespondedAt = now;
 
-    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
-    const providerName = user?.fullName || member?.name || 'Assigned Provider';
-    ficReq.internalNotes.push(
-      `[${timestamp} by ${providerName}]: Provider marked service assignment as ${decision}.${reason ? ` Reason / Remarks: ${reason}` : ''}`
-    );
-
-    if (decision === 'ACCEPTED') {
-      ficReq.status = 'IN_PROGRESS';
+    if (isAccepted) {
+      ficReq.providerResponseMessage = (message || reason || '').trim();
+      ficReq.status = 'PROVIDER_ACCEPTED';
     } else {
-      ficReq.status = 'UNDER_REVIEW';
+      ficReq.providerRejectionReason = (reason || message || '').trim();
+      ficReq.status = 'PROVIDER_REJECTED';
     }
+
+    const timestamp = now.toISOString().replace('T', ' ').substring(0, 16);
+    const providerName = user?.fullName || member?.name || 'Assigned Provider';
+    const actionNote = isAccepted
+      ? `Provider accepted service inquiry.${ficReq.providerResponseMessage ? ` Clarification: "${ficReq.providerResponseMessage}"` : ''}`
+      : `Provider declined service inquiry. Reason: "${ficReq.providerRejectionReason}"`;
+
+    ficReq.internalNotes.push(`[${timestamp} by ${providerName}]: ${actionNote}`);
+
+    if (!ficReq.activityTimeline) ficReq.activityTimeline = [];
+    ficReq.activityTimeline.push({
+      actorId: userId.toString(),
+      actorName: providerName,
+      actorRole: 'PROVIDER',
+      action: isAccepted ? 'PROVIDER_ACCEPTED' : 'PROVIDER_REJECTED',
+      message: isAccepted ? (ficReq.providerResponseMessage || 'Accepted project assignment') : ficReq.providerRejectionReason,
+      previousStatus: prevStatus,
+      newStatus: ficReq.status,
+      timestamp: now,
+    });
 
     await ficReq.save();
 
@@ -363,29 +471,30 @@ connectionsRouter.patch('/incoming/:id/respond', authenticate, requireActiveVeri
       await ServiceRequestModel.updateMany(
         { $or: [{ serviceId: ficReq.targetServiceId }, { providerId: userId }] },
         {
-          status: decision === 'ACCEPTED' ? ServiceRequestStatus.IN_PROGRESS : ServiceRequestStatus.CANCELLED,
-          ficNotes: `Provider responded with ${decision}.${reason ? ` Remarks: ${reason}` : ''}`
+          status: isAccepted ? ServiceRequestStatus.IN_PROGRESS : ServiceRequestStatus.CANCELLED,
+          ficNotes: actionNote
         }
       );
     } catch {}
 
-    // Notify admins
+    // Notify Admins immediately
     try {
       await notifyAdmins({
-        eventType: 'PROVIDER_RESPONDED',
-        title: `Provider ${decision}: ${ficReq.title}`,
-        message: `Provider ${providerName} has ${decision} the project assignment for "${ficReq.title}".`,
+        eventType: isAccepted ? 'PROVIDER_ACCEPTED' : 'PROVIDER_REJECTED',
+        title: `Provider ${isAccepted ? 'Accepted' : 'Declined'}: ${ficReq.title}`,
+        message: `Provider ${providerName} has ${isAccepted ? 'ACCEPTED' : 'DECLINED'} "${ficReq.title}".${isAccepted ? '' : ` Reason: ${ficReq.providerRejectionReason}`}`,
         link: '/requests',
-        priority: 'MEDIUM'
+        priority: 'HIGH'
       });
     } catch {}
 
     res.status(200).json({
       success: true,
-      message: `Service request has been successfully ${decision.toLowerCase()}.`,
+      message: `Service request has been successfully ${isAccepted ? 'accepted' : 'declined'}.`,
       data: {
         id: ficReq._id.toString(),
         providerResponse: ficReq.providerResponse,
+        providerDecision: ficReq.providerDecision,
         providerResponseAt: ficReq.providerResponseAt,
         status: ficReq.status
       }
@@ -393,6 +502,10 @@ connectionsRouter.patch('/incoming/:id/respond', authenticate, requireActiveVeri
   } catch (error) {
     next(error);
   }
-});
+};
+
+// Provider responds to incoming service request (Accept or Decline)
+connectionsRouter.patch('/incoming/:id/respond', authenticate, requireActiveVerifiedMember, handleProviderDecision);
+connectionsRouter.post('/incoming/:id/respond', authenticate, requireActiveVerifiedMember, handleProviderDecision);
 
 

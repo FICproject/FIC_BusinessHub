@@ -403,25 +403,36 @@ servicesRouter.get('/requests/incoming', authenticate, requireActiveVerifiedMemb
 
     const ficRequests = await FicRequestModel.find({ $or: targetProviderOr })
       .populate('targetServiceId', 'title categoryName pricingEstimate locationState')
-      .populate('requesterId', 'name email phone primaryCategoryName')
       .sort({ createdAt: -1 })
       .lean();
 
     const formatted = ficRequests.map((r: any) => {
-      const responseStatus = r.providerResponse || 'PENDING';
+      const responseStatus = r.providerDecision === 'ACCEPTED' || r.providerResponse === 'ACCEPTED'
+        ? 'ACCEPTED'
+        : (r.providerDecision === 'REJECTED' || r.providerResponse === 'DECLINED' ? 'DECLINED' : 'PENDING');
+
       return {
         id: r._id.toString(),
         _id: r._id.toString(),
+        requestId: r.requestId || ('REQ-' + r._id.toString().slice(-6).toUpperCase()),
         title: r.title,
         description: r.description,
         requirementNotes: r.description,
         serviceTitle: (r.targetServiceId as any)?.title || r.title,
         serviceCategory: (r.targetServiceId as any)?.categoryName || 'Marketplace Capability',
-        requesterName: r.requesterName || (r.requesterId as any)?.name || 'Confidential FIC Member',
-        requesterCategory: r.requesterCategory || (r.requesterId as any)?.primaryCategoryName || 'FIC Member',
+        // Client identity strictly shielded from provider per FIC Intermediary Governance
+        requesterName: 'Confidential FIC Member (Protected)',
+        requesterCategory: r.requesterCategory || 'FIC Business Member',
+        requesterEmail: '',
+        requesterPhone: '',
+        clientShielded: true,
         status: responseStatus,
+        providerDecision: r.providerDecision || (responseStatus === 'ACCEPTED' ? 'ACCEPTED' : (responseStatus === 'DECLINED' ? 'REJECTED' : 'AWAITING')),
         providerResponse: responseStatus,
-        providerResponseAt: r.providerResponseAt,
+        providerResponseMessage: r.providerResponseMessage || '',
+        providerRejectionReason: r.providerRejectionReason || '',
+        providerResponseAt: r.providerResponseAt || r.providerRespondedAt,
+        providerRespondedAt: r.providerRespondedAt || r.providerResponseAt,
         adminStatus: r.status,
         date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today',
         createdAt: r.createdAt
@@ -438,7 +449,7 @@ servicesRouter.get('/requests/incoming', authenticate, requireActiveVerifiedMemb
 });
 
 // 10. Provider Decision: Accept or Decline service request
-servicesRouter.patch('/requests/:id/respond', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+const handleServicesProviderDecision = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
     if (!userId) {
@@ -447,10 +458,17 @@ servicesRouter.patch('/requests/:id/respond', authenticate, requireActiveVerifie
     }
 
     const { id } = req.params;
-    const { decision, reason } = req.body;
+    const { decision, reason, message } = req.body;
 
-    if (!decision || !['ACCEPTED', 'DECLINED'].includes(decision)) {
-      res.status(400).json({ success: false, message: 'Valid decision ("ACCEPTED" or "DECLINED") is required.' });
+    const normalizedDecision = (decision || '').toUpperCase();
+    if (!['ACCEPTED', 'DECLINED', 'REJECTED'].includes(normalizedDecision)) {
+      res.status(400).json({ success: false, message: 'Valid decision ("ACCEPTED" or "DECLINED" / "REJECTED") is required.' });
+      return;
+    }
+
+    const isAccepted = normalizedDecision === 'ACCEPTED';
+    if (!isAccepted && !reason?.trim() && !message?.trim()) {
+      res.status(400).json({ success: false, message: 'A clear rejection reason is required when declining a service request.' });
       return;
     }
 
@@ -465,43 +483,68 @@ servicesRouter.patch('/requests/:id/respond', authenticate, requireActiveVerifie
       return;
     }
 
-    ficReq.providerResponse = decision;
-    ficReq.providerResponseAt = new Date();
+    const prevStatus = ficReq.status;
+    const now = new Date();
+    ficReq.providerResponse = isAccepted ? 'ACCEPTED' : 'DECLINED';
+    ficReq.providerDecision = isAccepted ? 'ACCEPTED' : 'REJECTED';
+    ficReq.providerResponseAt = now;
+    ficReq.providerRespondedAt = now;
 
-    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
-    const providerName = member?.name || req.user?.email || 'Assigned Provider';
-    ficReq.internalNotes.push(
-      `[${timestamp} by ${providerName}]: Provider responded with ${decision}.${reason ? ` Reason: ${reason}` : ''}`
-    );
-
-    if (decision === 'ACCEPTED') {
-      ficReq.status = 'IN_PROGRESS';
+    if (isAccepted) {
+      ficReq.providerResponseMessage = (message || reason || '').trim();
+      ficReq.status = 'PROVIDER_ACCEPTED';
     } else {
-      ficReq.status = 'UNDER_REVIEW';
+      ficReq.providerRejectionReason = (reason || message || '').trim();
+      ficReq.status = 'PROVIDER_REJECTED';
     }
+
+    const timestamp = now.toISOString().replace('T', ' ').substring(0, 16);
+    const providerName = member?.name || req.user?.email || 'Assigned Provider';
+    const actionNote = isAccepted
+      ? `Provider accepted service inquiry.${ficReq.providerResponseMessage ? ` Clarification: "${ficReq.providerResponseMessage}"` : ''}`
+      : `Provider declined service inquiry. Reason: "${ficReq.providerRejectionReason}"`;
+
+    ficReq.internalNotes.push(`[${timestamp} by ${providerName}]: ${actionNote}`);
+
+    if (!ficReq.activityTimeline) ficReq.activityTimeline = [];
+    ficReq.activityTimeline.push({
+      actorId: userId.toString(),
+      actorName: providerName,
+      actorRole: 'PROVIDER',
+      action: isAccepted ? 'PROVIDER_ACCEPTED' : 'PROVIDER_REJECTED',
+      message: isAccepted ? (ficReq.providerResponseMessage || 'Accepted project assignment') : ficReq.providerRejectionReason,
+      previousStatus: prevStatus,
+      newStatus: ficReq.status,
+      timestamp: now,
+    });
 
     await ficReq.save();
 
     try {
       await notifyAdmins({
-        eventType: 'PROVIDER_RESPONDED',
-        title: `Provider ${decision}: ${ficReq.title}`,
-        message: `Provider ${providerName} has ${decision} the service assignment for "${ficReq.title}".`,
+        eventType: isAccepted ? 'PROVIDER_ACCEPTED' : 'PROVIDER_REJECTED',
+        title: `Provider ${isAccepted ? 'Accepted' : 'Declined'}: ${ficReq.title}`,
+        message: `Provider ${providerName} has ${isAccepted ? 'ACCEPTED' : 'DECLINED'} "${ficReq.title}".${isAccepted ? '' : ` Reason: ${ficReq.providerRejectionReason}`}`,
         link: '/requests',
-        priority: 'MEDIUM'
+        priority: 'HIGH'
       });
     } catch {}
 
     res.status(200).json({
       success: true,
-      message: `Service request has been successfully ${decision.toLowerCase()}.`,
+      message: `Service request has been successfully ${isAccepted ? 'accepted' : 'declined'}.`,
       data: {
         id: ficReq._id.toString(),
         providerResponse: ficReq.providerResponse,
+        providerDecision: ficReq.providerDecision,
+        providerResponseAt: ficReq.providerResponseAt,
         status: ficReq.status
       }
     });
   } catch (error) {
     next(error);
   }
-});
+};
+
+servicesRouter.patch('/requests/:id/respond', authenticate, requireActiveVerifiedMember, handleServicesProviderDecision);
+servicesRouter.post('/requests/:id/respond', authenticate, requireActiveVerifiedMember, handleServicesProviderDecision);

@@ -857,6 +857,7 @@ export const deleteMemberService = async (serviceId: string, serviceTitle?: stri
 export interface IIncomingServiceRequest {
   id: string;
   _id?: string;
+  requestId?: string;
   title: string;
   description: string;
   requirementNotes: string;
@@ -864,8 +865,12 @@ export interface IIncomingServiceRequest {
   serviceCategory: string;
   requesterName: string;
   requesterCategory: string;
-  status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+  clientShielded?: boolean;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'AWAITING' | 'REJECTED';
+  providerDecision?: 'AWAITING' | 'ACCEPTED' | 'REJECTED' | 'PENDING' | 'DECLINED';
   providerResponse: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+  providerResponseMessage?: string;
+  providerRejectionReason?: string;
   providerResponseAt?: string;
   adminStatus: string;
   date: string;
@@ -892,13 +897,14 @@ export const getIncomingServiceRequests = async (): Promise<IIncomingServiceRequ
 
 export const respondToIncomingServiceRequest = async (
   requestId: string,
-  decision: 'ACCEPTED' | 'DECLINED',
-  reason?: string
+  decision: 'ACCEPTED' | 'DECLINED' | 'REJECTED',
+  reason?: string,
+  message?: string
 ): Promise<{ success: boolean; message?: string }> => {
   try {
     const res = await apiRequest(`/connections/incoming/${encodeURIComponent(requestId)}/respond`, {
       method: 'PATCH',
-      body: JSON.stringify({ decision, reason })
+      body: JSON.stringify({ decision, reason, message })
     });
     if (res?.success) return res;
   } catch (_e) {}
@@ -906,7 +912,7 @@ export const respondToIncomingServiceRequest = async (
   try {
     const res = await apiRequest(`/services/requests/${encodeURIComponent(requestId)}/respond`, {
       method: 'PATCH',
-      body: JSON.stringify({ decision, reason })
+      body: JSON.stringify({ decision, reason, message })
     });
     return res;
   } catch (err: any) {
