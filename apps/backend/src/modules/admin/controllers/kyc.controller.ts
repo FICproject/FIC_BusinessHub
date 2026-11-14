@@ -294,7 +294,7 @@ router.get('/', authenticateAdmin, requirePermission('KYC_VERIFY'), async (req, 
   try {
     await syncMissingKycSubmissionsFromSharedDb();
 
-    const { status, categoryId } = req.query;
+    const { status, categoryId, includeApproved } = req.query;
     const filter: any = {};
     if (status && status !== 'ALL') {
       const s = String(status).trim().toUpperCase();
@@ -302,11 +302,20 @@ router.get('/', authenticateAdmin, requirePermission('KYC_VERIFY'), async (req, 
         filter.status = { $in: ['RESUBMISSION_REQUESTED', 'RESUBMIT_REQUIRED'] };
       } else if (s === 'SUBMITTED' || s === 'PENDING' || s === 'PENDING_REVIEW') {
         filter.status = { $in: ['SUBMITTED', 'PENDING', 'UNDER_REVIEW'] };
+      } else if (s === 'APPROVED') {
+        if (includeApproved === 'true') {
+          filter.status = 'APPROVED';
+        } else {
+          // Approved members do not belong in the KYC Verification queue. They appear in Members Directory.
+          res.json({ success: true, data: [] });
+          return;
+        }
       } else {
         filter.status = s;
       }
     } else {
-      filter.status = { $ne: 'NOT_SUBMITTED' };
+      // Default KYC Verification queue: display only members whose KYC verification is still pending or requires action
+      filter.status = { $nin: ['APPROVED', 'NOT_SUBMITTED'] };
     }
     if (categoryId) filter.categoryId = categoryId;
 
@@ -365,7 +374,15 @@ router.get('/', authenticateAdmin, requirePermission('KYC_VERIFY'), async (req, 
       })
     );
 
-    res.json({ success: true, data: enrichedSubmissions });
+    // Filter out approved members from the KYC Verification queue
+    const activeKycQueue = enrichedSubmissions.filter((sub: any) => {
+      if (includeApproved === 'true') return true;
+      const s = String(sub.status || '').toUpperCase();
+      const memberKyc = String(sub.memberId?.kycStatus || '').toUpperCase();
+      return s !== 'APPROVED' && memberKyc !== 'APPROVED';
+    });
+
+    res.json({ success: true, data: activeKycQueue });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -968,50 +985,7 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
         }
 
         if (referrerUser && String(referrerUser._id) !== String(updatedUser._id)) {
-          // 1. Credit Referrer Wallet immediately with Referral Bonus
-          const { MemberWalletModel, WalletTransactionModel } = await import('../../wallet/wallet.model');
-          const { WalletTransactionType, WalletTransactionStatus, WalletStatus } = await import('@fic/shared-types');
-          let referrerWallet = await MemberWalletModel.findOne({ userId: referrerUser._id });
-          if (!referrerWallet) {
-            referrerWallet = await MemberWalletModel.create({
-              userId: referrerUser._id,
-              currency: 'INR',
-              totalBalance: 0,
-              availableBalance: 0,
-              pendingBalance: 0,
-              restrictedBalance: 0,
-              withdrawalEligibleBalance: 0,
-              membershipEligibleBalance: 0,
-              totalAdded: 0,
-              totalWithdrawn: 0,
-              totalReferralEarnings: 0,
-              totalRenewalSpent: 0,
-              status: WalletStatus.ACTIVE
-            });
-          }
-
-          referrerWallet.availableBalance = (referrerWallet.availableBalance || 0) + rewardAmount;
-          referrerWallet.totalBalance = (referrerWallet.totalBalance || 0) + rewardAmount;
-          referrerWallet.totalReferralEarnings = (referrerWallet.totalReferralEarnings || 0) + rewardAmount;
-          referrerWallet.withdrawalEligibleBalance = Math.max(0, (referrerWallet.availableBalance || 0) - (referrerWallet.restrictedBalance || 0));
-          await referrerWallet.save();
-
-          // 2. Insert Completed Ledger Transaction
-          await WalletTransactionModel.create({
-            transactionId: `TXN_REF_${Date.now()}_${Math.floor(100 + Math.random() * 900)}`,
-            walletId: referrerWallet._id,
-            userId: referrerUser._id,
-            transactionType: WalletTransactionType.REFERRAL_REWARD,
-            direction: 'CREDIT',
-            amount: rewardAmount,
-            currency: 'INR',
-            description: `Referral reward for verified member ${updatedUser.fullName}`,
-            status: WalletTransactionStatus.COMPLETED,
-            balanceAfter: referrerWallet.availableBalance,
-            sourceReferenceId: `REF_${updatedUser._id}`
-          });
-
-          // 3. Mark Referral qualified & rewarded
+          // Mark Referral qualified & pending Admin disbursement (DO NOT credit wallet until Admin clicks Disburse)
           await ReferralModel.findOneAndUpdate(
             { referredUserId: updatedUser._id },
             {
@@ -1027,8 +1001,7 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
                 accountStatus: 'ACTIVE',
                 referralStatus: 'QUALIFIED',
                 rewardAmount: rewardAmount,
-                rewardStatus: 'REWARDED',
-                rewardPaidAt: now
+                rewardStatus: 'PENDING_APPROVAL'
               }
             },
             { upsert: true, new: true }
@@ -1045,9 +1018,8 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
                 referredName: updatedUser.fullName,
                 referredEmail: updatedUser.email,
                 bonusAmount: rewardAmount,
-                status: 'APPROVED',
-                paidAt: now,
-                notes: `Referral bonus auto-credited to wallet upon KYC approval (Referred via ${updatedUser.referredByCode || referrerUser.referralCode || 'FIC-REF'})`
+                status: 'APPROVED', // Ready for Admin review and disbursement in Admin -> Referral Bonus
+                notes: `Referred member KYC verified. Ready for Admin reward disbursement.`
               }
             },
             { upsert: true, new: true }

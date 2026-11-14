@@ -176,7 +176,7 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       membershipPayment: member.paymentStatus === 'PAID' ? {
         amount: member.membershipFeePaid || 99,
         currency: 'INR',
-        paidFrom: 'Bank Account / Verified UPI',
+        paidFrom: 'UPI',
         status: 'PAID',
         referenceId: razorpayTxn?.razorpayPaymentId || razorpayTxn?.gatewayTransactionId || (kycSubmission as any)?.paymentDetails?.paymentId || 'UNAVAILABLE',
         razorpayOrderId: razorpayTxn?.razorpayOrderId || (kycSubmission as any)?.paymentDetails?.orderId,
@@ -201,7 +201,7 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       membershipPayment: member.paymentStatus === 'PAID' ? {
         amount: member.membershipFeePaid || 99,
         currency: 'INR',
-        paidFrom: 'Bank Account / Verified UPI',
+        paidFrom: 'UPI',
         status: 'PAID',
         referenceId: razorpayTxn?.razorpayPaymentId || razorpayTxn?.gatewayTransactionId || (kycSubmission as any)?.paymentDetails?.paymentId || 'UNAVAILABLE',
         razorpayOrderId: razorpayTxn?.razorpayOrderId || (kycSubmission as any)?.paymentDetails?.orderId,

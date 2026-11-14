@@ -61,25 +61,53 @@ servicesRouter.post('/', authenticate, requireActiveVerifiedMember, async (req: 
     } = req.body;
 
     const userDoc = await UserModel.findById(userId);
-    let resolvedCategoryId = categoryId;
-    if (!resolvedCategoryId && userDoc?.primaryCategoryId) {
-      resolvedCategoryId = userDoc.primaryCategoryId;
-    }
-    if (!resolvedCategoryId) {
-      const defaultCat = await CategoryModel.findOne({});
-      resolvedCategoryId = defaultCat?._id;
+    if (!userDoc) {
+      res.status(404).json({ success: false, message: 'Member profile not found' });
+      return;
     }
 
-    const resolvedCategoryName = categoryName || userDoc?.primaryCategoryName || 'General Business';
-    const resolvedCategorySlug = categorySlug || 'general-business';
+    // Derive authoritative category & subcategory from member registration profile
+    const registeredCategoryName = userDoc.primaryCategoryName || 'Business & Entrepreneurship';
+    const registeredSubcategoryName = userDoc.primarySubcategoryName || userDoc.subCategory || '';
+
+    // Backend validation: Reject any attempt to submit a different sector or subcategory
+    if (categoryName && categoryName !== registeredCategoryName) {
+      res.status(400).json({
+        success: false,
+        message: `Primary sector is locked to your registered category (${registeredCategoryName}). You cannot submit services under a different category.`
+      });
+      return;
+    }
+    if (subcategoryName && subcategoryName !== registeredSubcategoryName) {
+      res.status(400).json({
+        success: false,
+        message: `Subcategory is locked to your registered specialization (${registeredSubcategoryName}). You cannot submit services under a different subcategory.`
+      });
+      return;
+    }
+
+    let resolvedCategoryId = userDoc.primaryCategoryId;
+    let resolvedCategorySlug = 'business-entrepreneurship';
+    if (resolvedCategoryId) {
+      const catDoc = await CategoryModel.findById(resolvedCategoryId);
+      if (catDoc) {
+        resolvedCategorySlug = catDoc.slug;
+      }
+    } else {
+      const catDoc = await CategoryModel.findOne({ name: registeredCategoryName });
+      if (catDoc) {
+        resolvedCategoryId = catDoc._id as any;
+        resolvedCategorySlug = catDoc.slug;
+      }
+    }
 
     const newService = await ServiceListingModel.create({
       providerId: userId,
       categoryId: resolvedCategoryId,
       subcategoryId,
-      categoryName: resolvedCategoryName,
+      categoryName: registeredCategoryName,
       categorySlug: resolvedCategorySlug,
-      subcategoryName,
+      subcategoryName: registeredSubcategoryName,
       title,
       shortDescription: shortDescription || (description ? description.substring(0, 150) : title),
       description: description || title,
@@ -108,10 +136,10 @@ servicesRouter.post('/', authenticate, requireActiveVerifiedMember, async (req: 
             title,
             description,
             categoryId: resolvedCategoryId || undefined,
-            categoryName: resolvedCategoryName,
+            categoryName: registeredCategoryName,
             categorySlug: resolvedCategorySlug,
             subcategoryId: subcategoryId || undefined,
-            subcategoryName: subcategoryName || '',
+            subcategoryName: registeredSubcategoryName,
             providerId: userId,
             providerPrivateName: user?.fullName || 'FIC Member',
             providerEmail: user?.email || '',
@@ -184,15 +212,26 @@ servicesRouter.put('/:id', authenticate, requireActiveVerifiedMember, async (req
       return;
     }
 
+    // Backend validation: Category and Subcategory are locked to member registration details
+    if (req.body.categoryName && req.body.categoryName !== service.categoryName) {
+      res.status(400).json({
+        success: false,
+        message: 'Primary sector cannot be modified. It is locked to your registered profile category.'
+      });
+      return;
+    }
+    if (req.body.subcategoryName && req.body.subcategoryName !== service.subcategoryName) {
+      res.status(400).json({
+        success: false,
+        message: 'Subcategory cannot be modified. It is locked to your registered profile specialization.'
+      });
+      return;
+    }
+
     const updatableFields = [
       'title',
       'shortDescription',
       'description',
-      'categoryId',
-      'subcategoryId',
-      'categoryName',
-      'categorySlug',
-      'subcategoryName',
       'servicesOffered',
       'skills',
       'tags',

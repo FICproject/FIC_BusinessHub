@@ -254,13 +254,10 @@ export const MarketplacePage: React.FC = () => {
               >
                 <div className="bg-white/95 rounded-2xl border border-[#EDE2D7] shadow-[0_2px_12px_-2px_rgba(81,70,63,0.04)] hover:border-[#E8795B]/50 hover:shadow-md transition-all duration-200 flex flex-col justify-between h-full p-4 sm:p-5 group">
                   <div>
-                    {/* Category Pill & Verification Badge */}
+                    {/* Category Pill */}
                     <div className="flex items-center justify-between mb-2.5 gap-2">
                       <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-[#FFF0EB] text-[#E8795B] border border-[#E8795B]/30">
                         {service.categoryName.split('&')[0]}
-                      </span>
-                      <span className="text-[10px] text-[#3B9C91] font-bold flex items-center gap-1 bg-[#E3F5F2] px-2 py-0.5 rounded-md border border-[#3B9C91]/30">
-                        <ShieldCheckIcon size={12} /> FIC Verified
                       </span>
                     </div>
 
@@ -314,12 +311,7 @@ export const MarketplacePage: React.FC = () => {
                   </div>
 
                   {/* Card Bottom CTA */}
-                  <div className="pt-3 border-t border-[#EDE2D7] flex items-center justify-between gap-2">
-                    <span className="text-[10.5px] text-[#5A4F47] font-bold flex items-center gap-1">
-                      <LockIcon size={11} className="text-[#8064B1]" />
-                      FIC Facilitated
-                    </span>
-
+                  <div className="pt-3 border-t border-[#EDE2D7] flex items-center justify-end gap-2">
                     {isOwnService(service) ? (
                       <span className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 select-none">
                         Your Listing

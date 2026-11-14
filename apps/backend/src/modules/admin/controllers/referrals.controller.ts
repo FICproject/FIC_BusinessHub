@@ -222,16 +222,32 @@ router.patch('/record/:id/payout', authenticateAdmin, async (req: AuthenticatedA
     });
 
     const bonusAmount = Number(record.bonusAmount) || 500;
+    const finalPayoutReference = payoutReference?.trim() || `REF-PAY-${Date.now().toString().slice(-6)}`;
 
     if (referrerUser) {
       const wallet = await getOrCreateWallet(referrerUser._id);
 
+      // Strict Idempotency Check: Prevent duplicate credits if already processed
+      const existingTx = await WalletTransactionModel.findOne({
+        walletId: wallet._id,
+        sourceReferenceId: record._id.toString(),
+        status: WalletTransactionStatus.COMPLETED
+      });
+
+      if (existingTx) {
+        record.status = 'PAID';
+        record.payoutReference = record.payoutReference || finalPayoutReference;
+        await record.save();
+        res.status(400).json({ error: 'This referral reward has already been disbursed and recorded in the ledger.' });
+        return;
+      }
+
       // Atomically credit wallet
-      const balanceAfter = wallet.availableBalance + bonusAmount;
-      wallet.availableBalance += bonusAmount;
-      wallet.totalBalance += bonusAmount;
-      wallet.withdrawalEligibleBalance += bonusAmount;
-      wallet.totalReferralEarnings += bonusAmount;
+      const balanceAfter = (wallet.availableBalance || 0) + bonusAmount;
+      wallet.availableBalance = balanceAfter;
+      wallet.totalBalance = (wallet.totalBalance || 0) + bonusAmount;
+      wallet.withdrawalEligibleBalance = (wallet.withdrawalEligibleBalance || 0) + bonusAmount;
+      wallet.totalReferralEarnings = (wallet.totalReferralEarnings || 0) + bonusAmount;
       await wallet.save();
 
       // Create transaction ledger record
@@ -243,11 +259,40 @@ router.patch('/record/:id/payout', authenticateAdmin, async (req: AuthenticatedA
         direction: 'CREDIT',
         amount: bonusAmount,
         currency: 'INR',
-        description: `Referral reward approved for verified member: ${record.referredName} (${record.referredEmail})`,
+        description: `Referral reward disbursed for verified member: ${record.referredName} (${record.referredEmail})`,
         status: WalletTransactionStatus.COMPLETED,
         balanceAfter,
         sourceReferenceId: record._id.toString()
       });
+
+      // Sync Admin MemberWalletModel if present
+      try {
+        const { MemberWalletModel: AdminMemberWalletModel } = await import('../models/MemberWallet');
+        const adminWallet = await AdminMemberWalletModel.findOne({
+          $or: [{ memberId: referrerUser._id }, { memberEmail: referrerUser.email.toLowerCase() }]
+        });
+        if (adminWallet) {
+          adminWallet.balance = (adminWallet.balance || 0) + bonusAmount;
+          const txs = adminWallet.transactions || [];
+          txs.unshift({
+            id: `TXN-REF-${record._id.toString().slice(-6)}`,
+            type: 'CREDIT',
+            title: `Referral Bonus Reward (${record.referredName})`,
+            category: 'Referral Bonus',
+            amount: bonusAmount,
+            currency: 'INR',
+            status: 'SUCCESS',
+            reference: finalPayoutReference,
+            date: new Date().toISOString(),
+            description: `Referral reward disbursed for onboarding member ${record.referredName}`
+          } as any);
+          adminWallet.transactions = txs;
+          adminWallet.lastSyncedAt = new Date();
+          await adminWallet.save();
+        }
+      } catch (adminWalletErr) {
+        console.warn('Admin wallet sync warning:', adminWalletErr);
+      }
     }
 
     // Also sync ReferralModel if present
@@ -269,7 +314,7 @@ router.patch('/record/:id/payout', authenticateAdmin, async (req: AuthenticatedA
 
     record.status = 'PAID';
     record.payoutDate = new Date();
-    record.payoutReference = payoutReference || `PAYOUT-${Date.now().toString().slice(-6)}`;
+    record.payoutReference = finalPayoutReference;
     if (notes) record.notes = notes;
     await record.save();
 

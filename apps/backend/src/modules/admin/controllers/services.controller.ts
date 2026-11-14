@@ -172,6 +172,28 @@ router.post('/sync', async (req, res) => {
     if (providerId && mongoose.isValidObjectId(providerId)) payload.providerId = providerId;
     if (subcategoryId && mongoose.isValidObjectId(subcategoryId)) payload.subcategoryId = subcategoryId;
 
+    // Enforce member registration profile category and subcategory
+    if (providerId || providerEmail) {
+      try {
+        const { UserModel } = await import('../../users/users.model');
+        const user = await UserModel.findOne({
+          $or: [
+            ...(providerId && mongoose.isValidObjectId(providerId) ? [{ _id: providerId }] : []),
+            ...(providerEmail ? [{ email: providerEmail.toLowerCase() }] : [])
+          ]
+        }).select('primaryCategoryName primarySubcategoryName subCategory primaryCategoryId');
+        if (user) {
+          if (user.primaryCategoryName) payload.categoryName = user.primaryCategoryName;
+          if (user.primarySubcategoryName || user.subCategory) {
+            payload.subcategoryName = user.primarySubcategoryName || user.subCategory;
+          }
+          if (user.primaryCategoryId) payload.categoryId = user.primaryCategoryId;
+        }
+      } catch (userLookupErr) {
+        console.warn('Could not derive user category in sync:', userLookupErr);
+      }
+    }
+
     const updated = await ServiceListingModel.findOneAndUpdate(
       cleanQuery,
       { $set: payload },

@@ -193,6 +193,14 @@ router.post('/staff', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), as
       return;
     }
 
+    if (role === 'SUPER_ADMIN' && req.admin?.role !== 'SUPER_ADMIN') {
+      res.status(403).json({
+        success: false,
+        error: 'Access Denied: Only Super Administrators can assign or create Super Admin accounts.'
+      });
+      return;
+    }
+
     const existing = await AdminUserModel.findOne({ email: email.toLowerCase() });
     if (existing) {
       res.status(400).json({ success: false, error: 'Staff user with this email already exists' });
@@ -251,6 +259,22 @@ router.patch('/staff/:id/status', authenticateAdmin, requireRole('SUPER_ADMIN', 
     const user = await AdminUserModel.findById(id);
     if (!user) {
       res.status(404).json({ success: false, error: 'Staff member not found' });
+      return;
+    }
+
+    if (user.role === 'SUPER_ADMIN') {
+      res.status(403).json({
+        success: false,
+        error: 'Protected Super Admin: Super Administrator accounts are protected and cannot be deactivated, modified, or deleted.'
+      });
+      return;
+    }
+
+    if (role === 'SUPER_ADMIN' && req.admin?.role !== 'SUPER_ADMIN') {
+      res.status(403).json({
+        success: false,
+        error: 'Access Denied: Only Super Administrators can elevate accounts to Super Admin.'
+      });
       return;
     }
 

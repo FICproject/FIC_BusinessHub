@@ -106,11 +106,6 @@ export const MemberLayout: React.FC<MemberLayoutProps> = ({ children }) => {
           </div>
         </ErrorBoundary>
       </main>
-
-      {/* Clean Member Workspace Footer */}
-      <div className="relative z-20">
-        <MemberFooter />
-      </div>
     </div>
   );
 };

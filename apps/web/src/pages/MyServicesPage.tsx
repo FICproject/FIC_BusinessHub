@@ -44,6 +44,7 @@ import {
   ClockIcon,
   AlertCircleIcon,
   PlusIcon,
+  EyeIcon,
   EditIcon,
   TrashIcon,
   ArrowRightIcon,
@@ -73,6 +74,7 @@ export const MyServicesPage: React.FC = () => {
   const [declineReason, setDeclineReason] = useState('');
 
   // Modal State for Add / Edit Service
+  const [selectedDetailService, setSelectedDetailService] = useState<ServiceListing | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
 
@@ -609,6 +611,32 @@ export const MyServicesPage: React.FC = () => {
   };
 
   useEffect(() => {
+    // Refresh member profile so registered primary category and subcategory are up-to-date
+    (async () => {
+      try {
+        const backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1');
+        const token = localStorage.getItem('fic_token');
+        if (token) {
+          const res = await fetch(`${backendBase}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const meData = await res.json();
+          if (meData?.success && meData?.data) {
+            const current: any = getStoredUser() || {};
+            const updated = {
+              ...current,
+              ...meData.data,
+              primaryCategoryName: meData.data.primaryCategoryName || current.primaryCategoryName,
+              categoryName: meData.data.primaryCategoryName || current.categoryName,
+              subCategory: meData.data.primarySubcategoryName || meData.data.subCategory || current.subCategory,
+              primarySubcategoryName: meData.data.primarySubcategoryName || current.primarySubcategoryName
+            };
+            localStorage.setItem('fic_user', JSON.stringify(updated));
+          }
+        }
+      } catch (_e) {}
+    })();
+
     loadUserServices();
     loadIncomingRequests();
     // Auto-poll every 6 seconds to reflect Admin's approval or rejection immediately
@@ -639,13 +667,15 @@ export const MyServicesPage: React.FC = () => {
   const handleOpenAddModal = () => {
     setEditingServiceId(null);
     setTitle('');
+    const regCatName = user?.primaryCategoryName || user?.categoryName || 'Business & Entrepreneurship';
+    const regSubcatName = user?.primarySubcategoryName || user?.subCategory || '';
     const defaultCat =
-      INITIAL_CATEGORIES_DATA.find((c) => c.name === user?.categoryName) ||
+      INITIAL_CATEGORIES_DATA.find((c) => c.name === regCatName) ||
       INITIAL_CATEGORIES_DATA[0];
     setCategoryId(defaultCat.id);
-    setCategoryName(defaultCat.name);
+    setCategoryName(regCatName);
     setCategorySlug(defaultCat.slug);
-    setSubcategoryName(user?.subCategory || '');
+    setSubcategoryName(regSubcatName);
     setShortDescription('');
     setDescription('');
     setServicesOfferedInput('');
@@ -1443,10 +1473,10 @@ export const MyServicesPage: React.FC = () => {
                     whileHover={{ y: -2, transition: motionSprings.cardHover }}
                     transition={motionSprings.gentle}
                   >
-                    <div className="bg-white/95 rounded-2xl border border-[#EADFCF] p-4 sm:p-5 shadow-[0_4px_20px_-4px_rgba(41,48,45,0.05)] hover:border-[#C66B52]/40 transition-all flex flex-col justify-between gap-3.5">
-                      <div className="space-y-2.5">
-                        {/* Top Bar: Sector + Status Badge */}
-                        <div className="flex flex-wrap items-center justify-between gap-2.5">
+                    <div className="bg-white/95 rounded-2xl border border-[#EADFCF] p-4 sm:p-5 shadow-[0_4px_20px_-4px_rgba(41,48,45,0.05)] hover:border-[#C66B52]/40 transition-all flex flex-col justify-between gap-3">
+                      <div className="space-y-2">
+                        {/* 1. Header: Sector & Subcategory + Status Badge */}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
                             <span className="px-2.5 py-0.5 rounded-lg text-[10.5px] font-black bg-[#FFF4F0] text-[#C66B52] border border-[#E58C72]/30">
                               {service.categoryName}
@@ -1468,13 +1498,13 @@ export const MyServicesPage: React.FC = () => {
                             {service.status === 'PENDING_APPROVAL' && (
                               <WorkspaceBadge variant="pending">
                                 <ClockIcon size={12} />
-                                Pending FIC Admin Review
+                                Under Review
                               </WorkspaceBadge>
                             )}
                             {service.status === 'DRAFT' && (
                               <WorkspaceBadge variant="neutral">
                                 <FileTextIcon size={12} />
-                                Draft (Not Submitted)
+                                Draft
                               </WorkspaceBadge>
                             )}
                             {service.status === 'REJECTED' && (
@@ -1486,95 +1516,42 @@ export const MyServicesPage: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Title & Description */}
-                        <div>
-                          <h3 className="text-sm sm:text-base font-black text-[#51463F] leading-snug">
-                            {service.title}
-                          </h3>
-                          <p className="text-xs sm:text-[13px] text-[#82776E] mt-1 leading-relaxed">
-                            {service.description}
-                          </p>
+                        {/* 2. Service Title */}
+                        <h3 className="text-sm sm:text-base font-black text-[#51463F] leading-snug">
+                          {service.title}
+                        </h3>
+
+                        {/* 3. Short Description (Limited to 2 lines) */}
+                        <p className="text-xs text-[#82776E] line-clamp-2 leading-relaxed">
+                          {service.shortDescription || (service.description?.length > 160 ? `${service.description.substring(0, 160)}...` : service.description)}
+                        </p>
+
+                        {/* 4. Created Date */}
+                        <div className="text-[11px] text-[#A89F91] font-mono">
+                          Created: {service.createdAt || 'Recent'}
                         </div>
-
-                        {/* Deliverables */}
-                        {service.servicesOffered && service.servicesOffered.length > 0 && (
-                          <div className="pt-0.5">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-[#82776E] block mb-1">
-                              Offered Deliverables:
-                            </span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {service.servicesOffered.map((item, idx) => (
-                                <span
-                                  key={idx}
-                                  className="text-[11px] px-2.5 py-0.5 rounded-lg bg-[#FAF7F2] text-[#51463F] border border-[#EDE2D7] font-bold"
-                                >
-                                  ✓ {item}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Metadata Bar */}
-                        <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs text-[#82776E]">
-                          <span className="font-bold text-[#51463F]">
-                            Coverage: <strong className="text-[#E8795B]">{service.coverageArea}</strong>
-                          </span>
-                          <span>•</span>
-                          <span className="font-bold text-[#51463F]">
-                            Mode:{' '}
-                            <strong className="text-[#8064B1]">
-                              {service.deliveryMode === 'ONLINE'
-                                ? 'Remote / Online'
-                                : service.deliveryMode === 'IN_PERSON'
-                                  ? 'On-Site / Plant'
-                                  : 'Online & On-Site'}
-                            </strong>
-                          </span>
-                          <span>•</span>
-                          <span>Created: {service.createdAt}</span>
-                        </div>
-
-                        {/* Rejection Feedback Note */}
-                        {service.status === 'REJECTED' && service.adminFeedback && (
-                          <div className="p-3 rounded-xl bg-[#FFF0EB] border border-[#E8795B]/30 text-xs text-[#51463F] space-y-1">
-                            <div className="font-black text-[#E8795B] flex items-center gap-1.5">
-                              <AlertCircleIcon size={14} />
-                              FIC Coordinator Feedback for Revision:
-                            </div>
-                            <p className="text-xs leading-relaxed text-[#82776E]">
-                              {service.adminFeedback}
-                            </p>
-                          </div>
-                        )}
-
-                        {/* REAL ADMIN REVIEW NOTICE */}
-                        {service.status === 'PENDING_APPROVAL' && (
-                          <div className="p-3.5 rounded-xl bg-[#FDF6E9] border border-[#D99B43]/30 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                            <div className="space-y-0.5">
-                              <div className="font-bold text-[#9C6818] flex items-center gap-1.5">
-                                <ShieldCheckIcon size={15} />
-                                Awaiting FIC Operations Moderation:
-                              </div>
-                              <p className="text-[11px] text-[#77786E]">
-                                Submitted for compliance verification. Once reviewed and approved by the admin team, your capability will automatically go live across the Universal Marketplace.
-                              </p>
-                            </div>
-                          </div>
-                        )}
                       </div>
 
-                      {/* Bottom Action Row */}
-                      <div className="pt-4 border-t border-[#EADFCF] flex flex-wrap items-center justify-between gap-3">
-                        <div>
+                      {/* 5. Bottom Action Row with View Details Button */}
+                      <div className="pt-3 border-t border-[#EADFCF] flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <WorkspaceButton
+                            variant="outline"
+                            size="sm"
+                            icon={<EyeIcon size={13} />}
+                            onClick={() => setSelectedDetailService(service)}
+                          >
+                            View Details
+                          </WorkspaceButton>
+
                           {service.status === 'APPROVED' && (
                             <Link to="/marketplace">
                               <WorkspaceButton
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
-                                icon={<ArrowRightIcon size={13} />}
+                                icon={<ArrowRightIcon size={12} />}
                               >
-                                View in Universal Marketplace
+                                View in Marketplace
                               </WorkspaceButton>
                             </Link>
                           )}
@@ -1595,7 +1572,7 @@ export const MyServicesPage: React.FC = () => {
                             <WorkspaceButton
                               variant="outline"
                               size="sm"
-                              icon={<EditIcon size={14} />}
+                              icon={<EditIcon size={13} />}
                               onClick={() => handleOpenEditModal(service)}
                             >
                               Edit
@@ -1622,10 +1599,10 @@ export const MyServicesPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleDelete(service.id || (service as any)._id, service.title)}
-                            className="p-2 text-[#77786E] hover:text-[#C66B52] rounded-xl hover:bg-[#FFF4F0] transition-colors cursor-pointer"
+                            className="p-1.5 text-[#77786E] hover:text-[#C66B52] rounded-xl hover:bg-[#FFF4F0] transition-colors cursor-pointer"
                             title="Delete Service"
                           >
-                            <TrashIcon size={16} />
+                            <TrashIcon size={15} />
                           </button>
                         </div>
                       </div>
@@ -1719,30 +1696,20 @@ export const MyServicesPage: React.FC = () => {
                 <label className="text-xs font-black text-[#51463F] block mb-1">
                   Primary Sector <span className="text-[#E8795B]">*</span>
                 </label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => handleCategorySelect(e.target.value)}
-                  className="w-full text-xs p-3.5 border border-[#EDE2D7] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#E8795B] bg-white text-[#51463F] font-semibold"
-                >
-                  {INITIAL_CATEGORIES_DATA.map((cat) => (
-                    <option key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full text-xs p-3.5 border border-[#EDE2D7] rounded-2xl bg-slate-50 text-[#51463F] font-bold select-none flex items-center justify-between shadow-2xs">
+                  <span>{categoryName || user?.primaryCategoryName || user?.categoryName || 'Business & Entrepreneurship'}</span>
+                  <span className="text-[10px] text-slate-500 font-bold px-2 py-0.5 rounded bg-slate-200/80">Locked to Profile</span>
+                </div>
               </div>
 
               <div>
                 <label className="text-xs font-black text-[#51463F] block mb-1">
                   Subcategory / Specialization
                 </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Textile OEM Manufacturing or Cloud Architecture"
-                  value={subcategoryName}
-                  onChange={(e) => setSubcategoryName(e.target.value)}
-                  className="w-full text-xs p-3.5 border border-[#EDE2D7] rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#E8795B] bg-white text-[#51463F]"
-                />
+                <div className="w-full text-xs p-3.5 border border-[#EDE2D7] rounded-2xl bg-slate-50 text-[#51463F] font-bold select-none flex items-center justify-between shadow-2xs">
+                  <span>{subcategoryName || user?.primarySubcategoryName || user?.subCategory || 'General Specialization'}</span>
+                  <span className="text-[10px] text-slate-500 font-bold px-2 py-0.5 rounded bg-slate-200/80">Locked to Profile</span>
+                </div>
               </div>
             </div>
 
@@ -2410,6 +2377,182 @@ export const MyServicesPage: React.FC = () => {
           </div>
         </form>
       </AnimatedModal>
+    
+      {/* ========================================================
+          VIEW SERVICE DETAILS MODAL (SECTION 4)
+         ======================================================== */}
+      <AnimatedModal
+        isOpen={!!selectedDetailService}
+        onClose={() => setSelectedDetailService(null)}
+        title="Service Details"
+        maxWidth="2xl"
+      >
+        {selectedDetailService && (
+          <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+            {/* Header: Sector & Status */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#EDE2D7]">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-lg text-xs font-black bg-[#FFF4F0] text-[#C66B52] border border-[#E58C72]/30">
+                  {selectedDetailService.categoryName}
+                </span>
+                {selectedDetailService.subcategoryName && (
+                  <span className="text-xs text-[#8064B1] font-bold">
+                    • {selectedDetailService.subcategoryName}
+                  </span>
+                )}
+              </div>
+              <div>
+                {selectedDetailService.status === 'APPROVED' && (
+                  <WorkspaceBadge variant="active">
+                    <CheckCircleIcon size={12} /> Live on Marketplace
+                  </WorkspaceBadge>
+                )}
+                {selectedDetailService.status === 'PENDING_APPROVAL' && (
+                  <WorkspaceBadge variant="pending">
+                    <ClockIcon size={12} /> Under Review
+                  </WorkspaceBadge>
+                )}
+                {selectedDetailService.status === 'DRAFT' && (
+                  <WorkspaceBadge variant="neutral">
+                    <FileTextIcon size={12} /> Draft
+                  </WorkspaceBadge>
+                )}
+                {selectedDetailService.status === 'REJECTED' && (
+                  <WorkspaceBadge variant="urgent">
+                    <AlertCircleIcon size={12} /> Needs Revision
+                  </WorkspaceBadge>
+                )}
+              </div>
+            </div>
+
+            {/* Title & Dates */}
+            <div>
+              <h3 className="text-lg font-black text-[#51463F]">
+                {selectedDetailService.title}
+              </h3>
+              <div className="flex items-center gap-3 text-xs text-[#82776E] mt-1 font-mono">
+                <span>Created: {selectedDetailService.createdAt || 'N/A'}</span>
+                {selectedDetailService.updatedAt && (
+                  <>
+                    <span>•</span>
+                    <span>Last Updated: {selectedDetailService.updatedAt}</span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Admin Review Feedback (if available) */}
+            {selectedDetailService.status === 'REJECTED' && selectedDetailService.adminFeedback && (
+              <div className="p-3.5 rounded-xl bg-[#FFF0EB] border border-[#E8795B]/30 text-xs text-[#51463F] space-y-1">
+                <div className="font-black text-[#E8795B] flex items-center gap-1.5">
+                  <AlertCircleIcon size={14} />
+                  FIC Review Feedback:
+                </div>
+                <p className="text-xs leading-relaxed text-[#82776E]">
+                  {selectedDetailService.adminFeedback}
+                </p>
+              </div>
+            )}
+
+            {/* Full Service Description */}
+            <div className="space-y-1">
+              <h4 className="text-xs font-black uppercase tracking-wider text-[#8064B1]">
+                Full Service Description
+              </h4>
+              <p className="text-xs text-[#51463F] leading-relaxed whitespace-pre-line bg-[#FAF7F2] p-3.5 rounded-xl border border-[#EDE2D7]">
+                {selectedDetailService.description}
+              </p>
+            </div>
+
+            {/* Business / Professional Overview */}
+            {selectedDetailService.shortDescription && (
+              <div className="space-y-1">
+                <h4 className="text-xs font-black uppercase tracking-wider text-[#8064B1]">
+                  Business / Professional Overview
+                </h4>
+                <p className="text-xs text-[#51463F] leading-relaxed bg-[#FAF7F2] p-3 rounded-xl border border-[#EDE2D7]">
+                  {selectedDetailService.shortDescription}
+                </p>
+              </div>
+            )}
+
+            {/* Key Deliverables / Services Offered */}
+            {selectedDetailService.servicesOffered && selectedDetailService.servicesOffered.length > 0 && (
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-black uppercase tracking-wider text-[#8064B1]">
+                  Key Services Offered / Deliverables
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {selectedDetailService.servicesOffered.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="text-xs p-2.5 rounded-xl bg-[#FAF7F2] text-[#51463F] border border-[#EDE2D7] font-semibold flex items-start gap-2"
+                    >
+                      <span className="text-[#E8795B] font-bold">✓</span>
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Coverage Area & Delivery Mode */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#82776E] block mb-1">
+                  Coverage Area
+                </span>
+                <span className="text-xs font-bold text-[#51463F]">
+                  {selectedDetailService.coverageArea || 'Pan India'}
+                </span>
+              </div>
+              <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+                <span className="text-[10px] font-black uppercase tracking-wider text-[#82776E] block mb-1">
+                  Delivery Mode
+                </span>
+                <span className="text-xs font-bold text-[#51463F]">
+                  {selectedDetailService.deliveryMode === 'ONLINE'
+                    ? 'Remote / Online'
+                    : selectedDetailService.deliveryMode === 'IN_PERSON'
+                      ? 'On-Site / Plant'
+                      : 'Online & On-Site'}
+                </span>
+              </div>
+            </div>
+
+            {/* Tags / Keywords */}
+            {selectedDetailService.tags && selectedDetailService.tags.length > 0 && (
+              <div className="space-y-1">
+                <h4 className="text-xs font-black uppercase tracking-wider text-[#8064B1]">
+                  Tags / Keywords
+                </h4>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedDetailService.tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="text-[11px] px-2.5 py-0.5 rounded-lg bg-white border border-[#EDE2D7] text-[#51463F] font-bold"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Modal Footer / Close Button */}
+            <div className="pt-4 border-t border-[#EDE2D7] flex items-center justify-end">
+              <WorkspaceButton
+                variant="primary"
+                size="md"
+                onClick={() => setSelectedDetailService(null)}
+              >
+                Close
+              </WorkspaceButton>
+            </div>
+          </div>
+        )}
+      </AnimatedModal>
+
     </WorkspaceShell>
   );
 };

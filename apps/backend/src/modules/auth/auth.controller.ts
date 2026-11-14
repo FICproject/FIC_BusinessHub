@@ -519,31 +519,33 @@ export const awardReferralBonusIfApplicable = async (newUser: any): Promise<void
   if (!newUser?.referrerUserId) return;
   try {
     const { ReferralModel } = await import('../referrals/referral.model');
-    const existingRef = await ReferralModel.findOne({ referredUserId: newUser._id }).lean();
-    if (existingRef) return;
+    const { ReferralRecordModel } = await import('../admin/models/Referral');
+    const { ensureFinancialConfig } = await import('../admin/models/FinancialConfig');
 
-    await ReferralModel.create({
-      referralId: `REF_${Date.now()}`,
-      referralCode: newUser.referredByCode || '',
-      referrerUserId: newUser.referrerUserId,
-      referredUserId: newUser._id,
-      referralSource: 'REFERRED',
-      registrationDate: newUser.createdAt || new Date(),
-      paymentStatus: 'PAID',
-      kycStatus: 'PENDING',
-      accountStatus: 'ACTIVE',
-      referralStatus: 'ELIGIBLE',
-      rewardAmount: 500,
-      rewardStatus: 'CREDITED',
-      approvedBy: 'System Auto-Credit',
-      approvedAt: new Date(),
-      creditedAt: new Date()
-    });
+    const finConfig = await ensureFinancialConfig();
+    const rewardAmount = finConfig.referralRewardAmount || 500;
+
+    const existingRef = await ReferralModel.findOne({ referredUserId: newUser._id });
+    if (!existingRef) {
+      await ReferralModel.create({
+        referralId: `REF-${newUser._id.toString().slice(-6).toUpperCase()}`,
+        referralCode: newUser.referredByCode || '',
+        referrerUserId: newUser.referrerUserId,
+        referredUserId: newUser._id,
+        referralSource: 'REFERRED',
+        registrationDate: newUser.createdAt || new Date(),
+        paymentStatus: 'PAID',
+        kycStatus: 'PENDING',
+        accountStatus: 'ACTIVE',
+        referralStatus: 'ELIGIBLE',
+        rewardAmount,
+        rewardStatus: 'PENDING_APPROVAL', // Wallet is ONLY credited upon Admin disbursement
+      });
+    }
 
     const referrerUser = await UserModel.findById(newUser.referrerUserId);
     if (!referrerUser) return;
 
-    const { ReferralRecordModel } = await import('../admin/models/Referral');
     await ReferralRecordModel.findOneAndUpdate(
       { referredMemberId: newUser._id },
       {
@@ -553,53 +555,13 @@ export const awardReferralBonusIfApplicable = async (newUser: any): Promise<void
         referredMemberId: newUser._id,
         referredName: newUser.fullName,
         referredEmail: newUser.email,
-        bonusAmount: 500,
-        status: 'PAID',
-        payoutDate: new Date(),
-        payoutReference: `REF-TXN-${referrerUser._id.toString().slice(-4).toUpperCase()}${newUser._id.toString().slice(-4).toUpperCase()}`,
-        notes: `Referral bonus automatically attributed to ${referrerUser.fullName} for onboarding member ${newUser.fullName}`
+        bonusAmount: rewardAmount,
+        status: 'PENDING', // Awaiting KYC verification and Admin disbursement
+        notes: `Referred via ${newUser.referredByCode || referrerUser.referralCode || 'FIC-REF'}. Awaiting KYC approval and Admin disbursement.`
       },
       { upsert: true, new: true }
     );
-
-    const { MemberWalletModel } = await import('../admin/models/MemberWallet');
-    const rWallet = await MemberWalletModel.findOne({
-      $or: [{ memberId: referrerUser._id }, { memberEmail: referrerUser.email.toLowerCase() }]
-    });
-
-    const bonusTx = {
-      id: `TXN-REF-${newUser._id.toString().slice(-6)}`,
-      type: 'CREDIT',
-      title: `Referral Bonus Reward (${newUser.fullName})`,
-      category: 'Referral Bonus',
-      amount: 500,
-      currency: 'INR',
-      status: 'SUCCESS',
-      reference: `REF-TXN-${newUser._id.toString().slice(-6).toUpperCase()}`,
-      date: new Date().toISOString(),
-      description: `Referral reward credited for onboarding member ${newUser.fullName} (${newUser.email})`
-    };
-
-    if (rWallet) {
-      rWallet.balance = (rWallet.balance || 0) + 500;
-      const rTxs = rWallet.transactions || [];
-      rTxs.unshift(bonusTx as any);
-      rWallet.transactions = rTxs;
-      rWallet.lastSyncedAt = new Date();
-      await rWallet.save();
-    } else {
-      await MemberWalletModel.create({
-        memberId: referrerUser._id,
-        memberEmail: referrerUser.email.toLowerCase(),
-        balance: 500,
-        currency: 'INR',
-        currencySymbol: '₹',
-        status: 'ACTIVE',
-        lastSyncedAt: new Date(),
-        transactions: [bonusTx]
-      });
-    }
   } catch (err: any) {
-    console.warn('Referral creation warning:', err?.message);
+    console.warn('Referral attribution warning:', err?.message);
   }
 };

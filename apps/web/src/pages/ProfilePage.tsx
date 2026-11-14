@@ -2293,31 +2293,6 @@ export const ProfilePage: React.FC = () => {
                 />
               </div>
 
-              {/* Payment Method Selector */}
-              <div>
-                <label className="block font-bold text-[#51463F] mb-1.5">Payment Method *</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {[
-                    { id: 'UPI', label: 'UPI / QR' },
-                    { id: 'NETBANKING', label: 'Net Banking' },
-                    { id: 'CARD', label: 'Debit / Card' }
-                  ].map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setPaymentMethod(m.id)}
-                      className={`py-2 px-2 rounded-xl text-xs font-bold border text-center transition-all ${
-                        paymentMethod === m.id
-                          ? 'border-[#3B9C91] bg-[#3B9C91]/15 text-[#2E847A]'
-                          : 'border-[#EDE2D7] bg-white text-[#82776E]'
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Total Payable Summary */}
               <div className="p-3 bg-white rounded-xl border border-[#EDE2D7] space-y-1.5 text-xs">
                 <div className="flex justify-between text-[#82776E]">
