@@ -1538,7 +1538,7 @@ export const getUserReferrals = (userId: string) => {
 
   return {
     referralCode: code,
-    referralLink: `${window.location.origin}/register?ref=${code}`,
+    referralLink: getCanonicalReferralLink(code),
     summary: {
       totalReferrals,
       pendingReferrals,
@@ -1549,6 +1549,13 @@ export const getUserReferrals = (userId: string) => {
     },
     referrals: userRefs
   };
+};
+
+export const CANONICAL_WEBSITE_URL = 'https://fic-business-hub.vercel.app';
+
+export const getCanonicalReferralLink = (referralCode: string): string => {
+  const code = (referralCode || '').trim();
+  return `${CANONICAL_WEBSITE_URL}/register?ref=${encodeURIComponent(code)}`;
 };
 
 export const validateReferralCodeApi = async (
@@ -1566,8 +1573,10 @@ export const validateReferralCodeApi = async (
         referrerUserId: json.data.referrerUserId
       };
     }
-  } catch {}
-  return validateReferralCode(clean);
+    return { valid: false };
+  } catch {
+    return { valid: false };
+  }
 };
 
 export const validateReferralCode = (

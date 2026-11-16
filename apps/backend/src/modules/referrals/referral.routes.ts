@@ -103,7 +103,7 @@ referralsRouter.get('/my-referrals', authenticate, requireActiveVerifiedMember, 
       success: true,
       data: {
         referralCode,
-        referralLink: `https://www.ficapp.in/register?ref=${referralCode}`,
+        referralLink: `https://fic-business-hub.vercel.app/register?ref=${referralCode}`,
         summary: {
           totalReferrals,
           pendingReferrals,

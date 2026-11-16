@@ -31,6 +31,7 @@ import {
   getUserBankAccount,
   saveUserBankAccount,
   apiRequest,
+  getCanonicalReferralLink,
   AuthenticatedUser,
   UserAddress,
   IMemberWallet,
@@ -532,8 +533,9 @@ export const ProfilePage: React.FC = () => {
 
   // Copy Referral Link
   const handleCopyLink = () => {
-    if (referralData?.referralLink) {
-      navigator.clipboard.writeText(referralData.referralLink);
+    const link = (referralData?.referralCode ? getCanonicalReferralLink(referralData.referralCode) : '') || referralData?.referralLink;
+    if (link) {
+      navigator.clipboard.writeText(link);
       showToast('Referral link copied to clipboard!');
     }
   };
@@ -1055,7 +1057,7 @@ export const ProfilePage: React.FC = () => {
             <div className="min-w-0">
               <span className="text-[11px] text-[#82776E] block font-bold">Your Unique Referral Link</span>
               <span className="text-xs font-mono text-[#51463F] truncate block mt-0.5 font-semibold">
-                {referralData?.referralLink}
+                {referralData?.referralCode ? getCanonicalReferralLink(referralData.referralCode) : (referralData?.referralLink || '')}
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">

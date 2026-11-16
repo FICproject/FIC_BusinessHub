@@ -14,6 +14,11 @@ import {
 } from '../services/api';
 import { getRoleNavigation } from '../services/dashboardConfig';
 import {
+  NotificationCenterModal,
+  formatNotificationTime,
+  getNotificationRoute
+} from './NotificationCenterModal';
+import {
   BellIcon,
   CheckCircleIcon,
   ClockIcon,
@@ -32,6 +37,7 @@ export const MemberHeader: React.FC = () => {
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<IWalletNotification[]>([]);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -288,11 +294,10 @@ export const MemberHeader: React.FC = () => {
                           key={notif.id}
                           onClick={() => {
                             markNotificationAsRead(userId, notif.id);
+                            markMemberNotificationReadStrict(notif.id);
                             reloadNotifications();
-                            if (notif.actionUrl) {
-                              navigate(notif.actionUrl);
-                              setNotificationOpen(false);
-                            }
+                            setNotificationOpen(false);
+                            navigate(getNotificationRoute(notif));
                           }}
                           className={`p-3 transition-colors cursor-pointer flex items-start gap-2.5 text-xs ${notif.isRead
                               ? 'bg-[#FAF7F2] hover:bg-white/80 opacity-80'
@@ -303,7 +308,9 @@ export const MemberHeader: React.FC = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-1">
                               <span className="font-bold text-[#51463F] text-xs truncate">{notif.title}</span>
-                              <span className="text-[10px] text-[#82776E] shrink-0">{notif.createdAt}</span>
+                              <span className="text-[10px] text-[#82776E] shrink-0 font-medium">
+                                {formatNotificationTime(notif.createdAt)}
+                              </span>
                             </div>
                             <p className="text-[11px] text-[#82776E] mt-0.5 line-clamp-2 leading-relaxed">
                               {notif.message}
@@ -323,14 +330,19 @@ export const MemberHeader: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="p-2 bg-[#FAF7F2] border-t border-[#EDE2D7] text-center">
-                    <Link
-                      to="/profile"
-                      onClick={() => setNotificationOpen(false)}
-                      className="text-[11px] font-bold text-[#8064B1] hover:text-[#E8795B] transition-colors"
+                  {/* Phase 7: Replaced View Wallet & Account Activity with View All */}
+                  <div className="p-2.5 bg-[#FAF7F2] border-t border-[#EDE2D7] text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotificationOpen(false);
+                        setIsNotificationCenterOpen(true);
+                      }}
+                      className="w-full py-1 text-xs font-black text-[#8064B1] hover:text-[#E8795B] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
-                      View Wallet & Account Activity &rarr;
-                    </Link>
+                      <span>View All Notifications</span>
+                      <span>&rarr;</span>
+                    </button>
                   </div>
                 </motion.div>
               )}
@@ -632,6 +644,15 @@ export const MemberHeader: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Phase 7: Comprehensive Notification Center Modal */}
+      <NotificationCenterModal
+        isOpen={isNotificationCenterOpen}
+        onClose={() => setIsNotificationCenterOpen(false)}
+        notifications={notifications}
+        userId={userId}
+        onReload={reloadNotifications}
+      />
     </header>
   );
 };

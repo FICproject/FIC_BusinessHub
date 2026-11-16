@@ -253,31 +253,24 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       console.warn('Live wallet transactions query fallback:', wErr);
     }
 
-    // Resolve referral attribution
+    // Resolve referral attribution accurately (Direct registrations must never appear as referrals)
     let referralInfo = {
       source: 'DIRECT',
       sourceLabel: 'Direct Registration',
       referredByName: '',
       referralCode: ''
     };
-    if (user?.referredByCode || user?.referrerUserId || user?.referralSource === 'REFERRED') {
-      let referrerName = '';
-      if (user.referrerUserId) {
-        const refUser = await UserModel.findById(user.referrerUserId).select('fullName email').lean();
-        if (refUser) referrerName = (refUser as any).fullName;
+
+    if (user?.referrerUserId && (user?.referralSource === 'REFERRED' || user?.registrationSource === 'REFERRAL')) {
+      const refUser = await UserModel.findById(user.referrerUserId).select('fullName email referralCode').lean();
+      if (refUser && (refUser as any).fullName) {
+        referralInfo = {
+          source: 'REFERRAL',
+          sourceLabel: 'Referral',
+          referredByName: (refUser as any).fullName,
+          referralCode: user.referredByCode || (refUser as any).referralCode || ''
+        };
       }
-      if (!referrerName && user.referredByCode) {
-        const refUser = await UserModel.findOne({
-          $or: [{ referralCode: user.referredByCode }, { email: user.referredByCode.toLowerCase() }]
-        }).select('fullName email').lean();
-        if (refUser) referrerName = (refUser as any).fullName;
-      }
-      referralInfo = {
-        source: 'REFERRAL',
-        sourceLabel: 'Referral',
-        referredByName: referrerName || 'Registered Referrer',
-        referralCode: user.referredByCode || ''
-      };
     }
 
     // Dynamic Profile fields & company registration data

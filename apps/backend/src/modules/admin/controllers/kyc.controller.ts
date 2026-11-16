@@ -221,7 +221,7 @@ async function resolveReferralAttribution(userDoc: any) {
     };
   }
 
-  const isReferred = Boolean(userDoc.referredByCode || userDoc.referrerUserId || userDoc.referralSource === 'REFERRED');
+  const isReferred = Boolean(userDoc.referrerUserId && (userDoc.referralSource === 'REFERRED' || userDoc.registrationSource === 'REFERRAL'));
   if (!isReferred) {
     return {
       source: 'DIRECT',
@@ -236,35 +236,35 @@ async function resolveReferralAttribution(userDoc: any) {
   let referrerName = '';
   let referrerEmail = '';
   let referrerPhone = '';
+  let referrerRefCode = '';
   if (userDoc.referrerUserId) {
-    const refUser = await UserModel.findById(userDoc.referrerUserId).select('fullName email phoneNumber').lean();
+    const refUser = await UserModel.findById(userDoc.referrerUserId).select('fullName email phoneNumber referralCode').lean();
     if (refUser) {
       referrerName = (refUser as any).fullName || '';
       referrerEmail = (refUser as any).email || '';
       referrerPhone = (refUser as any).phoneNumber || '';
+      referrerRefCode = (refUser as any).referralCode || '';
     }
   }
-  if (!referrerName && userDoc.referredByCode) {
-    const refUser = await UserModel.findOne({
-      $or: [
-        { referralCode: String(userDoc.referredByCode).trim().toUpperCase() },
-        { email: String(userDoc.referredByCode).trim().toLowerCase() }
-      ]
-    }).select('fullName email phoneNumber').lean();
-    if (refUser) {
-      referrerName = (refUser as any).fullName || '';
-      referrerEmail = (refUser as any).email || '';
-      referrerPhone = (refUser as any).phoneNumber || '';
-    }
+
+  if (!referrerName) {
+    return {
+      source: 'DIRECT',
+      sourceLabel: 'Direct Registration',
+      referredByName: '',
+      referrerEmail: '',
+      referrerPhone: '',
+      referralCode: ''
+    };
   }
 
   return {
     source: 'REFERRAL',
     sourceLabel: 'Referral',
-    referredByName: referrerName || 'Registered Referrer',
+    referredByName: referrerName,
     referrerEmail,
     referrerPhone,
-    referralCode: userDoc.referredByCode || ''
+    referralCode: userDoc.referredByCode || referrerRefCode || ''
   };
 }
 

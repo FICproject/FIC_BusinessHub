@@ -109,6 +109,8 @@ export const RegisterPage: React.FC = () => {
         setReferrerInfo(res);
         if (res.valid) {
           setReferralCode(refParam.toUpperCase());
+        } else {
+          try { sessionStorage.removeItem('fic_registration_ref'); } catch {}
         }
       });
     }
@@ -1019,9 +1021,10 @@ export const RegisterPage: React.FC = () => {
           ageConfirmed,
           termsAccepted,
           referralCode: newRefCode,
-          referredByCode: referralCode.trim() ? referralCode.trim() : undefined,
-          referrerUserId: referrerInfo?.referrerUserId || undefined,
-          referralSource: (referralCode.trim() || referrerInfo?.valid) ? 'REFERRED' : 'ORGANIC'
+          referredByCode: (referrerInfo?.valid && referralCode.trim()) ? referralCode.trim() : undefined,
+          referrerUserId: referrerInfo?.valid ? referrerInfo.referrerUserId : undefined,
+          referralSource: (referrerInfo?.valid && referralCode.trim()) ? 'REFERRED' : 'ORGANIC',
+          registrationSource: (referrerInfo?.valid && referralCode.trim()) ? 'REFERRAL' : 'DIRECT'
         });
         token = regResult.token;
         serverUser = regResult.user;
@@ -1248,9 +1251,10 @@ export const RegisterPage: React.FC = () => {
         {
           categoryId: selectedCategory.id,
           documents: allDocItems,
-          referredByCode: referralCode.trim() ? referralCode.trim() : undefined,
-          referrerUserId: referrerInfo?.referrerUserId || undefined,
-          referralSource: (referralCode.trim() || referrerInfo?.valid) ? 'REFERRED' : 'ORGANIC'
+          referredByCode: (referrerInfo?.valid && referralCode.trim()) ? referralCode.trim() : undefined,
+          referrerUserId: referrerInfo?.valid ? referrerInfo.referrerUserId : undefined,
+          referralSource: (referrerInfo?.valid && referralCode.trim()) ? 'REFERRED' : 'ORGANIC',
+          registrationSource: (referrerInfo?.valid && referralCode.trim()) ? 'REFERRAL' : 'DIRECT'
         },
         token
       );

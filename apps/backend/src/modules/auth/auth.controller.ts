@@ -192,15 +192,20 @@ export const register = async (req: Request, res: Response, next: NextFunction):
 
     let referrerUserId: mongoose.Types.ObjectId | undefined = undefined;
     let referralSource: 'REFERRED' | 'ORGANIC' = 'ORGANIC';
+    let registrationSource: 'DIRECT' | 'REFERRAL' = 'DIRECT';
+    let validatedReferredByCode: string | undefined = undefined;
     const cleanRefBy = (referredByCode || referralCode || '').trim().toUpperCase();
 
     if (cleanRefBy) {
       const referrer = await UserModel.findOne({
         $or: [{ referralCode: cleanRefBy }, { email: cleanRefBy.toLowerCase() }]
       });
-      if (referrer) {
+      // Validate referrer exists and prevent self-referral
+      if (referrer && referrer.email?.toLowerCase() !== cleanEmail.toLowerCase()) {
         referrerUserId = referrer._id as mongoose.Types.ObjectId;
         referralSource = 'REFERRED';
+        registrationSource = 'REFERRAL';
+        validatedReferredByCode = referrer.referralCode || cleanRefBy;
       }
     }
 
@@ -223,7 +228,8 @@ export const register = async (req: Request, res: Response, next: NextFunction):
         address: validatedAddress,
         referralCode: generatedReferralCode,
         referralSource,
-        referredByCode: cleanRefBy || undefined,
+        registrationSource,
+        referredByCode: validatedReferredByCode,
         referrerUserId,
         isEmailVerified: true,
         isPhoneVerified: true,
