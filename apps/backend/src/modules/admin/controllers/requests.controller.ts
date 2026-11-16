@@ -32,9 +32,22 @@ router.get('/', authenticateAdmin, async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
+    // Helper to identify scaling support requests
+    const isScalingReqDoc = (r: any) =>
+      r.type === 'SCALING_SUPPORT' ||
+      r.sourceModule === 'SCALING_SUPPORT' ||
+      (typeof r.requestId === 'string' && r.requestId.startsWith('SCALE-')) ||
+      (typeof r.title === 'string' && (
+        r.title.includes('Business Growth & Expansion Support') ||
+        r.title.includes('Marketing & Customer Acquisition Support') ||
+        r.title.includes('Funding Support') ||
+        r.title.includes('Mentorship & Expert Guidance Support') ||
+        r.title.toLowerCase().includes('scaling')
+      ));
+
     // Populate scalingDetails for SCALING_SUPPORT requests
     const scalingIds = requests
-      .filter((r: any) => (r.type === 'SCALING_SUPPORT' || r.sourceModule === 'SCALING_SUPPORT') && r.sourceRefId)
+      .filter((r: any) => isScalingReqDoc(r) && r.sourceRefId)
       .map((r: any) => r.sourceRefId);
 
     if (scalingIds.length > 0) {
@@ -42,11 +55,15 @@ router.get('/', authenticateAdmin, async (req, res) => {
       const scalingMap = new Map(scalingDocs.map((s: any) => [String(s._id), s]));
 
       requests = requests.map((r: any) => {
-        if ((r.type === 'SCALING_SUPPORT' || r.sourceModule === 'SCALING_SUPPORT') && r.sourceRefId) {
-          const detail = scalingMap.get(String(r.sourceRefId));
-          if (detail) {
-            r.scalingDetails = detail;
-            r.status = detail.status || r.status;
+        if (isScalingReqDoc(r)) {
+          r.type = 'SCALING_SUPPORT';
+          r.sourceModule = 'SCALING_SUPPORT';
+          if (r.sourceRefId) {
+            const detail = scalingMap.get(String(r.sourceRefId));
+            if (detail) {
+              r.scalingDetails = detail;
+              r.status = detail.status || r.status;
+            }
           }
         }
         return r;
@@ -90,11 +107,27 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
       return;
     }
 
-    if ((request.type === 'SCALING_SUPPORT' || request.sourceModule === 'SCALING_SUPPORT') && request.sourceRefId) {
-      const scalingDoc = await BusinessDevRequestModel.findById(request.sourceRefId).lean();
-      if (scalingDoc) {
-        request.scalingDetails = scalingDoc;
-        request.status = scalingDoc.status || request.status;
+    const isScaling =
+      request.type === 'SCALING_SUPPORT' ||
+      request.sourceModule === 'SCALING_SUPPORT' ||
+      (typeof request.requestId === 'string' && request.requestId.startsWith('SCALE-')) ||
+      (typeof request.title === 'string' && (
+        request.title.includes('Business Growth & Expansion Support') ||
+        request.title.includes('Marketing & Customer Acquisition Support') ||
+        request.title.includes('Funding Support') ||
+        request.title.includes('Mentorship & Expert Guidance Support') ||
+        request.title.toLowerCase().includes('scaling')
+      ));
+
+    if (isScaling) {
+      request.type = 'SCALING_SUPPORT';
+      request.sourceModule = 'SCALING_SUPPORT';
+      if (request.sourceRefId) {
+        const scalingDoc = await BusinessDevRequestModel.findById(request.sourceRefId).lean();
+        if (scalingDoc) {
+          request.scalingDetails = scalingDoc;
+          request.status = scalingDoc.status || request.status;
+        }
       }
     }
 

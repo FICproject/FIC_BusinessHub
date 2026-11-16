@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { INITIAL_CATEGORIES_DATA } from '../services/categoriesData';
 import {
@@ -25,12 +26,15 @@ import {
 } from '../components/Icons';
 
 export const MarketplacePage: React.FC = () => {
+  const [searchParams] = useSearchParams();
+
   // Navigation Mode: 'SERVICES' (All Sectors) or 'BUSINESS_IDEAS' (Business Idea Requests)
   const [marketplaceMode, setMarketplaceMode] = useState<'SERVICES' | 'BUSINESS_IDEAS'>('SERVICES');
 
   const [services, setServices] = useState<ServiceListing[]>([]);
   const [ideas, setIdeas] = useState<any[]>([]);
   const [loadingIdeas, setLoadingIdeas] = useState<boolean>(false);
+  const [categories, setCategories] = useState<any[]>(INITIAL_CATEGORIES_DATA);
 
   const [selectedCategorySlug, setSelectedCategorySlug] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -104,12 +108,31 @@ export const MarketplacePage: React.FC = () => {
     }
   };
 
+  // Load dynamic categories from Categories & Config module in backend
+  const loadCategories = async () => {
+    try {
+      const res = await apiRequest('/categories');
+      if (res?.success && Array.isArray(res.data) && res.data.length > 0) {
+        setCategories(res.data);
+      }
+    } catch (_err) {
+      // Gracefully falls back to INITIAL_CATEGORIES_DATA
+    }
+  };
+
   useEffect(() => {
     loadServices();
     loadBusinessIdeas();
+    loadCategories();
+
+    const tab = searchParams.get('tab');
+    if (tab === 'ideas' || tab === 'business-ideas') {
+      setMarketplaceMode('BUSINESS_IDEAS');
+    }
+
     window.addEventListener('storage', loadServices);
     return () => window.removeEventListener('storage', loadServices);
-  }, []);
+  }, [searchParams]);
 
   // Filter Services
   const filteredServices = services.filter((srv) => {
@@ -350,9 +373,9 @@ export const MarketplacePage: React.FC = () => {
           >
             All Sectors ({marketplaceMode === 'SERVICES' ? services.length : ideas.length})
           </motion.button>
-          {INITIAL_CATEGORIES_DATA.map((cat) => (
+          {categories.map((cat) => (
             <motion.button
-              key={cat.id}
+              key={cat.id || cat._id || cat.slug}
               whileTap={{ scale: 0.96 }}
               onClick={() => setSelectedCategorySlug(cat.slug)}
               className={`px-3 py-1.5 rounded-lg shrink-0 transition-all duration-200 cursor-pointer ${

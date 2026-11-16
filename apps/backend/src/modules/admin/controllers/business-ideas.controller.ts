@@ -361,10 +361,12 @@ adminBusinessIdeasRouter.put(
   async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
     try {
       const { id, interestId } = req.params;
-      const { reviewStatus, adminNotes, selectionReason } = req.body;
+      const { reviewStatus, status: bodyStatus, adminNotes, privateNotes, selectionReason } = req.body;
+      const resolvedStatus = reviewStatus || bodyStatus;
+      const resolvedNotes = adminNotes !== undefined ? adminNotes : privateNotes;
 
       const validStatuses = ['INTEREST_SUBMITTED', 'UNDER_ADMIN_REVIEW', 'SHORTLISTED', 'SELECTED', 'NOT_SELECTED'];
-      if (!reviewStatus || !validStatuses.includes(reviewStatus)) {
+      if (!resolvedStatus || !validStatuses.includes(resolvedStatus)) {
         res.status(400).json({ success: false, error: `Invalid review status. Allowed: ${validStatuses.join(', ')}` });
         return;
       }
@@ -390,8 +392,8 @@ adminBusinessIdeasRouter.put(
 
       const adminName = req.admin?.name || 'FIC Admin';
 
-      interest.reviewStatus = reviewStatus;
-      if (adminNotes !== undefined) interest.adminNotes = String(adminNotes).trim();
+      interest.reviewStatus = resolvedStatus;
+      if (resolvedNotes !== undefined) interest.adminNotes = String(resolvedNotes).trim();
       if (selectionReason !== undefined) interest.selectionReason = String(selectionReason).trim();
       interest.reviewedBy = adminName;
       interest.reviewedAt = new Date();
@@ -399,7 +401,7 @@ adminBusinessIdeasRouter.put(
       await interest.save();
 
       // If selected, update idea collaboration status
-      if (reviewStatus === 'SELECTED') {
+      if (resolvedStatus === 'SELECTED') {
         idea.collaborationStatus = 'COLLABORATORS_SELECTED';
         if (idea.adminReviewStatus === 'INTEREST_RECEIVED') {
           idea.adminReviewStatus = 'MEMBER_SELECTION_PENDING';
