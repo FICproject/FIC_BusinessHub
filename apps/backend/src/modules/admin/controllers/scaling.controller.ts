@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import mongoose from 'mongoose';
 import { BusinessDevRequestModel } from '../../business-development/business-development.model';
+import { FicRequestModel } from '../models/FicRequest';
 import { MeetingModel } from '../models/Meeting';
 import { MemberModel } from '../models/Member';
 import { UserModel } from '../../users/users.model';
@@ -13,6 +14,48 @@ import {
 } from '../middleware/admin-auth.middleware';
 
 export const adminScalingRouter = Router();
+
+/**
+ * Helper to robustly find a Scaling Request by ID, RequestID, RefNumber,
+ * or even a linked FicRequest _id.
+ */
+async function findScalingDoc(id: string) {
+  let doc = await BusinessDevRequestModel.findOne({
+    $or: [
+      { _id: mongoose.isValidObjectId(id) ? id : null },
+      { requestId: id },
+      { refNumber: id }
+    ]
+  });
+
+  if (!doc && mongoose.isValidObjectId(id)) {
+    const ficReq = await FicRequestModel.findById(id).lean();
+    if (ficReq?.sourceRefId) {
+      doc = await BusinessDevRequestModel.findById(ficReq.sourceRefId);
+    }
+  }
+
+  return doc;
+}
+
+/**
+ * Helper to keep FicRequestModel in sync with Scaling status & meeting details
+ */
+async function syncFicRequest(scalingDoc: any, updates: Record<string, any>) {
+  try {
+    await FicRequestModel.findOneAndUpdate(
+      {
+        $or: [
+          { sourceRefId: scalingDoc._id },
+          { requestId: scalingDoc.requestId }
+        ]
+      },
+      { $set: updates }
+    );
+  } catch (err) {
+    console.warn('Failed to sync FicRequestModel from scaling action:', err);
+  }
+}
 
 // ========================================================
 // 1. List All Scaling Requests (Admin)
@@ -59,7 +102,7 @@ adminScalingRouter.get(
 
       const skip = (Number(page) - 1) * Number(limit);
 
-      const [requests, total] = await Promise.all([
+      const [items, total] = await Promise.all([
         BusinessDevRequestModel.find(filter)
           .sort({ createdAt: -1 })
           .skip(skip)
@@ -68,14 +111,27 @@ adminScalingRouter.get(
         BusinessDevRequestModel.countDocuments(filter)
       ]);
 
+      // Calculate summary statistics
+      const [totalCount, submittedCount, reviewCount, scheduledCount, completedCount] = await Promise.all([
+        BusinessDevRequestModel.countDocuments(),
+        BusinessDevRequestModel.countDocuments({ status: 'SUBMITTED' }),
+        BusinessDevRequestModel.countDocuments({ status: 'UNDER_REVIEW' }),
+        BusinessDevRequestModel.countDocuments({ status: 'MEETING_SCHEDULED' }),
+        BusinessDevRequestModel.countDocuments({ status: 'MEETING_COMPLETED' })
+      ]);
+
       res.status(200).json({
         success: true,
-        data: {
-          items: requests,
-          total,
-          page: Number(page),
-          pageSize: Number(limit),
-          totalPages: Math.ceil(total / Number(limit))
+        items,
+        total,
+        page: Number(page),
+        pages: Math.ceil(total / Number(limit)),
+        stats: {
+          total: totalCount,
+          submitted: submittedCount,
+          underReview: reviewCount,
+          scheduled: scheduledCount,
+          completed: completedCount
         }
       });
     } catch (error: any) {
@@ -95,13 +151,7 @@ adminScalingRouter.get(
     try {
       const { id } = req.params;
 
-      const request = await BusinessDevRequestModel.findOne({
-        $or: [
-          { _id: mongoose.isValidObjectId(id) ? id : null },
-          { requestId: id },
-          { refNumber: id }
-        ]
-      }).lean();
+      const request: any = await findScalingDoc(id);
 
       if (!request) {
         res.status(404).json({ success: false, error: 'Scaling request not found.' });
@@ -134,7 +184,7 @@ adminScalingRouter.get(
       res.status(200).json({
         success: true,
         data: {
-          ...request,
+          ...(request.toObject ? request.toObject() : request),
           submitterDetails
         }
       });
@@ -156,13 +206,7 @@ adminScalingRouter.put(
       const { id } = req.params;
       const { status, adminNotes } = req.body;
 
-      const request = await BusinessDevRequestModel.findOne({
-        $or: [
-          { _id: mongoose.isValidObjectId(id) ? id : null },
-          { requestId: id },
-          { refNumber: id }
-        ]
-      });
+      const request: any = await findScalingDoc(id);
 
       if (!request) {
         res.status(404).json({ success: false, error: 'Scaling request not found.' });
@@ -186,6 +230,12 @@ adminScalingRouter.put(
       });
 
       await request.save();
+
+      // Sync central FicRequest
+      await syncFicRequest(request, {
+        status: request.status,
+        internalNotes: [`[${new Date().toISOString()} by ${adminName}]: Status updated to ${status}.`]
+      });
 
       // Log admin audit action
       await logAdminAction(
@@ -242,13 +292,7 @@ adminScalingRouter.post(
         return;
       }
 
-      const request = await BusinessDevRequestModel.findOne({
-        $or: [
-          { _id: mongoose.isValidObjectId(id) ? id : null },
-          { requestId: id },
-          { refNumber: id }
-        ]
-      });
+      const request: any = await findScalingDoc(id);
 
       if (!request) {
         res.status(404).json({ success: false, error: 'Scaling request not found.' });
@@ -322,6 +366,21 @@ adminScalingRouter.post(
 
       await request.save();
 
+      // Sync central FicRequest
+      await syncFicRequest(request, {
+        status: 'MEETING_SCHEDULED',
+        scheduledMeetingId: meetingDoc?._id,
+        meetingDetails: {
+          scheduledDate: String(date).trim(),
+          scheduledTime: String(time).trim(),
+          durationMinutes: Number(durationMinutes) || 45,
+          meetingLink: mode === 'VIRTUAL' ? linkOrLocation : undefined,
+          status: 'SCHEDULED',
+          bookedAt: new Date(),
+          bookedByAdminName: adminName
+        }
+      });
+
       // Log admin audit action
       await logAdminAction(
         req,
@@ -367,13 +426,7 @@ adminScalingRouter.post(
         return;
       }
 
-      const request = await BusinessDevRequestModel.findOne({
-        $or: [
-          { _id: mongoose.isValidObjectId(id) ? id : null },
-          { requestId: id },
-          { refNumber: id }
-        ]
-      });
+      const request: any = await findScalingDoc(id);
 
       if (!request) {
         res.status(404).json({ success: false, error: 'Scaling request not found.' });
@@ -427,6 +480,20 @@ adminScalingRouter.post(
 
       await request.save();
 
+      // Sync central FicRequest
+      await syncFicRequest(request, {
+        status: 'MEETING_SCHEDULED',
+        meetingDetails: {
+          scheduledDate: String(date).trim(),
+          scheduledTime: String(time).trim(),
+          durationMinutes: Number(durationMinutes) || 45,
+          meetingLink: mode === 'VIRTUAL' ? linkOrLocation : undefined,
+          status: 'RESCHEDULED',
+          bookedAt: new Date(),
+          bookedByAdminName: adminName
+        }
+      });
+
       // Notify Member
       await notifyMember({
         userId: String(request.userId),
@@ -458,13 +525,7 @@ adminScalingRouter.post(
       const { id } = req.params;
       const { cancellationReason } = req.body;
 
-      const request = await BusinessDevRequestModel.findOne({
-        $or: [
-          { _id: mongoose.isValidObjectId(id) ? id : null },
-          { requestId: id },
-          { refNumber: id }
-        ]
-      });
+      const request: any = await findScalingDoc(id);
 
       if (!request) {
         res.status(404).json({ success: false, error: 'Scaling request not found.' });
@@ -500,6 +561,12 @@ adminScalingRouter.post(
 
       await request.save();
 
+      // Sync central FicRequest
+      await syncFicRequest(request, {
+        status: 'UNDER_REVIEW',
+        meetingDetails: undefined
+      });
+
       // Notify Member
       await notifyMember({
         userId: String(request.userId),
@@ -531,13 +598,7 @@ adminScalingRouter.post(
       const { id } = req.params;
       const { completionSummary, adminNotes } = req.body;
 
-      const request = await BusinessDevRequestModel.findOne({
-        $or: [
-          { _id: mongoose.isValidObjectId(id) ? id : null },
-          { requestId: id },
-          { refNumber: id }
-        ]
-      });
+      const request: any = await findScalingDoc(id);
 
       if (!request) {
         res.status(404).json({ success: false, error: 'Scaling request not found.' });
@@ -583,6 +644,12 @@ adminScalingRouter.post(
 
       await request.save();
 
+      // Sync central FicRequest
+      await syncFicRequest(request, {
+        status: 'MEETING_COMPLETED',
+        'meetingDetails.status': 'COMPLETED'
+      });
+
       // Log admin audit action
       await logAdminAction(
         req,
@@ -597,7 +664,7 @@ adminScalingRouter.post(
         userId: String(request.userId),
         eventType: 'MEETING_COMPLETED',
         title: 'Scaling Consultation Completed',
-        message: `Your scaling consultation for "${request.businessName}" has been successfully completed.`
+        message: `Your scaling consultation for "${request.businessName}" has been successfully completed. Thank you for collaborating with FIC!`
       });
 
       res.status(200).json({

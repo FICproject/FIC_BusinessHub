@@ -184,6 +184,7 @@ businessDevRouter.post(
 
         const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
         await FicRequestModel.create({
+          requestId: generatedRequestId,
           type: 'SCALING_SUPPORT',
           sourceModule: 'SCALING_SUPPORT',
           sourceRefId: newScalingRequest._id,
@@ -194,7 +195,7 @@ businessDevRouter.post(
           requesterEmail: submitterEmail,
           requesterPhone: submitterPhone,
           requesterCategory: resolvedCategoryName,
-          status: 'NEW',
+          status: 'SUBMITTED',
           internalNotes: [
             `[${timestamp} by System]: Scaling Support requested (${generatedRequestId}). Admin review pending.`
           ]

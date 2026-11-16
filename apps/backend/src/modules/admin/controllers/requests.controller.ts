@@ -23,13 +23,35 @@ router.get('/', authenticateAdmin, async (req, res) => {
       filter.status = status;
     }
 
-    let requests = await FicRequestModel.find(filter)
+    let requests: any[] = await FicRequestModel.find(filter)
       .populate('requesterId', 'name email phone primaryCategoryName')
       .populate('targetServiceId', 'title categoryName pricingEstimate locationState')
       .populate('targetProviderId', 'name email phone primaryCategoryName')
       .populate('assignedStaffId', 'name email')
       .populate('scheduledMeetingId')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Populate scalingDetails for SCALING_SUPPORT requests
+    const scalingIds = requests
+      .filter((r: any) => (r.type === 'SCALING_SUPPORT' || r.sourceModule === 'SCALING_SUPPORT') && r.sourceRefId)
+      .map((r: any) => r.sourceRefId);
+
+    if (scalingIds.length > 0) {
+      const scalingDocs = await BusinessDevRequestModel.find({ _id: { $in: scalingIds } }).lean();
+      const scalingMap = new Map(scalingDocs.map((s: any) => [String(s._id), s]));
+
+      requests = requests.map((r: any) => {
+        if ((r.type === 'SCALING_SUPPORT' || r.sourceModule === 'SCALING_SUPPORT') && r.sourceRefId) {
+          const detail = scalingMap.get(String(r.sourceRefId));
+          if (detail) {
+            r.scalingDetails = detail;
+            r.status = detail.status || r.status;
+          }
+        }
+        return r;
+      });
+    }
 
     if (search && typeof search === 'string' && search.trim()) {
       const q = search.trim().toLowerCase();
@@ -38,11 +60,45 @@ router.get('/', authenticateAdmin, async (req, res) => {
           r.title?.toLowerCase().includes(q) ||
           r.description?.toLowerCase().includes(q) ||
           r.requesterName?.toLowerCase().includes(q) ||
-          r.requesterEmail?.toLowerCase().includes(q)
+          r.requesterEmail?.toLowerCase().includes(q) ||
+          r.scalingDetails?.businessName?.toLowerCase().includes(q) ||
+          r.scalingDetails?.requestId?.toLowerCase().includes(q) ||
+          r.scalingDetails?.scalingSupportType?.toLowerCase().includes(q)
       );
     }
 
     res.json({ success: true, data: requests });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/admin/requests/:id - Single request details
+router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    let request: any = await FicRequestModel.findById(id)
+      .populate('requesterId', 'name email phone primaryCategoryName')
+      .populate('targetServiceId', 'title categoryName pricingEstimate locationState')
+      .populate('targetProviderId', 'name email phone primaryCategoryName')
+      .populate('assignedStaffId', 'name email')
+      .populate('scheduledMeetingId')
+      .lean();
+
+    if (!request) {
+      res.status(404).json({ success: false, error: 'Request not found' });
+      return;
+    }
+
+    if ((request.type === 'SCALING_SUPPORT' || request.sourceModule === 'SCALING_SUPPORT') && request.sourceRefId) {
+      const scalingDoc = await BusinessDevRequestModel.findById(request.sourceRefId).lean();
+      if (scalingDoc) {
+        request.scalingDetails = scalingDoc;
+        request.status = scalingDoc.status || request.status;
+      }
+    }
+
+    res.json({ success: true, data: request });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }
