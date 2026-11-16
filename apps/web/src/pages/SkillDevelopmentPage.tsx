@@ -207,8 +207,8 @@ export const SkillDevelopmentPage: React.FC = () => {
                 key={lvl}
                 onClick={() => setSelectedLevel(lvl)}
                 className={`px-2.5 py-1 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${selectedLevel === lvl
-                    ? 'bg-[#8064A9] text-white border-[#8064A9] shadow-2xs'
-                    : 'bg-white/80 text-[#51463F] border-[#EDE2D7] hover:border-[#8064A9]/40'
+                  ? 'bg-[#8064A9] text-white border-[#8064A9] shadow-2xs'
+                  : 'bg-white/80 text-[#51463F] border-[#EDE2D7] hover:border-[#8064A9]/40'
                   }`}
               >
                 {lvl === 'ALL' ? 'All Levels' : lvl.replace('_', ' ')}
@@ -223,8 +223,8 @@ export const SkillDevelopmentPage: React.FC = () => {
           <button
             onClick={() => setSelectedSubject('ALL')}
             className={`px-2.5 py-0.5 text-[11px] font-bold rounded-md shrink-0 transition-colors cursor-pointer ${selectedSubject === 'ALL'
-                ? 'bg-[#51463F] text-white'
-                : 'bg-white border border-[#EDE2D7] text-[#51463F] hover:bg-[#FAF7F2]'
+              ? 'bg-[#51463F] text-white'
+              : 'bg-white border border-[#EDE2D7] text-[#51463F] hover:bg-[#FAF7F2]'
               }`}
           >
             All Topics ({videos.length})
@@ -234,8 +234,8 @@ export const SkillDevelopmentPage: React.FC = () => {
               key={sub}
               onClick={() => setSelectedSubject(sub)}
               className={`px-2.5 py-0.5 text-[11px] font-bold rounded-md shrink-0 transition-colors cursor-pointer ${selectedSubject === sub
-                  ? 'bg-[#8064A9] text-white'
-                  : 'bg-white border border-[#EDE2D7] text-[#51463F] hover:bg-[#FAF7F2]'
+                ? 'bg-[#8064A9] text-white'
+                : 'bg-white border border-[#EDE2D7] text-[#51463F] hover:bg-[#FAF7F2]'
                 }`}
             >
               {sub}
@@ -467,13 +467,13 @@ export const SkillDevelopmentPage: React.FC = () => {
             {/* Embedded Video Player: HTML5 Video for Uploaded Files, iframe for Embeds */}
             <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black shadow-md flex items-center justify-center">
               {activeVideo.videoUrl &&
-              (activeVideo.videoUrl.includes('/uploads/') ||
-                activeVideo.videoUrl.startsWith('blob:') ||
-                activeVideo.videoUrl.endsWith('.mp4') ||
-                activeVideo.videoUrl.endsWith('.webm') ||
-                activeVideo.videoUrl.endsWith('.mov') ||
-                activeVideo.videoUrl.endsWith('.mkv') ||
-                activeVideo.videoUrl.endsWith('.avi')) ? (
+                (activeVideo.videoUrl.includes('/uploads/') ||
+                  activeVideo.videoUrl.startsWith('blob:') ||
+                  activeVideo.videoUrl.endsWith('.mp4') ||
+                  activeVideo.videoUrl.endsWith('.webm') ||
+                  activeVideo.videoUrl.endsWith('.mov') ||
+                  activeVideo.videoUrl.endsWith('.mkv') ||
+                  activeVideo.videoUrl.endsWith('.avi')) ? (
                 <video
                   controls
                   autoPlay

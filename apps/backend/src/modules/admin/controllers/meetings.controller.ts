@@ -102,6 +102,83 @@ router.get('/', authenticateAdmin, async (req, res) => {
       console.warn('Mentorship meeting sync warning:', mentorSyncErr);
     }
 
+    // Sync Service Request Stage 1 & Stage 2 meetings into Meetings collection
+    try {
+      const { FicRequestModel } = await import('../models/FicRequest');
+      const serviceRequestsWithMeetings = await FicRequestModel.find({
+        $or: [
+          { 'stage1Meeting.status': { $in: ['SCHEDULED', 'COMPLETED'] } },
+          { 'stage2Meeting.status': { $in: ['SCHEDULED', 'COMPLETED'] } },
+        ],
+      }).populate('requesterId targetProviderId');
+
+      const sampleAdmin = (await AdminUserModel.findOne({ role: 'SUPER_ADMIN' })) || (await AdminUserModel.findOne());
+
+      for (const r of serviceRequestsWithMeetings) {
+        // Stage 1 Sync
+        if (r.stage1Meeting?.status && ['SCHEDULED', 'COMPLETED'].includes(r.stage1Meeting.status)) {
+          let existingMeeting = r.stage1Meeting.meetingId ? await MeetingModel.findById(r.stage1Meeting.meetingId) : null;
+          const pName = (r.targetProviderId as any)?.name || 'Provider';
+          const pEmail = (r.targetProviderId as any)?.email || '';
+          const sDate = r.stage1Meeting.scheduledDate && r.stage1Meeting.scheduledTime
+            ? new Date(`${r.stage1Meeting.scheduledDate}T${r.stage1Meeting.scheduledTime}:00`)
+            : new Date();
+
+          if (!existingMeeting) {
+            existingMeeting = await MeetingModel.create({
+              title: `Stage 1 Intro: Admin & Provider (${pName}) - ${r.title}`,
+              description: `Stage 1 alignment meeting between FIC Admin and service provider for request ${r.requestId || r._id}. Requestor is excluded from this stage.`,
+              hostAdminId: r.stage1Meeting.scheduledByAdminId || sampleAdmin?._id,
+              participantMemberIds: (r.targetProviderId as any)?._id ? [(r.targetProviderId as any)._id] : [],
+              externalParticipants: [{ name: pName, email: pEmail, roleOrCompany: 'Service Provider' }],
+              scheduledAt: isNaN(sDate.getTime()) ? new Date() : sDate,
+              durationMinutes: r.stage1Meeting.durationMinutes || 45,
+              meetingLink: r.stage1Meeting.meetingLink,
+              status: r.stage1Meeting.status === 'COMPLETED' ? 'COMPLETED' : 'SCHEDULED',
+              meetingType: 'CONSULTATION',
+              notificationSent: true,
+            });
+            await FicRequestModel.findByIdAndUpdate(r._id, { 'stage1Meeting.meetingId': existingMeeting._id.toString() });
+          } else if (existingMeeting.status !== r.stage1Meeting.status) {
+            existingMeeting.status = r.stage1Meeting.status === 'COMPLETED' ? 'COMPLETED' : 'SCHEDULED';
+            await existingMeeting.save();
+          }
+        }
+
+        // Stage 2 Sync
+        if (r.stage2Meeting?.status && ['SCHEDULED', 'COMPLETED'].includes(r.stage2Meeting.status)) {
+          let existingMeeting = r.stage2Meeting.meetingId ? await MeetingModel.findById(r.stage2Meeting.meetingId) : null;
+          const reqName = (r.requesterId as any)?.name || r.requesterName || 'Client';
+          const reqEmail = (r.requesterId as any)?.email || r.requesterEmail || '';
+          const sDate = r.stage2Meeting.scheduledDate && r.stage2Meeting.scheduledTime
+            ? new Date(`${r.stage2Meeting.scheduledDate}T${r.stage2Meeting.scheduledTime}:00`)
+            : new Date();
+
+          if (!existingMeeting) {
+            existingMeeting = await MeetingModel.create({
+              title: `Stage 2 Briefing: Admin & Requestor (${reqName}) - ${r.title}`,
+              description: `Stage 2 debrief meeting between FIC Admin and original service requestor for request ${r.requestId || r._id}. Provider is excluded from this stage.`,
+              hostAdminId: r.stage2Meeting.scheduledByAdminId || sampleAdmin?._id,
+              participantMemberIds: (r.requesterId as any)?._id ? [(r.requesterId as any)._id] : [],
+              externalParticipants: [{ name: reqName, email: reqEmail, roleOrCompany: 'Service Requestor' }],
+              scheduledAt: isNaN(sDate.getTime()) ? new Date() : sDate,
+              durationMinutes: r.stage2Meeting.durationMinutes || 45,
+              meetingLink: r.stage2Meeting.meetingLink,
+              status: r.stage2Meeting.status === 'COMPLETED' ? 'COMPLETED' : 'SCHEDULED',
+              meetingType: 'CONSULTATION',
+              notificationSent: true,
+            });
+            await FicRequestModel.findByIdAndUpdate(r._id, { 'stage2Meeting.meetingId': existingMeeting._id.toString() });
+          } else if (existingMeeting.status !== r.stage2Meeting.status) {
+            existingMeeting.status = r.stage2Meeting.status === 'COMPLETED' ? 'COMPLETED' : 'SCHEDULED';
+            await existingMeeting.save();
+          }
+        }
+      }
+    } catch (srvMeetingSyncErr) {
+      console.warn('Service requests meeting sync warning:', srvMeetingSyncErr);
+    }
+
     let meetings = await MeetingModel.find(filter)
       .populate('hostAdminId', 'name email role')
       .populate('participantMemberIds', 'name email phone primaryCategoryName')

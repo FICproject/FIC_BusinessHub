@@ -26,3 +26,4 @@ const VideoViewSchema = new Schema<IVideoViewDocument>(
 VideoViewSchema.index({ videoId: 1, studentMemberId: 1 }, { unique: true });
 
 export const VideoViewModel = mongoose.model<IVideoViewDocument>('VideoView', VideoViewSchema);
+

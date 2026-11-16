@@ -233,6 +233,7 @@ export interface ActivationEvaluationResult {
   checks: {
     accountActive: boolean;
     isSuspended: boolean;
+    accountStatus: string;
     kycApproved: boolean;
     kycStatus: string;
     kycLocked: boolean;
@@ -258,6 +259,7 @@ export async function evaluateMemberActivationAccess(
       checks: {
         accountActive: false,
         isSuspended: false,
+        accountStatus: 'NOT_REGISTERED',
         kycApproved: false,
         kycStatus: 'NOT_SUBMITTED',
         kycLocked: false,
@@ -279,6 +281,7 @@ export async function evaluateMemberActivationAccess(
       checks: {
         accountActive: false,
         isSuspended: false,
+        accountStatus: 'NOT_REGISTERED',
         kycApproved: false,
         kycStatus: 'NOT_SUBMITTED',
         kycLocked: false,
@@ -362,13 +365,27 @@ export async function evaluateMemberActivationAccess(
 
   const canAccessDashboard = Boolean(accountActive && !isSuspended && kycApproved && membershipActive);
 
+  let resolvedAccountStatus = 'UNDER_REVIEW';
+  if (isSuspended) {
+    resolvedAccountStatus = 'SUSPENDED';
+  } else if (user.status === AccountStatus.DEACTIVATED || member?.status === 'DEACTIVATED') {
+    resolvedAccountStatus = 'INACTIVE';
+  } else if (accountActive) {
+    resolvedAccountStatus = 'ACTIVE';
+  } else {
+    resolvedAccountStatus = 'UNDER_REVIEW';
+  }
+
   let denyStatus = 403;
   let denyCode = 'ACCESS_DENIED';
   let denyMessage = 'Dashboard access requires full account, KYC, and membership activation.';
 
-  if (isSuspended || !accountActive) {
+  if (isSuspended) {
     denyCode = 'ACCOUNT_SUSPENDED';
-    denyMessage = 'Your account is suspended or inactive. Access to the member dashboard is disabled.';
+    denyMessage = 'Your account has been suspended by FIC Administration. Access to the member dashboard is disabled.';
+  } else if (user.status === AccountStatus.DEACTIVATED || member?.status === 'DEACTIVATED') {
+    denyCode = 'ACCOUNT_DEACTIVATED';
+    denyMessage = 'Your account has been deactivated. Access to the member dashboard is disabled.';
   } else if (kycSnapshot.kycStatus === 'REJECTED') {
     denyCode = 'KYC_REJECTED';
     denyMessage = 'Your KYC verification application was rejected. Dashboard access is blocked.';
@@ -394,6 +411,7 @@ export async function evaluateMemberActivationAccess(
     checks: {
       accountActive,
       isSuspended,
+      accountStatus: resolvedAccountStatus,
       kycApproved,
       kycStatus: kycSnapshot.kycStatus,
       kycLocked,

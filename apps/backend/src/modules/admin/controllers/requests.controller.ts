@@ -576,6 +576,15 @@ router.post('/:id/complete-stage1-meeting', authenticateAdmin, async (req: Authe
 
     ficReq.status = 'ADMIN_PROVIDER_MEETING_COMPLETED';
 
+    // Synchronize MeetingModel status if linked
+    if (ficReq.stage1Meeting?.meetingId) {
+      try {
+        await MeetingModel.findByIdAndUpdate(ficReq.stage1Meeting.meetingId, { status: 'COMPLETED' });
+      } catch (meetSyncErr) {
+        console.warn('Failed to sync MeetingModel status on complete-stage1:', meetSyncErr);
+      }
+    }
+
     ficReq.internalNotes.push(
       `[${timestamp} by ${author}]: Stage 1 Admin & Provider meeting marked COMPLETED. Stage 2 (Admin & Requestor Meeting) is now UNLOCKED.`
     );
@@ -626,8 +635,14 @@ router.post('/:id/schedule-stage2-meeting', authenticateAdmin, async (req: Authe
       return;
     }
 
-    // STRICT GOVERNANCE: Stage 1 must be COMPLETED
-    if (!ficReq.stage1Meeting || ficReq.stage1Meeting.status !== 'COMPLETED') {
+    // STRICT GOVERNANCE: Stage 1 must be COMPLETED, unless provider has declined the request
+    const isProviderDeclined = Boolean(
+      ficReq.providerDecision === 'REJECTED' ||
+      ficReq.providerResponse === 'DECLINED' ||
+      ficReq.status === 'PROVIDER_REJECTED'
+    );
+
+    if (!isProviderDeclined && (!ficReq.stage1Meeting || ficReq.stage1Meeting.status !== 'COMPLETED')) {
       res.status(400).json({
         success: false,
         error: 'Stage 1 (Admin & Provider Meeting) must be completed before Stage 2 can be scheduled.'
@@ -778,6 +793,15 @@ router.post('/:id/complete-stage2-meeting', authenticateAdmin, async (req: Authe
     // Mark entire workflow COMPLETED
     ficReq.status = 'COMPLETED';
 
+    // Synchronize MeetingModel status if linked
+    if (ficReq.stage2Meeting?.meetingId) {
+      try {
+        await MeetingModel.findByIdAndUpdate(ficReq.stage2Meeting.meetingId, { status: 'COMPLETED' });
+      } catch (meetSyncErr) {
+        console.warn('Failed to sync MeetingModel status on complete-stage2:', meetSyncErr);
+      }
+    }
+
     ficReq.internalNotes.push(
       `[${timestamp} by ${author}]: Stage 2 Admin & Requestor meeting marked COMPLETED. Entire Service Request workflow successfully fulfilled and marked COMPLETED.`
     );
@@ -826,6 +850,101 @@ router.post('/:id/complete-stage2-meeting', authenticateAdmin, async (req: Authe
       success: true,
       message: 'Stage 2 meeting completed! The Service Request has been successfully closed and marked COMPLETED.',
       data: populated
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/requests/:id/official-response - Send official message/update to original requestor
+router.post('/:id/official-response', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      res.status(400).json({ success: false, error: 'Official response message cannot be empty.' });
+      return;
+    }
+
+    const ficReq = await FicRequestModel.findById(id)
+      .populate('requesterId')
+      .populate('targetServiceId')
+      .populate('targetProviderId');
+
+    if (!ficReq) {
+      res.status(404).json({ success: false, error: 'Service request not found.' });
+      return;
+    }
+
+    const author = req.admin?.name || 'FIC Administrator';
+    const now = new Date();
+    const timestamp = now.toISOString().replace('T', ' ').substring(0, 16);
+    const prevStatus = ficReq.status;
+
+    ficReq.adminResponse = message.trim();
+    ficReq.adminRespondedAt = now;
+    ficReq.adminResponseSentAt = now;
+    ficReq.adminRespondedByName = author;
+    ficReq.adminId = req.admin?.id as any;
+    ficReq.adminName = author;
+
+    if (!ficReq.officialResponses) ficReq.officialResponses = [];
+    ficReq.officialResponses.push({
+      adminId: req.admin?.id?.toString() || '',
+      adminName: author,
+      message: message.trim(),
+      createdAt: now,
+    });
+
+    ficReq.internalNotes.push(`[${timestamp} by ${author}]: Dispatched official client update: "${message.trim()}"`);
+
+    if (!ficReq.activityTimeline) ficReq.activityTimeline = [];
+    ficReq.activityTimeline.push({
+      actorId: req.admin?.id,
+      actorName: author,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_RESPONSE_SENT',
+      message: message.trim(),
+      previousStatus: prevStatus,
+      newStatus: ficReq.status,
+      timestamp: now,
+    });
+
+    await ficReq.save();
+    await logAdminAction(req, 'SEND_OFFICIAL_RESPONSE_TO_REQUESTOR', 'FicRequest', id, { message: message.trim() });
+
+    // Notify Member
+    try {
+      let recipientUserId: any = ficReq.requesterId;
+      if (ficReq.requesterEmail) {
+        const u = await UserModel.findOne({ email: ficReq.requesterEmail.toLowerCase().trim() });
+        if (u) recipientUserId = u._id;
+      }
+      if (recipientUserId) {
+        await notifyMember({
+          userId: recipientUserId,
+          eventType: 'REQUEST_UPDATE',
+          title: `Official Update: ${ficReq.title}`,
+          message: `FIC Administration has sent an official update: "${message.trim().substring(0, 100)}${message.trim().length > 100 ? '...' : ''}"`,
+          link: '/my-requests',
+          priority: 'HIGH',
+        });
+      }
+    } catch (notifErr) {
+      console.warn('Failed to notify member of official response:', notifErr);
+    }
+
+    const populated = await FicRequestModel.findById(id)
+      .populate('requesterId', 'name email phone primaryCategoryName')
+      .populate('targetServiceId', 'title categoryName subCategoryName pricingEstimate locationState')
+      .populate('targetProviderId', 'name email phone primaryCategoryName')
+      .populate('scheduledMeetingId');
+
+    res.json({
+      success: true,
+      message: 'Official response dispatched to original requestor successfully!',
+      data: populated,
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
@@ -1084,6 +1203,15 @@ router.patch('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, r
       if (!status) {
         ficReq.status = 'ADMIN_RESPONSE_SENT';
       }
+
+      if (!ficReq.officialResponses) ficReq.officialResponses = [];
+      ficReq.officialResponses.push({
+        adminId: req.admin?.id?.toString() || '',
+        adminName: author,
+        message: adminResponse.trim(),
+        createdAt: new Date(),
+      });
+
       ficReq.internalNotes.push(`[${timestamp} by ${author}]: Sent member response: "${adminResponse.trim()}"`);
 
       if (!ficReq.activityTimeline) ficReq.activityTimeline = [];

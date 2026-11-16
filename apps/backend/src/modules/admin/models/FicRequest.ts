@@ -41,6 +41,14 @@ export interface IFicRequestStageMeeting {
   notes?: string;
 }
 
+export interface IFicOfficialResponse {
+  _id?: string;
+  adminId?: string;
+  adminName?: string;
+  message: string;
+  createdAt: Date;
+}
+
 export interface IFicRequest extends Document {
   requestId?: string;
   type: string;
@@ -66,6 +74,7 @@ export interface IFicRequest extends Document {
   adminRespondedAt?: Date;
   adminResponseSentAt?: Date;
   adminRespondedByName?: string;
+  officialResponses?: IFicOfficialResponse[];
   projectInfoSentAt?: Date;
   providerNotifiedAt?: Date;
   providerDecision?: 'AWAITING' | 'ACCEPTED' | 'REJECTED' | 'PENDING' | 'DECLINED';
@@ -215,6 +224,14 @@ const FicRequestSchema = new Schema<IFicRequest>(
     adminRespondedAt: { type: Date },
     adminResponseSentAt: { type: Date },
     adminRespondedByName: { type: String },
+    officialResponses: [
+      {
+        adminId: { type: String },
+        adminName: { type: String },
+        message: { type: String, required: true },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
     projectInfoSentAt: { type: Date },
     providerNotifiedAt: { type: Date },
     providerDecision: {

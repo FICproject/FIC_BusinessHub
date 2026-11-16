@@ -218,8 +218,8 @@ connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (r
           break;
         case 'PROVIDER_REJECTED':
           status = 'PROVIDER_REJECTED';
-          statusLabel = 'Provider Unavailable';
-          nextAction = 'FIC will advise on alternative options';
+          statusLabel = 'Provider Declined - In FIC Review';
+          nextAction = 'FIC Administration is evaluating alternative options or scheduling consultation';
           break;
         case 'ADMIN_RESPONSE_SENT':
         case 'RESPONDED':
@@ -255,11 +255,11 @@ connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (r
           statusLabel = r.status ? r.status.replace(/_/g, ' ') : 'Under Review';
       }
 
-      // Latest coordinator remark from direct admin response or internal notes
+      // Safe official coordinator remark to member (shielding private internalNotes)
       const notes = r.adminResponse || (
-        Array.isArray(r.internalNotes) && r.internalNotes.length > 0
-          ? r.internalNotes[r.internalNotes.length - 1]
-          : 'FIC Coordinator assigned. Evaluating verified providers and preparing confidential proposals.'
+        r.status === 'PROVIDER_REJECTED' || r.providerDecision === 'REJECTED' || r.providerResponse === 'DECLINED'
+          ? 'Assigned provider is currently unable to undertake this scope. FIC Administration is coordinating alternative options.'
+          : 'FIC Coordinator assigned. Evaluating verified providers and preparing scope coordination.'
       );
 
       return {
@@ -276,6 +276,7 @@ connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (r
         requirementNotes: r.description,
         ficRemark: notes,
         adminResponse: r.adminResponse,
+        officialResponses: r.officialResponses || [],
         adminRespondedAt: r.adminRespondedAt || r.adminResponseSentAt,
         adminRespondedByName: r.adminRespondedByName,
         providerOutcome: (r.providerDecision === 'ACCEPTED' || r.providerResponse === 'ACCEPTED')

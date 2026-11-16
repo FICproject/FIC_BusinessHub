@@ -310,6 +310,14 @@ export const MyRequestsPage: React.FC = () => {
     }
   }, [user?.id, user?.userId, userId, isMentor, isStudent]);
 
+  // Keep open service details modal synchronized with live poll updates
+  useEffect(() => {
+    if (selectedServiceDetail && services.length > 0) {
+      const match = services.find((s: any) => s.id === selectedServiceDetail.id || s._id === selectedServiceDetail._id);
+      if (match) setSelectedServiceDetail(match);
+    }
+  }, [services]);
+
   // Modal open helpers
   const openAcceptModal = (req: IMentorshipRequest) => {
     setAcceptModalReq(req);
@@ -1953,19 +1961,48 @@ export const MyRequestsPage: React.FC = () => {
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#F4EEFB] border border-[#8064B1]/30 space-y-2">
+                {(selectedServiceDetail.status === 'PROVIDER_REJECTED' || selectedServiceDetail.providerOutcome === 'REJECTED') && (
+                  <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 space-y-1.5 text-xs">
+                    <div className="flex items-center gap-2 text-amber-800 font-bold">
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span>Provider Status: Currently Unavailable</span>
+                    </div>
+                    <p className="text-amber-900/90 leading-relaxed pl-4">
+                      The service provider you selected is currently unable to accept new project briefs at this time. Our FIC administration is reviewing alternative verified providers from the marketplace and will coordinate directly with you.
+                    </p>
+                  </div>
+                )}
+
+                <div className="p-4 rounded-xl bg-[#F4EEFB] border border-[#8064B1]/30 space-y-2.5">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] font-bold text-[#8064B1] uppercase tracking-wider flex items-center gap-1.5">
                       <ShieldCheckIcon size={14} className="text-[#8064B1]" />
-                      Official FIC Coordination Update
+                      Official FIC Administration Update
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full text-[10.5px] font-black bg-white text-[#8064B1] border border-[#8064B1]/20">
                       {selectedServiceDetail.statusLabel || selectedServiceDetail.status}
                     </span>
                   </div>
-                  <p className="text-xs text-[#51463F] leading-relaxed">
-                    {selectedServiceDetail.adminResponse || selectedServiceDetail.ficRemark || selectedServiceDetail.latestUpdate || 'Request is currently actively managed by the FIC Admin Desk.'}
-                  </p>
+
+                  {Array.isArray(selectedServiceDetail.officialResponses) && selectedServiceDetail.officialResponses.length > 0 ? (
+                    <div className="space-y-2 pt-1">
+                      {selectedServiceDetail.officialResponses.map((item: any, idx: number) => (
+                        <div key={idx} className="p-3 rounded-lg bg-white/80 border border-[#8064B1]/20 space-y-1">
+                          <div className="flex items-center justify-between text-[10.5px] text-[#8064B1]">
+                            <span className="font-bold">{item.adminName || 'FIC Administrator'}</span>
+                            <span className="font-mono">{new Date(item.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                          </div>
+                          <p className="text-xs text-[#51463F] whitespace-pre-wrap leading-relaxed">
+                            {item.message}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-[#51463F] leading-relaxed whitespace-pre-wrap">
+                      {selectedServiceDetail.adminResponse || selectedServiceDetail.ficRemark || selectedServiceDetail.latestUpdate || 'Request is currently actively managed by the FIC Admin Desk.'}
+                    </p>
+                  )}
                 </div>
 
                 {(selectedServiceDetail.scheduledMeeting || selectedServiceDetail.meetingDetails) && (

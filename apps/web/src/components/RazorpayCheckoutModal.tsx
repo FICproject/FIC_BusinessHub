@@ -143,6 +143,14 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
   useEffect(() => {
     let active = true;
     if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape' && !isProcessing) {
+          onClose();
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+
       setErrorMessage(null);
       setStatusMessage(null);
       setIsProcessing(false);
@@ -161,11 +169,14 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
           return 'wallet';
         });
       });
+
+      return () => {
+        active = false;
+        document.body.style.overflow = 'unset';
+        window.removeEventListener('keydown', handleKeyDown);
+      };
     }
-    return () => {
-      active = false;
-    };
-  }, [isOpen, amount, purpose]);
+  }, [isOpen, amount, purpose, isProcessing, onClose]);
 
   if (!isOpen) return null;
 
@@ -403,14 +414,19 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-sm overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-label="Razorpay Payment Checkout"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isProcessing) {
+          onClose();
+        }
+      }}
     >
-      <div className="relative w-full max-w-[490px] bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-[490px] my-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100vh-1.5rem)] sm:max-h-[92vh]">
         {/* Dark Navy Razorpay Header matching reference design */}
-        <div className="bg-[#0A1D37] px-6 py-5 text-white flex items-center justify-between gap-4">
+        <div className="bg-[#0A1D37] px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="w-11 h-11 rounded-2xl bg-[#1D6FF2] flex items-center justify-center shrink-0 shadow-md shadow-blue-950/50">
               <span className="text-xl font-black tracking-tight text-white">R</span>
@@ -445,7 +461,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
               onClick={onClose}
               disabled={isProcessing}
               aria-label="Close checkout"
-              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors disabled:opacity-50"
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors disabled:opacity-50 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -453,7 +469,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
         </div>
 
         {/* Warm Amber Summary Banner */}
-        <div className="bg-[#FFF9E6] border-b border-amber-200/80 px-6 py-3.5">
+        <div className="bg-[#FFF9E6] border-b border-amber-200/80 px-5 sm:px-6 py-3.5 shrink-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wide text-slate-800">
               <ShoppingBag className="w-4 h-4 text-amber-600 shrink-0" />
@@ -474,7 +490,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
                   <button
                     type="button"
                     onClick={onChangeDeliveryLocation}
-                    className="text-amber-700 font-extrabold uppercase tracking-wider hover:underline text-[11px]"
+                    className="text-amber-700 font-extrabold uppercase tracking-wider hover:underline text-[11px] cursor-pointer"
                   >
                     CHANGE
                   </button>
@@ -485,7 +501,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
         </div>
 
         {/* Payment Methods & Interaction Body */}
-        <div className="px-6 py-5 space-y-4">
+        <div className="px-5 sm:px-6 py-4 sm:py-5 space-y-4 overflow-y-auto flex-1">
           <div className="text-[11px] font-extrabold tracking-widest uppercase text-slate-400">
             SELECT PAYMENT METHOD
           </div>
