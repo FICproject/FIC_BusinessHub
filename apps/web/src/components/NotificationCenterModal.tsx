@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -273,25 +274,25 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-sm"
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm"
         />
 
         {/* Modal Dialog */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 8 }}
           transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-          className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-[#EDE2D7] overflow-hidden flex flex-col max-h-[88vh] z-10"
+          className="relative w-full max-w-2xl my-auto bg-white rounded-3xl shadow-2xl border border-[#EDE2D7] overflow-hidden flex flex-col max-h-[calc(100vh-2.5rem)] sm:max-h-[88vh] z-10"
         >
           {/* Modal Header */}
           <div className="px-5 py-4 bg-[#FAF7F2] border-b border-[#EDE2D7] flex items-center justify-between">
@@ -590,7 +591,8 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };
 
