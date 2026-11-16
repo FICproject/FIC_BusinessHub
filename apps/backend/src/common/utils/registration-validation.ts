@@ -149,6 +149,25 @@ export function validateGstin(raw: unknown): string {
   return gstin;
 }
 
+export function isUrlField(key: string, fieldType?: string): boolean {
+  const t = String(fieldType || '').toLowerCase().trim();
+  if (t === 'url') return true;
+  if (t && t !== 'text' && t !== 'string') return false;
+
+  const k = key.toLowerCase().trim();
+  // Disallow false positives for keys like portfolioExperience, portfolioCompanies, etc.
+  if (k.includes('experience') || k.includes('company') || k.includes('companies') || k.includes('stage') || k.includes('size')) {
+    return false;
+  }
+  if (k === 'website' || k === 'portfolio' || k === 'portfolio_url' || k === 'portfoliourl' || k === 'portfoliolink') {
+    return true;
+  }
+  if (k.endsWith('url') || k.includes('_url') || k.endsWith('link') || k.includes('_link') || k.includes('website')) {
+    return true;
+  }
+  return false;
+}
+
 export function validateHttpUrl(raw: unknown): string {
   const value = typeof raw === 'string' ? raw.trim() : '';
   try {
@@ -260,7 +279,7 @@ export function validateDynamicProfileValues(
       continue;
     }
 
-    if (fieldType === 'url' || keyLower.includes('url') || keyLower.includes('website') || keyLower.includes('portfolio')) {
+    if (isUrlField(key, fieldType)) {
       sanitized[key] = validateHttpUrl(strVal);
       continue;
     }
@@ -305,7 +324,7 @@ export function validateDynamicProfileValues(
     const lowerKey = k.toLowerCase();
     if (lowerKey.includes('gst')) {
       sanitized[k] = validateGstin(strVal);
-    } else if (lowerKey.includes('url') || lowerKey.includes('website') || lowerKey.includes('portfolio')) {
+    } else if (isUrlField(k)) {
       sanitized[k] = validateHttpUrl(strVal);
     } else {
       sanitized[k] = strVal;

@@ -6,7 +6,10 @@ import {
   updateProfile,
   checkEmailAvailability,
   checkMobileAvailability,
-  resolveUserKycSnapshot
+  resolveUserKycSnapshot,
+  sendForgotPasswordOtp,
+  verifyForgotPasswordOtp,
+  resetPasswordWithToken
 } from './auth.controller';
 import { authenticate } from '../../common/middleware/auth.middleware';
 import { lookupIndianPinCode } from './pincode.service';
@@ -27,6 +30,12 @@ authRouter.get('/pincode/:pincode', async (req, res, next) => {
 });
 authRouter.post('/register', register);
 authRouter.post('/login', login);
+
+// Password Recovery Flow
+authRouter.post('/forgot-password/send-otp', sendForgotPasswordOtp);
+authRouter.post('/forgot-password/verify-otp', verifyForgotPasswordOtp);
+authRouter.post('/forgot-password/reset-password', resetPasswordWithToken);
+
 authRouter.get('/me', authenticate, getMe);
 authRouter.patch('/profile', authenticate, updateProfile);
 

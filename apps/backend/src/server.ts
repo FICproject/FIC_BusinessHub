@@ -2,6 +2,7 @@ import { createApp } from './app';
 import { config } from './config';
 import { connectDatabase } from './database/connect';
 import { seedDatabase } from './database/seed';
+import { startMembershipRenewalCron } from './jobs/membership-renewal.job';
 
 const startServer = async (): Promise<void> => {
   await connectDatabase();
@@ -11,6 +12,7 @@ const startServer = async (): Promise<void> => {
 
   const server = app.listen(config.port, () => {
     console.log(`🚀 FIC Business Hub API listening on port ${config.port} [${config.env}]`);
+    startMembershipRenewalCron();
   });
 
   const shutdown = () => {

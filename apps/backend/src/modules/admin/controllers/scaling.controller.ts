@@ -63,7 +63,7 @@ async function syncFicRequest(scalingDoc: any, updates: Record<string, any>) {
 adminScalingRouter.get(
   '/',
   authenticateAdmin,
-  requirePermission('SERVICES_READ'),
+  requirePermission('SERVICES_READ', 'REQUESTS_READ', 'SCALING_READ'),
   async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
     try {
       const { status, supportType, search, page = 1, limit = 50 } = req.query;
@@ -146,7 +146,7 @@ adminScalingRouter.get(
 adminScalingRouter.get(
   '/:id',
   authenticateAdmin,
-  requirePermission('SERVICES_READ'),
+  requirePermission('SERVICES_READ', 'REQUESTS_READ', 'SCALING_READ'),
   async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
@@ -200,7 +200,7 @@ adminScalingRouter.get(
 adminScalingRouter.put(
   '/:id/status',
   authenticateAdmin,
-  requirePermission('SERVICES_APPROVE'),
+  requirePermission('SERVICES_APPROVE', 'REQUESTS_APPROVE', 'SCALING_APPROVE'),
   async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
@@ -273,7 +273,7 @@ adminScalingRouter.put(
 adminScalingRouter.post(
   '/:id/schedule-meeting',
   authenticateAdmin,
-  requirePermission('SERVICES_APPROVE'),
+  requirePermission('SERVICES_APPROVE', 'REQUESTS_APPROVE', 'SCALING_APPROVE'),
   async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
@@ -415,7 +415,7 @@ adminScalingRouter.post(
 adminScalingRouter.post(
   '/:id/reschedule-meeting',
   authenticateAdmin,
-  requirePermission('SERVICES_APPROVE'),
+  requirePermission('SERVICES_APPROVE', 'REQUESTS_APPROVE', 'SCALING_APPROVE'),
   async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
@@ -519,7 +519,7 @@ adminScalingRouter.post(
 adminScalingRouter.post(
   '/:id/cancel-meeting',
   authenticateAdmin,
-  requirePermission('SERVICES_APPROVE'),
+  requirePermission('SERVICES_APPROVE', 'REQUESTS_APPROVE', 'SCALING_APPROVE'),
   async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
@@ -592,7 +592,7 @@ adminScalingRouter.post(
 adminScalingRouter.post(
   '/:id/complete-meeting',
   authenticateAdmin,
-  requirePermission('SERVICES_APPROVE'),
+  requirePermission('SERVICES_APPROVE', 'REQUESTS_APPROVE', 'SCALING_APPROVE'),
   async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
     try {
       const { id } = req.params;

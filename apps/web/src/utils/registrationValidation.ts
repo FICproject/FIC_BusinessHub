@@ -105,6 +105,24 @@ export function validateGstinClient(raw: string): string | null {
   return null;
 }
 
+export function isUrlFieldClient(key: string, fieldType?: string): boolean {
+  const t = String(fieldType || '').toLowerCase().trim();
+  if (t === 'url') return true;
+  if (t && t !== 'text' && t !== 'string') return false;
+
+  const k = key.toLowerCase().trim();
+  if (k.includes('experience') || k.includes('company') || k.includes('companies') || k.includes('stage') || k.includes('size')) {
+    return false;
+  }
+  if (k === 'website' || k === 'portfolio' || k === 'portfolio_url' || k === 'portfoliourl' || k === 'portfoliolink') {
+    return true;
+  }
+  if (k.endsWith('url') || k.includes('_url') || k.endsWith('link') || k.includes('_link') || k.includes('website')) {
+    return true;
+  }
+  return false;
+}
+
 export function validateHttpUrlClient(raw: string): string | null {
   const val = raw.trim();
   if (!val) return null;
@@ -142,7 +160,7 @@ export function validateDynamicFieldClient(
   if (fieldType === 'email' || keyLower.includes('email')) {
     return validateEmailClient(val);
   }
-  if (fieldType === 'url' || keyLower.includes('url') || keyLower.includes('website') || keyLower.includes('portfolio')) {
+  if (isUrlFieldClient(field.key, fieldType)) {
     return validateHttpUrlClient(val);
   }
   if (keyLower.includes('gst')) {

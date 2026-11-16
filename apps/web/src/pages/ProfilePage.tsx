@@ -719,6 +719,35 @@ export const ProfilePage: React.FC = () => {
   };
 
   const renewalFee = platformPricing.renewalMembershipFee || 5999;
+  const daysUntilExpiry = (user as any)?.daysUntilExpiry !== undefined
+    ? Number((user as any).daysUntilExpiry)
+    : (user as any)?.createdAt
+    ? Math.ceil((new Date(new Date((user as any).createdAt).getTime() + 365 * 24 * 60 * 60 * 1000).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+    : 365;
+  const isRenewalWindowOpen = daysUntilExpiry <= 30;
+
+  const [autoRenewEnabled, setAutoRenewEnabled] = useState<boolean>(() => Boolean((user as any)?.autoRenewWithWallet));
+
+  useEffect(() => {
+    if ((user as any)?.autoRenewWithWallet !== undefined) {
+      setAutoRenewEnabled(Boolean((user as any).autoRenewWithWallet));
+    }
+  }, [user]);
+
+  const handleToggleAutoRenew = async () => {
+    const nextVal = !autoRenewEnabled;
+    setAutoRenewEnabled(nextVal);
+    try {
+      await apiRequest('/membership/auto-renewal-preference', {
+        method: 'PATCH',
+        body: JSON.stringify({ autoRenewWithWallet: nextVal })
+      });
+      showToast(nextVal ? 'Auto-renewal via universal wallet enabled!' : 'Auto-renewal disabled.');
+    } catch {
+      setAutoRenewEnabled(!nextVal);
+      showToast('Failed to update auto-renewal preference.');
+    }
+  };
   const effectiveWithdrawableBalance = Math.max(
     0,
     (wallet?.withdrawalEligibleBalance !== undefined && wallet.withdrawalEligibleBalance > 0
@@ -843,12 +872,18 @@ export const ProfilePage: React.FC = () => {
               >
                 Withdraw Funds
               </button>
-              <button
-                onClick={() => setIsRenewModalOpen(true)}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-[#E5A23B] to-[#D08E27] text-white shadow-xs hover:from-[#D08E27] hover:to-[#BA7B1A] transition-all cursor-pointer"
-              >
-                Renew Membership
-              </button>
+              {isRenewalWindowOpen ? (
+                <button
+                  onClick={() => setIsRenewModalOpen(true)}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-[#E5A23B] to-[#D08E27] text-white shadow-xs hover:from-[#D08E27] hover:to-[#BA7B1A] transition-all cursor-pointer"
+                >
+                  Renew Membership
+                </button>
+              ) : (
+                <span className="hidden sm:inline-flex items-center text-[11px] font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1.5 rounded-xl">
+                  ● 1st Year Active (Renewal in ${Math.max(1, daysUntilExpiry - 30)}d)
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -1144,12 +1179,18 @@ export const ProfilePage: React.FC = () => {
             <span className="text-xs font-bold text-[#E5A23B] bg-[#F8EBD0]/60 px-2.5 py-1 rounded-lg border border-[#E5A23B]/30">
               {user.membershipPlan || '1st Year Membership'}
             </span>
-            <button
-              onClick={() => setIsRenewModalOpen(true)}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-[#E5A23B] to-[#D08E27] hover:from-[#D08E27] hover:to-[#BA7B1A] text-white shadow-xs transition-colors"
-            >
-              Renew Membership Using Wallet
-            </button>
+            {isRenewalWindowOpen ? (
+              <button
+                onClick={() => setIsRenewModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-[#E5A23B] to-[#D08E27] hover:from-[#D08E27] hover:to-[#BA7B1A] text-white shadow-xs transition-colors"
+              >
+                Renew Membership Using Wallet
+              </button>
+            ) : (
+              <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                Active • Renewal opens in ${Math.max(1, daysUntilExpiry - 30)} days
+              </span>
+            )}
           </div>
         </div>
 

@@ -179,3 +179,32 @@ membershipRouter.post('/renew-with-wallet', authenticate, async (req: Authentica
   }
 });
 
+// PATCH /api/v1/membership/auto-renewal-preference - Member explicit toggle for wallet auto-renewal
+membershipRouter.patch('/auto-renewal-preference', authenticate, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!req.user) throw new AppError('Unauthorized', 401);
+
+    const { autoRenewWithWallet } = req.body;
+    const enabled = Boolean(autoRenewWithWallet);
+
+    const user = await UserModel.findByIdAndUpdate(
+      req.user.userId,
+      { $set: { autoRenewWithWallet: enabled } },
+      { new: true }
+    ).select('-passwordHash');
+
+    res.status(200).json({
+      success: true,
+      message: enabled
+        ? 'Automated membership renewal via universal wallet has been enabled.'
+        : 'Automated membership renewal via wallet has been disabled.',
+      data: {
+        autoRenewWithWallet: enabled,
+        user
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+

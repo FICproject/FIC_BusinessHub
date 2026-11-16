@@ -398,11 +398,11 @@ export const InvestmentPage: React.FC = () => {
       return;
     }
     if (amt < min) {
-      setInvestError(`Amount cannot be less than the minimum ticket of ₹${min.toLocaleString('en-IN')}.`);
+      setInvestError(`Amount cannot be less than the minimum amount of ₹${min.toLocaleString('en-IN')}.`);
       return;
     }
     if (amt > max) {
-      setInvestError(`Amount cannot exceed the maximum permitted ticket of ₹${max.toLocaleString('en-IN')}.`);
+      setInvestError(`Amount cannot exceed the maximum permitted amount of ₹${max.toLocaleString('en-IN')}.`);
       return;
     }
     if (amt > remaining) {
@@ -535,7 +535,7 @@ export const InvestmentPage: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className={`mb-6 p-4 rounded-2xl flex items-center justify-between gap-3 text-sm font-semibold border ${
             feedbackMsg.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+              ? 'bg-emerald-50 bg-emerald-50 text-emerald-800 text-emerald-800 border-emerald-200 border-emerald-200'
               : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800'
           }`}
         >
@@ -556,7 +556,7 @@ export const InvestmentPage: React.FC = () => {
       {/* ========================================================
           TOP LEVEL TABS: INVESTMENT vs FUNDING
          ======================================================== */}
-      <div className="flex items-center justify-between border-b border-[#EDE2D7] dark:border-slate-800 pb-3 mb-6 flex-wrap gap-4">
+      <div className="flex items-center justify-between border-b border-[#EDE2D7] border-[#EDE2D7] pb-3 mb-6 flex-wrap gap-4">
         <div className="flex items-center gap-2">
           {/* Tab 1: Investment */}
           <button
@@ -565,7 +565,7 @@ export const InvestmentPage: React.FC = () => {
             className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 cursor-pointer ${
               mainNav === 'investment'
                 ? 'bg-gradient-to-r from-[#2C857B] to-[#1C6960] text-white shadow-md'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800/60'
+                : 'text-slate-600 text-[#51463F] hover:text-slate-900 dark:hover:text-white bg-slate-100 bg-slate-50'
             }`}
           >
             <TrendingUpIcon size={16} />
@@ -582,7 +582,7 @@ export const InvestmentPage: React.FC = () => {
             className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 cursor-pointer ${
               mainNav === 'funding'
                 ? 'bg-gradient-to-r from-[#2C857B] to-[#1C6960] text-white shadow-md'
-                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800/60'
+                : 'text-slate-600 text-[#51463F] hover:text-slate-900 dark:hover:text-white bg-slate-100 bg-slate-50'
             }`}
           >
             <FileTextIcon size={16} />
@@ -615,14 +615,14 @@ export const InvestmentPage: React.FC = () => {
       {mainNav === 'investment' && (
         <div className="space-y-6">
           {/* Sub-Tabs: Need Funding | My Investments | Community Pools */}
-          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto text-xs">
+          <div className="flex items-center gap-2 border-b border-slate-200 border-[#EDE2D7] pb-2 overflow-x-auto text-xs">
             <button
               type="button"
               onClick={() => setInvestSubTab('need_funding')}
               className={`px-4 py-2 rounded-lg font-bold transition-colors ${
                 investSubTab === 'need_funding'
-                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  ? 'bg-emerald-100 bg-emerald-50 text-emerald-800 text-emerald-800 border border-emerald-300 border-emerald-200'
+                  : 'text-slate-600 text-[#77786E] hover:text-slate-900'
               }`}
             >
               Need Funding ({approvedDeals.length})
@@ -632,8 +632,8 @@ export const InvestmentPage: React.FC = () => {
               onClick={() => setInvestSubTab('my_investments')}
               className={`px-4 py-2 rounded-lg font-bold transition-colors ${
                 investSubTab === 'my_investments'
-                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  ? 'bg-emerald-100 bg-emerald-50 text-emerald-800 text-emerald-800 border border-emerald-300 border-emerald-200'
+                  : 'text-slate-600 text-[#77786E] hover:text-slate-900'
               }`}
             >
               My Investments ({myInvestments.length})
@@ -643,8 +643,8 @@ export const InvestmentPage: React.FC = () => {
               onClick={() => setInvestSubTab('pools')}
               className={`px-4 py-2 rounded-lg font-bold transition-colors ${
                 investSubTab === 'pools'
-                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                  ? 'bg-emerald-100 bg-emerald-50 text-emerald-800 text-emerald-800 border border-emerald-300 border-emerald-200'
+                  : 'text-slate-600 text-[#77786E] hover:text-slate-900'
               }`}
             >
               Community Pools ({pools.length})
@@ -656,7 +656,7 @@ export const InvestmentPage: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-base font-bold text-slate-900 text-[#1E1728]">
                     Verified Opportunities (Admin Approved)
                   </h3>
                   <p className="text-xs text-slate-500">
@@ -670,7 +670,7 @@ export const InvestmentPage: React.FC = () => {
                     value={searchNeedFunding}
                     onChange={(e) => setSearchNeedFunding(e.target.value)}
                     placeholder="Search by company or purpose..."
-                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-white bg-white border border-slate-200 border-[#EDE2D7] focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
                   />
                 </div>
               </div>
@@ -698,48 +698,48 @@ export const InvestmentPage: React.FC = () => {
                       return (
                         <div
                           key={deal._id || deal.fundingRequestId}
-                          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between gap-4"
+                          className="p-5 rounded-2xl bg-white bg-white border border-slate-200/80 border-[#EDE2D7] shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between gap-4"
                         >
                           <div>
                             <div className="flex items-start justify-between gap-2 mb-2">
-                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 bg-slate-100 text-slate-600 text-[#77786E]">
                                 {deal.fundingRequestId || deal.refNumber}
                               </span>
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 bg-emerald-50 text-emerald-800 border-emerald-200">
                                 {deal.status || 'APPROVED'}
                               </span>
                             </div>
 
-                            <h4 className="font-bold text-slate-900 dark:text-white text-base line-clamp-1">
+                            <h4 className="font-bold text-slate-900 text-[#1E1728] text-base line-clamp-1">
                               {deal.companyName || deal.businessName}
                             </h4>
 
-                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
+                            <p className="text-xs text-slate-500 text-[#77786E] line-clamp-2 mt-1">
                               {deal.fundingPurpose}
                             </p>
 
-                            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-3 text-xs">
+                            <div className="mt-4 pt-3 border-t border-slate-100 border-[#EDE2D7] grid grid-cols-2 gap-3 text-xs">
                               <div>
                                 <span className="text-[10px] text-slate-400 uppercase font-mono">Target Amount</span>
-                                <p className="font-bold text-slate-800 dark:text-slate-200">
+                                <p className="font-bold text-slate-800 text-[#29302D]">
                                   {formatCurrencyINR(reqAmt)}
                                 </p>
                               </div>
                               <div>
                                 <span className="text-[10px] text-slate-400 uppercase font-mono">Expected Return</span>
-                                <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                                <p className="font-bold text-emerald-600 text-emerald-700">
                                   {deal.expectedReturns} ({deal.returnFrequency})
                                 </p>
                               </div>
                               <div>
                                 <span className="text-[10px] text-slate-400 uppercase font-mono">Duration</span>
-                                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                                <p className="font-semibold text-slate-700 text-[#51463F]">
                                   {deal.fundingDuration || '12 Months'}
                                 </p>
                               </div>
                               <div>
-                                <span className="text-[10px] text-slate-400 uppercase font-mono">Ticket Range</span>
-                                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                                <span className="text-[10px] text-slate-400 uppercase font-mono">Investment Range</span>
+                                <p className="font-semibold text-slate-700 text-[#51463F]">
                                   {formatCurrencyINR(deal.minInvestmentAmount)} - {formatCurrencyINR(deal.maxInvestmentAmount)}
                                 </p>
                               </div>
@@ -751,7 +751,7 @@ export const InvestmentPage: React.FC = () => {
                                 <span>Committed: {formatCurrencyINR(invested)}</span>
                                 <span>{progressPct}%</span>
                               </div>
-                              <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                              <div className="w-full h-1.5 rounded-full bg-slate-100 bg-slate-100 overflow-hidden">
                                 <div
                                   className="h-full bg-emerald-500 rounded-full transition-all"
                                   style={{ width: `${progressPct}%` }}
@@ -780,7 +780,7 @@ export const InvestmentPage: React.FC = () => {
           {investSubTab === 'my_investments' && (
             <div className="space-y-4">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold text-slate-900 text-[#1E1728]">
                   My Investment Portfolio & Yield Desk
                 </h3>
                 <p className="text-xs text-slate-500">
@@ -799,11 +799,11 @@ export const InvestmentPage: React.FC = () => {
                   {myInvestments.map((inv) => (
                     <div
                       key={inv._id || inv.investmentId}
-                      className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
+                      className="p-5 rounded-2xl bg-white bg-white border border-slate-200 border-[#EDE2D7] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
                     >
                       <div className="space-y-1.5 flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                          <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-slate-100 bg-slate-100 text-slate-700 text-[#51463F]">
                             {inv.investmentId}
                           </span>
                           <span className="text-[11px] font-mono text-slate-400">
@@ -814,26 +814,26 @@ export const InvestmentPage: React.FC = () => {
                               inv.status === 'APPROVED' || inv.status === 'PAYMENT_PENDING'
                                 ? 'bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300'
                                 : inv.status === 'ACTIVE'
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 bg-emerald-50 text-emerald-800'
                                 : inv.status === 'COMPLETED'
                                 ? 'bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-950/60 dark:text-purple-300'
-                                : 'bg-slate-100 text-slate-800 border border-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                                : 'bg-slate-100 text-slate-800 border border-slate-200 bg-slate-100 text-[#51463F]'
                             }`}
                           >
                             {inv.status}
                           </span>
                         </div>
 
-                        <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                        <h4 className="text-base font-bold text-slate-900 text-[#1E1728]">
                           {inv.projectName}
                         </h4>
 
                         <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
-                          <span>Committed: <b className="text-slate-900 dark:text-white">{formatCurrencyINR(inv.requestedAmount)}</b></span>
+                          <span>Committed: <b className="text-slate-900 text-[#1E1728]">{formatCurrencyINR(inv.requestedAmount)}</b></span>
                           {inv.paidAmount > 0 && (
-                            <span>Paid: <b className="text-emerald-600 dark:text-emerald-400">{formatCurrencyINR(inv.paidAmount)}</b></span>
+                            <span>Paid: <b className="text-emerald-600 text-emerald-700">{formatCurrencyINR(inv.paidAmount)}</b></span>
                           )}
-                          <span>Expected Return: <b className="text-emerald-600 dark:text-emerald-400">{inv.expectedReturns} ({inv.returnFrequency})</b></span>
+                          <span>Expected Return: <b className="text-emerald-600 text-emerald-700">{inv.expectedReturns} ({inv.returnFrequency})</b></span>
                           <span>Tenure: {inv.fundingDuration}</span>
                         </div>
 
@@ -859,7 +859,7 @@ export const InvestmentPage: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setSelectedInvestmentDetail(inv)}
-                          className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 text-xs font-semibold"
+                          className="px-3.5 py-2 rounded-xl bg-slate-100 bg-slate-100 text-slate-700 text-[#51463F] hover:bg-slate-200 text-xs font-semibold"
                         >
                           View Details
                         </button>
@@ -875,7 +875,7 @@ export const InvestmentPage: React.FC = () => {
           {investSubTab === 'pools' && (
             <div className="space-y-4">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold text-slate-900 text-[#1E1728]">
                   Community Crowdfunding Pools
                 </h3>
                 <p className="text-xs text-slate-500">
@@ -887,31 +887,31 @@ export const InvestmentPage: React.FC = () => {
                 {pools.map((pool) => (
                   <div
                     key={pool._id || pool.poolCode}
-                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between gap-4"
+                    className="p-5 rounded-2xl bg-white bg-white border border-slate-200 border-[#EDE2D7] shadow-xs flex flex-col justify-between gap-4"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600">
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 bg-slate-100 text-slate-600">
                           {pool.poolCode}
                         </span>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
                           {pool.status}
                         </span>
                       </div>
-                      <h4 className="font-bold text-slate-900 dark:text-white text-base">
+                      <h4 className="font-bold text-slate-900 text-[#1E1728] text-base">
                         {pool.title}
                       </h4>
                       <p className="text-xs text-slate-500 line-clamp-2 mt-1">
                         {pool.description}
                       </p>
-                      <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2 text-xs">
+                      <div className="mt-3 pt-3 border-t border-slate-100 border-[#EDE2D7] grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <span className="text-[10px] text-slate-400">Yield</span>
                           <p className="font-bold text-emerald-600">{pool.investorAnnualYieldPercent}% p.a.</p>
                         </div>
                         <div>
                           <span className="text-[10px] text-slate-400">Target</span>
-                          <p className="font-bold text-slate-800 dark:text-slate-200">{formatCurrencyINR(pool.targetAmount)}</p>
+                          <p className="font-bold text-slate-800 text-[#29302D]">{formatCurrencyINR(pool.targetAmount)}</p>
                         </div>
                       </div>
                     </div>
@@ -930,10 +930,10 @@ export const InvestmentPage: React.FC = () => {
         <div className="space-y-6">
           {/* Submission Form / Review / Wizard */}
           {showFundingForm ? (
-            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-md">
-              <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-6">
+            <div className="p-6 rounded-3xl bg-white bg-white border border-slate-200/90 border-[#EDE2D7] shadow-md">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 border-[#EDE2D7] mb-6">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-lg font-bold text-slate-900 text-[#1E1728]">
                     {fundingStep === 'form' ? 'Submit Funding Proposal' : 'Review & Confirm Funding Proposal'}
                   </h3>
                   <p className="text-xs text-slate-500">
@@ -948,7 +948,7 @@ export const InvestmentPage: React.FC = () => {
                     setShowFundingForm(false);
                     setFundingStep('form');
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 text-xs font-semibold"
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 bg-slate-100 text-slate-600 text-[#77786E] hover:text-slate-900 text-xs font-semibold"
                 >
                   Cancel
                 </button>
@@ -959,7 +959,7 @@ export const InvestmentPage: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     {/* Field 1: Project / Company Name */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700 text-[#51463F] uppercase font-mono mb-1.5">
                         1. Project / Company Name *
                       </label>
                       <input
@@ -967,8 +967,8 @@ export const InvestmentPage: React.FC = () => {
                         value={formCompany}
                         onChange={(e) => setFormCompany(e.target.value)}
                         placeholder="e.g. Acme Technologies Pvt Ltd"
-                        className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
-                          formErrors.company ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                        className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 bg-slate-50 border ${
+                          formErrors.company ? 'border-rose-400' : 'border-slate-200 border-[#E8DBC8]'
                         } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
                       />
                       {formErrors.company && <p className="text-[11px] text-rose-500 mt-1">{formErrors.company}</p>}
@@ -976,7 +976,7 @@ export const InvestmentPage: React.FC = () => {
 
                     {/* Field 2: Funding Duration */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700 text-[#51463F] uppercase font-mono mb-1.5">
                         2. Funding Duration *
                       </label>
                       <select
@@ -985,7 +985,7 @@ export const InvestmentPage: React.FC = () => {
                           setFormDuration(e.target.value);
                           setFormDurationMonths(parseInt(e.target.value, 10) || 12);
                         }}
-                        className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 bg-slate-50 border border-slate-200 border-[#E8DBC8] focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
                       >
                         <option value="6 Months">6 Months</option>
                         <option value="12 Months">12 Months (1 Year)</option>
@@ -997,7 +997,7 @@ export const InvestmentPage: React.FC = () => {
 
                     {/* Field 3: Required Funding Amount */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700 text-[#51463F] uppercase font-mono mb-1.5">
                         3. Required Funding Amount (₹) *
                       </label>
                       <input
@@ -1006,8 +1006,8 @@ export const InvestmentPage: React.FC = () => {
                         value={formFundingAmount}
                         onChange={(e) => setFormFundingAmount(e.target.value)}
                         placeholder="e.g. 500000"
-                        className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
-                          formErrors.fundingAmount ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                        className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 bg-slate-50 border ${
+                          formErrors.fundingAmount ? 'border-rose-400' : 'border-slate-200 border-[#E8DBC8]'
                         } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
                       />
                       {formErrors.fundingAmount && (
@@ -1023,30 +1023,30 @@ export const InvestmentPage: React.FC = () => {
                     {/* Field 4 & 5: Min & Max Ticket */}
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
-                          4. Min Ticket (₹) *
+                        <label className="block text-xs font-bold text-slate-700 text-[#51463F] uppercase font-mono mb-1.5">
+                          4. Minimum Amount (₹) *
                         </label>
                         <input
                           type="number"
                           value={formMinInvestment}
                           onChange={(e) => setFormMinInvestment(e.target.value)}
                           placeholder="e.g. 25000"
-                          className={`w-full px-3 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
-                            formErrors.minInvestment ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                          className={`w-full px-3 py-2.5 text-xs rounded-xl bg-slate-50 bg-slate-50 border ${
+                            formErrors.minInvestment ? 'border-rose-400' : 'border-slate-200 border-[#E8DBC8]'
                           } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
-                          5. Max Ticket (₹) *
+                        <label className="block text-xs font-bold text-slate-700 text-[#51463F] uppercase font-mono mb-1.5">
+                          5. Maximum Amount (₹) *
                         </label>
                         <input
                           type="number"
                           value={formMaxInvestment}
                           onChange={(e) => setFormMaxInvestment(e.target.value)}
                           placeholder="e.g. 200000"
-                          className={`w-full px-3 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
-                            formErrors.maxInvestment ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                          className={`w-full px-3 py-2.5 text-xs rounded-xl bg-slate-50 bg-slate-50 border ${
+                            formErrors.maxInvestment ? 'border-rose-400' : 'border-slate-200 border-[#E8DBC8]'
                           } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
                         />
                       </div>
@@ -1056,7 +1056,7 @@ export const InvestmentPage: React.FC = () => {
                   {/* Field 6: Expected Returns & Return Frequency */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700 text-[#51463F] uppercase font-mono mb-1.5">
                         6. Expected Return Rate (% p.a.) *
                       </label>
                       <input
@@ -1065,19 +1065,19 @@ export const InvestmentPage: React.FC = () => {
                         value={formReturnRate}
                         onChange={(e) => setFormReturnRate(e.target.value)}
                         placeholder="e.g. 15"
-                        className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
-                          formErrors.returns ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                        className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 bg-slate-50 border ${
+                          formErrors.returns ? 'border-rose-400' : 'border-slate-200 border-[#E8DBC8]'
                         } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700 text-[#51463F] uppercase font-mono mb-1.5">
                         Return Payout Frequency *
                       </label>
                       <select
                         value={formReturnFrequency}
                         onChange={(e: any) => setFormReturnFrequency(e.target.value)}
-                        className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 bg-slate-50 border border-slate-200 border-[#E8DBC8] focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
                       >
                         <option value="MONTHLY">Monthly Returns</option>
                         <option value="QUARTERLY">Quarterly Returns</option>
@@ -1089,7 +1089,7 @@ export const InvestmentPage: React.FC = () => {
 
                   {/* Field 7: Funding Purpose */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 text-[#51463F] uppercase font-mono mb-1.5">
                       7. Funding Purpose *
                     </label>
                     <textarea
@@ -1097,8 +1097,8 @@ export const InvestmentPage: React.FC = () => {
                       value={formPurpose}
                       onChange={(e) => setFormPurpose(e.target.value)}
                       placeholder="Explain how funds will be deployed (e.g. Working Capital, Equipment, Team Expansion, Marketing, Operations)..."
-                      className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
-                        formErrors.purpose ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                      className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 bg-slate-50 border ${
+                        formErrors.purpose ? 'border-rose-400' : 'border-slate-200 border-[#E8DBC8]'
                       } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
                     />
                     {formErrors.purpose && <p className="text-[11px] text-rose-500 mt-1">{formErrors.purpose}</p>}
@@ -1106,11 +1106,11 @@ export const InvestmentPage: React.FC = () => {
 
                   {/* Field 8: Required Documents */}
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 text-[#51463F] uppercase font-mono mb-1.5">
                       8. Required Supporting Documents (Pitch Deck, Statutory, Audited Financials) *
                     </label>
                     <div className="flex items-center gap-3">
-                      <label className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold cursor-pointer transition-colors flex items-center gap-2">
+                      <label className="px-4 py-2.5 rounded-xl bg-slate-100 bg-slate-100 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 text-[#29302D] text-xs font-bold cursor-pointer transition-colors flex items-center gap-2">
                         <PlusIcon size={14} />
                         <span>{isUploadingDoc ? 'Uploading...' : 'Upload Document (PDF, JPG, PNG)'}</span>
                         <input
@@ -1160,42 +1160,42 @@ export const InvestmentPage: React.FC = () => {
               ) : (
                 /* REVIEW & SUBMIT STEP */
                 <div className="space-y-6">
-                  <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="p-5 rounded-2xl bg-slate-50 bg-slate-50 border border-slate-200 border-[#EDE2D7] grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-mono">Company / Project</span>
-                      <p className="font-bold text-slate-900 dark:text-white text-sm">{formCompany}</p>
+                      <p className="font-bold text-slate-900 text-[#1E1728] text-sm">{formCompany}</p>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-mono">Funding Duration</span>
-                      <p className="font-bold text-slate-900 dark:text-white text-sm">{formDuration}</p>
+                      <p className="font-bold text-slate-900 text-[#1E1728] text-sm">{formDuration}</p>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-mono">Required Amount</span>
-                      <p className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                      <p className="font-bold text-emerald-600 text-emerald-700 text-sm">
                         {formatCurrencyINR(Number(formFundingAmount))}
                       </p>
                     </div>
                     <div>
-                      <span className="text-[10px] text-slate-400 uppercase font-mono">Ticket Size Limits</span>
-                      <p className="font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">Investment Amount Limits</span>
+                      <p className="font-bold text-slate-800 text-[#29302D]">
                         Min: {formatCurrencyINR(Number(formMinInvestment))} | Max: {formatCurrencyINR(Number(formMaxInvestment))}
                       </p>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-mono">Expected Returns</span>
-                      <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                      <p className="font-bold text-emerald-600 text-emerald-700">
                         {formReturnRate}% p.a. ({formReturnFrequency})
                       </p>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-mono">Attached Documents</span>
-                      <p className="font-semibold text-slate-700 dark:text-slate-300">
+                      <p className="font-semibold text-slate-700 text-[#51463F]">
                         {formDocuments.length} document(s) attached
                       </p>
                     </div>
                     <div className="col-span-full">
                       <span className="text-[10px] text-slate-400 uppercase font-mono">Purpose of Funds</span>
-                      <p className="text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">{formPurpose}</p>
+                      <p className="text-slate-700 text-[#51463F] mt-1 leading-relaxed">{formPurpose}</p>
                     </div>
                   </div>
 
@@ -1203,7 +1203,7 @@ export const InvestmentPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setFundingStep('form')}
-                      className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200"
+                      className="px-4 py-2 rounded-xl bg-slate-100 bg-slate-100 text-slate-700 text-[#51463F] font-bold text-xs hover:bg-slate-200"
                     >
                       ← Back & Edit
                     </button>
@@ -1224,7 +1224,7 @@ export const InvestmentPage: React.FC = () => {
             /* MY FUNDING REQUESTS LIST */
             <div className="space-y-4">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold text-slate-900 text-[#1E1728]">
                   My Funding Requests & Capital Tracker
                 </h3>
                 <p className="text-xs text-slate-500">
@@ -1247,16 +1247,16 @@ export const InvestmentPage: React.FC = () => {
                     return (
                       <div
                         key={reqItem._id || reqItem.fundingRequestId}
-                        className={`p-5 rounded-2xl bg-white dark:bg-slate-900 border transition-all ${
+                        className={`p-5 rounded-2xl bg-white bg-white border transition-all ${
                           isChangesReq
                             ? 'border-amber-400 bg-amber-50/20 dark:border-amber-700 shadow-sm'
-                            : 'border-slate-200 dark:border-slate-800 shadow-xs'
+                            : 'border-slate-200 border-[#EDE2D7] shadow-xs'
                         }`}
                       >
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div className="space-y-1.5 flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-slate-100 bg-slate-100 text-slate-700 text-[#51463F]">
                                 {reqItem.fundingRequestId || reqItem.refNumber}
                               </span>
                               <span
@@ -1277,7 +1277,7 @@ export const InvestmentPage: React.FC = () => {
                               )}
                             </div>
 
-                            <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                            <h4 className="text-base font-bold text-slate-900 text-[#1E1728]">
                               {reqItem.companyName || reqItem.businessName}
                             </h4>
 
@@ -1286,10 +1286,10 @@ export const InvestmentPage: React.FC = () => {
                             </p>
 
                             <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap pt-1">
-                              <span>Target: <b className="text-slate-900 dark:text-white">{formatCurrencyINR(reqItem.requiredFundingAmount || reqItem.fundingAmount)}</b></span>
-                              <span>Returns: <b className="text-emerald-600 dark:text-emerald-400">{reqItem.expectedReturns} ({reqItem.returnFrequency})</b></span>
+                              <span>Target: <b className="text-slate-900 text-[#1E1728]">{formatCurrencyINR(reqItem.requiredFundingAmount || reqItem.fundingAmount)}</b></span>
+                              <span>Returns: <b className="text-emerald-600 text-emerald-700">{reqItem.expectedReturns} ({reqItem.returnFrequency})</b></span>
                               <span>Duration: {reqItem.fundingDuration}</span>
-                              <span>Investors Committed: <b className="text-slate-900 dark:text-white">{reqItem.investorCount || 0}</b></span>
+                              <span>Investors Committed: <b className="text-slate-900 text-[#1E1728]">{reqItem.investorCount || 0}</b></span>
                             </div>
 
                             {/* Alert if changes requested */}
@@ -1327,7 +1327,7 @@ export const InvestmentPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => setSelectedFundingDetail(reqItem)}
-                              className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 text-xs font-semibold"
+                              className="px-3.5 py-2 rounded-xl bg-slate-100 bg-slate-100 text-slate-700 text-[#51463F] hover:bg-slate-200 text-xs font-semibold"
                             >
                               View Details
                             </button>
@@ -1348,13 +1348,13 @@ export const InvestmentPage: React.FC = () => {
          ======================================================== */}
       {investTargetDeal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-sm">
-          <div className="w-full max-w-lg p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="w-full max-w-lg p-6 rounded-3xl bg-white bg-white border border-slate-200 border-[#EDE2D7] shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 border-[#EDE2D7]">
               <div>
                 <span className="text-[10px] font-mono font-bold text-slate-400">
                   {investTargetDeal.fundingRequestId || investTargetDeal.refNumber}
                 </span>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold text-slate-900 text-[#1E1728]">
                   Invest in {investTargetDeal.companyName || investTargetDeal.businessName}
                 </h3>
               </div>
@@ -1367,28 +1367,28 @@ export const InvestmentPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-3 text-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 bg-slate-50 border border-slate-200 border-[#EDE2D7] grid grid-cols-2 gap-3 text-xs">
               <div>
                 <span className="text-[10px] text-slate-400 uppercase font-mono">Target Funding</span>
-                <p className="font-bold text-slate-900 dark:text-white">
+                <p className="font-bold text-slate-900 text-[#1E1728]">
                   {formatCurrencyINR(investTargetDeal.requiredFundingAmount || investTargetDeal.fundingAmount)}
                 </p>
               </div>
               <div>
                 <span className="text-[10px] text-slate-400 uppercase font-mono">Expected Returns</span>
-                <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                <p className="font-bold text-emerald-600 text-emerald-700">
                   {investTargetDeal.expectedReturns} ({investTargetDeal.returnFrequency})
                 </p>
               </div>
               <div>
                 <span className="text-[10px] text-slate-400 uppercase font-mono">Tenure</span>
-                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                <p className="font-semibold text-slate-700 text-[#51463F]">
                   {investTargetDeal.fundingDuration}
                 </p>
               </div>
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-mono">Allowed Ticket</span>
-                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                <span className="text-[10px] text-slate-400 uppercase font-mono">Allowed Amount Range</span>
+                <p className="font-semibold text-slate-700 text-[#51463F]">
                   {formatCurrencyINR(investTargetDeal.minInvestmentAmount)} - {formatCurrencyINR(investTargetDeal.maxInvestmentAmount)}
                 </p>
               </div>
@@ -1396,14 +1396,14 @@ export const InvestmentPage: React.FC = () => {
 
             <form onSubmit={handleConfirmInvest} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                <label className="block text-xs font-bold text-slate-700 text-[#51463F] uppercase font-mono mb-1.5">
                   Enter Investment Commitment Amount (INR) *
                 </label>
                 <input
                   type="number"
                   value={investAmountInput}
                   onChange={(e) => setInvestAmountInput(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-sm font-bold rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
+                  className="w-full px-3.5 py-2.5 text-sm font-bold rounded-xl bg-slate-50 bg-slate-100 border border-slate-200 border-[#E8DBC8] focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
                   placeholder="Enter amount..."
                 />
                 {investAmountInput && !isNaN(Number(investAmountInput)) && (
@@ -1440,13 +1440,13 @@ export const InvestmentPage: React.FC = () => {
          ======================================================== */}
       {investOverviewData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-sm">
-          <div className="w-full max-w-md p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl text-center space-y-5">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-white bg-white border border-slate-200 border-[#EDE2D7] shadow-2xl text-center space-y-5">
             <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
               <CheckCircleIcon size={24} />
             </div>
 
             <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              <h3 className="text-lg font-bold text-slate-900 text-[#1E1728]">
                 Investment Commitment Submitted!
               </h3>
               <p className="text-xs text-slate-500 mt-1">
@@ -1454,32 +1454,32 @@ export const InvestmentPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-left space-y-2 text-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 bg-slate-50 border border-slate-200 border-[#EDE2D7] text-left space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-slate-400">Investment ID:</span>
-                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                <span className="font-mono font-bold text-slate-800 text-[#29302D]">
                   {investOverviewData.investmentId}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Project Name:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">{investOverviewData.projectName}</span>
+                <span className="font-bold text-slate-800 text-[#29302D]">{investOverviewData.projectName}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Committed Amount:</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                <span className="font-bold text-emerald-600 text-emerald-700">
                   {formatCurrencyINR(investOverviewData.investmentAmount)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Expected Returns:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">
+                <span className="font-bold text-slate-800 text-[#29302D]">
                   {investOverviewData.expectedReturns} ({investOverviewData.returnFrequency})
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Duration:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">{investOverviewData.fundingDuration}</span>
+                <span className="font-bold text-slate-800 text-[#29302D]">{investOverviewData.fundingDuration}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Current Status:</span>
@@ -1491,7 +1491,7 @@ export const InvestmentPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setInvestOverviewData(null)}
-                className="w-1/2 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
+                className="w-1/2 py-2.5 rounded-xl bg-slate-100 bg-slate-100 text-slate-700 text-[#51463F] font-bold text-xs"
               >
                 Close
               </button>
@@ -1516,13 +1516,13 @@ export const InvestmentPage: React.FC = () => {
          ======================================================== */}
       {payTargetInvestment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-sm">
-          <div className="w-full max-w-md p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-white bg-white border border-slate-200 border-[#EDE2D7] shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 border-[#EDE2D7]">
               <div>
                 <span className="text-[10px] font-mono font-bold text-slate-400">
                   {payTargetInvestment.investmentId}
                 </span>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold text-slate-900 text-[#1E1728]">
                   Pay Investment Capital
                 </h3>
               </div>
@@ -1535,26 +1535,26 @@ export const InvestmentPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+            <div className="p-4 rounded-2xl bg-slate-50 bg-slate-50 border border-slate-200 border-[#EDE2D7] space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-slate-400">Project Name:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">{payTargetInvestment.projectName}</span>
+                <span className="font-bold text-slate-800 text-[#29302D]">{payTargetInvestment.projectName}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Approved Amount:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">
+                <span className="font-bold text-slate-800 text-[#29302D]">
                   {formatCurrencyINR(payTargetInvestment.approvedAmount || payTargetInvestment.requestedAmount)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Already Paid:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">
+                <span className="font-bold text-slate-800 text-[#29302D]">
                   {formatCurrencyINR(payTargetInvestment.paidAmount || 0)}
                 </span>
               </div>
-              <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-700">
-                <span className="font-bold text-slate-700 dark:text-slate-300">Remaining Payable:</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+              <div className="flex justify-between pt-1 border-t border-slate-200 border-[#E8DBC8]">
+                <span className="font-bold text-slate-700 text-[#51463F]">Remaining Payable:</span>
+                <span className="font-bold text-emerald-600 text-emerald-700 text-sm">
                   {formatCurrencyINR(Number(payAmountInput))}
                 </span>
               </div>
@@ -1586,13 +1586,13 @@ export const InvestmentPage: React.FC = () => {
          ======================================================== */}
       {resubmitTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/75 backdrop-blur-sm">
-          <div className="w-full max-w-xl p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+          <div className="w-full max-w-xl p-6 rounded-3xl bg-white bg-white border border-slate-200 border-[#EDE2D7] shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 border-[#EDE2D7]">
               <div>
                 <span className="text-[10px] font-mono font-bold text-amber-600">
                   CHANGES REQUESTED
                 </span>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 className="text-base font-bold text-slate-900 text-[#1E1728]">
                   Revise & Resubmit: {resubmitCompany}
                 </h3>
               </div>
@@ -1616,16 +1616,16 @@ export const InvestmentPage: React.FC = () => {
             {/* Requested additional documents checklist */}
             {resubmitReqDocs.length > 0 && (
               <div className="space-y-2">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono">
+                <span className="text-xs font-bold text-slate-700 text-[#51463F] uppercase font-mono">
                   Additional Required Documents:
                 </span>
                 {resubmitReqDocs.map((docItem, idx) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs"
+                    className="p-3 rounded-xl bg-slate-50 bg-slate-50 border border-slate-200 border-[#EDE2D7] flex items-center justify-between gap-3 text-xs"
                   >
                     <div>
-                      <p className="font-bold text-slate-800 dark:text-slate-200">{docItem.name}</p>
+                      <p className="font-bold text-slate-800 text-[#29302D]">{docItem.name}</p>
                       <p className="text-[11px] text-slate-400">{docItem.instructions}</p>
                     </div>
                     {docItem.isUploaded ? (
@@ -1673,7 +1673,7 @@ export const InvestmentPage: React.FC = () => {
                   type="text"
                   value={resubmitCompany}
                   onChange={(e) => setResubmitCompany(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 bg-slate-100 border border-slate-200 border-[#E8DBC8]"
                 />
               </div>
               <div>
@@ -1684,7 +1684,7 @@ export const InvestmentPage: React.FC = () => {
                   type="number"
                   value={resubmitFundingAmount}
                   onChange={(e) => setResubmitFundingAmount(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 bg-slate-100 border border-slate-200 border-[#E8DBC8]"
                 />
               </div>
             </div>
@@ -1697,11 +1697,11 @@ export const InvestmentPage: React.FC = () => {
                 rows={2}
                 value={resubmitPurpose}
                 onChange={(e) => setResubmitPurpose(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 bg-slate-100 border border-slate-200 border-[#E8DBC8] text-xs"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 border-[#EDE2D7]">
               <button
                 type="button"
                 onClick={() => setResubmitTarget(null)}

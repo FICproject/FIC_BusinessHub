@@ -29,6 +29,14 @@ export interface IUserDocument extends Document {
   isMembershipActive: boolean;
   activeMembershipId?: mongoose.Types.ObjectId;
   activeKycSubmissionId?: mongoose.Types.ObjectId;
+  passwordResetOtpHash?: string;
+  passwordResetOtpExpiresAt?: Date;
+  passwordResetAttempts?: number;
+  passwordResetCooldownUntil?: Date;
+  passwordResetTokenHash?: string;
+  passwordResetTokenExpiresAt?: Date;
+  autoRenewWithWallet?: boolean;
+  lastExpiryAlertDate?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -79,7 +87,15 @@ const UserSchema = new Schema<IUserDocument>(
     kycApprovedBy: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
     isMembershipActive: { type: Boolean, default: false },
     activeMembershipId: { type: Schema.Types.ObjectId, ref: 'Membership' },
-    activeKycSubmissionId: { type: Schema.Types.ObjectId, ref: 'KYCSubmission' }
+    activeKycSubmissionId: { type: Schema.Types.ObjectId, ref: 'KYCSubmission' },
+    passwordResetOtpHash: { type: String },
+    passwordResetOtpExpiresAt: { type: Date },
+    passwordResetAttempts: { type: Number, default: 0 },
+    passwordResetCooldownUntil: { type: Date },
+    passwordResetTokenHash: { type: String },
+    passwordResetTokenExpiresAt: { type: Date },
+    autoRenewWithWallet: { type: Boolean, default: false },
+    lastExpiryAlertDate: { type: String }
   },
   { timestamps: true }
 );

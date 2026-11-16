@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { UserModel } from '../users/users.model';
 import { config } from '../../config';
@@ -497,6 +498,14 @@ export const getMe = async (req: AuthenticatedRequest, res: Response, next: Next
 
     const activation = await evaluateMemberActivationAccess(user._id.toString());
     const kycSnapshot = activation.kycSnapshot || (await resolveUserKycSnapshot(user));
+
+    const { MembershipModel } = await import('../membership/membership.model');
+    const membership = await MembershipModel.findOne({ userId: user._id }).sort({ createdAt: -1 }).lean();
+    const membershipExpiresAt = membership?.endDate || new Date(new Date(user.createdAt || Date.now()).getTime() + 365 * 24 * 60 * 60 * 1000);
+    const msRemaining = new Date(membershipExpiresAt).getTime() - Date.now();
+    const daysUntilExpiry = Math.ceil(msRemaining / (1000 * 60 * 60 * 24));
+    const isRenewalAvailable = daysUntilExpiry <= 30;
+
     const userObj = user.toObject();
 
     res.status(200).json({
@@ -509,6 +518,12 @@ export const getMe = async (req: AuthenticatedRequest, res: Response, next: Next
         canAccessDashboard: activation.canAccessDashboard,
         activationChecks: activation.checks,
         isMembershipActive: activation.checks.membershipActive,
+        membershipPlan: membership?.planType === 'ANNUAL_RENEWAL' ? 'Annual Renewal' : '1st Year Membership',
+        membershipExpiresAt,
+        membershipExpiryDate: new Date(membershipExpiresAt).toLocaleDateString('en-GB'),
+        daysUntilExpiry,
+        isRenewalAvailable,
+        autoRenewWithWallet: user.autoRenewWithWallet ?? false,
         rejectionReason: kycSnapshot.rejectionReason,
         reviewerNotes: kycSnapshot.reviewerNotes,
         reviewedAt: kycSnapshot.reviewedAt,
@@ -569,5 +584,194 @@ export const awardReferralBonusIfApplicable = async (newUser: any): Promise<void
     );
   } catch (err: any) {
     console.warn('Referral attribution warning:', err?.message);
+  }
+};
+
+function maskDestination(identifier: string, isEmail: boolean): string {
+  if (isEmail) {
+    const [name, domain] = identifier.split('@');
+    if (!name || !domain) return identifier;
+    const maskedName = name.length <= 2 ? name[0] + '*' : name[0] + '*'.repeat(name.length - 2) + name[name.length - 1];
+    return `${maskedName}@${domain}`;
+  }
+  const clean = identifier.replace(/\D/g, '');
+  if (clean.length >= 10) {
+    const last4 = clean.slice(-4);
+    return `+91 ******${last4}`;
+  }
+  return identifier;
+}
+
+export const sendForgotPasswordOtp = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { identifier, deliveryMethod } = req.body;
+    if (!identifier || typeof identifier !== 'string' || !identifier.trim()) {
+      throw new AppError('Please provide your registered email address or mobile number.', 400);
+    }
+    const cleanId = identifier.trim();
+    const isEmail = cleanId.includes('@');
+    let user;
+
+    if (isEmail) {
+      const email = cleanId.toLowerCase();
+      user = await UserModel.findOne({ email });
+    } else {
+      const cleanPhone = cleanId.replace(/\D/g, '').slice(-10);
+      user = await UserModel.findOne({
+        $or: [
+          { phoneNumber: cleanPhone },
+          { phoneNumber: `+91${cleanPhone}` },
+          { phoneNumber: cleanId }
+        ]
+      });
+    }
+
+    if (!user) {
+      throw new AppError('No active member account found with this registered credential. Please verify and try again.', 404);
+    }
+
+    // Rate-limiting / Cooldown check: 60s
+    if (user.passwordResetCooldownUntil && user.passwordResetCooldownUntil.getTime() > Date.now()) {
+      const remainingSecs = Math.ceil((user.passwordResetCooldownUntil.getTime() - Date.now()) / 1000);
+      throw new AppError(`Please wait ${remainingSecs}s before requesting a new OTP.`, 429);
+    }
+
+    // Generate 6-digit cryptographic OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+
+    user.passwordResetOtpHash = otpHash;
+    user.passwordResetOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    user.passwordResetAttempts = 0;
+    user.passwordResetCooldownUntil = new Date(Date.now() + 60 * 1000); // 60s cooldown
+    await user.save();
+
+    const masked = maskDestination(isEmail ? user.email : user.phoneNumber, isEmail);
+    console.log(`[AUTH:FORGOT_PASSWORD] Generated 6-digit OTP ${otp} for ${user.email} (${masked})`);
+
+    res.status(200).json({
+      success: true,
+      message: `A 6-digit verification code has been sent to your registered ${isEmail ? 'email address' : 'mobile number'} (${masked}).`,
+      data: {
+        maskedDestination: masked,
+        deliveryMethod: isEmail ? 'EMAIL' : 'SMS',
+        cooldownSeconds: 60,
+        debugOtp: process.env.NODE_ENV !== 'production' ? otp : undefined
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const verifyForgotPasswordOtp = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { identifier, otp } = req.body;
+    if (!identifier || !otp) {
+      throw new AppError('Registered identifier and 6-digit OTP are required.', 400);
+    }
+
+    const cleanId = String(identifier).trim();
+    const isEmail = cleanId.includes('@');
+    let user;
+
+    if (isEmail) {
+      user = await UserModel.findOne({ email: cleanId.toLowerCase() });
+    } else {
+      const cleanPhone = cleanId.replace(/\D/g, '').slice(-10);
+      user = await UserModel.findOne({
+        $or: [
+          { phoneNumber: cleanPhone },
+          { phoneNumber: `+91${cleanPhone}` },
+          { phoneNumber: cleanId }
+        ]
+      });
+    }
+
+    if (!user || !user.passwordResetOtpHash || !user.passwordResetOtpExpiresAt) {
+      throw new AppError('No pending password reset request found. Please request a new OTP.', 400);
+    }
+
+    if (user.passwordResetOtpExpiresAt.getTime() < Date.now()) {
+      throw new AppError('The verification OTP has expired. Please request a new OTP.', 400);
+    }
+
+    if ((user.passwordResetAttempts || 0) >= 5) {
+      user.passwordResetOtpHash = undefined;
+      user.passwordResetOtpExpiresAt = undefined;
+      await user.save();
+      throw new AppError('Too many failed verification attempts. Please request a new OTP.', 400);
+    }
+
+    const suppliedHash = crypto.createHash('sha256').update(String(otp).trim()).digest('hex');
+    if (suppliedHash !== user.passwordResetOtpHash) {
+      user.passwordResetAttempts = (user.passwordResetAttempts || 0) + 1;
+      await user.save();
+      const remaining = 5 - user.passwordResetAttempts;
+      throw new AppError(`Invalid 6-digit code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.`, 400);
+    }
+
+    // Invalidate OTP and generate secure Reset Token
+    user.passwordResetOtpHash = undefined;
+    user.passwordResetOtpExpiresAt = undefined;
+    user.passwordResetAttempts = 0;
+
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    user.passwordResetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.passwordResetTokenExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins to set password
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP verified successfully. You may now enter your new password.',
+      data: {
+        resetToken
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resetPasswordWithToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { resetToken, newPassword, confirmPassword } = req.body;
+    if (!resetToken || !newPassword) {
+      throw new AppError('Reset token and new password are required.', 400);
+    }
+
+    if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+      throw new AppError('Passwords do not match. Please re-enter matching passwords.', 400);
+    }
+
+    if (String(newPassword).length < 6) {
+      throw new AppError('Password must be at least 6 characters long.', 400);
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(String(resetToken).trim()).digest('hex');
+    const user = await UserModel.findOne({
+      passwordResetTokenHash: hashedToken,
+      passwordResetTokenExpiresAt: { $gt: new Date() }
+    });
+
+    if (!user) {
+      throw new AppError('Invalid or expired password reset session. Please restart the forgot password process.', 400);
+    }
+
+    const newHashedPassword = await bcrypt.hash(newPassword, 10);
+    user.passwordHash = newHashedPassword;
+    user.passwordResetTokenHash = undefined;
+    user.passwordResetTokenExpiresAt = undefined;
+    user.passwordResetAttempts = 0;
+    await user.save();
+
+    console.log(`[AUTH:PASSWORD_RESET] Password successfully updated for user ${user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Your password has been successfully updated! You can now log in with your new password.'
+    });
+  } catch (err) {
+    next(err);
   }
 };

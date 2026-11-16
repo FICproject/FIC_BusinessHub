@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   apiRequest,
@@ -8,6 +8,7 @@ import {
   saveRegisteredAccount
 } from '../services/api';
 import { ShieldCheckIcon, EyeIcon, EyeOffIcon, UserIcon, LockIcon } from '../components/Icons';
+import { KeyRound, Mail, Phone, CheckCircle2, AlertCircle, RefreshCw, X, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +21,154 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  // Forgot Password Flow State
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotStep, setForgotStep] = useState<1 | 2 | 3 | 4>(1);
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
+  const [forgotDeliveryMethod, setForgotDeliveryMethod] = useState<'EMAIL' | 'SMS'>('EMAIL');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccessMsg, setForgotSuccessMsg] = useState('');
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  // Cooldown countdown timer
+  useEffect(() => {
+    let timer: any;
+    if (cooldownSeconds > 0) {
+      timer = setInterval(() => {
+        setCooldownSeconds((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [cooldownSeconds]);
+
+  const openForgotModal = () => {
+    setForgotError('');
+    setForgotSuccessMsg('');
+    setForgotOtp('');
+    setResetToken('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setForgotStep(1);
+    if (identifier.trim()) {
+      setForgotIdentifier(identifier.trim());
+      setForgotDeliveryMethod(identifier.includes('@') ? 'EMAIL' : 'SMS');
+    }
+    setShowForgotModal(true);
+  };
+
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!forgotIdentifier.trim()) {
+      setForgotError('Please enter your registered email address or mobile number.');
+      return;
+    }
+    setForgotLoading(true);
+    setForgotError('');
+    setForgotSuccessMsg('');
+
+    try {
+      const res = await apiRequest('/auth/forgot-password/send-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          identifier: forgotIdentifier.trim(),
+          deliveryMethod: forgotDeliveryMethod
+        })
+      });
+
+      if (res?.success) {
+        setForgotSuccessMsg(res.message || 'Verification code sent successfully.');
+        setCooldownSeconds(res.data?.cooldownSeconds || 60);
+        if (res.data?.debugOtp) {
+          setForgotOtp(res.data.debugOtp);
+        }
+        setForgotStep(2);
+      } else {
+        setForgotError(res?.error || res?.message || 'Failed to send verification code. Please check your credential.');
+      }
+    } catch (err: any) {
+      setForgotError(err?.message || 'Network error occurred while sending verification code.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanOtp = forgotOtp.trim();
+    if (!cleanOtp || cleanOtp.length !== 6) {
+      setForgotError('Please enter the full 6-digit verification code.');
+      return;
+    }
+    setForgotLoading(true);
+    setForgotError('');
+
+    try {
+      const res = await apiRequest('/auth/forgot-password/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({
+          identifier: forgotIdentifier.trim(),
+          otp: cleanOtp
+        })
+      });
+
+      if (res?.success && res.data?.resetToken) {
+        setResetToken(res.data.resetToken);
+        setForgotSuccessMsg('Code verified! Please create your new account password.');
+        setForgotStep(3);
+      } else {
+        setForgotError(res?.error || res?.message || 'Invalid verification code. Please try again.');
+      }
+    } catch (err: any) {
+      setForgotError(err?.message || 'Failed to verify code. Please check and try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword.length < 6) {
+      setForgotError('Password must be at least 6 characters in length.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setForgotError('Passwords do not match. Please re-enter matching passwords.');
+      return;
+    }
+
+    setForgotLoading(true);
+    setForgotError('');
+
+    try {
+      const res = await apiRequest('/auth/forgot-password/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({
+          resetToken,
+          newPassword,
+          confirmPassword
+        })
+      });
+
+      if (res?.success) {
+        setForgotStep(4);
+        setPassword('');
+      } else {
+        setForgotError(res?.error || res?.message || 'Failed to reset password.');
+      }
+    } catch (err: any) {
+      setForgotError(err?.message || 'Error updating password. Please try again.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
