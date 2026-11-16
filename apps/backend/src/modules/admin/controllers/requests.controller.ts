@@ -11,63 +11,64 @@ import { authenticateAdmin, AuthenticatedAdminRequest, logAdminAction } from '..
 
 const router = Router();
 
-// GET /api/admin/requests - List FIC-mediated requests
+// GET /api/admin/requests - List FIC-mediated service requests only (Dedicated Service Requests page)
 router.get('/', authenticateAdmin, async (req, res) => {
   try {
-    const { type, status, search } = req.query;
-    const filter: any = {};
-    if (type && type !== 'ALL') filter.type = type;
+    const { status, search } = req.query;
+
+    // Strict filter for Service Requests only: exclude Business Ideas, Scaling, Funding, and Investment requests
+    const filter: any = {
+      $and: [
+        {
+          $or: [
+            { type: { $in: ['SERVICE_INQUIRY', 'SERVICE_REQUEST'] } },
+            { sourceModule: 'MARKETPLACE' },
+            { targetServiceId: { $exists: true, $ne: null } }
+          ]
+        },
+        {
+          type: { $nin: ['SCALING_SUPPORT', 'BUSINESS_IDEAS', 'BUSINESS_DEVELOPMENT', 'INVESTMENT_INTEREST', 'FUNDING_REQUEST'] }
+        },
+        {
+          sourceModule: { $nin: ['BUSINESS_IDEAS', 'SCALING_SUPPORT', 'FUNDING_DESK'] }
+        }
+      ]
+    };
+
     if (status === 'ACTIVE') {
-      filter.status = { $nin: ['COMPLETED', 'REJECTED', 'CANCELLED'] };
+      filter.$and.push({ status: { $nin: ['COMPLETED', 'REJECTED', 'CANCELLED'] } });
     } else if (status && status !== 'ALL') {
-      filter.status = status;
+      filter.$and.push({ status });
     }
 
     let requests: any[] = await FicRequestModel.find(filter)
       .populate('requesterId', 'name email phone primaryCategoryName')
-      .populate('targetServiceId', 'title categoryName pricingEstimate locationState')
+      .populate('targetServiceId', 'title categoryName subCategoryName pricingEstimate locationState providerId providerName providerEmail')
       .populate('targetProviderId', 'name email phone primaryCategoryName')
       .populate('assignedStaffId', 'name email')
       .populate('scheduledMeetingId')
       .sort({ createdAt: -1 })
       .lean();
 
-    // Helper to identify scaling support requests
-    const isScalingReqDoc = (r: any) =>
-      r.type === 'SCALING_SUPPORT' ||
-      r.sourceModule === 'SCALING_SUPPORT' ||
-      (typeof r.requestId === 'string' && r.requestId.startsWith('SCALE-')) ||
-      (typeof r.title === 'string' && (
-        r.title.includes('Business Growth & Expansion Support') ||
-        r.title.includes('Marketing & Customer Acquisition Support') ||
-        r.title.includes('Funding Support') ||
-        r.title.includes('Mentorship & Expert Guidance Support') ||
-        r.title.toLowerCase().includes('scaling')
-      ));
-
-    // Populate scalingDetails for SCALING_SUPPORT requests
-    const scalingIds = requests
-      .filter((r: any) => isScalingReqDoc(r) && r.sourceRefId)
-      .map((r: any) => r.sourceRefId);
-
-    if (scalingIds.length > 0) {
-      const scalingDocs = await BusinessDevRequestModel.find({ _id: { $in: scalingIds } }).lean();
-      const scalingMap = new Map(scalingDocs.map((s: any) => [String(s._id), s]));
-
-      requests = requests.map((r: any) => {
-        if (isScalingReqDoc(r)) {
-          r.type = 'SCALING_SUPPORT';
-          r.sourceModule = 'SCALING_SUPPORT';
-          if (r.sourceRefId) {
-            const detail = scalingMap.get(String(r.sourceRefId));
-            if (detail) {
-              r.scalingDetails = detail;
-              r.status = detail.status || r.status;
-            }
-          }
+    // Auto-resolve provider details from targetServiceId if targetProviderId is unlinked
+    for (const r of requests) {
+      if (!r.targetProviderId && r.targetServiceId && (r.targetServiceId as any).providerId) {
+        const sProviderId = (r.targetServiceId as any).providerId;
+        const pMember = await MemberModel.findOne({
+          $or: [{ _id: sProviderId }, { email: (r.targetServiceId as any).providerEmail }]
+        }).select('name email phone primaryCategoryName').lean();
+        if (pMember) {
+          r.targetProviderId = pMember;
+        } else {
+          r.targetProviderId = {
+            _id: sProviderId,
+            name: (r.targetServiceId as any).providerName || 'Service Provider',
+            email: (r.targetServiceId as any).providerEmail || '',
+            phone: '',
+            primaryCategoryName: (r.targetServiceId as any).categoryName || ''
+          };
         }
-        return r;
-      });
+      }
     }
 
     if (search && typeof search === 'string' && search.trim()) {
@@ -75,12 +76,12 @@ router.get('/', authenticateAdmin, async (req, res) => {
       requests = requests.filter(
         (r: any) =>
           r.title?.toLowerCase().includes(q) ||
+          r.requestId?.toLowerCase().includes(q) ||
           r.description?.toLowerCase().includes(q) ||
           r.requesterName?.toLowerCase().includes(q) ||
           r.requesterEmail?.toLowerCase().includes(q) ||
-          r.scalingDetails?.businessName?.toLowerCase().includes(q) ||
-          r.scalingDetails?.requestId?.toLowerCase().includes(q) ||
-          r.scalingDetails?.scalingSupportType?.toLowerCase().includes(q)
+          (r.targetProviderId as any)?.name?.toLowerCase().includes(q) ||
+          (r.targetServiceId as any)?.title?.toLowerCase().includes(q)
       );
     }
 
@@ -90,44 +91,39 @@ router.get('/', authenticateAdmin, async (req, res) => {
   }
 });
 
-// GET /api/admin/requests/:id - Single request details
+// GET /api/admin/requests/:id - Single service request details
 router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     let request: any = await FicRequestModel.findById(id)
       .populate('requesterId', 'name email phone primaryCategoryName')
-      .populate('targetServiceId', 'title categoryName pricingEstimate locationState')
+      .populate('targetServiceId', 'title categoryName subCategoryName pricingEstimate locationState providerId providerName providerEmail description keyDeliverables')
       .populate('targetProviderId', 'name email phone primaryCategoryName')
       .populate('assignedStaffId', 'name email')
       .populate('scheduledMeetingId')
       .lean();
 
     if (!request) {
-      res.status(404).json({ success: false, error: 'Request not found' });
+      res.status(404).json({ success: false, error: 'Service request not found' });
       return;
     }
 
-    const isScaling =
-      request.type === 'SCALING_SUPPORT' ||
-      request.sourceModule === 'SCALING_SUPPORT' ||
-      (typeof request.requestId === 'string' && request.requestId.startsWith('SCALE-')) ||
-      (typeof request.title === 'string' && (
-        request.title.includes('Business Growth & Expansion Support') ||
-        request.title.includes('Marketing & Customer Acquisition Support') ||
-        request.title.includes('Funding Support') ||
-        request.title.includes('Mentorship & Expert Guidance Support') ||
-        request.title.toLowerCase().includes('scaling')
-      ));
-
-    if (isScaling) {
-      request.type = 'SCALING_SUPPORT';
-      request.sourceModule = 'SCALING_SUPPORT';
-      if (request.sourceRefId) {
-        const scalingDoc = await BusinessDevRequestModel.findById(request.sourceRefId).lean();
-        if (scalingDoc) {
-          request.scalingDetails = scalingDoc;
-          request.status = scalingDoc.status || request.status;
-        }
+    // Auto-resolve provider details from targetServiceId if targetProviderId is unlinked
+    if (!request.targetProviderId && request.targetServiceId && (request.targetServiceId as any).providerId) {
+      const sProviderId = (request.targetServiceId as any).providerId;
+      const pMember = await MemberModel.findOne({
+        $or: [{ _id: sProviderId }, { email: (request.targetServiceId as any).providerEmail }]
+      }).select('name email phone primaryCategoryName').lean();
+      if (pMember) {
+        request.targetProviderId = pMember;
+      } else {
+        request.targetProviderId = {
+          _id: sProviderId,
+          name: (request.targetServiceId as any).providerName || 'Service Provider',
+          email: (request.targetServiceId as any).providerEmail || '',
+          phone: '',
+          primaryCategoryName: (request.targetServiceId as any).categoryName || ''
+        };
       }
     }
 
@@ -279,34 +275,45 @@ router.post('/:id/cancel', authenticateAdmin, async (req: AuthenticatedAdminRequ
   }
 });
 
-// POST /api/admin/requests/:id/notify-provider - Inform provider about the client inquiry
-router.post('/:id/notify-provider', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+// POST /api/admin/requests/:id/notify-provider or /send-to-provider - Send project information to actual service provider
+const handleSendToProvider = async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { dispatchChannel, customMessage } = req.body;
+    const { customMessage } = req.body;
 
-    const ficReq = await FicRequestModel.findById(id)
+    let ficReq = await FicRequestModel.findById(id)
       .populate('targetProviderId')
+      .populate('targetServiceId')
       .populate('requesterId');
 
     if (!ficReq) {
-      res.status(404).json({ success: false, error: 'Request not found' });
+      res.status(404).json({ success: false, error: 'Service request not found' });
       return;
     }
 
+    // Auto-resolve provider from service listing if unlinked
+    if (!ficReq.targetProviderId && ficReq.targetServiceId && (ficReq.targetServiceId as any).providerId) {
+      const sProviderId = (ficReq.targetServiceId as any).providerId;
+      const pMember = await MemberModel.findOne({
+        $or: [{ _id: sProviderId }, { email: (ficReq.targetServiceId as any).providerEmail }]
+      });
+      if (pMember) {
+        ficReq.targetProviderId = pMember._id as any;
+      }
+    }
+
     if (!ficReq.targetProviderId) {
-      res.status(400).json({ success: false, error: 'Cannot send project brief without an assigned provider.' });
+      res.status(400).json({ success: false, error: 'Service listing owner (provider) could not be identified.' });
       return;
     }
 
     const provider: any = ficReq.targetProviderId;
-    const requester: any = ficReq.requesterId;
     const prevStatus = ficReq.status;
     const now = new Date();
     const timestamp = now.toISOString().replace('T', ' ').substring(0, 16);
-    const author = req.admin ? req.admin.name : 'Admin';
+    const author = req.admin ? req.admin.name : 'FIC Administrator';
 
-    ficReq.status = 'AWAITING_PROVIDER_RESPONSE';
+    ficReq.status = 'SENT_TO_PROVIDER';
     ficReq.providerNotifiedAt = now;
     ficReq.projectInfoSentAt = now;
     ficReq.providerDecision = 'AWAITING';
@@ -315,7 +322,7 @@ router.post('/:id/notify-provider', authenticateAdmin, async (req: Authenticated
     ficReq.adminName = author;
 
     ficReq.internalNotes.push(
-      `[${timestamp} by ${author}]: Dispatched anonymous project brief to provider "${provider.name}". Client identity confidential. Awaiting provider acceptance.`
+      `[${timestamp} by ${author}]: Dispatched confidential project brief to service owner "${provider.name || 'Provider'}". Client identity shielded. Status changed to SENT_TO_PROVIDER.`
     );
 
     if (!ficReq.activityTimeline) ficReq.activityTimeline = [];
@@ -323,15 +330,15 @@ router.post('/:id/notify-provider', authenticateAdmin, async (req: Authenticated
       actorId: req.admin?.id,
       actorName: author,
       actorRole: 'ADMIN',
-      action: 'PROJECT_INFO_SENT',
-      message: customMessage || `Project brief sent to provider ${provider.name}. Client identity shielded.`,
+      action: 'SENT_TO_PROVIDER',
+      message: customMessage || `Project brief dispatched to service provider ${provider.name}. Requestor private contact shielded.`,
       previousStatus: prevStatus,
-      newStatus: 'AWAITING_PROVIDER_RESPONSE',
+      newStatus: 'SENT_TO_PROVIDER',
       timestamp: now,
     });
 
     await ficReq.save();
-    await logAdminAction(req, 'NOTIFY_PROVIDER_FIC_REQUEST', 'FicRequest', id, {
+    await logAdminAction(req, 'SEND_PROJECT_INFO_TO_PROVIDER', 'FicRequest', id, {
       providerId: provider._id,
       providerEmail: provider.email,
     });
@@ -346,7 +353,7 @@ router.post('/:id/notify-provider', authenticateAdmin, async (req: Authenticated
           userId: providerUser._id as any,
           eventType: 'NEW_REQUEST',
           title: `New Service Request: ${ficReq.title}`,
-          message: `FIC Admin shared new project requirements for "${ficReq.title}". Please review and submit your decision in My Services.`,
+          message: `FIC Admin has sent you a new client project brief for "${ficReq.title}". Please review and submit your decision in My Services.`,
           link: '/my-services',
           priority: 'HIGH',
         });
@@ -357,11 +364,469 @@ router.post('/:id/notify-provider', authenticateAdmin, async (req: Authenticated
 
     const populated = await FicRequestModel.findById(id)
       .populate('requesterId', 'name email phone primaryCategoryName')
-      .populate('targetServiceId', 'title categoryName pricingEstimate locationState')
+      .populate('targetServiceId', 'title categoryName subCategoryName pricingEstimate locationState')
       .populate('targetProviderId', 'name email phone primaryCategoryName')
       .populate('scheduledMeetingId');
 
-    res.json({ success: true, message: `Notification dispatched to ${provider.name}`, data: populated });
+    res.json({
+      success: true,
+      message: `Project information dispatched to ${provider.name}. Status updated to SENT_TO_PROVIDER.`,
+      data: populated
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+router.post('/:id/notify-provider', authenticateAdmin, handleSendToProvider);
+router.post('/:id/send-to-provider', authenticateAdmin, handleSendToProvider);
+
+// =========================================================================
+// PHASE 5: TWO-STAGE BOOK INTRODUCTION CALL
+// =========================================================================
+
+// Helper to validate or generate Google Meet links
+const resolveMeetingLink = (link?: string, mode?: string): string => {
+  if (mode === 'IN_PERSON') return '';
+  if (link && link.trim()) {
+    const clean = link.trim();
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      return `https://${clean}`;
+    }
+    return clean;
+  }
+  const code1 = Math.random().toString(36).substring(2, 5);
+  const code2 = Math.random().toString(36).substring(2, 6);
+  const code3 = Math.random().toString(36).substring(2, 5);
+  return `https://meet.google.com/fic-${code1}-${code2}`;
+};
+
+// 1. STAGE 1: Schedule Admin & Service Provider Meeting
+router.post('/:id/schedule-stage1-meeting', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { scheduledDate, scheduledTime, durationMinutes, meetingMode, meetingLink, location, notes } = req.body;
+
+    const ficReq = await FicRequestModel.findById(id)
+      .populate('targetProviderId')
+      .populate('requesterId');
+
+    if (!ficReq) {
+      res.status(404).json({ success: false, error: 'Service request not found' });
+      return;
+    }
+
+    // Provider MUST have accepted first
+    if (ficReq.providerDecision !== 'ACCEPTED' && ficReq.providerResponse !== 'ACCEPTED' && ficReq.status !== 'PROVIDER_ACCEPTED') {
+      res.status(400).json({
+        success: false,
+        error: 'Stage 1 meeting requires provider acceptance first. The service provider must accept the request before scheduling.'
+      });
+      return;
+    }
+
+    if (!scheduledDate || !scheduledTime) {
+      res.status(400).json({ success: false, error: 'Meeting Date and Time are mandatory.' });
+      return;
+    }
+
+    const hostAdminId = req.admin!.id;
+    const author = req.admin?.name || 'FIC Administrator';
+    const provider: any = ficReq.targetProviderId;
+    const mode = meetingMode === 'IN_PERSON' ? 'IN_PERSON' : 'GOOGLE_MEET';
+
+    if (mode === 'IN_PERSON' && !location?.trim()) {
+      res.status(400).json({ success: false, error: 'Meeting location/address is required for In-Person meetings.' });
+      return;
+    }
+
+    const finalMeetingLink = mode === 'GOOGLE_MEET' ? resolveMeetingLink(meetingLink, mode) : undefined;
+    const meetingDateTime = new Date(`${scheduledDate}T${scheduledTime}:00`);
+
+    // Create Meeting record for Admin + Provider only
+    const meeting = await MeetingModel.create({
+      title: `Stage 1 Intro: Admin & Provider (${provider?.name || 'Provider'}) - ${ficReq.title}`,
+      description: `Stage 1 alignment meeting between FIC Admin and service provider for request ${ficReq.requestId || ficReq._id}. Requestor is excluded from this stage.`,
+      hostAdminId,
+      participantMemberIds: provider?._id ? [provider._id] : [],
+      scheduledAt: isNaN(meetingDateTime.getTime()) ? new Date() : meetingDateTime,
+      durationMinutes: durationMinutes ? Number(durationMinutes) : 45,
+      meetingLink: finalMeetingLink,
+      status: 'SCHEDULED',
+      meetingType: 'CONSULTATION',
+      notificationSent: true,
+    });
+
+    const prevStatus = ficReq.status;
+    ficReq.status = 'ADMIN_PROVIDER_MEETING_SCHEDULED';
+    ficReq.stage1Meeting = {
+      meetingId: meeting._id.toString(),
+      scheduledDate,
+      scheduledTime,
+      durationMinutes: durationMinutes ? Number(durationMinutes) : 45,
+      meetingMode: mode,
+      meetingLink: finalMeetingLink,
+      location: mode === 'IN_PERSON' ? location?.trim() : undefined,
+      googleCalendarEventId: `CAL-STG1-${Date.now().toString().slice(-6)}`,
+      status: 'SCHEDULED',
+      scheduledAt: new Date(),
+      scheduledByAdminId: hostAdminId,
+      scheduledByAdminName: author,
+      notes: notes?.trim()
+    };
+
+    // Update legacy meetingDetails for backward compatibility
+    ficReq.meetingDetails = {
+      scheduledDate,
+      scheduledTime,
+      durationMinutes: durationMinutes ? Number(durationMinutes) : 45,
+      meetingLink: finalMeetingLink || location,
+      status: 'CONFIRMED',
+      bookedAt: new Date(),
+      bookedByAdminName: author
+    };
+
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    ficReq.internalNotes.push(
+      `[${timestamp} by ${author}]: Scheduled Stage 1 meeting with provider ${provider?.name} for ${scheduledDate} at ${scheduledTime}. Mode: ${mode}. Link/Location: ${finalMeetingLink || location}`
+    );
+
+    if (!ficReq.activityTimeline) ficReq.activityTimeline = [];
+    ficReq.activityTimeline.push({
+      actorId: hostAdminId,
+      actorName: author,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_PROVIDER_MEETING_SCHEDULED',
+      message: `Stage 1 meeting scheduled with provider ${provider?.name}. Date: ${scheduledDate} ${scheduledTime}.`,
+      previousStatus: prevStatus,
+      newStatus: 'ADMIN_PROVIDER_MEETING_SCHEDULED',
+      timestamp: new Date()
+    });
+
+    await ficReq.save();
+    await logAdminAction(req, 'SCHEDULE_STAGE1_MEETING', 'FicRequest', id, {
+      meetingId: meeting._id,
+      stage: 'STAGE_1_ADMIN_PROVIDER',
+      scheduledDate,
+      scheduledTime
+    });
+
+    // Notify Provider only (Requestor is NOT notified about Stage 1 provider call)
+    try {
+      const providerUser = await UserModel.findOne({
+        $or: [{ _id: provider?._id }, { email: (provider?.email || '').toLowerCase().trim() }]
+      });
+      if (providerUser) {
+        await notifyMember({
+          userId: providerUser._id as any,
+          eventType: 'MEETING_SCHEDULED',
+          title: `Stage 1 Meeting Scheduled: ${ficReq.title}`,
+          message: `FIC Admin has scheduled a preparation meeting with you on ${scheduledDate} at ${scheduledTime}. Link/Details: ${finalMeetingLink || location}`,
+          link: '/meetings',
+          priority: 'HIGH'
+        });
+      }
+    } catch {}
+
+    const populated = await FicRequestModel.findById(id)
+      .populate('requesterId', 'name email phone primaryCategoryName')
+      .populate('targetServiceId', 'title categoryName subCategoryName pricingEstimate locationState')
+      .populate('targetProviderId', 'name email phone primaryCategoryName')
+      .populate('scheduledMeetingId');
+
+    res.json({
+      success: true,
+      message: `Stage 1 Admin & Provider meeting scheduled for ${scheduledDate} at ${scheduledTime}.`,
+      data: populated
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. STAGE 1: Mark Admin & Provider Meeting Completed
+router.post('/:id/complete-stage1-meeting', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { completionNotes } = req.body;
+
+    const ficReq = await FicRequestModel.findById(id)
+      .populate('targetProviderId');
+
+    if (!ficReq) {
+      res.status(404).json({ success: false, error: 'Service request not found' });
+      return;
+    }
+
+    if (!ficReq.stage1Meeting || ficReq.stage1Meeting.status !== 'SCHEDULED') {
+      res.status(400).json({ success: false, error: 'No active scheduled Stage 1 meeting found to mark completed.' });
+      return;
+    }
+
+    const author = req.admin?.name || 'FIC Administrator';
+    const now = new Date();
+    const timestamp = now.toISOString().replace('T', ' ').substring(0, 16);
+    const prevStatus = ficReq.status;
+
+    ficReq.stage1Meeting.status = 'COMPLETED';
+    ficReq.stage1Meeting.completedAt = now;
+    ficReq.stage1Meeting.completedByAdminId = req.admin?.id;
+    ficReq.stage1Meeting.completedByAdminName = author;
+    if (completionNotes) ficReq.stage1Meeting.notes = (ficReq.stage1Meeting.notes ? ficReq.stage1Meeting.notes + ' | ' : '') + completionNotes.trim();
+
+    ficReq.status = 'ADMIN_PROVIDER_MEETING_COMPLETED';
+
+    ficReq.internalNotes.push(
+      `[${timestamp} by ${author}]: Stage 1 Admin & Provider meeting marked COMPLETED. Stage 2 (Admin & Requestor Meeting) is now UNLOCKED.`
+    );
+
+    if (!ficReq.activityTimeline) ficReq.activityTimeline = [];
+    ficReq.activityTimeline.push({
+      actorId: req.admin?.id,
+      actorName: author,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_PROVIDER_MEETING_COMPLETED',
+      message: 'Stage 1 meeting completed. Ready for Stage 2 with original service requestor.',
+      previousStatus: prevStatus,
+      newStatus: 'ADMIN_PROVIDER_MEETING_COMPLETED',
+      timestamp: now
+    });
+
+    await ficReq.save();
+    await logAdminAction(req, 'COMPLETE_STAGE1_MEETING', 'FicRequest', id, { completionNotes });
+
+    const populated = await FicRequestModel.findById(id)
+      .populate('requesterId', 'name email phone primaryCategoryName')
+      .populate('targetServiceId', 'title categoryName subCategoryName pricingEstimate locationState')
+      .populate('targetProviderId', 'name email phone primaryCategoryName')
+      .populate('scheduledMeetingId');
+
+    res.json({
+      success: true,
+      message: 'Stage 1 meeting marked COMPLETED! Stage 2 with the original service requestor is now unlocked.',
+      data: populated
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. STAGE 2: Schedule Admin & Original Service Requestor Meeting
+router.post('/:id/schedule-stage2-meeting', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { scheduledDate, scheduledTime, durationMinutes, meetingMode, meetingLink, location, notes } = req.body;
+
+    const ficReq = await FicRequestModel.findById(id)
+      .populate('requesterId')
+      .populate('targetProviderId');
+
+    if (!ficReq) {
+      res.status(404).json({ success: false, error: 'Service request not found' });
+      return;
+    }
+
+    // STRICT GOVERNANCE: Stage 1 must be COMPLETED
+    if (!ficReq.stage1Meeting || ficReq.stage1Meeting.status !== 'COMPLETED') {
+      res.status(400).json({
+        success: false,
+        error: 'Stage 1 (Admin & Provider Meeting) must be completed before Stage 2 can be scheduled.'
+      });
+      return;
+    }
+
+    if (!scheduledDate || !scheduledTime) {
+      res.status(400).json({ success: false, error: 'Meeting Date and Time are mandatory.' });
+      return;
+    }
+
+    const hostAdminId = req.admin!.id;
+    const author = req.admin?.name || 'FIC Administrator';
+    const requester: any = ficReq.requesterId;
+    const mode = meetingMode === 'IN_PERSON' ? 'IN_PERSON' : 'GOOGLE_MEET';
+
+    if (mode === 'IN_PERSON' && !location?.trim()) {
+      res.status(400).json({ success: false, error: 'Meeting location/address is required for In-Person meetings.' });
+      return;
+    }
+
+    const finalMeetingLink = mode === 'GOOGLE_MEET' ? resolveMeetingLink(meetingLink, mode) : undefined;
+    const meetingDateTime = new Date(`${scheduledDate}T${scheduledTime}:00`);
+
+    // Create Meeting record for Admin + Original Requestor only (Provider excluded)
+    const meeting = await MeetingModel.create({
+      title: `Stage 2 Briefing: Admin & Requestor (${requester?.name || ficReq.requesterName}) - ${ficReq.title}`,
+      description: `Stage 2 debrief meeting between FIC Admin and original service requestor for request ${ficReq.requestId || ficReq._id}. Provider is excluded from this stage.`,
+      hostAdminId,
+      participantMemberIds: requester?._id ? [requester._id] : [],
+      scheduledAt: isNaN(meetingDateTime.getTime()) ? new Date() : meetingDateTime,
+      durationMinutes: durationMinutes ? Number(durationMinutes) : 45,
+      meetingLink: finalMeetingLink,
+      status: 'SCHEDULED',
+      meetingType: 'CONSULTATION',
+      notificationSent: true,
+    });
+
+    const prevStatus = ficReq.status;
+    ficReq.status = 'ADMIN_REQUESTOR_MEETING_SCHEDULED';
+    ficReq.stage2Meeting = {
+      meetingId: meeting._id.toString(),
+      scheduledDate,
+      scheduledTime,
+      durationMinutes: durationMinutes ? Number(durationMinutes) : 45,
+      meetingMode: mode,
+      meetingLink: finalMeetingLink,
+      location: mode === 'IN_PERSON' ? location?.trim() : undefined,
+      googleCalendarEventId: `CAL-STG2-${Date.now().toString().slice(-6)}`,
+      status: 'SCHEDULED',
+      scheduledAt: new Date(),
+      scheduledByAdminId: hostAdminId,
+      scheduledByAdminName: author,
+      notes: notes?.trim()
+    };
+
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+    ficReq.internalNotes.push(
+      `[${timestamp} by ${author}]: Scheduled Stage 2 meeting with requestor ${requester?.name || ficReq.requesterName} for ${scheduledDate} at ${scheduledTime}. Mode: ${mode}. Link/Location: ${finalMeetingLink || location}`
+    );
+
+    if (!ficReq.activityTimeline) ficReq.activityTimeline = [];
+    ficReq.activityTimeline.push({
+      actorId: hostAdminId,
+      actorName: author,
+      actorRole: 'ADMIN',
+      action: 'ADMIN_REQUESTOR_MEETING_SCHEDULED',
+      message: `Stage 2 meeting scheduled with service requestor ${requester?.name || ficReq.requesterName}. Date: ${scheduledDate} ${scheduledTime}.`,
+      previousStatus: prevStatus,
+      newStatus: 'ADMIN_REQUESTOR_MEETING_SCHEDULED',
+      timestamp: new Date()
+    });
+
+    await ficReq.save();
+    await logAdminAction(req, 'SCHEDULE_STAGE2_MEETING', 'FicRequest', id, {
+      meetingId: meeting._id,
+      stage: 'STAGE_2_ADMIN_REQUESTOR',
+      scheduledDate,
+      scheduledTime
+    });
+
+    // Notify Original Requestor only (Provider is NOT notified about Stage 2 client call)
+    try {
+      let recipientUserId: any = ficReq.requesterId;
+      if (ficReq.requesterEmail) {
+        const u = await UserModel.findOne({ email: ficReq.requesterEmail.toLowerCase().trim() });
+        if (u) recipientUserId = u._id;
+      }
+      if (recipientUserId) {
+        await notifyMember({
+          userId: recipientUserId,
+          eventType: 'MEETING_SCHEDULED',
+          title: `FIC Consultation Scheduled: ${ficReq.title}`,
+          message: `FIC Admin has scheduled your Stage 2 project consultation call for ${scheduledDate} at ${scheduledTime}. Video link/Location: ${finalMeetingLink || location}`,
+          link: '/meetings',
+          priority: 'HIGH'
+        });
+      }
+    } catch {}
+
+    const populated = await FicRequestModel.findById(id)
+      .populate('requesterId', 'name email phone primaryCategoryName')
+      .populate('targetServiceId', 'title categoryName subCategoryName pricingEstimate locationState')
+      .populate('targetProviderId', 'name email phone primaryCategoryName')
+      .populate('scheduledMeetingId');
+
+    res.json({
+      success: true,
+      message: `Stage 2 Admin & Requestor meeting scheduled for ${scheduledDate} at ${scheduledTime}.`,
+      data: populated
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 4. STAGE 2: Mark Admin & Requestor Meeting Completed (Closes the entire Service Request workflow)
+router.post('/:id/complete-stage2-meeting', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { completionNotes } = req.body;
+
+    const ficReq = await FicRequestModel.findById(id)
+      .populate('requesterId');
+
+    if (!ficReq) {
+      res.status(404).json({ success: false, error: 'Service request not found' });
+      return;
+    }
+
+    if (!ficReq.stage2Meeting || ficReq.stage2Meeting.status !== 'SCHEDULED') {
+      res.status(400).json({ success: false, error: 'No active scheduled Stage 2 meeting found to mark completed.' });
+      return;
+    }
+
+    const author = req.admin?.name || 'FIC Administrator';
+    const now = new Date();
+    const timestamp = now.toISOString().replace('T', ' ').substring(0, 16);
+    const prevStatus = ficReq.status;
+
+    ficReq.stage2Meeting.status = 'COMPLETED';
+    ficReq.stage2Meeting.completedAt = now;
+    ficReq.stage2Meeting.completedByAdminId = req.admin?.id;
+    ficReq.stage2Meeting.completedByAdminName = author;
+    if (completionNotes) ficReq.stage2Meeting.notes = (ficReq.stage2Meeting.notes ? ficReq.stage2Meeting.notes + ' | ' : '') + completionNotes.trim();
+
+    // Mark entire workflow COMPLETED
+    ficReq.status = 'COMPLETED';
+
+    ficReq.internalNotes.push(
+      `[${timestamp} by ${author}]: Stage 2 Admin & Requestor meeting marked COMPLETED. Entire Service Request workflow successfully fulfilled and marked COMPLETED.`
+    );
+
+    if (!ficReq.activityTimeline) ficReq.activityTimeline = [];
+    ficReq.activityTimeline.push({
+      actorId: req.admin?.id,
+      actorName: author,
+      actorRole: 'ADMIN',
+      action: 'SERVICE_REQUEST_COMPLETED',
+      message: 'Both Stage 1 and Stage 2 meetings successfully completed. Service request closed.',
+      previousStatus: prevStatus,
+      newStatus: 'COMPLETED',
+      timestamp: now
+    });
+
+    await ficReq.save();
+    await logAdminAction(req, 'COMPLETE_STAGE2_MEETING_AND_CLOSE_REQUEST', 'FicRequest', id, { completionNotes });
+
+    // Notify Original Requestor
+    try {
+      let recipientUserId: any = ficReq.requesterId;
+      if (ficReq.requesterEmail) {
+        const u = await UserModel.findOne({ email: ficReq.requesterEmail.toLowerCase().trim() });
+        if (u) recipientUserId = u._id;
+      }
+      if (recipientUserId) {
+        await notifyMember({
+          userId: recipientUserId,
+          eventType: 'REQUEST_UPDATE',
+          title: `Service Request Completed: ${ficReq.title}`,
+          message: `Your service request consultation for "${ficReq.title}" has been successfully completed and fulfilled by FIC.`,
+          link: '/requests',
+          priority: 'HIGH'
+        });
+      }
+    } catch {}
+
+    const populated = await FicRequestModel.findById(id)
+      .populate('requesterId', 'name email phone primaryCategoryName')
+      .populate('targetServiceId', 'title categoryName subCategoryName pricingEstimate locationState')
+      .populate('targetProviderId', 'name email phone primaryCategoryName')
+      .populate('scheduledMeetingId');
+
+    res.json({
+      success: true,
+      message: 'Stage 2 meeting completed! The Service Request has been successfully closed and marked COMPLETED.',
+      data: populated
+    });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

@@ -22,6 +22,25 @@ export interface IFicRequestMeetingDetails {
   bookedByAdminName?: string;
 }
 
+export interface IFicRequestStageMeeting {
+  meetingId?: string;
+  scheduledDate?: string;
+  scheduledTime?: string;
+  durationMinutes?: number;
+  meetingMode?: 'GOOGLE_MEET' | 'IN_PERSON';
+  meetingLink?: string;
+  location?: string;
+  googleCalendarEventId?: string;
+  status?: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED';
+  scheduledAt?: Date;
+  scheduledByAdminId?: string;
+  scheduledByAdminName?: string;
+  completedAt?: Date;
+  completedByAdminId?: string;
+  completedByAdminName?: string;
+  notes?: string;
+}
+
 export interface IFicRequest extends Document {
   requestId?: string;
   type: string;
@@ -57,6 +76,8 @@ export interface IFicRequest extends Document {
   providerResponseAt?: Date;
   scheduledMeetingId?: mongoose.Types.ObjectId;
   meetingDetails?: IFicRequestMeetingDetails;
+  stage1Meeting?: IFicRequestStageMeeting;
+  stage2Meeting?: IFicRequestStageMeeting;
   activityTimeline: IFicRequestActivityLog[];
   internalNotes: string[];
   createdAt: Date;
@@ -95,6 +116,28 @@ const FicRequestMeetingDetailsSchema = new Schema<IFicRequestMeetingDetails>(
   { _id: false }
 );
 
+const FicRequestStageMeetingSchema = new Schema<IFicRequestStageMeeting>(
+  {
+    meetingId: { type: String },
+    scheduledDate: { type: String },
+    scheduledTime: { type: String },
+    durationMinutes: { type: Number, default: 45 },
+    meetingMode: { type: String, enum: ['GOOGLE_MEET', 'IN_PERSON'], default: 'GOOGLE_MEET' },
+    meetingLink: { type: String },
+    location: { type: String },
+    googleCalendarEventId: { type: String },
+    status: { type: String, enum: ['SCHEDULED', 'COMPLETED', 'CANCELLED'], default: 'SCHEDULED' },
+    scheduledAt: { type: Date, default: Date.now },
+    scheduledByAdminId: { type: String },
+    scheduledByAdminName: { type: String },
+    completedAt: { type: Date },
+    completedByAdminId: { type: String },
+    completedByAdminName: { type: String },
+    notes: { type: String },
+  },
+  { _id: false }
+);
+
 const FicRequestSchema = new Schema<IFicRequest>(
   {
     requestId: { type: String, index: true },
@@ -102,6 +145,7 @@ const FicRequestSchema = new Schema<IFicRequest>(
       type: String,
       enum: [
         'SERVICE_INQUIRY',
+        'SERVICE_REQUEST',
         'BUSINESS_IDEAS',
         'SCALING_SUPPORT',
         'BUSINESS_DEVELOPMENT',
@@ -133,6 +177,7 @@ const FicRequestSchema = new Schema<IFicRequest>(
       enum: [
         'NEW',
         'SUBMITTED',
+        'UNDER_ADMIN_REVIEW',
         'ADMIN_REVIEW',
         'UNDER_REVIEW',
         'ASSIGNED',
@@ -141,7 +186,14 @@ const FicRequestSchema = new Schema<IFicRequest>(
         'PROVIDER_CONTACTED',
         'PROVIDER_ACCEPTED',
         'PROVIDER_REJECTED',
+        'ADMIN_RESPONSE_PENDING',
         'ADMIN_RESPONSE_SENT',
+        'ADMIN_PROVIDER_MEETING_PENDING',
+        'ADMIN_PROVIDER_MEETING_SCHEDULED',
+        'ADMIN_PROVIDER_MEETING_COMPLETED',
+        'ADMIN_REQUESTOR_MEETING_PENDING',
+        'ADMIN_REQUESTOR_MEETING_SCHEDULED',
+        'ADMIN_REQUESTOR_MEETING_COMPLETED',
         'MEETING_PROPOSED',
         'MEETING_CONFIRMED',
         'MEETING_SCHEDULED',
@@ -181,6 +233,8 @@ const FicRequestSchema = new Schema<IFicRequest>(
     providerResponseAt: { type: Date },
     scheduledMeetingId: { type: Schema.Types.ObjectId, ref: 'Meeting' },
     meetingDetails: { type: FicRequestMeetingDetailsSchema },
+    stage1Meeting: { type: FicRequestStageMeetingSchema },
+    stage2Meeting: { type: FicRequestStageMeetingSchema },
     activityTimeline: { type: [FicRequestActivityLogSchema], default: [] },
     internalNotes: [{ type: String }],
   },
@@ -192,7 +246,9 @@ FicRequestSchema.pre('save', function (next) {
   if (!this.requestId) {
     const year = new Date().getFullYear();
     const rand = Math.floor(10000 + Math.random() * 90000);
-    this.requestId = `REQ-${year}-${rand}`;
+    this.requestId = this.type === 'SERVICE_INQUIRY' || this.type === 'SERVICE_REQUEST'
+      ? `SR-${year}-${rand}`
+      : `REQ-${year}-${rand}`;
   }
   if (!this.projectTitle && this.title) {
     this.projectTitle = this.title;

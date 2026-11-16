@@ -1467,6 +1467,29 @@ export const MyServicesPage: React.FC = () => {
                                   Your note: "{req.providerResponseMessage}"
                                 </p>
                               )}
+                              {(req as any).stage1Meeting?.status === 'SCHEDULED' && (
+                                <div className="mt-2 p-3 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-between gap-2">
+                                  <div className="text-xs text-indigo-950">
+                                    <span className="font-bold flex items-center gap-1">
+                                      <VideoIcon size={13} className="text-indigo-600" />
+                                      Stage 1 Alignment Call with FIC Admin:
+                                    </span>
+                                    <span className="text-[11px] text-indigo-800">
+                                      {(req as any).stage1Meeting.scheduledDate} at {(req as any).stage1Meeting.scheduledTime} ({(req as any).stage1Meeting.durationMinutes} mins)
+                                    </span>
+                                  </div>
+                                  {(req as any).stage1Meeting.meetingLink && (
+                                    <a
+                                      href={(req as any).stage1Meeting.meetingLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-xs shrink-0"
+                                    >
+                                      Join Meet
+                                    </a>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div className="space-y-1">

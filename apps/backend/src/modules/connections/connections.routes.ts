@@ -286,7 +286,14 @@ connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (r
           name: r.targetProviderId.name,
           category: r.targetProviderId.primaryCategoryName
         } : null,
-        scheduledMeeting: r.scheduledMeetingId ? {
+        scheduledMeeting: r.stage2Meeting?.scheduledDate ? {
+          title: 'FIC Client Briefing & Scope Consultation (Stage 2)',
+          scheduledAt: `${r.stage2Meeting.scheduledDate}T${r.stage2Meeting.scheduledTime}`,
+          meetingLink: r.stage2Meeting.meetingLink,
+          status: r.stage2Meeting.status,
+          mode: r.stage2Meeting.meetingMode,
+          location: r.stage2Meeting.location
+        } : (r.scheduledMeetingId ? {
           title: r.scheduledMeetingId.title,
           scheduledAt: r.scheduledMeetingId.scheduledAt,
           meetingLink: r.scheduledMeetingId.meetingLink,
@@ -296,7 +303,8 @@ connectionsRouter.get('/me', authenticate, requireActiveVerifiedMember, async (r
           scheduledAt: `${r.meetingDetails.scheduledDate}T${r.meetingDetails.scheduledTime}`,
           meetingLink: r.meetingDetails.meetingLink,
           status: r.meetingDetails.status
-        } : null),
+        } : null)),
+        stage2Meeting: r.stage2Meeting,
         meetingDetails: r.meetingDetails,
         activityTimeline: r.activityTimeline || [],
         date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today',
@@ -372,6 +380,7 @@ connectionsRouter.get('/incoming', authenticate, requireActiveVerifiedMember, as
         providerResponseAt: r.providerResponseAt || r.providerRespondedAt,
         providerRespondedAt: r.providerRespondedAt || r.providerResponseAt,
         adminStatus: r.status,
+        stage1Meeting: r.stage1Meeting,
         date: r.createdAt ? new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today',
         createdAt: r.createdAt
       };
