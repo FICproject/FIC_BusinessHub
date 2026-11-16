@@ -25,31 +25,9 @@ import {
   getStoredUser,
   uploadDocumentFile,
   downloadOriginalDocument,
-  UploadedDocumentAsset,
-  lookupIndianPinCodeApi
+  UploadedDocumentAsset
 } from '../services/api';
 import { DocumentViewerModal } from '../components/DocumentViewerModal';
-
-// HandCoins SVG Icon for Funding Seeker
-const HandCoinsIcon: React.FC<{ size?: number; className?: string }> = ({ size = 20, className = '' }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17" />
-    <path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9" />
-    <path d="m2 16 6 6" />
-    <circle cx="16" cy="9" r="2.9" />
-    <circle cx="6" cy="5" r="3" />
-  </svg>
-);
 
 // Currency formatter for INR
 export const formatCurrencyINR = (amount: number): string => {
@@ -65,888 +43,510 @@ export const formatCurrencyINR = (amount: number): string => {
   return `₹${amount.toLocaleString('en-IN')}`;
 };
 
-// Types
-export interface FundingRequestItem {
-  type: 'FUNDING';
-  id: string;
-  refNumber: string;
-  userId: string;
-  businessName: string;
-  businessType: string;
-  industry: string;
-  location: {
-    country: string;
-    state: string;
-    district?: string;
-    city: string;
-  };
-  businessStage: string;
-  fundingAmount: number;
-  fundingPurpose: string[];
-  useOfFundsExplanation: string;
-  currentAnnualRevenue?: string;
-  businessDescription: string;
-  documents?: {
-    name: string;
-    fileUrl: string;
-    fileType?: string;
-    uploadedAt: string;
-    status: 'PENDING' | 'VERIFIED' | 'REJECTED';
-  }[];
-  status: string;
-  submittedDate: string;
-  latestFicUpdate: string;
-  whatHappensNext: string;
-  updateHistory: {
-    date: string;
-    status: string;
-    update: string;
-    updatedBy?: string;
-  }[];
-}
-
-export interface InvestorProfileItem {
-  type: 'INVESTOR';
-  id: string;
-  refNumber: string;
-  userId: string;
-  investorType: string;
-  investorName: string;
-  country: string;
-  stateCity: string;
-  investorProfile: string;
-  totalCapacity: string;
-  preferredTicketSize: string;
-  preferredSectors: string[];
-  preferredStages: string[];
-  investmentType: string;
-  investmentExperience?: string;
-  additionalPreferences?: string;
-  documents?: {
-    name: string;
-    fileUrl: string;
-    fileType?: string;
-    uploadedAt: string;
-    status: 'PENDING' | 'VERIFIED' | 'REJECTED';
-  }[];
-  status: string;
-  submittedDate: string;
-  latestFicUpdate: string;
-  whatHappensNext: string;
-  updateHistory: {
-    date: string;
-    status: string;
-    update: string;
-    updatedBy?: string;
-  }[];
-}
-
-export type InvestmentDealItem = FundingRequestItem | InvestorProfileItem;
-
-export const FUNDING_STATUS_CONFIG: Record<
-  string,
-  { label: string; explanation: string; variant: 'pending' | 'proposal' | 'active' | 'luxury' | 'urgent' | 'neutral' }
-> = {
-  SUBMITTED: {
-    label: 'Request Submitted',
-    explanation: 'Your funding request has been received.',
-    variant: 'pending'
-  },
-  UNDER_REVIEW: {
-    label: 'Under Review',
-    explanation: 'FIC is reviewing your business details.',
-    variant: 'pending'
-  },
-  INFO_REQUIRED: {
-    label: 'Information Required',
-    explanation: 'FIC needs additional details from you.',
-    variant: 'urgent'
-  },
-  VERIFICATION_IN_PROGRESS: {
-    label: 'Business Verification in Progress',
-    explanation: 'Preliminary entity and statutory verification is underway.',
-    variant: 'luxury'
-  },
-  ASSESSMENT_IN_PROGRESS: {
-    label: 'Assessment in Progress',
-    explanation: 'Commercial viability and capital requirements are being assessed.',
-    variant: 'luxury'
-  },
-  REVIEW_COMPLETED: {
-    label: 'Review Completed',
-    explanation: 'FIC review has concluded; next steps are being finalized.',
-    variant: 'active'
-  },
-  DISCUSSION_REQUESTED: {
-    label: 'Discussion Requested',
-    explanation: 'FIC has requested a confidential discussion call with you.',
-    variant: 'proposal'
-  },
-  ON_HOLD: {
-    label: 'On Hold',
-    explanation: 'This request is temporarily on hold.',
-    variant: 'urgent'
-  },
-  CLOSED: {
-    label: 'Closed',
-    explanation: 'This request has been completed or closed.',
-    variant: 'neutral'
-  }
-};
-
-export const INVESTOR_STATUS_CONFIG: Record<
-  string,
-  { label: string; explanation: string; variant: 'pending' | 'proposal' | 'active' | 'luxury' | 'urgent' | 'neutral' }
-> = {
-  SUBMITTED: {
-    label: 'Profile Submitted',
-    explanation: 'Your investor profile has been received.',
-    variant: 'pending'
-  },
-  VERIFICATION_IN_PROGRESS: {
-    label: 'Verification in Progress',
-    explanation: 'Your investor profile is currently being verified.',
-    variant: 'luxury'
-  },
-  INFO_REQUIRED: {
-    label: 'Information Required',
-    explanation: 'FIC requires additional verification documents from you.',
-    variant: 'urgent'
-  },
-  VERIFICATION_COMPLETED: {
-    label: 'Verification Completed',
-    explanation: 'Identity and entity checks completed successfully.',
-    variant: 'active'
-  },
-  UNDER_REVIEW: {
-    label: 'Profile Under Review',
-    explanation: 'FIC is reviewing your investment preferences.',
-    variant: 'pending'
-  },
-  DISCUSSION_REQUESTED: {
-    label: 'Discussion Requested',
-    explanation: 'FIC has requested an exploratory discussion with you.',
-    variant: 'proposal'
-  },
-  ON_HOLD: {
-    label: 'On Hold',
-    explanation: 'Verification is temporarily on hold.',
-    variant: 'urgent'
-  },
-  CLOSED: {
-    label: 'Closed',
-    explanation: 'This request has been closed.',
-    variant: 'neutral'
-  }
-};
-
 export const InvestmentPage: React.FC = () => {
   const user = getStoredUser();
-  const userId = user?.id || user?.userId || 'usr_default';
 
-  // Navigation Tabs: 'submit' (Seek / Investor), 'pools' (Community Collection Pools), 'my_requests' (Tracking & Payouts)
-  const [activeTab, setActiveTab] = useState<'submit' | 'pools' | 'my_requests'>('pools');
-  const [linkedIdeaRequestId, setLinkedIdeaRequestId] = useState<string>('');
+  // Primary top-level navigation: 'investment' vs 'funding'
+  const [mainNav, setMainNav] = useState<'investment' | 'funding'>('investment');
 
-  // Community Collection Pools & Investments State
-  const [pools, setPools] = useState<any[]>([]);
+  // Investment sub-tabs: 'need_funding' vs 'my_investments' vs 'pools'
+  const [investSubTab, setInvestSubTab] = useState<'need_funding' | 'my_investments' | 'pools'>('need_funding');
+
+  // Loading & Global notification states
+  const [loading, setLoading] = useState<boolean>(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // ========================================================
+  // PHASE 1: FUNDING REQUEST FORM STATE
+  // ========================================================
+  const [showFundingForm, setShowFundingForm] = useState<boolean>(false);
+  const [fundingStep, setFundingStep] = useState<'form' | 'review'>('form');
+
+  // 8 Mandatory Fields
+  const [formCompany, setFormCompany] = useState<string>('');
+  const [formDuration, setFormDuration] = useState<string>('12 Months');
+  const [formDurationMonths, setFormDurationMonths] = useState<number>(12);
+  const [formFundingAmount, setFormFundingAmount] = useState<string>('');
+  const [formMinInvestment, setFormMinInvestment] = useState<string>('25000');
+  const [formMaxInvestment, setFormMaxInvestment] = useState<string>('200000');
+  const [formReturnRate, setFormReturnRate] = useState<string>('15');
+  const [formReturnFrequency, setFormReturnFrequency] = useState<'MONTHLY' | 'QUARTERLY' | 'YEARLY' | 'MATURITY'>('YEARLY');
+  const [formPurpose, setFormPurpose] = useState<string>('');
+  const [formDocuments, setFormDocuments] = useState<any[]>([]);
+
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isSubmittingFunding, setIsSubmittingFunding] = useState<boolean>(false);
+  const [isUploadingDoc, setIsUploadingDoc] = useState<boolean>(false);
+
+  // My Funding Requests list
+  const [myFundingRequests, setMyFundingRequests] = useState<any[]>([]);
+  const [selectedFundingDetail, setSelectedFundingDetail] = useState<any | null>(null);
+
+  // Resubmission Modal State (Phase 2 Member Resubmission)
+  const [resubmitTarget, setResubmitTarget] = useState<any | null>(null);
+  const [resubmitCompany, setResubmitCompany] = useState<string>('');
+  const [resubmitFundingAmount, setResubmitFundingAmount] = useState<string>('');
+  const [resubmitMinInvestment, setResubmitMinInvestment] = useState<string>('');
+  const [resubmitMaxInvestment, setResubmitMaxInvestment] = useState<string>('');
+  const [resubmitPurpose, setResubmitPurpose] = useState<string>('');
+  const [resubmitNotes, setResubmitNotes] = useState<string>('');
+  const [resubmitDocs, setResubmitDocs] = useState<any[]>([]);
+  const [resubmitReqDocs, setResubmitReqDocs] = useState<any[]>([]);
+  const [isResubmitting, setIsResubmitting] = useState<boolean>(false);
+
+  // ========================================================
+  // PHASE 3: NEED FUNDING & INVEST NOW STATE
+  // ========================================================
+  const [approvedDeals, setApprovedDeals] = useState<any[]>([]);
+  const [searchNeedFunding, setSearchNeedFunding] = useState<string>('');
+
+  // Invest Now Modal
+  const [investTargetDeal, setInvestTargetDeal] = useState<any | null>(null);
+  const [investAmountInput, setInvestAmountInput] = useState<string>('');
+  const [investError, setInvestError] = useState<string>('');
+  const [isSubmittingInvest, setIsSubmittingInvest] = useState<boolean>(false);
+
+  // Investment Submission Overview Modal (Phase 3.3)
+  const [investOverviewData, setInvestOverviewData] = useState<any | null>(null);
+
+  // ========================================================
+  // PHASE 4: MY INVESTMENTS STATE
+  // ========================================================
   const [myInvestments, setMyInvestments] = useState<any[]>([]);
-  const [isInvestModalOpen, setIsInvestModalOpen] = useState(false);
-  const [selectedPoolForInvest, setSelectedPoolForInvest] = useState<any | null>(null);
-  const [investPledgeAmount, setInvestPledgeAmount] = useState<string>('25000');
-  const [isSubmittingPledge, setIsSubmittingPledge] = useState(false);
-  const [poolActionSuccessMsg, setPoolActionSuccessMsg] = useState('');
+  const [selectedInvestmentDetail, setSelectedInvestmentDetail] = useState<any | null>(null);
 
-  // Submission Option: Option A = 'FUNDING' (I Need Funding), Option B = 'INVESTOR' (I Want to Invest)
-  const [submissionType, setSubmissionType] = useState<'FUNDING' | 'INVESTOR'>('FUNDING');
+  // Phase 6: Pay Amount Modal
+  const [payTargetInvestment, setPayTargetInvestment] = useState<any | null>(null);
+  const [payAmountInput, setPayAmountInput] = useState<string>('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
 
-  // ----------------------------------------------------
-  // Form State: Funding Seeker
-  // ----------------------------------------------------
-  const [fundingBusinessName, setFundingBusinessName] = useState('');
-  const [fundingBusinessType, setFundingBusinessType] = useState('Private Limited Company');
-  const [fundingIndustry, setFundingIndustry] = useState('Manufacturing');
-  const [fundingPinCode, setFundingPinCode] = useState('');
-  const [fundingCountry, setFundingCountry] = useState('India');
-  const [fundingState, setFundingState] = useState('Tamil Nadu');
-  const [fundingDistrict, setFundingDistrict] = useState('Coimbatore');
-  const [fundingCity, setFundingCity] = useState('Coimbatore');
-  const [isLookingUpPin, setIsLookingUpPin] = useState(false);
-  const [pinLookupMsg, setPinLookupMsg] = useState('');
+  // Phase 9: Maturity Settlement Modal (for funding requestor)
+  const [maturityTargetInvestment, setMaturityTargetInvestment] = useState<any | null>(null);
+  const [isSettlingMaturity, setIsSettlingMaturity] = useState<boolean>(false);
 
-  const handleFundingPinCodeChange = async (val: string) => {
-    const sanitized = val.replace(/\D/g, '').slice(0, 6);
-    setFundingPinCode(sanitized);
-    if (sanitized.length === 6) {
-      setIsLookingUpPin(true);
-      setPinLookupMsg('Auto-fetching location...');
-      try {
-        const resolved = await lookupIndianPinCodeApi(sanitized);
-        setFundingCountry(resolved.country || 'India');
-        if (resolved.state) setFundingState(resolved.state);
-        if (resolved.district) setFundingDistrict(resolved.district);
-        if (resolved.city) setFundingCity(resolved.city);
-        setPinLookupMsg(`Auto-filled: ${resolved.city || resolved.district}, ${resolved.district}, ${resolved.state}`);
-      } catch {
-        setPinLookupMsg('');
-      } finally {
-        setIsLookingUpPin(false);
+  // Preserved Community Pools state
+  const [pools, setPools] = useState<any[]>([]);
+  const [selectedPool, setSelectedPool] = useState<any | null>(null);
+  const [poolInvestAmount, setPoolInvestAmount] = useState<string>('');
+
+  // Viewer Modal
+  const [viewerDoc, setViewerDoc] = useState<{ id?: string; name: string; url: string; fileType?: string } | null>(null);
+
+  // ========================================================
+  // DATA LOADERS
+  // ========================================================
+  useEffect(() => {
+    loadAllData();
+  }, [mainNav, investSubTab]);
+
+  const loadAllData = async () => {
+    setLoading(true);
+    try {
+      // 1. Load approved funding proposals (Need Funding)
+      const needRes = await apiRequest('/investment/need-funding');
+      if (needRes?.success && Array.isArray(needRes.data)) {
+        setApprovedDeals(needRes.data);
       }
-    } else {
-      setPinLookupMsg('');
+
+      // 2. Load member's own funding applications
+      const myFundRes = await apiRequest('/investment/funding/me');
+      if (myFundRes?.success && Array.isArray(myFundRes.data)) {
+        setMyFundingRequests(myFundRes.data);
+      }
+
+      // 3. Load investor's own investments
+      const myInvRes = await apiRequest('/investment/my-investments');
+      if (myInvRes?.success && Array.isArray(myInvRes.data)) {
+        setMyInvestments(myInvRes.data);
+      }
+
+      // 4. Load community pools
+      const poolsRes = await apiRequest('/investment/pools');
+      if (poolsRes?.success && Array.isArray(poolsRes.data)) {
+        setPools(poolsRes.data);
+      }
+    } catch (err: any) {
+      console.warn('Failed to load investment data:', err);
+    } finally {
+      setLoading(false);
     }
   };
-  const [fundingStage, setFundingStage] = useState('Growing Business');
-  const [fundingAmount, setFundingAmount] = useState('5000000');
-  const [fundingPurpose, setFundingPurpose] = useState<string[]>(['Business Expansion', 'Machinery / Equipment Purchase']);
-  const [fundingUseExplanation, setFundingUseExplanation] = useState('');
-  const [fundingRevenue, setFundingRevenue] = useState('₹50 Lakhs–₹1 Crore');
-  const [fundingDescription, setFundingDescription] = useState('');
-  const [fundingDocName, setFundingDocName] = useState('');
-  const [fundingUploadedDocs, setFundingUploadedDocs] = useState<UploadedDocumentAsset[]>([]);
-  const [isUploadingFundingDoc, setIsUploadingFundingDoc] = useState(false);
-  const [viewerAsset, setViewerAsset] = useState<UploadedDocumentAsset | null>(null);
 
-  // ----------------------------------------------------
-  // Form State: Investor
-  // ----------------------------------------------------
-  const [invType, setInvType] = useState('Individual Investor');
-  const [invName, setInvName] = useState('');
-  const [invCountry, setInvCountry] = useState('India');
-  const [invStateCity, setInvStateCity] = useState('');
-  const [invProfile, setInvProfile] = useState('');
-  const [invTotalCapacity, setInvTotalCapacity] = useState('₹50 Lakhs–₹1 Crore');
-  const [invPreferredTicket, setInvPreferredTicket] = useState('₹25–50 Lakhs');
-  const [invPreferredSectors, setInvPreferredSectors] = useState<string[]>(['Technology', 'Manufacturing']);
-  const [invPreferredStages, setInvPreferredStages] = useState<string[]>(['Revenue Generating Business', 'Growth Stage']);
-  const [invInvestmentType, setInvInvestmentType] = useState('Equity Investment');
-  const [invExperience, setInvExperience] = useState('');
-  const [invAdditionalPreferences, setInvAdditionalPreferences] = useState('');
-  const [invDocName, setInvDocName] = useState('');
-  const [invUploadedDocs, setInvUploadedDocs] = useState<UploadedDocumentAsset[]>([]);
-  const [isUploadingInvDoc, setIsUploadingInvDoc] = useState(false);
-
-  // Loading & Submission Confirmation State
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submittedRef, setSubmittedRef] = useState('');
-
-  // Listing State
-  const [dealItems, setDealItems] = useState<InvestmentDealItem[]>([]);
-  const [listFilter, setListFilter] = useState<'ALL' | 'FUNDING' | 'INVESTOR'>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedItem, setSelectedItem] = useState<InvestmentDealItem | null>(null);
-
-  const storageKey = `fic_user_deals_${userId}`;
-
-  const initialDemoDeals: InvestmentDealItem[] = [];
-
-  // Load from local storage and server
+  // Auto-dismiss alert feedback
   useEffect(() => {
-    const loadDeals = async () => {
-      let merged: InvestmentDealItem[] = [];
-      try {
-        const stored = localStorage.getItem(storageKey);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          merged = [...parsed];
-        }
-      } catch (e) {
-        console.warn('LocalStorage error:', e);
-      }
-
-      try {
-        const res = await apiRequest('/investment/me');
-        if (res && res.data) {
-          const serverFunding: FundingRequestItem[] = (res.data.fundingRequests || []).map((f: any) => ({
-            type: 'FUNDING' as const,
-            id: f.refNumber || f._id,
-            refNumber: f.refNumber || f._id,
-            userId: f.userId,
-            businessName: f.businessName,
-            businessType: f.businessType,
-            industry: f.industry,
-            location: f.location || { country: 'India', state: '', city: '' },
-            businessStage: f.businessStage,
-            fundingAmount: f.fundingAmount,
-            fundingPurpose: f.fundingPurpose || [],
-            useOfFundsExplanation: f.useOfFundsExplanation,
-            currentAnnualRevenue: f.currentAnnualRevenue,
-            businessDescription: f.businessDescription,
-            documents: f.documents || [],
-            status: f.status || 'SUBMITTED',
-            submittedDate: f.createdAt
-              ? new Date(f.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
-              : 'Recently',
-            latestFicUpdate: f.latestFicUpdate || 'Your funding request has been received. Our team is reviewing your business details.',
-            whatHappensNext: f.whatHappensNext || 'FIC will review your submitted information.',
-            updateHistory: f.updateHistory || []
-          }));
-
-          const serverInvestors: InvestorProfileItem[] = (res.data.investorProfiles || []).map((i: any) => ({
-            type: 'INVESTOR' as const,
-            id: i.refNumber || i._id,
-            refNumber: i.refNumber || i._id,
-            userId: i.userId,
-            investorType: i.investorType,
-            investorName: i.investorName,
-            country: i.country,
-            stateCity: i.stateCity,
-            investorProfile: i.investorProfile,
-            totalCapacity: i.totalCapacity,
-            preferredTicketSize: i.preferredTicketSize,
-            preferredSectors: i.preferredSectors || [],
-            preferredStages: i.preferredStages || [],
-            investmentType: i.investmentType,
-            investmentExperience: i.investmentExperience,
-            additionalPreferences: i.additionalPreferences,
-            documents: i.documents || [],
-            status: i.status || 'SUBMITTED',
-            submittedDate: i.createdAt
-              ? new Date(i.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
-              : 'Recently',
-            latestFicUpdate: i.latestFicUpdate || 'Your investor profile is currently being verified.',
-            whatHappensNext: i.whatHappensNext || 'Your profile verification is in progress.',
-            updateHistory: i.updateHistory || []
-          }));
-
-          const serverAll: InvestmentDealItem[] = [...serverFunding, ...serverInvestors];
-          if (serverAll.length > 0) {
-            const serverIds = new Set(serverAll.map((s) => s.refNumber || s.id));
-            const nonServer = merged.filter((m) => !serverIds.has(m.refNumber || m.id));
-            merged = [...serverAll, ...nonServer];
-          }
-        }
-      } catch (err) {
-        console.warn('Backend fetch /investment/me fallback:', err);
-      }
-
-      setDealItems(merged);
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(merged));
-      } catch (e) {
-        console.error(e);
-      }
-    };
-
-    const loadPoolsAndInvestments = async () => {
-      try {
-        const [poolsRes, invRes] = await Promise.all([
-          apiRequest('/investment/pools'),
-          apiRequest('/investment/my-investments')
-        ]);
-        if (poolsRes && poolsRes.success && Array.isArray(poolsRes.data)) {
-          setPools(poolsRes.data);
-        }
-        if (invRes && invRes.success && Array.isArray(invRes.data)) {
-          setMyInvestments(invRes.data);
-        }
-      } catch (poolErr) {
-        console.warn('Failed to load community pools:', poolErr);
-      }
-    };
-
-    loadDeals();
-    loadPoolsAndInvestments();
-  }, [storageKey]);
-
-  // Read URL query params for idea-linked funding redirection
-  useEffect(() => {
-    try {
-      const searchParams = new URLSearchParams(window.location.search);
-      const tab = searchParams.get('tab');
-      const action = searchParams.get('action');
-      const ideaId = searchParams.get('ideaId');
-      const title = searchParams.get('title');
-      const category = searchParams.get('category');
-      const description = searchParams.get('description');
-      const location = searchParams.get('location');
-
-      if (action === 'from-idea' || tab === 'seek') {
-        setActiveTab('submit');
-        setSubmissionType('FUNDING');
-        if (ideaId) setLinkedIdeaRequestId(ideaId);
-        if (title) setFundingBusinessName(title);
-        if (category) setFundingIndustry(category);
-        if (description) setFundingDescription(description);
-        if (location) {
-          const parts = location.split(',').map((s) => s.trim());
-          if (parts.length >= 2) {
-            setFundingCity(parts[0]);
-            setFundingState(parts[1]);
-          } else if (parts.length === 1 && parts[0]) {
-            setFundingCity(parts[0]);
-          }
-        }
-      } else if (tab === 'history') {
-        setActiveTab('my_requests');
-      }
-    } catch (e) {
-      console.warn('Failed parsing query params:', e);
+    if (feedbackMsg) {
+      const timer = setTimeout(() => setFeedbackMsg(null), 6000);
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [feedbackMsg]);
 
+  // ========================================================
+  // PHASE 1: FORM VALIDATION & SUBMISSION
+  // ========================================================
+  const validateFundingForm = (): boolean => {
+    const errs: Record<string, string> = {};
 
-  // Handle User Investing into a Community Collection Pool
-  const handlePledgeToPool = async (e: React.FormEvent) => {
+    if (!formCompany.trim()) errs.company = 'Project / Company Name is mandatory.';
+    if (!formDuration.trim()) errs.duration = 'Funding Duration is mandatory.';
+
+    const reqAmt = Number(formFundingAmount);
+    if (!formFundingAmount || isNaN(reqAmt) || reqAmt <= 0) {
+      errs.fundingAmount = 'Please enter a valid positive Required Funding Amount.';
+    }
+
+    const minAmt = Number(formMinInvestment);
+    if (!formMinInvestment || isNaN(minAmt) || minAmt <= 0) {
+      errs.minInvestment = 'Please enter a valid positive Minimum Investment Amount.';
+    }
+
+    const maxAmt = Number(formMaxInvestment);
+    if (!formMaxInvestment || isNaN(maxAmt) || maxAmt <= 0) {
+      errs.maxInvestment = 'Please enter a valid positive Maximum Investment Amount.';
+    }
+
+    if (minAmt && maxAmt && minAmt > maxAmt) {
+      errs.minInvestment = 'Minimum Investment Amount cannot exceed Maximum Investment Amount.';
+    }
+
+    if (maxAmt && reqAmt && maxAmt > reqAmt) {
+      errs.maxInvestment = 'Maximum Investment Amount cannot exceed Required Funding Amount.';
+    }
+
+    const retRate = Number(formReturnRate);
+    if (!formReturnRate || isNaN(retRate) || retRate <= 0) {
+      errs.returns = 'Expected Returns percentage is mandatory.';
+    }
+
+    if (!formPurpose.trim() || formPurpose.trim().length < 10) {
+      errs.purpose = 'Funding Purpose must be at least 10 characters describing the capital deployment.';
+    }
+
+    if (!formDocuments || formDocuments.length === 0) {
+      errs.documents = 'At least one pitch deck or statutory document must be uploaded.';
+    }
+
+    setFormErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleProceedToReview = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPoolForInvest || isSubmittingPledge) return;
-    const amountNum = Number(investPledgeAmount);
-    if (!amountNum || amountNum <= 0) return;
+    if (validateFundingForm()) {
+      setFundingStep('review');
+    }
+  };
 
-    setIsSubmittingPledge(true);
-    const poolId = selectedPoolForInvest._id || selectedPoolForInvest.id || selectedPoolForInvest.poolCode;
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
+    const validMimes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    if (!validMimes.includes(file.type)) {
+      setFeedbackMsg({ type: 'error', text: 'Only PDF, JPG, and PNG files are allowed.' });
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      setFeedbackMsg({ type: 'error', text: 'File size exceeds maximum limit of 15MB.' });
+      return;
+    }
+
+    setIsUploadingDoc(true);
     try {
-      const res = await apiRequest(`/investment/pools/${poolId}/invest`, {
+      const asset = await uploadDocumentFile(file, {
+        documentCategory: 'INVESTMENT',
+        documentLabel: 'Funding Proposal Document'
+      });
+      if (asset) {
+        setFormDocuments((prev) => [
+          ...prev,
+          {
+            documentId: asset.documentId,
+            name: asset.originalFileName || file.name,
+            fileUrl: asset.viewUrl || `/api/v1/documents/${asset.documentId}/view`,
+            fileType: asset.originalFileExtension || 'pdf',
+            originalFileSize: asset.originalFileSize || file.size,
+            uploadedAt: new Date().toISOString()
+          }
+        ]);
+        setFeedbackMsg({ type: 'success', text: `Uploaded ${file.name} successfully.` });
+      }
+    } catch (err: any) {
+      setFeedbackMsg({ type: 'error', text: err.message || 'Failed to upload document.' });
+    } finally {
+      setIsUploadingDoc(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleFinalSubmitFunding = async () => {
+    setIsSubmittingFunding(true);
+    try {
+      const payload = {
+        companyName: formCompany.trim(),
+        fundingDuration: formDuration,
+        durationMonths: formDurationMonths,
+        requiredFundingAmount: Number(formFundingAmount),
+        minInvestmentAmount: Number(formMinInvestment),
+        maxInvestmentAmount: Number(formMaxInvestment),
+        expectedReturns: `${formReturnRate}% p.a.`,
+        returnRatePercent: Number(formReturnRate),
+        returnFrequency: formReturnFrequency,
+        fundingPurpose: formPurpose.trim(),
+        documents: formDocuments
+      };
+
+      const res = await apiRequest('/investment/funding', {
         method: 'POST',
-        body: JSON.stringify({ amount: amountNum })
+        body: JSON.stringify(payload)
       });
 
-      if (res && res.success) {
-        setPoolActionSuccessMsg(`Successfully pledged ₹${amountNum.toLocaleString('en-IN')}! Expected return: ₹${res.data?.totalMaturityAmount?.toLocaleString('en-IN')}`);
-        setIsInvestModalOpen(false);
-
-        // Refresh pools & investments in background
-        apiRequest('/investment/pools').then((r) => { if (r?.success) setPools(r.data); });
-        apiRequest('/investment/my-investments').then((r) => { if (r?.success) setMyInvestments(r.data); });
-
-        setTimeout(() => setPoolActionSuccessMsg(''), 6000);
+      if (res?.success) {
+        setFeedbackMsg({
+          type: 'success',
+          text: 'Funding Proposal Submitted! Unique ID generated and sent to FIC Admin for Review.'
+        });
+        setShowFundingForm(false);
+        setFundingStep('form');
+        // Reset form
+        setFormCompany('');
+        setFormFundingAmount('');
+        setFormPurpose('');
+        setFormDocuments([]);
+        loadAllData();
       } else {
-        // Fallback for demo when backend is offline or sandbox fallback
-        const years = (selectedPoolForInvest.tenureMonths || 12) / 12;
-        const interest = Math.round((amountNum * (selectedPoolForInvest.investorAnnualYieldPercent || 10) * years) / 100);
-        const total = amountNum + interest;
-
-        setMyInvestments((prev) => [
-          {
-            poolId: selectedPoolForInvest._id || selectedPoolForInvest.poolCode,
-            poolCode: selectedPoolForInvest.poolCode,
-            poolTitle: selectedPoolForInvest.title,
-            poolStatus: selectedPoolForInvest.status,
-            tenureMonths: selectedPoolForInvest.tenureMonths || 12,
-            annualYieldPercent: selectedPoolForInvest.investorAnnualYieldPercent || 10,
-            investedAmount: amountNum,
-            investedAt: new Date().toISOString(),
-            expectedInterest: interest,
-            totalMaturityAmount: total,
-            payoutStatus: 'PENDING',
-            transactionReference: `INV-${Date.now()}`
-          },
-          ...prev
-        ]);
-
-        setPoolActionSuccessMsg(`Successfully pledged ₹${amountNum.toLocaleString('en-IN')}! Expected return: ₹${total.toLocaleString('en-IN')}`);
-        setIsInvestModalOpen(false);
-        setTimeout(() => setPoolActionSuccessMsg(''), 6000);
+        throw new Error(res?.error || 'Failed to submit funding proposal');
       }
-    } catch (pledgeErr: any) {
-      console.warn('Pledge request exception:', pledgeErr);
-      // Ensure modal gracefully completes with optimistic feedback
-      const years = (selectedPoolForInvest.tenureMonths || 12) / 12;
-      const interest = Math.round((amountNum * (selectedPoolForInvest.investorAnnualYieldPercent || 10) * years) / 100);
-      const total = amountNum + interest;
-
-      setMyInvestments((prev) => [
-        {
-          poolId: selectedPoolForInvest._id || selectedPoolForInvest.poolCode,
-          poolCode: selectedPoolForInvest.poolCode,
-          poolTitle: selectedPoolForInvest.title,
-          poolStatus: selectedPoolForInvest.status,
-          tenureMonths: selectedPoolForInvest.tenureMonths || 12,
-          annualYieldPercent: selectedPoolForInvest.investorAnnualYieldPercent || 10,
-          investedAmount: amountNum,
-          investedAt: new Date().toISOString(),
-          expectedInterest: interest,
-          totalMaturityAmount: total,
-          payoutStatus: 'PENDING',
-          transactionReference: `INV-${Date.now()}`
-        },
-        ...prev
-      ]);
-
-      setPoolActionSuccessMsg(`Successfully pledged ₹${amountNum.toLocaleString('en-IN')}! Expected return: ₹${total.toLocaleString('en-IN')}`);
-      setIsInvestModalOpen(false);
-      setTimeout(() => setPoolActionSuccessMsg(''), 6000);
+    } catch (err: any) {
+      setFeedbackMsg({ type: 'error', text: err.message || 'Submission failed.' });
     } finally {
-      setIsSubmittingPledge(false);
+      setIsSubmittingFunding(false);
     }
   };
 
-  // Handle Switching between Option A and Option B with confirmation if unsaved data exists
-  const handleSwitchSubmissionType = (newType: 'FUNDING' | 'INVESTOR') => {
-    if (newType === submissionType) return;
-    const hasFundingData = fundingBusinessName.trim() || fundingUseExplanation.trim() || fundingDescription.trim();
-    const hasInvestorData = invName.trim() || invProfile.trim() || invExperience.trim();
+  // Open Resubmit Modal
+  const handleOpenResubmit = (reqItem: any) => {
+    setResubmitTarget(reqItem);
+    setResubmitCompany(reqItem.companyName || reqItem.businessName || '');
+    setResubmitFundingAmount(String(reqItem.requiredFundingAmount || reqItem.fundingAmount || ''));
+    setResubmitMinInvestment(String(reqItem.minInvestmentAmount || ''));
+    setResubmitMaxInvestment(String(reqItem.maxInvestmentAmount || ''));
+    setResubmitPurpose(typeof reqItem.fundingPurpose === 'string' ? reqItem.fundingPurpose : (reqItem.fundingPurpose?.[0] || ''));
+    setResubmitDocs(reqItem.documents || []);
 
-    if (submissionType === 'FUNDING' && hasFundingData) {
-      const confirmSwitch = window.confirm('You have unsaved changes in your Funding Request form. Do you want to switch to the Investor form?');
-      if (!confirmSwitch) return;
-    } else if (submissionType === 'INVESTOR' && hasInvestorData) {
-      const confirmSwitch = window.confirm('You have unsaved changes in your Investor Profile form. Do you want to switch to the Funding form?');
-      if (!confirmSwitch) return;
-    }
-    setSubmissionType(newType);
+    const latestCr = reqItem.changeRequests?.[reqItem.changeRequests.length - 1];
+    setResubmitReqDocs(latestCr?.requestedDocuments || []);
+    setResubmitNotes('');
   };
 
-  // Toggle funding purpose
-  const toggleFundingPurpose = (item: string) => {
-    if (fundingPurpose.includes(item)) {
-      if (fundingPurpose.length > 1) {
-        setFundingPurpose(fundingPurpose.filter((p) => p !== item));
-      }
-    } else {
-      setFundingPurpose([...fundingPurpose, item]);
-    }
-  };
-
-  // Toggle investor preferred sector
-  const toggleInvSector = (sec: string) => {
-    if (invPreferredSectors.includes(sec)) {
-      if (invPreferredSectors.length > 1) {
-        setInvPreferredSectors(invPreferredSectors.filter((s) => s !== sec));
-      }
-    } else {
-      setInvPreferredSectors([...invPreferredSectors, sec]);
-    }
-  };
-
-  // Toggle investor preferred stage
-  const toggleInvStage = (stg: string) => {
-    if (invPreferredStages.includes(stg)) {
-      if (invPreferredStages.length > 1) {
-        setInvPreferredStages(invPreferredStages.filter((s) => s !== stg));
-      }
-    } else {
-      setInvPreferredStages([...invPreferredStages, stg]);
-    }
-  };
-
-  // Submit Funding Request
-  const handleSubmitFunding = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    const generatedRef = `FIC-FUND-2026-${Math.floor(100 + Math.random() * 900)}`;
-    const todayFormatted = new Date().toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    });
-
-    const newFundingItem: FundingRequestItem = {
-      type: 'FUNDING',
-      id: generatedRef,
-      refNumber: generatedRef,
-      userId,
-      businessName: fundingBusinessName.trim(),
-      businessType: fundingBusinessType,
-      industry: fundingIndustry,
-      location: {
-        country: fundingCountry.trim() || 'India',
-        state: fundingState.trim(),
-        district: fundingDistrict.trim(),
-        city: fundingCity.trim(),
-        pinCode: fundingPinCode.trim()
-      } as any,
-      businessStage: fundingStage,
-      fundingAmount: Number(fundingAmount) || 0,
-      fundingPurpose,
-      useOfFundsExplanation: fundingUseExplanation.trim(),
-      currentAnnualRevenue: fundingRevenue,
-      businessDescription: fundingDescription.trim(),
-      documents:
-        fundingUploadedDocs.length > 0
-          ? fundingUploadedDocs.map((d) => ({
-              documentId: d.documentId,
-              name: d.originalFileName,
-              fileUrl: d.viewUrl,
-              originalMimeType: d.originalMimeType,
-              originalFileSize: d.originalFileSize,
-              checksum: d.checksum,
-              fileType: d.originalFileExtension,
-              uploadedAt: d.createdAt,
-              status: 'PENDING'
-            }))
-          : fundingDocName.trim()
-          ? [{ name: fundingDocName.trim(), fileUrl: '#', uploadedAt: new Date().toLocaleDateString(), status: 'PENDING' }]
-          : [],
-      status: 'SUBMITTED',
-      submittedDate: todayFormatted,
-      latestFicUpdate: 'Your funding request has been received. Our team is reviewing your business details.',
-      whatHappensNext: 'FIC will review your submitted information and coordinate preliminary verification.',
-      updateHistory: [
-        {
-          date: todayFormatted,
-          status: 'Request Submitted',
-          update: 'Your funding request has been received. Our team is reviewing your business details.',
-          updatedBy: 'FIC Deal Desk'
-        }
-      ]
-    };
-
+  const handleConfirmResubmit = async () => {
+    if (!resubmitTarget) return;
+    setIsResubmitting(true);
     try {
-      await apiRequest('/investment/funding', {
+      const payload = {
+        companyName: resubmitCompany.trim(),
+        requiredFundingAmount: Number(resubmitFundingAmount),
+        minInvestmentAmount: Number(resubmitMinInvestment),
+        maxInvestmentAmount: Number(resubmitMaxInvestment),
+        fundingPurpose: resubmitPurpose.trim(),
+        documents: resubmitDocs,
+        uploadedRequestedDocuments: resubmitReqDocs.filter((d) => d.isUploaded),
+        resubmissionNotes: resubmitNotes.trim()
+      };
+
+      const res = await apiRequest(`/investment/funding/${resubmitTarget.fundingRequestId || resubmitTarget._id}/resubmit`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+
+      if (res?.success) {
+        setFeedbackMsg({
+          type: 'success',
+          text: 'Revised funding application and requested documents resubmitted successfully to FIC Admin!'
+        });
+        setResubmitTarget(null);
+        loadAllData();
+      } else {
+        throw new Error(res?.error || 'Failed to resubmit application.');
+      }
+    } catch (err: any) {
+      setFeedbackMsg({ type: 'error', text: err.message || 'Resubmission failed.' });
+    } finally {
+      setIsResubmitting(false);
+    }
+  };
+
+  // ========================================================
+  // PHASE 3: INVEST NOW & SUBMISSION OVERVIEW
+  // ========================================================
+  const handleOpenInvestModal = (deal: any) => {
+    setInvestTargetDeal(deal);
+    setInvestAmountInput(String(deal.minInvestmentAmount || 25000));
+    setInvestError('');
+  };
+
+  const handleConfirmInvest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!investTargetDeal) return;
+
+    const amt = Number(investAmountInput);
+    const min = investTargetDeal.minInvestmentAmount || 10000;
+    const max = investTargetDeal.maxInvestmentAmount || investTargetDeal.requiredFundingAmount;
+    const remaining = investTargetDeal.remainingFundingAmount ?? (investTargetDeal.requiredFundingAmount - (investTargetDeal.totalInvested || 0));
+
+    if (!amt || isNaN(amt) || amt <= 0) {
+      setInvestError('Please enter a valid investment amount.');
+      return;
+    }
+    if (amt < min) {
+      setInvestError(`Amount cannot be less than the minimum ticket of ₹${min.toLocaleString('en-IN')}.`);
+      return;
+    }
+    if (amt > max) {
+      setInvestError(`Amount cannot exceed the maximum permitted ticket of ₹${max.toLocaleString('en-IN')}.`);
+      return;
+    }
+    if (amt > remaining) {
+      setInvestError(`Amount cannot exceed remaining required funding of ₹${remaining.toLocaleString('en-IN')}.`);
+      return;
+    }
+
+    setIsSubmittingInvest(true);
+    try {
+      const res = await apiRequest('/investment/invest', {
         method: 'POST',
         body: JSON.stringify({
-          ...newFundingItem,
-          businessIdeaRequestId: linkedIdeaRequestId || undefined,
-          linkedIdeaId: linkedIdeaRequestId || undefined,
-          applicantName: user?.fullName || (user as any)?.name,
-          applicantEmail: user?.email,
-          applicantPhone: user?.phoneNumber || (user as any)?.phone
+          fundingRequestId: investTargetDeal.fundingRequestId || investTargetDeal._id,
+          amount: amt
         })
       });
-    } catch {
-      // Fallback
-    } finally {
-      const updated = [newFundingItem, ...dealItems];
-      setDealItems(updated);
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
+
+      if (res?.success && res.data) {
+        setInvestTargetDeal(null);
+        setInvestOverviewData(res.data);
+        loadAllData();
+      } else {
+        throw new Error(res?.error || 'Failed to submit investment commitment.');
       }
-      setSubmittedRef(generatedRef);
-      setIsSubmitted(true);
-      setIsLoading(false);
+    } catch (err: any) {
+      setInvestError(err.message || 'Investment submission failed.');
+    } finally {
+      setIsSubmittingInvest(false);
     }
   };
 
-  // Submit Investor Profile
-  const handleSubmitInvestor = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  // ========================================================
+  // PHASE 6: INVESTOR PAYMENT COLLECTION
+  // ========================================================
+  const handleOpenPayModal = (inv: any) => {
+    setPayTargetInvestment(inv);
+    const payable = inv.pendingPaymentAmount || (inv.approvedAmount || inv.requestedAmount) - (inv.paidAmount || 0);
+    setPayAmountInput(String(payable));
+  };
 
-    const generatedRef = `FIC-INV-2026-${Math.floor(100 + Math.random() * 900)}`;
-    const todayFormatted = new Date().toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'long',
-      year: 'numeric'
-    });
-
-    const newInvestorItem: InvestorProfileItem = {
-      type: 'INVESTOR',
-      id: generatedRef,
-      refNumber: generatedRef,
-      userId,
-      investorType: invType,
-      investorName: invName.trim(),
-      country: invCountry.trim() || 'India',
-      stateCity: invStateCity.trim(),
-      investorProfile: invProfile.trim(),
-      totalCapacity: invTotalCapacity,
-      preferredTicketSize: invPreferredTicket,
-      preferredSectors: invPreferredSectors,
-      preferredStages: invPreferredStages,
-      investmentType: invInvestmentType,
-      investmentExperience: invExperience.trim(),
-      additionalPreferences: invAdditionalPreferences.trim(),
-      documents:
-        invUploadedDocs.length > 0
-          ? invUploadedDocs.map((d) => ({
-              documentId: d.documentId,
-              name: d.originalFileName,
-              fileUrl: d.viewUrl,
-              originalMimeType: d.originalMimeType,
-              originalFileSize: d.originalFileSize,
-              checksum: d.checksum,
-              fileType: d.originalFileExtension,
-              uploadedAt: d.createdAt,
-              status: 'PENDING'
-            }))
-          : invDocName.trim()
-          ? [{ name: invDocName.trim(), fileUrl: '#', uploadedAt: new Date().toLocaleDateString(), status: 'PENDING' }]
-          : [],
-      status: 'SUBMITTED',
-      submittedDate: todayFormatted,
-      latestFicUpdate: 'Your investor profile is currently being verified.',
-      whatHappensNext: 'Your profile verification is in progress.',
-      updateHistory: [
-        {
-          date: todayFormatted,
-          status: 'Profile Submitted',
-          update: 'Your investor profile is currently being verified.',
-          updatedBy: 'FIC Investment Desk'
-        }
-      ]
-    };
-
+  const handleProcessPayment = async () => {
+    if (!payTargetInvestment) return;
+    setIsProcessingPayment(true);
     try {
-      await apiRequest('/investment/investor', {
-        method: 'POST',
-        body: JSON.stringify(newInvestorItem)
+      // 1. Create Order
+      const orderRes = await apiRequest(`/investment/investments/${payTargetInvestment.investmentId || payTargetInvestment._id}/create-order`, {
+        method: 'POST'
       });
-    } catch {
-      // Fallback
-    } finally {
-      const updated = [newInvestorItem, ...dealItems];
-      setDealItems(updated);
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(updated));
-      } catch (e) {
-        console.error(e);
+
+      if (!orderRes?.success) {
+        throw new Error(orderRes?.error || 'Order creation failed.');
       }
-      setSubmittedRef(generatedRef);
-      setIsSubmitted(true);
-      setIsLoading(false);
+
+      // 2. Gateway Verification simulation / real payment check
+      const verifyRes = await apiRequest(`/investment/investments/${payTargetInvestment.investmentId || payTargetInvestment._id}/verify-payment`, {
+        method: 'POST',
+        body: JSON.stringify({
+          paymentId: `PAY-${Date.now()}`,
+          orderId: orderRes.data?.orderId,
+          paidAmount: Number(payAmountInput)
+        })
+      });
+
+      if (verifyRes?.success) {
+        setFeedbackMsg({
+          type: 'success',
+          text: `Payment of ₹${Number(payAmountInput).toLocaleString('en-IN')} confirmed successfully! Capital is queued for Fund Release disbursement.`
+        });
+        setPayTargetInvestment(null);
+        loadAllData();
+      } else {
+        throw new Error(verifyRes?.error || 'Payment verification failed.');
+      }
+    } catch (err: any) {
+      setFeedbackMsg({ type: 'error', text: err.message || 'Payment processing failed.' });
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
-  // Filtered Deal Items List
-  const filteredDealItems = dealItems.filter((item) => {
-    if (listFilter !== 'ALL' && item.type !== listFilter) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchRef = (item.refNumber || item.id).toLowerCase().includes(q);
-      const matchName =
-        item.type === 'FUNDING'
-          ? item.businessName.toLowerCase().includes(q)
-          : item.investorName.toLowerCase().includes(q);
-      if (!matchRef && !matchName) return false;
-    }
-    return true;
-  });
-
-  const getStatusBadge = (item: InvestmentDealItem) => {
-    if (item.type === 'FUNDING') {
-      const cfg = FUNDING_STATUS_CONFIG[item.status] || { label: item.status, variant: 'pending' as const };
-      return <WorkspaceBadge variant={cfg.variant}>{cfg.label}</WorkspaceBadge>;
-    } else {
-      const cfg = INVESTOR_STATUS_CONFIG[item.status] || { label: item.status, variant: 'pending' as const };
-      return <WorkspaceBadge variant={cfg.variant}>{cfg.label}</WorkspaceBadge>;
-    }
+  // ========================================================
+  // PHASE 9: MATURITY REPAYMENT (FUNDING REQUESTOR)
+  // ========================================================
+  const handleOpenMaturitySettlement = (inv: any) => {
+    setMaturityTargetInvestment(inv);
   };
 
-  const getStatusExplanation = (item: InvestmentDealItem) => {
-    if (item.type === 'FUNDING') {
-      return FUNDING_STATUS_CONFIG[item.status]?.explanation || 'Your funding request is under review.';
-    } else {
-      return INVESTOR_STATUS_CONFIG[item.status]?.explanation || 'Your investor profile is being verified.';
+  const handleConfirmMaturityPayment = async () => {
+    if (!maturityTargetInvestment) return;
+    setIsSettlingMaturity(true);
+    try {
+      const res = await apiRequest(`/investment/investments/${maturityTargetInvestment.investmentId || maturityTargetInvestment._id}/pay-maturity`, {
+        method: 'POST',
+        body: JSON.stringify({
+          amount: maturityTargetInvestment.maturityAmountDue,
+          paymentReference: `REF-MAT-${Date.now()}`
+        })
+      });
+
+      if (res?.success) {
+        setFeedbackMsg({
+          type: 'success',
+          text: `Maturity settlement of ₹${maturityTargetInvestment.maturityAmountDue.toLocaleString('en-IN')} paid successfully! FIC Admin will release funds to the investor.`
+        });
+        setMaturityTargetInvestment(null);
+        loadAllData();
+      } else {
+        throw new Error(res?.error || 'Maturity payment failed.');
+      }
+    } catch (err: any) {
+      setFeedbackMsg({ type: 'error', text: err.message || 'Maturity payment failed.' });
+    } finally {
+      setIsSettlingMaturity(false);
     }
   };
 
   return (
     <WorkspaceShell>
-      {/* ========================================================
-          1. HEADER WITH ACCURATE COMPLIANCE NOTICE
-         ======================================================== */}
+      {/* Top Hero Banner */}
       <WorkspaceHero
-        accent="teal"
-        title="Investment & Funding"
-        subtitle="Connect with business funding opportunities or share your investment interest through FIC's private coordination platform."
+        title="Funding & Investment Management"
+        subtitle="Connect capital seekers with network investors under secure, legally structured FIC oversight."
+        badge={<span>FIC Direct Capital Desk</span>}
       />
 
-      {/* Compliance Information Section */}
-      <div className="p-3.5 sm:p-4 rounded-2xl bg-[#E0F4F0]/60 border border-[#2C857B]/30 text-xs text-[#1C6960] flex items-start gap-3">
-        <ShieldCheckIcon size={18} className="text-[#1C6960] shrink-0 mt-0.5" />
-        <div className="space-y-0.5 leading-relaxed">
-          <strong className="block text-[#134A44] font-black">Private Coordination Notice:</strong>
-          <p className="text-[11px] text-[#1C6960]">
-            FIC coordinates private business introductions between eligible funding seekers and potential investors. FIC does not guarantee funding, investment returns, or successful deal completion.
-          </p>
-        </div>
-      </div>
-
-      {/* ========================================================
-          2. WORKSPACE TAB SWITCHER (POOLS, SUBMIT, MY STATUS)
-         ======================================================== */}
-      <div className="flex items-center gap-2 border-b border-[#EDE2D7] pb-2.5 mb-5 overflow-x-auto">
-        {/* Tab: Active Community Pools / Poll */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('pools')}
-          className={`relative px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-[13px] transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'pools' ? 'text-white' : 'text-[#453A33] hover:text-[#1C6960] font-bold'
-          }`}
-        >
-          {activeTab === 'pools' && (
-            <motion.div
-              layoutId="investTabIndicator"
-              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-              className="absolute inset-0 bg-gradient-to-r from-[#2C857B] to-[#1C6960] rounded-xl shadow-[0_2px_8px_rgba(44,133,123,0.25)] -z-0"
-            />
-          )}
-          <span className="relative z-10 flex items-center gap-1.5">
-            <TrendingUpIcon size={15} />
-            <span>Community Investment Pools & Polls</span>
-            <span
-              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                activeTab === 'pools'
-                  ? 'bg-white/25 text-white'
-                  : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              }`}
-            >
-              {pools.filter((p) => p.status === 'OPEN').length} Active
-            </span>
-          </span>
-        </button>
-
-        {/* Tab: Submit Funding / Investor Profile */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('submit')}
-          className={`relative px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-[13px] transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'submit' ? 'text-white' : 'text-[#453A33] hover:text-[#1C6960] font-bold'
-          }`}
-        >
-          {activeTab === 'submit' && (
-            <motion.div
-              layoutId="investTabIndicator"
-              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-              className="absolute inset-0 bg-gradient-to-r from-[#2C857B] to-[#1C6960] rounded-xl shadow-[0_2px_8px_rgba(44,133,123,0.25)] -z-0"
-            />
-          )}
-          <span className="relative z-10 flex items-center gap-1.5">
-            <HandCoinsIcon size={15} />
-            <span>Apply for Funding / Seek Capital</span>
-          </span>
-        </button>
-
-        {/* Tab: My Deal Requests & Payouts */}
-        <button
-          type="button"
-          onClick={() => setActiveTab('my_requests')}
-          className={`relative px-3.5 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-[13px] transition-colors duration-200 flex items-center gap-2 cursor-pointer ${
-            activeTab === 'my_requests' ? 'text-white' : 'text-[#453A33] hover:text-[#1C6960] font-bold'
-          }`}
-        >
-          {activeTab === 'my_requests' && (
-            <motion.div
-              layoutId="investTabIndicator"
-              transition={{ type: 'spring', stiffness: 380, damping: 28 }}
-              className="absolute inset-0 bg-gradient-to-r from-[#2C857B] to-[#1C6960] rounded-xl shadow-[0_2px_8px_rgba(44,133,123,0.25)] -z-0"
-            />
-          )}
-          <span className="relative z-10 flex items-center gap-1.5">
-            <FileTextIcon size={15} />
-            <span>My Deals & Yield Returns</span>
-            <span
-              className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                activeTab === 'my_requests'
-                  ? 'bg-white/25 text-white'
-                  : 'bg-[#FAF7F2] text-[#453A33] border border-[#EDE2D7]'
-              }`}
-            >
-              {dealItems.length + myInvestments.length}
-            </span>
-          </span>
-        </button>
-      </div>
-
-      {poolActionSuccessMsg && (
+      {/* Global Feedback Alert */}
+      {feedbackMsg && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-semibold flex items-center justify-between"
+          className={`mb-6 p-4 rounded-2xl flex items-center justify-between gap-3 text-sm font-semibold border ${
+            feedbackMsg.type === 'success'
+              ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+              : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+          }`}
         >
-          <div className="flex items-center gap-2">
-            <CheckCircleIcon size={18} className="text-emerald-600" />
-            <span>{poolActionSuccessMsg}</span>
+          <div className="flex items-center gap-2.5">
+            {feedbackMsg.type === 'success' ? <CheckCircleIcon size={18} /> : <AlertCircleIcon size={18} />}
+            <span>{feedbackMsg.text}</span>
           </div>
           <button
-            onClick={() => setPoolActionSuccessMsg('')}
-            className="text-emerald-700 hover:text-emerald-900 text-xs font-bold"
+            type="button"
+            onClick={() => setFeedbackMsg(null)}
+            className="text-xs uppercase font-bold tracking-wider hover:opacity-75"
           >
             Dismiss
           </button>
@@ -954,1623 +554,1182 @@ export const InvestmentPage: React.FC = () => {
       )}
 
       {/* ========================================================
-          TAB: COMMUNITY INVESTMENT COLLECTION POOLS & POLLS
+          TOP LEVEL TABS: INVESTMENT vs FUNDING
          ======================================================== */}
-      {activeTab === 'pools' && (
+      <div className="flex items-center justify-between border-b border-[#EDE2D7] dark:border-slate-800 pb-3 mb-6 flex-wrap gap-4">
+        <div className="flex items-center gap-2">
+          {/* Tab 1: Investment */}
+          <button
+            type="button"
+            onClick={() => setMainNav('investment')}
+            className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 cursor-pointer ${
+              mainNav === 'investment'
+                ? 'bg-gradient-to-r from-[#2C857B] to-[#1C6960] text-white shadow-md'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800/60'
+            }`}
+          >
+            <TrendingUpIcon size={16} />
+            <span>Investment</span>
+            <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 font-mono">
+              {approvedDeals.length}
+            </span>
+          </button>
+
+          {/* Tab 2: Funding */}
+          <button
+            type="button"
+            onClick={() => setMainNav('funding')}
+            className={`px-5 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 cursor-pointer ${
+              mainNav === 'funding'
+                ? 'bg-gradient-to-r from-[#2C857B] to-[#1C6960] text-white shadow-md'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800/60'
+            }`}
+          >
+            <FileTextIcon size={16} />
+            <span>Funding</span>
+            {myFundingRequests.some((r) => r.status === 'CHANGES_REQUESTED') && (
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            )}
+          </button>
+        </div>
+
+        {/* Action Button for Funding tab */}
+        {mainNav === 'funding' && !showFundingForm && (
+          <button
+            type="button"
+            onClick={() => {
+              setShowFundingForm(true);
+              setFundingStep('form');
+            }}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#2C857B] to-[#1C6960] hover:opacity-95 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm"
+          >
+            <PlusIcon size={14} />
+            <span>Submit a Funding Request</span>
+          </button>
+        )}
+      </div>
+
+      {/* ========================================================
+          MAIN NAV 1: INVESTMENT VIEW
+         ======================================================== */}
+      {mainNav === 'investment' && (
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-r from-[#2C857B]/10 via-[#FAF7F2] to-[#8064B1]/10 border border-[#EDE2D7]">
-            <div>
-              <h3 className="text-base sm:text-lg font-black text-[#2E231C] flex items-center gap-2">
-                <TrendingUpIcon size={20} className="text-[#2C857B]" />
-                <span>Ecosystem Community Investment Pools</span>
-              </h3>
-              <p className="text-xs text-[#6B5E55] mt-1 max-w-2xl leading-relaxed">
-                Co-invest with verified FIC peers into high-growth enterprise ventures and community projects. All pools feature fixed interest payouts guaranteed on capital maturity, credited directly to your platform wallet.
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <WorkspaceButton
-                variant="teal"
-                size="sm"
-                onClick={() => setActiveTab('submit')}
-              >
-                <PlusIcon size={14} className="mr-1" />
-                Submit My Venture
-              </WorkspaceButton>
-            </div>
+          {/* Sub-Tabs: Need Funding | My Investments | Community Pools */}
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto text-xs">
+            <button
+              type="button"
+              onClick={() => setInvestSubTab('need_funding')}
+              className={`px-4 py-2 rounded-lg font-bold transition-colors ${
+                investSubTab === 'need_funding'
+                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Need Funding ({approvedDeals.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setInvestSubTab('my_investments')}
+              className={`px-4 py-2 rounded-lg font-bold transition-colors ${
+                investSubTab === 'my_investments'
+                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              My Investments ({myInvestments.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setInvestSubTab('pools')}
+              className={`px-4 py-2 rounded-lg font-bold transition-colors ${
+                investSubTab === 'pools'
+                  ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+              }`}
+            >
+              Community Pools ({pools.length})
+            </button>
           </div>
 
-          {pools.length === 0 ? (
-            <WorkspaceCard variant="default" className="text-center py-12 px-4">
-              <div className="w-12 h-12 rounded-xl bg-stone-100 text-[#453A33] flex items-center justify-center mx-auto mb-3">
-                <TrendingUpIcon size={24} />
+          {/* SUB-TAB 1: NEED FUNDING LISTING (PHASE 3) */}
+          {investSubTab === 'need_funding' && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Verified Opportunities (Admin Approved)
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    High-viability enterprise proposals vetted and approved for investor commitments.
+                  </p>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <SearchIcon size={14} className="absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    value={searchNeedFunding}
+                    onChange={(e) => setSearchNeedFunding(e.target.value)}
+                    placeholder="Search by company or purpose..."
+                    className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
+                  />
+                </div>
               </div>
-              <h4 className="text-base font-black text-[#2E231C]">No Active Investment Pools Right Now</h4>
-              <p className="text-xs text-[#6B5E55] max-w-md mx-auto mt-1">
-                FIC administrators are currently evaluating diligence proposals. New curated community investment pools will be posted here soon.
-              </p>
-            </WorkspaceCard>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {pools.map((p) => {
-                const collected = p.collectedAmount || 0;
-                const target = p.targetAmount || 1;
-                const pct = Math.min(100, Math.round((collected / target) * 100));
-                const isOpen = p.status === 'OPEN';
 
-                return (
-                  <motion.div
-                    key={p._id || p.poolCode}
-                    whileHover={{ y: -3 }}
-                    transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-                  >
-                    <WorkspaceCard
-                      variant="default"
-                      className="h-full flex flex-col justify-between p-5 border border-[#EDE2D7] hover:border-[#2C857B]/50 transition-all shadow-xs"
-                    >
-                      <div className="space-y-3.5">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-stone-100 text-stone-700 border border-stone-200">
-                            {p.poolCode}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                              p.status === 'OPEN'
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                : p.status === 'FUNDED'
-                                ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                                : p.status === 'DISBURSED'
-                                ? 'bg-purple-100 text-purple-800 border border-purple-300'
-                                : 'bg-stone-100 text-stone-700 border border-stone-300'
-                            }`}
-                          >
-                            {p.status}
-                          </span>
-                        </div>
+              {approvedDeals.length === 0 ? (
+                <WorkspaceEmptyState
+                  title="No Approved Proposals Yet"
+                  description="When FIC Admin approves submitted funding requests, they will appear here live for network investments."
+                  icon={<ShieldCheckIcon size={40} className="text-slate-400" />}
+                />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {approvedDeals
+                    .filter((d) =>
+                      searchNeedFunding.trim()
+                        ? d.companyName?.toLowerCase().includes(searchNeedFunding.toLowerCase()) ||
+                          d.fundingPurpose?.toLowerCase().includes(searchNeedFunding.toLowerCase())
+                        : true
+                    )
+                    .map((deal) => {
+                      const reqAmt = deal.requiredFundingAmount || deal.fundingAmount || 1;
+                      const invested = deal.totalInvested || 0;
+                      const progressPct = Math.min(100, Math.round((invested / reqAmt) * 100));
 
-                        <div>
-                          <h4 className="text-base font-black text-[#2E231C] leading-snug line-clamp-1">
-                            {p.title}
-                          </h4>
-                          <span className="text-[11px] font-bold text-[#1C6960] block mt-0.5">
-                            {p.industryCategory}
-                          </span>
-                        </div>
-
-                        <p className="text-xs text-[#51463F] leading-relaxed line-clamp-2">
-                          {p.description}
-                        </p>
-
-                        {/* Financial Term Highlights */}
-                        <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]/80 text-center">
-                          <div>
-                            <span className="text-[10px] font-bold text-[#82776E] uppercase block">Fixed Return</span>
-                            <span className="text-sm font-black text-[#2C857B]">
-                              {p.investorAnnualYieldPercent}% <span className="text-[10px] font-semibold text-[#6B5E55]">p.a.</span>
-                            </span>
-                          </div>
-                          <div>
-                            <span className="text-[10px] font-bold text-[#82776E] uppercase block">Tenure Period</span>
-                            <span className="text-sm font-black text-[#2E231C]">
-                              {p.tenureMonths} <span className="text-[10px] font-semibold text-[#6B5E55]">Months</span>
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="space-y-1.5 pt-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-[#2E231C]">
-                              ₹{collected.toLocaleString('en-IN')}
-                            </span>
-                            <span className="text-[#82776E]">
-                              Target: ₹{target.toLocaleString('en-IN')} ({pct}%)
-                            </span>
-                          </div>
-                          <div className="w-full bg-[#E5DCD3] h-2 rounded-full overflow-hidden">
-                            <div
-                              className="bg-gradient-to-r from-[#2C857B] to-[#1C6960] h-full rounded-full transition-all duration-500"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-4 mt-4 border-t border-[#EDE2D7] flex items-center justify-between gap-3">
-                        <div className="text-left">
-                          <span className="text-[10px] font-semibold text-[#82776E] block">Min Ticket</span>
-                          <span className="text-xs font-black text-[#2E231C]">
-                            ₹{(p.minInvestmentPerUser || 10000).toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                        <WorkspaceButton
-                          variant={isOpen ? 'teal' : 'outline'}
-                          size="sm"
-                          disabled={!isOpen}
-                          onClick={() => {
-                            setSelectedPoolForInvest(p);
-                            setInvestPledgeAmount(String(p.minInvestmentPerUser || 25000));
-                            setIsInvestModalOpen(true);
-                          }}
+                      return (
+                        <div
+                          key={deal._id || deal.fundingRequestId}
+                          className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:shadow-md transition-shadow flex flex-col justify-between gap-4"
                         >
-                          {isOpen ? 'Invest In Pool' : p.status}
-                        </WorkspaceButton>
-                      </div>
-                    </WorkspaceCard>
-                  </motion.div>
-                );
-              })}
+                          <div>
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                {deal.fundingRequestId || deal.refNumber}
+                              </span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800">
+                                {deal.status || 'APPROVED'}
+                              </span>
+                            </div>
+
+                            <h4 className="font-bold text-slate-900 dark:text-white text-base line-clamp-1">
+                              {deal.companyName || deal.businessName}
+                            </h4>
+
+                            <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-1">
+                              {deal.fundingPurpose}
+                            </p>
+
+                            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-3 text-xs">
+                              <div>
+                                <span className="text-[10px] text-slate-400 uppercase font-mono">Target Amount</span>
+                                <p className="font-bold text-slate-800 dark:text-slate-200">
+                                  {formatCurrencyINR(reqAmt)}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-slate-400 uppercase font-mono">Expected Return</span>
+                                <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                                  {deal.expectedReturns} ({deal.returnFrequency})
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-slate-400 uppercase font-mono">Duration</span>
+                                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                                  {deal.fundingDuration || '12 Months'}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-[10px] text-slate-400 uppercase font-mono">Ticket Range</span>
+                                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                                  {formatCurrencyINR(deal.minInvestmentAmount)} - {formatCurrencyINR(deal.maxInvestmentAmount)}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div className="mt-3">
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono mb-1">
+                                <span>Committed: {formatCurrencyINR(invested)}</span>
+                                <span>{progressPct}%</span>
+                              </div>
+                              <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                                <div
+                                  className="h-full bg-emerald-500 rounded-full transition-all"
+                                  style={{ width: `${progressPct}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenInvestModal(deal)}
+                            className="w-full py-2.5 rounded-xl bg-gradient-to-r from-[#2C857B] to-[#1C6960] hover:opacity-95 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-opacity"
+                          >
+                            <span>Invest Now</span>
+                            <ArrowRightIcon size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
 
-      {/* ========================================================
-          TAB 1: SUBMIT EXPRESSION OF INTEREST
-         ======================================================== */}
-      {activeTab === 'submit' && (
-        <div className="max-w-3xl mx-auto space-y-5">
-          {isSubmitted ? (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 350, damping: 25 }}
-            >
-              <WorkspaceCard
-                variant={submissionType === 'FUNDING' ? 'teal' : 'violet'}
-                className="text-center py-8 px-6 space-y-4"
-              >
-                <div
-                  className={`w-14 h-14 rounded-2xl text-white flex items-center justify-center mx-auto shadow-md ${
-                    submissionType === 'FUNDING'
-                      ? 'bg-gradient-to-br from-[#2C857B] to-[#1C6960]'
-                      : 'bg-gradient-to-br from-[#8064B1] to-[#6E529F]'
-                  }`}
-                >
-                  <CheckCircleIcon size={28} />
-                </div>
-
-                <div className="space-y-2 max-w-lg mx-auto">
-                  <span
-                    className={`inline-block px-3 py-1 rounded-lg text-xs font-mono font-bold border ${
-                      submissionType === 'FUNDING'
-                        ? 'bg-teal-50 text-teal-900 border-teal-300'
-                        : 'bg-purple-50 text-purple-900 border-purple-300'
-                    }`}
-                  >
-                    Reference: {submittedRef}
-                  </span>
-                  <h3 className="text-xl font-black text-[#2E231C]">
-                    {submissionType === 'FUNDING'
-                      ? 'Funding Request Submitted Successfully!'
-                      : 'Investor Profile Submitted Successfully!'}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-[#453A33] leading-relaxed">
-                    {submissionType === 'FUNDING'
-                      ? 'Your funding request has been submitted successfully. FIC will review your business details and share updates here.'
-                      : 'Your investor profile has been submitted successfully. FIC will review your details and update your verification status here.'}
-                  </p>
-                  <p className="text-xs text-[#6B5E55] leading-relaxed bg-white/70 p-3 rounded-xl border border-[#EDE2D7]">
-                    You can track your request status and latest updates anytime under <strong>"My Deal Requests & Status"</strong>.
-                  </p>
-                </div>
-
-                <div className="pt-2 flex flex-wrap justify-center gap-3">
-                  <WorkspaceButton
-                    variant={submissionType === 'FUNDING' ? 'teal' : 'violet'}
-                    size="md"
-                    onClick={() => setActiveTab('my_requests')}
-                    icon={<ArrowRightIcon size={14} />}
-                  >
-                    My Deal Requests & Status
-                  </WorkspaceButton>
-                  <WorkspaceButton
-                    variant="outline"
-                    size="md"
-                    onClick={() => {
-                      setIsSubmitted(false);
-                      setSubmittedRef('');
-                    }}
-                  >
-                    Submit Another Expression
-                  </WorkspaceButton>
-                </div>
-              </WorkspaceCard>
-            </motion.div>
-          ) : (
-            <>
-              {/* Submission Type Selection Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                {/* Option A: I Need Funding */}
-                <motion.div
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleSwitchSubmissionType('FUNDING')}
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-                    submissionType === 'FUNDING'
-                      ? 'border-[#2C857B] bg-gradient-to-br from-[#E0F4F0] to-[#FFFFFF] shadow-sm'
-                      : 'border-[#EDE2D7] bg-white hover:border-[#2C857B]/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                        submissionType === 'FUNDING'
-                          ? 'bg-[#2C857B] text-white shadow-xs'
-                          : 'bg-stone-100 text-[#453A33]'
-                      }`}
-                    >
-                      <HandCoinsIcon size={18} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-black text-[#2E231C]">Option A – I Need Funding</h4>
-                      <span className="text-[10px] font-bold text-[#1C6960] uppercase tracking-wider">
-                        Funding Seeker
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-[#453A33] leading-relaxed">
-                    I represent a business or startup looking for capital to grow, expand, or develop my business.
-                  </p>
-                </motion.div>
-
-                {/* Option B: I Want to Invest */}
-                <motion.div
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleSwitchSubmissionType('INVESTOR')}
-                  className={`p-4 rounded-2xl border-2 transition-all cursor-pointer ${
-                    submissionType === 'INVESTOR'
-                      ? 'border-[#8064B1] bg-gradient-to-br from-[#F5EEFB] to-[#FFFFFF] shadow-sm'
-                      : 'border-[#EDE2D7] bg-white hover:border-[#8064B1]/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 mb-2">
-                    <div
-                      className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                        submissionType === 'INVESTOR'
-                          ? 'bg-[#8064B1] text-white shadow-xs'
-                          : 'bg-stone-100 text-[#453A33]'
-                      }`}
-                    >
-                      <TrendingUpIcon size={18} />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-black text-[#2E231C]">Option B – I Want to Invest</h4>
-                      <span className="text-[10px] font-bold text-[#8064B1] uppercase tracking-wider">
-                        Investor Profile
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-[#453A33] leading-relaxed">
-                    I am an investor or represent an organization interested in investing in suitable businesses.
-                  </p>
-                </motion.div>
+          {/* SUB-TAB 2: MY INVESTMENTS (PHASE 4) */}
+          {investSubTab === 'my_investments' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  My Investment Portfolio & Yield Desk
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Track your deployed commitments, review status, complete payments, and monitor returns.
+                </p>
               </div>
 
-              {/* Form 1: Funding Seeker Form */}
-              {submissionType === 'FUNDING' && (
-                <WorkspaceCard variant="default">
-                  <div className="border-b border-[#EDE2D7] pb-3 mb-4">
-                    <h3 className="text-base sm:text-lg font-black text-[#2E231C]">Funding Request</h3>
-                    <p className="text-xs text-[#6B5E55] mt-0.5">
-                      Share your business details and explain how much funding you need and how you plan to use it.
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleSubmitFunding} className="space-y-5">
-                    {/* SECTION A: Business Information */}
-                    <div className="space-y-3">
-                      <span className="text-xs font-black text-[#1C6960] uppercase tracking-wider block border-b border-[#EDE2D7]/60 pb-1">
-                        Section A – Business Information
-                      </span>
-                      {linkedIdeaRequestId && (
-                        <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-xs text-teal-800 font-semibold flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold">Linked Business Idea:</span>
-                            <span className="font-mono bg-teal-100 text-teal-900 px-2 py-0.5 rounded">{linkedIdeaRequestId}</span>
-                            <span>Details have been pre-filled from your approved idea.</span>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        <div className="space-y-1">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            1. Business / Company Name <span className="text-[#C65638]">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Enter legal business name"
-                            value={fundingBusinessName}
-                            onChange={(e) => setFundingBusinessName(e.target.value)}
-                            required
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2C857B] bg-white text-[#2E231C]"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            2. Business Type <span className="text-[#C65638]">*</span>
-                          </label>
-                          <select
-                            value={fundingBusinessType}
-                            onChange={(e) => setFundingBusinessType(e.target.value)}
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] font-semibold focus:outline-none focus:ring-2 focus:ring-[#2C857B]"
+              {myInvestments.length === 0 ? (
+                <WorkspaceEmptyState
+                  title="No Active Investments"
+                  description="You haven't committed to any funding proposals yet. Explore the Need Funding tab to invest."
+                  icon={<TrendingUpIcon size={40} className="text-slate-400" />}
+                />
+              ) : (
+                <div className="space-y-4">
+                  {myInvestments.map((inv) => (
+                    <div
+                      key={inv._id || inv.investmentId}
+                      className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                            {inv.investmentId}
+                          </span>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            Ref: {inv.fundingRequestRef}
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                              inv.status === 'APPROVED' || inv.status === 'PAYMENT_PENDING'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300'
+                                : inv.status === 'ACTIVE'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                : inv.status === 'COMPLETED'
+                                ? 'bg-purple-100 text-purple-800 border border-purple-200 dark:bg-purple-950/60 dark:text-purple-300'
+                                : 'bg-slate-100 text-slate-800 border border-slate-200 dark:bg-slate-800 dark:text-slate-300'
+                            }`}
                           >
-                            <option value="Startup">Startup</option>
-                            <option value="Proprietorship">Proprietorship</option>
-                            <option value="Partnership">Partnership</option>
-                            <option value="LLP">LLP</option>
-                            <option value="Private Limited Company">Private Limited Company</option>
-                            <option value="Public Limited Company">Public Limited Company</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        <div className="space-y-1">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            3. Industry / Business Sector <span className="text-[#C65638]">*</span>
-                          </label>
-                          <select
-                            value={fundingIndustry}
-                            onChange={(e) => setFundingIndustry(e.target.value)}
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] font-semibold focus:outline-none focus:ring-2 focus:ring-[#2C857B]"
-                          >
-                            <option value="Manufacturing">Manufacturing</option>
-                            <option value="Technology">Technology</option>
-                            <option value="Agriculture">Agriculture</option>
-                            <option value="Healthcare">Healthcare</option>
-                            <option value="Retail / Franchise">Retail / Franchise</option>
-                            <option value="Logistics">Logistics</option>
-                            <option value="Education">Education</option>
-                            <option value="Renewable Energy">Renewable Energy</option>
-                            <option value="Other">Other</option>
-                          </select>
+                            {inv.status}
+                          </span>
                         </div>
 
-                        <div className="space-y-1">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            5. Business Stage <span className="text-[#C65638]">*</span>
-                          </label>
-                          <select
-                            value={fundingStage}
-                            onChange={(e) => setFundingStage(e.target.value)}
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] font-semibold focus:outline-none focus:ring-2 focus:ring-[#2C857B]"
-                          >
-                            <option value="Idea Stage">Idea Stage</option>
-                            <option value="Startup / Pre-Revenue">Startup / Pre-Revenue</option>
-                            <option value="Early Revenue">Early Revenue</option>
-                            <option value="Growing Business">Growing Business</option>
-                            <option value="Established Business">Established Business</option>
-                          </select>
-                        </div>
-                      </div>
+                        <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                          {inv.projectName}
+                        </h4>
 
-                      {/* Location: PIN Code first + Country, State, District, City */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            4. Business Location <span className="text-[#C65638]">*</span>
-                          </label>
-                          {pinLookupMsg && (
-                            <span className={`text-[11px] font-semibold ${isLookingUpPin ? 'text-[#8064B1] animate-pulse' : 'text-[#2E7D32]'}`}>{pinLookupMsg}</span>
+                        <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap">
+                          <span>Committed: <b className="text-slate-900 dark:text-white">{formatCurrencyINR(inv.requestedAmount)}</b></span>
+                          {inv.paidAmount > 0 && (
+                            <span>Paid: <b className="text-emerald-600 dark:text-emerald-400">{formatCurrencyINR(inv.paidAmount)}</b></span>
                           )}
+                          <span>Expected Return: <b className="text-emerald-600 dark:text-emerald-400">{inv.expectedReturns} ({inv.returnFrequency})</b></span>
+                          <span>Tenure: {inv.fundingDuration}</span>
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                          <div className="col-span-2 sm:col-span-1">
-                            <input
-                              type="text"
-                              maxLength={6}
-                              placeholder="PIN Code *"
-                              value={fundingPinCode}
-                              onChange={(e) => handleFundingPinCodeChange(e.target.value)}
-                              required
-                              className="w-full text-xs p-2.5 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] font-semibold focus:outline-none focus:ring-1 focus:ring-[#2C857B]"
-                            />
-                          </div>
-                          <input
-                            type="text"
-                            placeholder="Country"
-                            value={fundingCountry}
-                            onChange={(e) => setFundingCountry(e.target.value)}
-                            required
-                            className="text-xs p-2.5 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C]"
-                          />
-                          <input
-                            type="text"
-                            placeholder="State"
-                            value={fundingState}
-                            onChange={(e) => setFundingState(e.target.value)}
-                            required
-                            className="text-xs p-2.5 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C]"
-                          />
-                          <input
-                            type="text"
-                            placeholder="District"
-                            value={fundingDistrict}
-                            onChange={(e) => setFundingDistrict(e.target.value)}
-                            className="text-xs p-2.5 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C]"
-                          />
-                          <input
-                            type="text"
-                            placeholder="City"
-                            value={fundingCity}
-                            onChange={(e) => setFundingCity(e.target.value)}
-                            required
-                            className="text-xs p-2.5 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C]"
-                          />
+
+                        {/* Progress stage indicator */}
+                        <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1.5 pt-1">
+                          <ClockIcon size={12} />
+                          <span>Timeline Stage: {inv.status}</span>
                         </div>
                       </div>
-                    </div>
 
-                    {/* SECTION B: Funding Requirement */}
-                    <div className="space-y-3">
-                      <span className="text-xs font-black text-[#1C6960] uppercase tracking-wider block border-b border-[#EDE2D7]/60 pb-1">
-                        Section B – Funding Requirement
-                      </span>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between">
-                            <label className="text-xs font-black text-[#2E231C]">
-                              6. Funding Amount Required (INR) <span className="text-[#C65638]">*</span>
-                            </label>
-                            <span className="text-[11px] font-black text-[#1C6960]">
-                              {formatCurrencyINR(Number(fundingAmount) || 0)}
-                            </span>
-                          </div>
-                          <input
-                            type="number"
-                            min="50000"
-                            step="50000"
-                            placeholder="e.g. 5000000"
-                            value={fundingAmount}
-                            onChange={(e) => setFundingAmount(e.target.value)}
-                            required
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2C857B] bg-white text-[#2E231C]"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            9. Current Annual Revenue <span className="text-[11px] font-normal text-[#6B5E55]">(Optional)</span>
-                          </label>
-                          <select
-                            value={fundingRevenue}
-                            onChange={(e) => setFundingRevenue(e.target.value)}
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] font-semibold focus:outline-none focus:ring-2 focus:ring-[#2C857B]"
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* If Admin Approved -> Show "Pay Amount" */}
+                        {(inv.status === 'APPROVED' || inv.status === 'PAYMENT_PENDING') && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPayModal(inv)}
+                            className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-xs"
                           >
-                            <option value="Pre-Revenue">Pre-Revenue</option>
-                            <option value="Below ₹10 Lakhs">Below ₹10 Lakhs</option>
-                            <option value="₹10–50 Lakhs">₹10–50 Lakhs</option>
-                            <option value="₹50 Lakhs–₹1 Crore">₹50 Lakhs–₹1 Crore</option>
-                            <option value="₹1–5 Crores">₹1–5 Crores</option>
-                            <option value="Above ₹5 Crores">Above ₹5 Crores</option>
-                            <option value="Prefer to discuss privately">Prefer to discuss privately</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* 7. Funding Purpose */}
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-black text-[#2E231C] block">
-                          7. Funding Purpose <span className="text-[#C65638]">*</span>
-                        </label>
-                        <div className="flex flex-wrap gap-1.5">
-                          {[
-                            'Business Expansion',
-                            'Working Capital',
-                            'Machinery / Equipment Purchase',
-                            'Technology / Product Development',
-                            'Marketing & Sales',
-                            'New Branch / Location',
-                            'Infrastructure Development',
-                            'Other'
-                          ].map((purp) => {
-                            const isSel = fundingPurpose.includes(purp);
-                            return (
-                              <button
-                                type="button"
-                                key={purp}
-                                onClick={() => toggleFundingPurpose(purp)}
-                                className={`text-[11px] px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                                  isSel
-                                    ? 'bg-[#2C857B] text-white border-transparent font-bold'
-                                    : 'bg-white text-[#453A33] border-[#EDE2D7] hover:bg-[#E0F4F0]'
-                                }`}
-                              >
-                                {isSel ? '✓ ' : '+ '}
-                                {purp}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* 8. Explain How You Will Use the Funding */}
-                      <div className="space-y-1">
-                        <label className="text-xs font-black text-[#2E231C] block">
-                          8. Explain How You Will Use the Funding <span className="text-[#C65638]">*</span>
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={fundingUseExplanation}
-                          onChange={(e) => setFundingUseExplanation(e.target.value)}
-                          required
-                          placeholder="Explain why you need funding and how you plan to use it. For example, machinery purchase, business expansion, working capital, or product development."
-                          className="w-full text-xs sm:text-[13px] p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2C857B] bg-white text-[#2E231C] leading-relaxed"
-                        />
-                      </div>
-
-                      {/* 10. Business Description */}
-                      <div className="space-y-1">
-                        <label className="text-xs font-black text-[#2E231C] block">
-                          10. Business Description <span className="text-[#C65638]">*</span>
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={fundingDescription}
-                          onChange={(e) => setFundingDescription(e.target.value)}
-                          required
-                          placeholder="Briefly describe your business, products or services, customers, and current operations."
-                          className="w-full text-xs sm:text-[13px] p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2C857B] bg-white text-[#2E231C] leading-relaxed"
-                        />
-                      </div>
-                    </div>
-
-                    {/* SECTION C: Supporting Documents */}
-                    <div className="space-y-2">
-                      <span className="text-xs font-black text-[#1C6960] uppercase tracking-wider block border-b border-[#EDE2D7]/60 pb-1">
-                        Section C – Supporting Documents (Optional Initially)
-                      </span>
-                      <p className="text-[11px] text-[#6B5E55]">
-                        Allowed: PDF, JPG, JPEG, PNG, WEBP, DOC/DOCX, XLS/XLSX, PPT/PPTX, TXT (max 15MB). Original files are preserved intact; images get optimized previews.
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-                        <input
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-                          disabled={isUploadingFundingDoc}
-                          onChange={async (e) => {
-                            const f = e.target.files?.[0];
-                            if (!f) return;
-                            setIsUploadingFundingDoc(true);
-                            try {
-                              const uploaded = await uploadDocumentFile(f, {
-                                entityType: 'INVESTMENT',
-                                documentCategory: 'FUNDING_PITCH',
-                                documentLabel: f.name
-                              });
-                              setFundingUploadedDocs((prev) => [...prev, uploaded]);
-                            } catch (err: any) {
-                              alert(err?.message || 'Document upload failed.');
-                            } finally {
-                              setIsUploadingFundingDoc(false);
-                              e.target.value = '';
-                            }
-                          }}
-                          className="w-full text-xs p-2 border border-dashed border-[#2C857B]/50 rounded-xl bg-white text-[#2E231C] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#2C857B]/10 file:text-[#1C6960]"
-                        />
-                        {isUploadingFundingDoc && (
-                          <span className="text-[11px] font-bold text-[#1C6960] shrink-0">Uploading...</span>
+                            Pay Amount ({formatCurrencyINR(inv.pendingPaymentAmount || inv.approvedAmount || inv.requestedAmount)})
+                          </button>
                         )}
-                      </div>
-                      {fundingUploadedDocs.length > 0 && (
-                        <div className="space-y-1.5 pt-1">
-                          {fundingUploadedDocs.map((doc) => (
-                            <div
-                              key={doc.documentId}
-                              className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[#F4FBF9] border border-[#2C857B]/25 text-xs"
-                            >
-                              <div className="min-w-0">
-                                <div className="font-bold text-[#2E231C] truncate">{doc.originalFileName}</div>
-                                <div className="text-[10px] text-[#6B5E55]">
-                                  {(doc.originalFileSize / 1024).toFixed(1)} KB
-                                  {doc.compressionRatio && doc.compressionRatio > 0
-                                    ? ` · Preview optimized (${doc.compressionRatio}% smaller)`
-                                    : ' · Exact original preserved'}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => setViewerAsset(doc)}
-                                  className="px-2.5 py-1 rounded-lg bg-white border border-[#EDE2D7] text-[#1C6960] font-bold text-[11px]"
-                                >
-                                  View
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => downloadOriginalDocument(doc.documentId, doc.originalFileName)}
-                                  className="px-2.5 py-1 rounded-lg bg-[#1C6960] text-white font-bold text-[11px]"
-                                >
-                                  Download
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Submit CTA */}
-                    <div className="pt-2 flex justify-end">
-                      <WorkspaceButton
-                        variant="teal"
-                        size="md"
-                        type="submit"
-                        loading={isLoading}
-                        icon={<ArrowRightIcon size={14} />}
-                      >
-                        Submit Funding Request
-                      </WorkspaceButton>
-                    </div>
-                  </form>
-                </WorkspaceCard>
-              )}
-
-              {/* Form 2: Investor Form */}
-              {submissionType === 'INVESTOR' && (
-                <WorkspaceCard variant="default">
-                  <div className="border-b border-[#EDE2D7] pb-3 mb-4">
-                    <h3 className="text-base sm:text-lg font-black text-[#2E231C]">
-                      Investor Profile & Investment Interest
-                    </h3>
-                    <p className="text-xs text-[#6B5E55] mt-0.5">
-                      Share your investment preferences so FIC can understand the types of businesses you are interested in.
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleSubmitInvestor} className="space-y-5">
-                    {/* SECTION A: Investor Information */}
-                    <div className="space-y-3">
-                      <span className="text-xs font-black text-[#8064B1] uppercase tracking-wider block border-b border-[#EDE2D7]/60 pb-1">
-                        Section A – Investor Information
-                      </span>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        <div className="space-y-1">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            1. Investor Type <span className="text-[#C65638]">*</span>
-                          </label>
-                          <select
-                            value={invType}
-                            onChange={(e) => setInvType(e.target.value)}
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] font-semibold focus:outline-none focus:ring-2 focus:ring-[#8064B1]"
-                          >
-                            <option value="Individual Investor">Individual Investor</option>
-                            <option value="Company / Corporate Investor">Company / Corporate Investor</option>
-                            <option value="Investment Firm">Investment Firm</option>
-                            <option value="Family Office">Family Office</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            2. Investor / Organization Name <span className="text-[#C65638]">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Enter individual or firm name"
-                            value={invName}
-                            onChange={(e) => setInvName(e.target.value)}
-                            required
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8064B1] bg-white text-[#2E231C]"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        <div className="space-y-1">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            3. Country <span className="text-[#C65638]">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g. India"
-                            value={invCountry}
-                            onChange={(e) => setInvCountry(e.target.value)}
-                            required
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C]"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            4. State / City <span className="text-[#C65638]">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Chennai, Tamil Nadu"
-                            value={invStateCity}
-                            onChange={(e) => setInvStateCity(e.target.value)}
-                            required
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C]"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-black text-[#2E231C] block">
-                          5. Investor Profile <span className="text-[#C65638]">*</span>
-                        </label>
-                        <textarea
-                          rows={3}
-                          value={invProfile}
-                          onChange={(e) => setInvProfile(e.target.value)}
-                          required
-                          placeholder="Briefly introduce yourself or your organization and your investment interests."
-                          className="w-full text-xs sm:text-[13px] p-3 border border-[#EDE2D7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8064B1] bg-white text-[#2E231C] leading-relaxed"
-                        />
-                      </div>
-                    </div>
-
-                    {/* SECTION B: Investment Capacity */}
-                    <div className="space-y-3">
-                      <span className="text-xs font-black text-[#8064B1] uppercase tracking-wider block border-b border-[#EDE2D7]/60 pb-1">
-                        Section B – Investment Capacity & Focus
-                      </span>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                        <div className="space-y-1">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            6. Total Investment Capacity <span className="text-[#C65638]">*</span>
-                          </label>
-                          <select
-                            value={invTotalCapacity}
-                            onChange={(e) => setInvTotalCapacity(e.target.value)}
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] font-semibold focus:outline-none focus:ring-2 focus:ring-[#8064B1]"
-                          >
-                            <option value="Below ₹10 Lakhs">Below ₹10 Lakhs</option>
-                            <option value="₹10–25 Lakhs">₹10–25 Lakhs</option>
-                            <option value="₹25–50 Lakhs">₹25–50 Lakhs</option>
-                            <option value="₹50 Lakhs–₹1 Crore">₹50 Lakhs–₹1 Crore</option>
-                            <option value="₹1–5 Crores">₹1–5 Crores</option>
-                            <option value="₹5–10 Crores">₹5–10 Crores</option>
-                            <option value="Above ₹10 Crores">Above ₹10 Crores</option>
-                            <option value="Prefer to discuss privately">Prefer to discuss privately</option>
-                          </select>
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-xs font-black text-[#2E231C] block">
-                            7. Preferred Investment Amount Per Business <span className="text-[#C65638]">*</span>
-                          </label>
-                          <select
-                            value={invPreferredTicket}
-                            onChange={(e) => setInvPreferredTicket(e.target.value)}
-                            className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] font-semibold focus:outline-none focus:ring-2 focus:ring-[#8064B1]"
-                          >
-                            <option value="Below ₹10 Lakhs">Below ₹10 Lakhs</option>
-                            <option value="₹10–25 Lakhs">₹10–25 Lakhs</option>
-                            <option value="₹25–50 Lakhs">₹25–50 Lakhs</option>
-                            <option value="₹50 Lakhs–₹1 Crore">₹50 Lakhs–₹1 Crore</option>
-                            <option value="₹1–3 Crores">₹1–3 Crores</option>
-                            <option value="Above ₹3 Crores">Above ₹3 Crores</option>
-                            <option value="Flexible">Flexible</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* 8. Preferred Industry Sectors */}
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-black text-[#2E231C] block">
-                          8. Preferred Industry Sectors <span className="text-[#C65638]">*</span>
-                        </label>
-                        <div className="flex flex-wrap gap-1.5">
-                          {[
-                            'Manufacturing',
-                            'Technology',
-                            'Agriculture',
-                            'Healthcare',
-                            'Retail / Franchise',
-                            'Logistics',
-                            'Education',
-                            'Renewable Energy',
-                            'Other'
-                          ].map((sec) => {
-                            const isSel = invPreferredSectors.includes(sec);
-                            return (
-                              <button
-                                type="button"
-                                key={sec}
-                                onClick={() => toggleInvSector(sec)}
-                                className={`text-[11px] px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                                  isSel
-                                    ? 'bg-[#8064B1] text-white border-transparent font-bold'
-                                    : 'bg-white text-[#453A33] border-[#EDE2D7] hover:bg-[#F5EEFB]'
-                                }`}
-                              >
-                                {isSel ? '✓ ' : '+ '}
-                                {sec}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* 9. Preferred Business Stage */}
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-black text-[#2E231C] block">
-                          9. Preferred Business Stage <span className="text-[#C65638]">*</span>
-                        </label>
-                        <div className="flex flex-wrap gap-1.5">
-                          {[
-                            'Startup / Idea Stage',
-                            'Early Stage',
-                            'Revenue Generating Business',
-                            'Growth Stage',
-                            'Established Business'
-                          ].map((stg) => {
-                            const isSel = invPreferredStages.includes(stg);
-                            return (
-                              <button
-                                type="button"
-                                key={stg}
-                                onClick={() => toggleInvStage(stg)}
-                                className={`text-[11px] px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                                  isSel
-                                    ? 'bg-[#8064B1] text-white border-transparent font-bold'
-                                    : 'bg-white text-[#453A33] border-[#EDE2D7] hover:bg-[#F5EEFB]'
-                                }`}
-                              >
-                                {isSel ? '✓ ' : '+ '}
-                                {stg}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* SECTION C: Investment Preference */}
-                    <div className="space-y-3">
-                      <span className="text-xs font-black text-[#8064B1] uppercase tracking-wider block border-b border-[#EDE2D7]/60 pb-1">
-                        Section C – Investment Preference & Experience
-                      </span>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-black text-[#2E231C] block">
-                          10. Investment Type <span className="text-[#C65638]">*</span>
-                        </label>
-                        <select
-                          value={invInvestmentType}
-                          onChange={(e) => setInvInvestmentType(e.target.value)}
-                          className="w-full text-xs sm:text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] font-semibold focus:outline-none focus:ring-2 focus:ring-[#8064B1]"
+                        <button
+                          type="button"
+                          onClick={() => setSelectedInvestmentDetail(inv)}
+                          className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 text-xs font-semibold"
                         >
-                          <option value="Equity Investment">Equity Investment</option>
-                          <option value="Debt Financing">Debt Financing</option>
-                          <option value="Strategic Investment">Strategic Investment</option>
-                          <option value="Open to Discussion">Open to Discussion</option>
-                          <option value="Other">Other</option>
-                        </select>
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-black text-[#2E231C] block">
-                          11. Investment Experience <span className="text-[11px] font-normal text-[#6B5E55]">(Optional)</span>
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={invExperience}
-                          onChange={(e) => setInvExperience(e.target.value)}
-                          placeholder="Briefly describe your previous investment experience, if any."
-                          className="w-full text-xs sm:text-[13px] p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] leading-relaxed"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-xs font-black text-[#2E231C] block">
-                          12. Additional Investment Preferences <span className="text-[11px] font-normal text-[#6B5E55]">(Optional)</span>
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={invAdditionalPreferences}
-                          onChange={(e) => setInvAdditionalPreferences(e.target.value)}
-                          placeholder="Describe any specific business types, locations, requirements, or conditions you prefer."
-                          className="w-full text-xs sm:text-[13px] p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] leading-relaxed"
-                        />
+                          View Details
+                        </button>
                       </div>
                     </div>
-
-                    {/* SECTION D: Verification Documents */}
-                    <div className="space-y-2">
-                      <span className="text-xs font-black text-[#8064B1] uppercase tracking-wider block border-b border-[#EDE2D7]/60 pb-1">
-                        Section D – Verification Documents (Optional Initially)
-                      </span>
-                      <p className="text-[11px] text-[#6B5E55]">
-                        Allowed file types: PDF, PNG, JPG (max 10MB). Examples: Entity Identity Verification, Registration Documents, Authorized Proof.
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-                        <input
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt"
-                          disabled={isUploadingInvDoc}
-                          onChange={async (e) => {
-                            const f = e.target.files?.[0];
-                            if (!f) return;
-                            setIsUploadingInvDoc(true);
-                            try {
-                              const uploaded = await uploadDocumentFile(f, {
-                                entityType: 'INVESTMENT',
-                                documentCategory: 'INVESTMENT_DOC',
-                                documentLabel: f.name
-                              });
-                              setInvUploadedDocs((prev) => [...prev, uploaded]);
-                            } catch (err: any) {
-                              alert(err?.message || 'Document upload failed.');
-                            } finally {
-                              setIsUploadingInvDoc(false);
-                              e.target.value = '';
-                            }
-                          }}
-                          className="w-full text-xs p-2 border border-dashed border-[#2C857B]/50 rounded-xl bg-white text-[#2E231C] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#2C857B]/10 file:text-[#1C6960]"
-                        />
-                        {isUploadingInvDoc && (
-                          <span className="text-[11px] font-bold text-[#1C6960] shrink-0">Uploading...</span>
-                        )}
-                      </div>
-                      {invUploadedDocs.length > 0 && (
-                        <div className="space-y-1.5 pt-1">
-                          {invUploadedDocs.map((doc) => (
-                            <div
-                              key={doc.documentId}
-                              className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-[#F4FBF9] border border-[#2C857B]/25 text-xs"
-                            >
-                              <div className="min-w-0">
-                                <div className="font-bold text-[#2E231C] truncate">{doc.originalFileName}</div>
-                                <div className="text-[10px] text-[#6B5E55]">
-                                  {(doc.originalFileSize / 1024).toFixed(1)} KB · Original preserved
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => setViewerAsset(doc)}
-                                  className="px-2.5 py-1 rounded-lg bg-white border border-[#EDE2D7] text-[#1C6960] font-bold text-[11px]"
-                                >
-                                  View
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => downloadOriginalDocument(doc.documentId, doc.originalFileName)}
-                                  className="px-2.5 py-1 rounded-lg bg-[#1C6960] text-white font-bold text-[11px]"
-                                >
-                                  Download
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Submit CTA */}
-                    <div className="pt-2 flex justify-end">
-                      <WorkspaceButton
-                        variant="violet"
-                        size="md"
-                        type="submit"
-                        loading={isLoading}
-                        icon={<ArrowRightIcon size={14} />}
-                      >
-                        Submit Investor Profile
-                      </WorkspaceButton>
-                    </div>
-                  </form>
-                </WorkspaceCard>
+                  ))}
+                </div>
               )}
-            </>
+            </div>
           )}
-        </div>
-      )}
 
-      {/* ========================================================
-          TAB 2: MY DEAL REQUESTS & STATUS
-         ======================================================== */}
-      {activeTab === 'my_requests' && (
-        <div className="space-y-6 max-w-4xl mx-auto">
-          {/* USER INVESTMENTS IN COMMUNITY POOLS & YIELD RETURNS */}
-          {myInvestments.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-black text-[#2E231C] uppercase tracking-wider flex items-center gap-2">
-                  <TrendingUpIcon size={16} className="text-[#2C857B]" />
-                  <span>My Active Pool Investments & Payout Returns</span>
-                </h4>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                  {myInvestments.length} Pledged
-                </span>
+          {/* SUB-TAB 3: COMMUNITY POOLS */}
+          {investSubTab === 'pools' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Community Crowdfunding Pools
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Participate in collective micro-investments with fixed annual yields.
+                </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {myInvestments.map((inv, idx) => (
-                  <WorkspaceCard key={idx} variant="default" className="p-4 border border-[#EDE2D7] space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <span className="text-[10px] font-mono font-bold text-stone-600 block">{inv.poolCode}</span>
-                        <h5 className="text-sm font-black text-[#2E231C]">{inv.poolTitle}</h5>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {pools.map((pool) => (
+                  <div
+                    key={pool._id || pool.poolCode}
+                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col justify-between gap-4"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600">
+                          {pool.poolCode}
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+                          {pool.status}
+                        </span>
                       </div>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                          inv.payoutStatus === 'COMPLETED'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : inv.payoutStatus === 'DISBURSED'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        Payout: {inv.payoutStatus}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 p-2 rounded-xl bg-[#FAF7F2] text-center">
-                      <div>
-                        <span className="text-[9px] text-[#82776E] block uppercase font-bold">Invested</span>
-                        <span className="text-xs font-black text-[#2E231C]">₹{inv.investedAmount?.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div>
-                        <span className="text-[9px] text-[#82776E] block uppercase font-bold">Yield ({inv.annualYieldPercent}%)</span>
-                        <span className="text-xs font-black text-[#2C857B]">+₹{inv.expectedInterest?.toLocaleString('en-IN')}</span>
-                      </div>
-                      <div>
-                        <span className="text-[9px] text-[#82776E] block uppercase font-bold">Total Maturity</span>
-                        <span className="text-xs font-black text-[#1C6960]">₹{inv.totalMaturityAmount?.toLocaleString('en-IN')}</span>
+                      <h4 className="font-bold text-slate-900 dark:text-white text-base">
+                        {pool.title}
+                      </h4>
+                      <p className="text-xs text-slate-500 line-clamp-2 mt-1">
+                        {pool.description}
+                      </p>
+                      <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-400">Yield</span>
+                          <p className="font-bold text-emerald-600">{pool.investorAnnualYieldPercent}% p.a.</p>
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-slate-400">Target</span>
+                          <p className="font-bold text-slate-800 dark:text-slate-200">{formatCurrencyINR(pool.targetAmount)}</p>
+                        </div>
                       </div>
                     </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-[#6B5E55] pt-1 border-t border-[#EDE2D7]/60">
-                      <span>Ref: {inv.transactionReference}</span>
-                      <span>Tenure: {inv.tenureMonths} Mo</span>
-                    </div>
-                  </WorkspaceCard>
+                  </div>
                 ))}
               </div>
             </div>
           )}
+        </div>
+      )}
 
-          {/* Controls: Search + Filter Pills */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-            {/* Filter Pills */}
-            <div className="flex items-center gap-1.5 p-1 bg-stone-100/80 rounded-xl border border-[#EDE2D7]">
-              {(['ALL', 'FUNDING', 'INVESTOR'] as const).map((flt) => (
+      {/* ========================================================
+          MAIN NAV 2: FUNDING VIEW (PHASE 1 & 2)
+         ======================================================== */}
+      {mainNav === 'funding' && (
+        <div className="space-y-6">
+          {/* Submission Form / Review / Wizard */}
+          {showFundingForm ? (
+            <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-md">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                    {fundingStep === 'form' ? 'Submit Funding Proposal' : 'Review & Confirm Funding Proposal'}
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    {fundingStep === 'form'
+                      ? 'Please fill in all 8 mandatory fields with accurate business details.'
+                      : 'Please verify all details before submitting to FIC Admin for verification.'}
+                  </p>
+                </div>
                 <button
                   type="button"
-                  key={flt}
-                  onClick={() => setListFilter(flt)}
-                  className={`text-xs px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
-                    listFilter === flt
-                      ? 'bg-white text-[#2E231C] shadow-xs'
-                      : 'text-[#6B5E55] hover:text-[#2E231C]'
-                  }`}
+                  onClick={() => {
+                    setShowFundingForm(false);
+                    setFundingStep('form');
+                  }}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 text-xs font-semibold"
                 >
-                  {flt === 'ALL' ? 'All Requests' : flt === 'FUNDING' ? 'Funding Requests' : 'Investor Profiles'}
+                  Cancel
                 </button>
-              ))}
-            </div>
+              </div>
 
-            {/* Search */}
-            <div className="relative flex-1 sm:max-w-xs">
-              <SearchIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B5E55]" />
-              <input
-                type="text"
-                placeholder="Search by name or reference..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-white border border-[#EDE2D7] rounded-xl text-xs text-[#2E231C] placeholder-[#82776E]/70 focus:outline-none focus:ring-2 focus:ring-[#2C857B]"
-              />
-            </div>
-          </div>
+              {fundingStep === 'form' ? (
+                <form onSubmit={handleProceedToReview} className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    {/* Field 1: Project / Company Name */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                        1. Project / Company Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={formCompany}
+                        onChange={(e) => setFormCompany(e.target.value)}
+                        placeholder="e.g. Acme Technologies Pvt Ltd"
+                        className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
+                          formErrors.company ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                        } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
+                      />
+                      {formErrors.company && <p className="text-[11px] text-rose-500 mt-1">{formErrors.company}</p>}
+                    </div>
 
-          {/* List Cards */}
-          <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {filteredDealItems.length === 0 ? (
-                <motion.div
-                  key="empty-deals"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  <WorkspaceEmptyState
-                    icon={<FileTextIcon size={28} />}
-                    title="No deal requests found"
-                    description="You haven't submitted any funding requests or investor profiles matching the criteria."
-                    actionText="Submit Expression of Interest"
-                    onAction={() => setActiveTab('submit')}
-                    accent="teal"
-                  />
-                </motion.div>
-              ) : (
-                filteredDealItems.map((item) => {
-                  const isFunding = item.type === 'FUNDING';
-                  return (
-                    <motion.div
-                      key={item.id}
-                      layout
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -8 }}
-                      transition={{ duration: 0.2 }}
+                    {/* Field 2: Funding Duration */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                        2. Funding Duration *
+                      </label>
+                      <select
+                        value={formDuration}
+                        onChange={(e) => {
+                          setFormDuration(e.target.value);
+                          setFormDurationMonths(parseInt(e.target.value, 10) || 12);
+                        }}
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
+                      >
+                        <option value="6 Months">6 Months</option>
+                        <option value="12 Months">12 Months (1 Year)</option>
+                        <option value="18 Months">18 Months</option>
+                        <option value="24 Months">24 Months (2 Years)</option>
+                        <option value="36 Months">36 Months (3 Years)</option>
+                      </select>
+                    </div>
+
+                    {/* Field 3: Required Funding Amount */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                        3. Required Funding Amount (₹) *
+                      </label>
+                      <input
+                        type="number"
+                        min="1000"
+                        value={formFundingAmount}
+                        onChange={(e) => setFormFundingAmount(e.target.value)}
+                        placeholder="e.g. 500000"
+                        className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
+                          formErrors.fundingAmount ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                        } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
+                      />
+                      {formErrors.fundingAmount && (
+                        <p className="text-[11px] text-rose-500 mt-1">{formErrors.fundingAmount}</p>
+                      )}
+                      {formFundingAmount && !isNaN(Number(formFundingAmount)) && (
+                        <p className="text-[10px] text-slate-400 font-mono mt-1">
+                          In Words: {formatCurrencyINR(Number(formFundingAmount))}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Field 4 & 5: Min & Max Ticket */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                          4. Min Ticket (₹) *
+                        </label>
+                        <input
+                          type="number"
+                          value={formMinInvestment}
+                          onChange={(e) => setFormMinInvestment(e.target.value)}
+                          placeholder="e.g. 25000"
+                          className={`w-full px-3 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
+                            formErrors.minInvestment ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                          } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                          5. Max Ticket (₹) *
+                        </label>
+                        <input
+                          type="number"
+                          value={formMaxInvestment}
+                          onChange={(e) => setFormMaxInvestment(e.target.value)}
+                          placeholder="e.g. 200000"
+                          className={`w-full px-3 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
+                            formErrors.maxInvestment ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                          } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Field 6: Expected Returns & Return Frequency */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                        6. Expected Return Rate (% p.a.) *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={formReturnRate}
+                        onChange={(e) => setFormReturnRate(e.target.value)}
+                        placeholder="e.g. 15"
+                        className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
+                          formErrors.returns ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                        } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                        Return Payout Frequency *
+                      </label>
+                      <select
+                        value={formReturnFrequency}
+                        onChange={(e: any) => setFormReturnFrequency(e.target.value)}
+                        className="w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
+                      >
+                        <option value="MONTHLY">Monthly Returns</option>
+                        <option value="QUARTERLY">Quarterly Returns</option>
+                        <option value="YEARLY">Yearly Returns</option>
+                        <option value="MATURITY">One-Time at Maturity</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Field 7: Funding Purpose */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                      7. Funding Purpose *
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={formPurpose}
+                      onChange={(e) => setFormPurpose(e.target.value)}
+                      placeholder="Explain how funds will be deployed (e.g. Working Capital, Equipment, Team Expansion, Marketing, Operations)..."
+                      className={`w-full px-3.5 py-2.5 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border ${
+                        formErrors.purpose ? 'border-rose-400' : 'border-slate-200 dark:border-slate-700'
+                      } focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]`}
+                    />
+                    {formErrors.purpose && <p className="text-[11px] text-rose-500 mt-1">{formErrors.purpose}</p>}
+                  </div>
+
+                  {/* Field 8: Required Documents */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                      8. Required Supporting Documents (Pitch Deck, Statutory, Audited Financials) *
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <label className="px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold cursor-pointer transition-colors flex items-center gap-2">
+                        <PlusIcon size={14} />
+                        <span>{isUploadingDoc ? 'Uploading...' : 'Upload Document (PDF, JPG, PNG)'}</span>
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={handleDocumentUpload}
+                          disabled={isUploadingDoc}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="text-[11px] text-slate-400 font-mono">Max 15MB</span>
+                    </div>
+
+                    {formDocuments.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {formDocuments.map((doc, idx) => (
+                          <div
+                            key={idx}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs flex items-center gap-2"
+                          >
+                            <FileTextIcon size={12} />
+                            <span className="truncate max-w-[200px]">{doc.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setFormDocuments(formDocuments.filter((_, i) => i !== idx))}
+                              className="text-rose-500 hover:text-rose-700 font-bold ml-1"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {formErrors.documents && <p className="text-[11px] text-rose-500 mt-1">{formErrors.documents}</p>}
+                  </div>
+
+                  <div className="pt-4 flex justify-end">
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#2C857B] to-[#1C6960] hover:opacity-95 text-white font-bold text-xs shadow-sm flex items-center gap-2"
                     >
-                      <WorkspaceCard variant="default" className="space-y-3 p-4 sm:p-5">
-                        {/* Title, Ref, & Status Badge */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#EDE2D7]/70 pb-3">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span>Proceed to Review & Confirm</span>
+                      <ArrowRightIcon size={14} />
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                /* REVIEW & SUBMIT STEP */
+                <div className="space-y-6">
+                  <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">Company / Project</span>
+                      <p className="font-bold text-slate-900 dark:text-white text-sm">{formCompany}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">Funding Duration</span>
+                      <p className="font-bold text-slate-900 dark:text-white text-sm">{formDuration}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">Required Amount</span>
+                      <p className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                        {formatCurrencyINR(Number(formFundingAmount))}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">Ticket Size Limits</span>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">
+                        Min: {formatCurrencyINR(Number(formMinInvestment))} | Max: {formatCurrencyINR(Number(formMaxInvestment))}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">Expected Returns</span>
+                      <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                        {formReturnRate}% p.a. ({formReturnFrequency})
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">Attached Documents</span>
+                      <p className="font-semibold text-slate-700 dark:text-slate-300">
+                        {formDocuments.length} document(s) attached
+                      </p>
+                    </div>
+                    <div className="col-span-full">
+                      <span className="text-[10px] text-slate-400 uppercase font-mono">Purpose of Funds</span>
+                      <p className="text-slate-700 dark:text-slate-300 mt-1 leading-relaxed">{formPurpose}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setFundingStep('form')}
+                      className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200"
+                    >
+                      ← Back & Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleFinalSubmitFunding}
+                      disabled={isSubmittingFunding}
+                      className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white font-bold text-xs shadow-md flex items-center gap-2"
+                    >
+                      <span>{isSubmittingFunding ? 'Submitting to Admin...' : 'Confirm & Submit Application'}</span>
+                      <CheckCircleIcon size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* MY FUNDING REQUESTS LIST */
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  My Funding Requests & Capital Tracker
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Track verification status, respond to change requests, and review commitments.
+                </p>
+              </div>
+
+              {myFundingRequests.length === 0 ? (
+                <WorkspaceEmptyState
+                  title="No Funding Proposals Submitted"
+                  description="Click 'Submit a Funding Request' to seek growth capital for your venture."
+                  icon={<FileTextIcon size={40} className="text-slate-400" />}
+                />
+              ) : (
+                <div className="space-y-4">
+                  {myFundingRequests.map((reqItem) => {
+                    const isChangesReq = reqItem.status === 'CHANGES_REQUESTED';
+                    const isApproved = reqItem.status === 'APPROVED' || reqItem.status === 'ACTIVE';
+
+                    return (
+                      <div
+                        key={reqItem._id || reqItem.fundingRequestId}
+                        className={`p-5 rounded-2xl bg-white dark:bg-slate-900 border transition-all ${
+                          isChangesReq
+                            ? 'border-amber-400 bg-amber-50/20 dark:border-amber-700 shadow-sm'
+                            : 'border-slate-200 dark:border-slate-800 shadow-xs'
+                        }`}
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div className="space-y-1.5 flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-[11px] font-mono font-bold px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                {reqItem.fundingRequestId || reqItem.refNumber}
+                              </span>
                               <span
-                                className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                                  isFunding
-                                    ? 'bg-teal-50 text-[#1C6960] border-teal-200'
-                                    : 'bg-purple-50 text-[#8064B1] border-purple-200'
+                                className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                                  isChangesReq
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                    : isApproved
+                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                    : 'bg-slate-100 text-slate-800'
                                 }`}
                               >
-                                {isFunding ? 'Funding Request' : 'Investor Profile'}
+                                {reqItem.status}
                               </span>
-                              <span className="text-[11px] text-[#6B5E55] font-mono font-bold bg-stone-100 px-2 py-0.5 rounded">
-                                Reference: {item.refNumber || item.id}
-                              </span>
-                            </div>
-                            <h3 className="text-base sm:text-lg font-black text-[#2E231C]">
-                              {isFunding ? item.businessName : item.investorName}
-                            </h3>
-                            <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-[#6B5E55]">
-                              {isFunding ? (
-                                <span>
-                                  <strong>Funding Required: </strong>
-                                  <span className="text-[#1C6960] font-black">
-                                    {formatCurrencyINR(item.fundingAmount)}
-                                  </span>
-                                </span>
-                              ) : (
-                                <span>
-                                  <strong>Preferred Investment Range: </strong>
-                                  <span className="text-[#8064B1] font-black">
-                                    {item.preferredTicketSize}
-                                  </span>
+                              {reqItem.versionHistory?.length > 1 && (
+                                <span className="text-[10px] font-mono text-slate-400">
+                                  v{reqItem.versionHistory.length}
                                 </span>
                               )}
-                              <span>•</span>
-                              <span>
-                                <strong>Submitted: </strong>
-                                {item.submittedDate}
-                              </span>
                             </div>
+
+                            <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                              {reqItem.companyName || reqItem.businessName}
+                            </h4>
+
+                            <p className="text-xs text-slate-500 line-clamp-1">
+                              {reqItem.fundingPurpose}
+                            </p>
+
+                            <div className="flex items-center gap-4 text-xs text-slate-500 flex-wrap pt-1">
+                              <span>Target: <b className="text-slate-900 dark:text-white">{formatCurrencyINR(reqItem.requiredFundingAmount || reqItem.fundingAmount)}</b></span>
+                              <span>Returns: <b className="text-emerald-600 dark:text-emerald-400">{reqItem.expectedReturns} ({reqItem.returnFrequency})</b></span>
+                              <span>Duration: {reqItem.fundingDuration}</span>
+                              <span>Investors Committed: <b className="text-slate-900 dark:text-white">{reqItem.investorCount || 0}</b></span>
+                            </div>
+
+                            {/* Alert if changes requested */}
+                            {isChangesReq && (
+                              <div className="p-3 rounded-xl bg-amber-100/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 mt-2 flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="font-bold">FIC Admin requested modifications:</p>
+                                  <p className="text-[11px] mt-0.5">
+                                    {reqItem.changeRequests?.[reqItem.changeRequests.length - 1]?.message || 'Please upload specified documents.'}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenResubmit(reqItem)}
+                                  className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0"
+                                >
+                                  Review & Resubmit
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          <div>{getStatusBadge(item)}</div>
-                        </div>
 
-                        {/* Latest FIC Update (1 or 2 lines) */}
-                        <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] text-xs">
-                          <strong className="text-[#2E231C] block mb-0.5">Latest FIC Update:</strong>
-                          <p className="text-[#453A33] leading-relaxed">
-                            "{item.latestFicUpdate || 'Your request has been received. Our team is reviewing your information.'}"
-                          </p>
-                        </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {/* Maturity Settlement Action (Phase 9) */}
+                            {reqItem.status === 'ACTIVE' && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenMaturitySettlement(reqItem)}
+                                className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs"
+                              >
+                                Settle Maturity Obligation
+                              </button>
+                            )}
 
-                        {/* CTA: View Details */}
-                        <div className="flex justify-end pt-1">
-                          <WorkspaceButton
-                            variant={isFunding ? 'teal' : 'violet'}
-                            size="sm"
-                            onClick={() => setSelectedItem(item)}
-                            icon={<ArrowRightIcon size={13} />}
-                          >
-                            View Details
-                          </WorkspaceButton>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedFundingDetail(reqItem)}
+                              className="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 text-xs font-semibold"
+                            >
+                              View Details
+                            </button>
+                          </div>
                         </div>
-                      </WorkspaceCard>
-                    </motion.div>
-                  );
-                })
+                      </div>
+                    );
+                  })}
+                </div>
               )}
-            </AnimatePresence>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL: INVEST NOW (PHASE 3.2)
+         ======================================================== */}
+      {investTargetDeal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="w-full max-w-lg p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <span className="text-[10px] font-mono font-bold text-slate-400">
+                  {investTargetDeal.fundingRequestId || investTargetDeal.refNumber}
+                </span>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Invest in {investTargetDeal.companyName || investTargetDeal.businessName}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInvestTargetDeal(null)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-mono">Target Funding</span>
+                <p className="font-bold text-slate-900 dark:text-white">
+                  {formatCurrencyINR(investTargetDeal.requiredFundingAmount || investTargetDeal.fundingAmount)}
+                </p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-mono">Expected Returns</span>
+                <p className="font-bold text-emerald-600 dark:text-emerald-400">
+                  {investTargetDeal.expectedReturns} ({investTargetDeal.returnFrequency})
+                </p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-mono">Tenure</span>
+                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                  {investTargetDeal.fundingDuration}
+                </p>
+              </div>
+              <div>
+                <span className="text-[10px] text-slate-400 uppercase font-mono">Allowed Ticket</span>
+                <p className="font-semibold text-slate-700 dark:text-slate-300">
+                  {formatCurrencyINR(investTargetDeal.minInvestmentAmount)} - {formatCurrencyINR(investTargetDeal.maxInvestmentAmount)}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmInvest} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono mb-1.5">
+                  Enter Investment Commitment Amount (INR) *
+                </label>
+                <input
+                  type="number"
+                  value={investAmountInput}
+                  onChange={(e) => setInvestAmountInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 text-sm font-bold rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:outline-hidden focus:ring-2 focus:ring-[#2C857B]"
+                  placeholder="Enter amount..."
+                />
+                {investAmountInput && !isNaN(Number(investAmountInput)) && (
+                  <p className="text-[11px] text-emerald-600 font-mono mt-1">
+                    In Words: {formatCurrencyINR(Number(investAmountInput))}
+                  </p>
+                )}
+                {investError && <p className="text-xs text-rose-500 mt-1.5">{investError}</p>}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setInvestTargetDeal(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingInvest}
+                  className="px-6 py-2 rounded-xl bg-gradient-to-r from-[#2C857B] to-[#1C6960] text-white font-bold text-xs shadow-md"
+                >
+                  {isSubmittingInvest ? 'Submitting...' : 'Confirm Commitment'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
       {/* ========================================================
-          3. VIEW DETAILS – SIMPLE MODAL (EXACT 6 SECTIONS)
+          MODAL: INVESTMENT SUBMISSION OVERVIEW (PHASE 3.3)
          ======================================================== */}
-      <AnimatedModal
-        isOpen={!!selectedItem}
-        onClose={() => setSelectedItem(null)}
-        maxWidth="max-w-2xl"
-        title={
-          selectedItem && (
+      {investOverviewData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl text-center space-y-5">
+            <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+              <CheckCircleIcon size={24} />
+            </div>
+
             <div>
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <span
-                  className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                    selectedItem.type === 'FUNDING'
-                      ? 'bg-teal-50 text-[#1C6960] border-teal-200'
-                      : 'bg-purple-50 text-[#8064B1] border-purple-200'
-                  }`}
-                >
-                  {selectedItem.type === 'FUNDING' ? 'Funding Request' : 'Investor Profile'}
-                </span>
-                <span className="text-[11px] text-[#6B5E55] font-mono font-bold bg-stone-100 px-2 py-0.5 rounded">
-                  Reference: {selectedItem.refNumber || selectedItem.id}
-                </span>
-                {getStatusBadge(selectedItem)}
-              </div>
-              <h3 className="text-lg sm:text-xl font-black text-[#2E231C]">
-                {selectedItem.type === 'FUNDING' ? selectedItem.businessName : selectedItem.investorName}
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                Investment Commitment Submitted!
               </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Your investment request is registered under FIC oversight.
+              </p>
             </div>
-          )
-        }
-      >
-        {selectedItem && (
-          <div className="space-y-5">
-            {/* ----------------------------------------------------
-                SECTION 1: WHAT YOU SUBMITTED
-               ---------------------------------------------------- */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-black text-[#2E231C] uppercase tracking-wider">
-                1. What You Submitted
-              </h4>
-              <div className="p-4 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] space-y-3 text-xs">
-                {selectedItem.type === 'FUNDING' ? (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Business Name:</span>
-                        <p className="text-[#2E231C] font-black text-sm">{selectedItem.businessName}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Business Type:</span>
-                        <p className="text-[#2E231C] font-semibold">{selectedItem.businessType}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Industry:</span>
-                        <p className="text-[#2E231C] font-semibold">{selectedItem.industry}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Location:</span>
-                        <p className="text-[#2E231C] font-semibold">
-                          {selectedItem.location.city}, {selectedItem.location.state}, {selectedItem.location.country}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Business Stage:</span>
-                        <p className="text-[#2E231C] font-semibold">{selectedItem.businessStage}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Funding Amount:</span>
-                        <p className="text-[#1C6960] font-black text-sm">
-                          {formatCurrencyINR(selectedItem.fundingAmount)}
-                        </p>
-                      </div>
-                    </div>
 
-                    <div>
-                      <span className="text-[#6B5E55] font-bold block mb-1">Funding Purpose:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedItem.fundingPurpose.map((p, idx) => (
-                          <span
-                            key={idx}
-                            className="text-[11px] bg-white border border-[#EDE2D7] text-[#2E231C] font-bold px-2.5 py-0.5 rounded-lg"
-                          >
-                            ✓ {p}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="text-[#6B5E55] font-bold block mb-0.5">How Funds Will Be Used:</span>
-                      <p className="text-[#453A33] leading-relaxed bg-white p-2.5 rounded-lg border border-[#EDE2D7]">
-                        {selectedItem.useOfFundsExplanation}
-                      </p>
-                    </div>
-
-                    <div>
-                      <span className="text-[#6B5E55] font-bold block mb-0.5">Business Description:</span>
-                      <p className="text-[#453A33] leading-relaxed bg-white p-2.5 rounded-lg border border-[#EDE2D7]">
-                        {selectedItem.businessDescription}
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Investor Type:</span>
-                        <p className="text-[#2E231C] font-semibold">{selectedItem.investorType}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Investor / Firm Name:</span>
-                        <p className="text-[#2E231C] font-black text-sm">{selectedItem.investorName}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Location:</span>
-                        <p className="text-[#2E231C] font-semibold">
-                          {selectedItem.stateCity}, {selectedItem.country}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Investment Type:</span>
-                        <p className="text-[#8064B1] font-semibold">{selectedItem.investmentType}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Total Investment Capacity:</span>
-                        <p className="text-[#2E231C] font-black">{selectedItem.totalCapacity}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#6B5E55] font-bold block mb-0.5">Preferred Ticket Per Business:</span>
-                        <p className="text-[#8064B1] font-black">{selectedItem.preferredTicketSize}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="text-[#6B5E55] font-bold block mb-1">Preferred Industry Sectors:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedItem.preferredSectors.map((s, idx) => (
-                          <span
-                            key={idx}
-                            className="text-[11px] bg-white border border-[#EDE2D7] text-[#2E231C] font-bold px-2.5 py-0.5 rounded-lg"
-                          >
-                            ✓ {s}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="text-[#6B5E55] font-bold block mb-1">Preferred Business Stages:</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedItem.preferredStages.map((stg, idx) => (
-                          <span
-                            key={idx}
-                            className="text-[11px] bg-white border border-[#EDE2D7] text-[#2E231C] font-bold px-2.5 py-0.5 rounded-lg"
-                          >
-                            ✓ {stg}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="text-[#6B5E55] font-bold block mb-0.5">Investor Profile / Summary:</span>
-                      <p className="text-[#453A33] leading-relaxed bg-white p-2.5 rounded-lg border border-[#EDE2D7]">
-                        {selectedItem.investorProfile}
-                      </p>
-                    </div>
-                  </>
-                )}
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 text-left space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Investment ID:</span>
+                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                  {investOverviewData.investmentId}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Project Name:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{investOverviewData.projectName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Committed Amount:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                  {formatCurrencyINR(investOverviewData.investmentAmount)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Expected Returns:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {investOverviewData.expectedReturns} ({investOverviewData.returnFrequency})
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Duration:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{investOverviewData.fundingDuration}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Current Status:</span>
+                <span className="font-bold text-amber-600">{investOverviewData.status}</span>
               </div>
             </div>
 
-            {/* ----------------------------------------------------
-                SECTION 2: CURRENT STATUS
-               ---------------------------------------------------- */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-black text-[#2E231C] uppercase tracking-wider">
-                2. Current Status
-              </h4>
-              <div className="p-3.5 rounded-xl bg-white border border-[#EDE2D7] flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2.5">
-                  {getStatusBadge(selectedItem)}
-                  <span className="text-[#453A33] font-medium">
-                    {getStatusExplanation(selectedItem)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* ----------------------------------------------------
-                SECTION 3: LATEST FIC UPDATE
-               ---------------------------------------------------- */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-black text-[#2E231C] uppercase tracking-wider">
-                3. FIC Latest Update
-              </h4>
-              <div
-                className={`p-3.5 rounded-xl text-xs border ${
-                  selectedItem.type === 'FUNDING'
-                    ? 'bg-teal-50/80 border-teal-200 text-teal-950'
-                    : 'bg-purple-50/80 border-purple-200 text-purple-950'
-                }`}
-              >
-                <p className="font-medium leading-relaxed">
-                  "{selectedItem.latestFicUpdate || 'Your request has been submitted successfully. FIC will share an update here.'}"
-                </p>
-              </div>
-            </div>
-
-            {/* ----------------------------------------------------
-                SECTION 4: WHAT HAPPENS NEXT?
-               ---------------------------------------------------- */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-black text-[#2E231C] uppercase tracking-wider">
-                4. What Happens Next?
-              </h4>
-              <div className="p-3.5 rounded-xl bg-white border border-[#EDE2D7] text-xs">
-                <p className="text-[#453A33] leading-relaxed font-medium">
-                  {selectedItem.whatHappensNext ||
-                    (selectedItem.type === 'FUNDING'
-                      ? 'FIC will review your submitted information and coordinate preliminary verification.'
-                      : 'Your profile verification is in progress.')}
-                </p>
-              </div>
-            </div>
-
-            {/* ----------------------------------------------------
-                SECTION 5: UPDATE HISTORY
-               ---------------------------------------------------- */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-black text-[#2E231C] uppercase tracking-wider">
-                5. Update History
-              </h4>
-              <div className="p-3.5 rounded-xl bg-white border border-[#EDE2D7] text-xs space-y-2.5">
-                {selectedItem.updateHistory && selectedItem.updateHistory.length > 0 ? (
-                  selectedItem.updateHistory.map((hist, idx) => (
-                    <div
-                      key={idx}
-                      className="border-b border-[#EDE2D7]/60 pb-2 last:border-b-0 last:pb-0"
-                    >
-                      <div className="flex items-center justify-between text-[11px] mb-0.5">
-                        <strong className="text-[#2E231C]">{hist.status}</strong>
-                        <span className="text-[#6B5E55] font-medium">{hist.date}</span>
-                      </div>
-                      <p className="text-[#453A33] text-[11px] leading-relaxed">{hist.update}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-[#6B5E55] text-xs">No previous updates recorded.</p>
-                )}
-              </div>
-            </div>
-
-            {/* ----------------------------------------------------
-                SECTION 6: DOCUMENTS
-               ---------------------------------------------------- */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-black text-[#2E231C] uppercase tracking-wider">
-                6. Documents
-              </h4>
-              <div className="p-3.5 rounded-xl bg-white border border-[#EDE2D7] text-xs space-y-2">
-                {selectedItem.documents && selectedItem.documents.length > 0 ? (
-                  selectedItem.documents.map((doc, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-2 rounded-lg bg-[#FAF7F2] border border-[#EDE2D7]"
-                    >
-                      <div className="flex items-center gap-2">
-                        <FileTextIcon size={14} className="text-[#6B5E55]" />
-                        <span className="font-bold text-[#2E231C]">{doc.name}</span>
-                      </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-900 border border-emerald-300">
-                        {doc.status || 'Verified'}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-[#6B5E55] text-xs italic">
-                    No supporting documents uploaded with initial submission. Additional documents can be submitted upon FIC review request.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Close */}
-            <div className="pt-2 flex justify-end border-t border-[#EDE2D7]">
-              <WorkspaceButton
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedItem(null)}
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setInvestOverviewData(null)}
+                className="w-1/2 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs"
               >
                 Close
-              </WorkspaceButton>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setInvestOverviewData(null);
+                  setMainNav('investment');
+                  setInvestSubTab('my_investments');
+                }}
+                className="w-1/2 py-2.5 rounded-xl bg-gradient-to-r from-[#2C857B] to-[#1C6960] text-white font-bold text-xs shadow-md"
+              >
+                View My Investment
+              </button>
             </div>
           </div>
-        )}
-      </AnimatedModal>
+        </div>
+      )}
 
       {/* ========================================================
-          MODAL: INVEST PLEDGE IN COMMUNITY POOL
+          MODAL: PAY AMOUNT (PHASE 6)
          ======================================================== */}
-      <AnimatedModal
-        isOpen={isInvestModalOpen}
-        onClose={() => setIsInvestModalOpen(false)}
-        title={selectedPoolForInvest ? `Invest in ${selectedPoolForInvest.poolCode}` : 'Invest in Pool'}
-        maxWidth="max-w-md"
-      >
-        {selectedPoolForInvest && (
-          <form onSubmit={handlePledgeToPool} className="space-y-4">
-            <div className="p-3.5 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7] space-y-1">
-              <h4 className="text-sm font-black text-[#2E231C]">{selectedPoolForInvest.title}</h4>
-              <p className="text-xs text-[#51463F]">{selectedPoolForInvest.description}</p>
-              <div className="flex items-center gap-3 pt-2 text-xs font-bold text-[#1C6960]">
-                <span>Fixed Return: {selectedPoolForInvest.investorAnnualYieldPercent}% p.a.</span>
-                <span>•</span>
-                <span>Tenure: {selectedPoolForInvest.tenureMonths} Months</span>
+      {payTargetInvestment && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <span className="text-[10px] font-mono font-bold text-slate-400">
+                  {payTargetInvestment.investmentId}
+                </span>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Pay Investment Capital
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPayTargetInvestment(null)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Project Name:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">{payTargetInvestment.projectName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Approved Amount:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {formatCurrencyINR(payTargetInvestment.approvedAmount || payTargetInvestment.requestedAmount)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Already Paid:</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200">
+                  {formatCurrencyINR(payTargetInvestment.paidAmount || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-700">
+                <span className="font-bold text-slate-700 dark:text-slate-300">Remaining Payable:</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                  {formatCurrencyINR(Number(payAmountInput))}
+                </span>
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-black text-[#2E231C] block">
-                Enter Investment Amount (₹) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                min={selectedPoolForInvest.minInvestmentPerUser || 10000}
-                max={selectedPoolForInvest.maxInvestmentPerUser || undefined}
-                step={1000}
-                value={investPledgeAmount}
-                onChange={(e) => setInvestPledgeAmount(e.target.value)}
-                required
-                className="w-full text-sm p-3 border border-[#EDE2D7] rounded-xl bg-white text-[#2E231C] font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#2C857B]"
-              />
-              <span className="text-[11px] text-[#82776E] block">
-                Minimum allowed: ₹{(selectedPoolForInvest.minInvestmentPerUser || 10000).toLocaleString('en-IN')}
-              </span>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setPayTargetInvestment(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleProcessPayment}
+                disabled={isProcessingPayment}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-xs shadow-md"
+              >
+                {isProcessingPayment ? 'Connecting Gateway...' : 'Pay Amount via Gateway'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MODAL: RESUBMISSION (PHASE 2 MEMBER RESUBMISSION)
+         ======================================================== */}
+      {resubmitTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="w-full max-w-xl p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div>
+                <span className="text-[10px] font-mono font-bold text-amber-600">
+                  CHANGES REQUESTED
+                </span>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Revise & Resubmit: {resubmitCompany}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResubmitTarget(null)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold"
+              >
+                ×
+              </button>
             </div>
 
-            {/* Live Calculation Preview */}
-            {Number(investPledgeAmount) > 0 && (
-              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs space-y-1">
-                <div className="flex items-center justify-between text-stone-700">
-                  <span>Pledged Principal:</span>
-                  <span className="font-mono font-bold">₹{Number(investPledgeAmount).toLocaleString('en-IN')}</span>
-                </div>
-                <div className="flex items-center justify-between text-emerald-800 font-bold">
-                  <span>Calculated Yield Return ({selectedPoolForInvest.investorAnnualYieldPercent}%):</span>
-                  <span className="font-mono">
-                    +₹{Math.round((Number(investPledgeAmount) * selectedPoolForInvest.investorAnnualYieldPercent * (selectedPoolForInvest.tenureMonths / 12)) / 100).toLocaleString('en-IN')}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[#134A44] font-black pt-1 border-t border-emerald-300">
-                  <span>Total Maturity Payout:</span>
-                  <span className="font-mono text-sm">
-                    ₹{(Number(investPledgeAmount) + Math.round((Number(investPledgeAmount) * selectedPoolForInvest.investorAnnualYieldPercent * (selectedPoolForInvest.tenureMonths / 12)) / 100)).toLocaleString('en-IN')}
-                  </span>
-                </div>
+            {/* Admin instructions banner */}
+            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200">
+              <span className="font-bold">FIC Admin Instructions:</span>
+              <p className="mt-1">
+                {resubmitTarget.changeRequests?.[resubmitTarget.changeRequests.length - 1]?.message}
+              </p>
+            </div>
+
+            {/* Requested additional documents checklist */}
+            {resubmitReqDocs.length > 0 && (
+              <div className="space-y-2">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase font-mono">
+                  Additional Required Documents:
+                </span>
+                {resubmitReqDocs.map((docItem, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 text-xs"
+                  >
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-slate-200">{docItem.name}</p>
+                      <p className="text-[11px] text-slate-400">{docItem.instructions}</p>
+                    </div>
+                    {docItem.isUploaded ? (
+                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-md">
+                        ✓ Uploaded
+                      </span>
+                    ) : (
+                      <label className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs cursor-pointer">
+                        Upload
+                        <input
+                          type="file"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          onChange={async (e) => {
+                            const f = e.target.files?.[0];
+                            if (!f) return;
+                            try {
+                              const asset = await uploadDocumentFile(f, {
+                                documentCategory: 'INVESTMENT',
+                                documentLabel: docItem.name
+                              });
+                              if (asset) {
+                                docItem.isUploaded = true;
+                                docItem.documentId = asset.documentId;
+                                docItem.fileUrl = asset.viewUrl;
+                                setResubmitReqDocs([...resubmitReqDocs]);
+                              }
+                            } catch {}
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
-            <div className="pt-2 flex items-center justify-end gap-2 border-t border-[#EDE2D7]">
-              <WorkspaceButton
+            {/* Editable Fields */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase font-mono mb-1">
+                  Company Name
+                </label>
+                <input
+                  type="text"
+                  value={resubmitCompany}
+                  onChange={(e) => setResubmitCompany(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase font-mono mb-1">
+                  Required Amount (₹)
+                </label>
+                <input
+                  type="number"
+                  value={resubmitFundingAmount}
+                  onChange={(e) => setResubmitFundingAmount(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase font-mono mb-1">
+                Funding Purpose / Revisions Notes
+              </label>
+              <textarea
+                rows={2}
+                value={resubmitPurpose}
+                onChange={(e) => setResubmitPurpose(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
-                disabled={isSubmittingPledge}
-                onClick={() => setIsInvestModalOpen(false)}
+                onClick={() => setResubmitTarget(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs"
               >
                 Cancel
-              </WorkspaceButton>
-              <WorkspaceButton
-                type="submit"
-                variant="teal"
-                size="sm"
-                disabled={isSubmittingPledge}
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmResubmit}
+                disabled={isResubmitting}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-xs shadow-md"
               >
-                {isSubmittingPledge ? (
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
-                    <span>Investing & Closing...</span>
-                  </span>
-                ) : (
-                  'Confirm & Invest'
-                )}
-              </WorkspaceButton>
+                {isResubmitting ? 'Resubmitting...' : 'Confirm & Resubmit'}
+              </button>
             </div>
-          </form>
-        )}
-      </AnimatedModal>
-          {viewerAsset && (
+          </div>
+        </div>
+      )}
+
+      {/* Document Viewer Modal */}
+      {viewerDoc && (
         <DocumentViewerModal
-          isOpen={true}
-          onClose={() => setViewerAsset(null)}
-          documentId={viewerAsset.documentId}
-          documentLabel={viewerAsset.documentLabel}
-          originalFileName={viewerAsset.originalFileName}
-          originalMimeType={viewerAsset.originalMimeType}
-          originalFileSize={viewerAsset.originalFileSize}
-          checksum={viewerAsset.checksum}
+          isOpen={Boolean(viewerDoc)}
+          onClose={() => setViewerDoc(null)}
+          documentId={viewerDoc.id || ''}
+          originalFileName={viewerDoc.name}
+          documentLabel={viewerDoc.name}
         />
       )}
     </WorkspaceShell>

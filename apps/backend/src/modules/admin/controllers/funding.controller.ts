@@ -1,6 +1,18 @@
 import { Router, Response } from 'express';
 import mongoose from 'mongoose';
-import { authenticateAdmin, requireRole, AuthenticatedAdminRequest, logAdminAction } from '../middleware/admin-auth.middleware';
+import {
+  authenticateAdmin,
+  requireRole,
+  AuthenticatedAdminRequest,
+  logAdminAction
+} from '../middleware/admin-auth.middleware';
+import {
+  FundingRequestModel,
+  InvestmentRequestModel,
+  FinancialTransactionModel,
+  ReceivingBankAccountModel,
+  ensureReceivingBankAccount
+} from '../../investment/investment.model';
 import { FundingApplicationModel } from '../models/FundingApplication';
 import { InvestmentPoolModel } from '../models/InvestmentPool';
 import { MeetingModel } from '../models/Meeting';
@@ -18,7 +30,7 @@ export const getOrCreateMemberWallet = async (
   _memberName?: string
 ): Promise<IMemberWallet> => {
   let wallet = await AdminMemberWalletModel.findOne({
-    $or: [{ memberId }, { memberEmail: memberEmail.toLowerCase() }],
+    $or: [{ memberId }, { memberEmail: memberEmail.toLowerCase() }]
   });
 
   if (!wallet) {
@@ -30,58 +42,1013 @@ export const getOrCreateMemberWallet = async (
       currencySymbol: '₹',
       status: 'ACTIVE',
       lastSyncedAt: new Date(),
-      transactions: [],
+      transactions: []
     });
   }
 
   return wallet;
 };
 
-// In-memory runtime store fallback to guarantee newly created pools ALWAYS display immediately
-let memoryPools: any[] = [];
+// ========================================================
+// PHASE 2: FIC ADMIN FUNDING DESK (FUNDING REQUESTS)
+// ========================================================
 
-// GET /api/admin/funding/summary
-// Exclusive to SUPER_ADMIN
+// 2.1: Funding Request Listing (with search, filter, pagination)
+router.get('/requests', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const { status, search, page = '1', limit = '20', sort = '-createdAt' } = req.query;
+
+    const filter: any = {};
+    if (status && status !== 'ALL') {
+      filter.status = status;
+    }
+
+    if (search && typeof search === 'string' && search.trim()) {
+      const q = search.trim();
+      filter.$or = [
+        { fundingRequestId: { $regex: q, $options: 'i' } },
+        { refNumber: { $regex: q, $options: 'i' } },
+        { companyName: { $regex: q, $options: 'i' } },
+        { businessName: { $regex: q, $options: 'i' } }
+      ];
+    }
+
+    const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(String(limit), 10) || 20));
+    const skip = (pageNum - 1) * limitNum;
+
+    const [items, total] = await Promise.all([
+      FundingRequestModel.find(filter)
+        .populate('userId', 'fullName email phoneNumber primaryCategoryName')
+        .sort(String(sort))
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      FundingRequestModel.countDocuments(filter)
+    ]);
+
+    // Format items with submitter info
+    const formatted = items.map((item: any) => {
+      const user = item.userId as any;
+      return {
+        ...item,
+        requestorName: user?.fullName || 'FIC Member',
+        requestorEmail: user?.email || '',
+        requestorPhone: user?.phoneNumber || '+91 Verified Member'
+      };
+    });
+
+    res.json({
+      success: true,
+      items: formatted,
+      data: formatted,
+      total,
+      page: pageNum,
+      totalPages: Math.ceil(total / limitNum) || 1
+    });
+  } catch (err: any) {
+    console.error('Failed to get funding requests:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch funding requests', details: err.message });
+  }
+});
+
+// 2.2: Single Funding Request Detail Review
+router.get('/requests/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const request = await FundingRequestModel.findOne({
+      $or: [
+        { _id: mongoose.isValidObjectId(id) ? id : null },
+        { fundingRequestId: id },
+        { refNumber: id }
+      ]
+    })
+      .populate('userId', 'fullName email phoneNumber primaryCategoryName')
+      .lean();
+
+    if (!request) {
+      res.status(404).json({ success: false, error: 'Funding request not found' });
+      return;
+    }
+
+    const user = (request as any).userId;
+    res.json({
+      success: true,
+      data: {
+        ...request,
+        requestorName: user?.fullName || 'FIC Member',
+        requestorEmail: user?.email || '',
+        requestorPhone: user?.phoneNumber || '+91 Verified Member'
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2.2: Admin Requests Changes (with optional + Add Document dynamic requirements)
+router.put(
+  '/requests/:id/request-changes',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { message, requestedDocuments } = req.body;
+
+      if (!message || !String(message).trim()) {
+        res.status(400).json({ success: false, error: 'A clear change request message is required.' });
+        return;
+      }
+
+      const request = await FundingRequestModel.findOne({
+        $or: [
+          { _id: mongoose.isValidObjectId(id) ? id : null },
+          { fundingRequestId: id },
+          { refNumber: id }
+        ]
+      });
+
+      if (!request) {
+        res.status(404).json({ success: false, error: 'Funding request not found' });
+        return;
+      }
+
+      const adminName = req.admin?.name || 'FIC Admin';
+      const parsedReqDocs = Array.isArray(requestedDocuments)
+        ? requestedDocuments.map((d: any, index: number) => ({
+            id: d.id || `REQ-DOC-${Date.now()}-${index}`,
+            name: String(d.name || '').trim(),
+            instructions: String(d.instructions || '').trim(),
+            isUploaded: false
+          })).filter((d: any) => d.name && d.instructions)
+        : [];
+
+      request.changeRequests = request.changeRequests || [];
+      request.changeRequests.push({
+        date: new Date(),
+        requestedBy: adminName,
+        message: String(message).trim(),
+        requestedDocuments: parsedReqDocs,
+        isResolved: false
+      });
+
+      request.status = 'CHANGES_REQUESTED';
+      request.latestFicUpdate = `Changes requested by ${adminName}: ${message}`;
+      request.whatHappensNext = 'Please review the requested changes and upload any specified documents.';
+
+      request.activityTimeline.push({
+        action: 'Changes Requested by Admin',
+        actorType: 'ADMIN',
+        actorName: adminName,
+        notes: String(message).trim(),
+        timestamp: new Date()
+      });
+
+      await request.save();
+
+      // Log action
+      await logAdminAction(req, 'UPDATE', 'FundingRequest', request._id.toString(), {
+        action: 'CHANGES_REQUESTED',
+        message,
+        requestedDocumentsCount: parsedReqDocs.length
+      });
+
+      // Notify Member
+      try {
+        await notifyMember({
+          userId: request.userId,
+          eventType: 'FUNDING_CHANGES_REQUESTED',
+          title: `Action Required: Funding Proposal Revisions`,
+          message: `FIC Admin requested revisions for "${request.companyName}". Please review the instructions and resubmit.`,
+          link: '/investment',
+          priority: 'HIGH'
+        });
+      } catch {}
+
+      res.json({
+        success: true,
+        message: 'Change request submitted and member notified successfully.',
+        data: request
+      });
+    } catch (err: any) {
+      console.error('Failed to request changes:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// 2.3: Admin Approves Funding Request (Makes it eligible for Need Funding tab)
+router.put(
+  '/requests/:id/approve',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { approvalNotes } = req.body;
+
+      const request = await FundingRequestModel.findOne({
+        $or: [
+          { _id: mongoose.isValidObjectId(id) ? id : null },
+          { fundingRequestId: id },
+          { refNumber: id }
+        ]
+      });
+
+      if (!request) {
+        res.status(404).json({ success: false, error: 'Funding request not found' });
+        return;
+      }
+
+      const adminName = req.admin?.name || 'FIC Super Admin';
+      const adminId = (req.admin as any)?.adminId || req.admin?.id || 'SYSTEM';
+
+      request.status = 'APPROVED';
+      request.approvedBy = adminName;
+      request.approvedAdminId = adminId;
+      request.approvedAt = new Date();
+      if (approvalNotes) request.approvalNotes = String(approvalNotes).trim();
+
+      request.latestFicUpdate = `Proposal approved by FIC Admin. It is now published live on the Need Funding investor network.`;
+      request.whatHappensNext = 'Investors across the FIC network can now review your proposal and submit investment commitments.';
+
+      request.activityTimeline.push({
+        action: 'Proposal Approved by FIC Admin',
+        actorType: 'ADMIN',
+        actorName: adminName,
+        notes: approvalNotes || 'Application approved for investor commitments.',
+        timestamp: new Date()
+      });
+
+      await request.save();
+
+      // Sync FundingApplication
+      try {
+        await FundingApplicationModel.findOneAndUpdate(
+          { fundingRequestId: request._id },
+          { stage: 'REVIEW' }
+        );
+      } catch {}
+
+      // Log action
+      await logAdminAction(req, 'UPDATE', 'FundingRequest', request._id.toString(), {
+        action: 'APPROVED',
+        approvedBy: adminName,
+        approvedAt: new Date()
+      });
+
+      // Notify Member
+      try {
+        await notifyMember({
+          userId: request.userId,
+          eventType: 'FUNDING_APPROVED',
+          title: `Proposal Approved: ${request.companyName}`,
+          message: `Congratulations! Your funding request for ₹${request.requiredFundingAmount?.toLocaleString('en-IN')} has been approved and published to the FIC Investor Network.`,
+          link: '/investment',
+          priority: 'HIGH'
+        });
+      } catch {}
+
+      res.json({
+        success: true,
+        message: 'Funding proposal approved successfully! It is now live in the Need Funding section for investors.',
+        data: request
+      });
+    } catch (err: any) {
+      console.error('Failed to approve funding request:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// ========================================================
+// PHASE 5: FIC ADMIN INVESTMENT REQUESTS
+// ========================================================
+
+// 5.1: List Investment Requests
+router.get(
+  '/investment-requests',
+  authenticateAdmin,
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { status, search, page = '1', limit = '20' } = req.query;
+
+      const filter: any = {};
+      if (status && status !== 'ALL') {
+        filter.status = status;
+      }
+
+      if (search && typeof search === 'string' && search.trim()) {
+        const q = search.trim();
+        filter.$or = [
+          { investmentId: { $regex: q, $options: 'i' } },
+          { fundingRequestRef: { $regex: q, $options: 'i' } },
+          { projectName: { $regex: q, $options: 'i' } },
+          { investorName: { $regex: q, $options: 'i' } },
+          { fundingRequestorName: { $regex: q, $options: 'i' } }
+        ];
+      }
+
+      const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+      const limitNum = Math.max(1, Math.min(100, parseInt(String(limit), 10) || 20));
+      const skip = (pageNum - 1) * limitNum;
+
+      const [items, total] = await Promise.all([
+        InvestmentRequestModel.find(filter)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limitNum)
+          .lean(),
+        InvestmentRequestModel.countDocuments(filter)
+      ]);
+
+      res.json({
+        success: true,
+        items,
+        data: items,
+        total,
+        page: pageNum,
+        totalPages: Math.ceil(total / limitNum) || 1
+      });
+    } catch (err: any) {
+      console.error('Failed to get investment requests:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// 5.2: Admin Review Action (Approve, Request Changes, Reject)
+router.put(
+  '/investment-requests/:id/review',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { action, approvedAmount, notes, rejectionReason } = req.body;
+
+      const investment = await InvestmentRequestModel.findOne({
+        $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { investmentId: id }]
+      });
+
+      if (!investment) {
+        res.status(404).json({ success: false, error: 'Investment request not found' });
+        return;
+      }
+
+      const adminName = req.admin?.name || 'FIC Admin';
+
+      if (action === 'APPROVE') {
+        const resolvedApprovedAmount = Number(approvedAmount) || investment.requestedAmount;
+        investment.status = 'APPROVED';
+        investment.approvedAmount = resolvedApprovedAmount;
+        investment.pendingPaymentAmount = resolvedApprovedAmount;
+        investment.approvedBy = adminName;
+        investment.approvedAt = new Date();
+        if (notes) investment.adminNotes = String(notes).trim();
+
+        investment.activityTimeline.push({
+          action: 'Investment Approved by Admin',
+          actorType: 'ADMIN',
+          actorName: adminName,
+          notes: `Approved for ₹${resolvedApprovedAmount.toLocaleString('en-IN')}. Payment is now enabled for the investor.`,
+          timestamp: new Date()
+        });
+
+        await investment.save();
+
+        // Notify Investor to pay
+        try {
+          await notifyMember({
+            userId: investment.investorId,
+            eventType: 'INVESTMENT_APPROVED',
+            title: `Investment Approved: Pay Amount`,
+            message: `Your investment proposal for "${investment.projectName}" was approved for ₹${resolvedApprovedAmount.toLocaleString('en-IN')}. Please proceed to Pay Amount in My Investments.`,
+            link: '/investment',
+            priority: 'HIGH'
+          });
+        } catch {}
+
+        await logAdminAction(req, 'UPDATE', 'InvestmentRequest', investment._id.toString(), {
+          action: 'APPROVE',
+          approvedAmount: resolvedApprovedAmount
+        });
+
+        res.json({
+          success: true,
+          message: `Investment request approved for ₹${resolvedApprovedAmount.toLocaleString('en-IN')}! Investor can now pay amount.`,
+          data: investment
+        });
+        return;
+      }
+
+      if (action === 'REQUEST_CHANGES') {
+        if (!notes || !String(notes).trim()) {
+          res.status(400).json({ success: false, error: 'Change request notes are required.' });
+          return;
+        }
+
+        investment.status = 'CHANGES_REQUESTED';
+        investment.changeRequestNotes = String(notes).trim();
+
+        investment.activityTimeline.push({
+          action: 'Changes Requested by Admin',
+          actorType: 'ADMIN',
+          actorName: adminName,
+          notes: String(notes).trim(),
+          timestamp: new Date()
+        });
+
+        await investment.save();
+
+        try {
+          await notifyMember({
+            userId: investment.investorId,
+            eventType: 'INVESTMENT_CHANGES_REQUESTED',
+            title: `Changes Requested on Investment`,
+            message: `FIC Admin requested changes on your investment for "${investment.projectName}": ${notes}`,
+            link: '/investment',
+            priority: 'HIGH'
+          });
+        } catch {}
+
+        res.json({
+          success: true,
+          message: 'Change request sent to investor.',
+          data: investment
+        });
+        return;
+      }
+
+      if (action === 'REJECT') {
+        if (!rejectionReason || !String(rejectionReason).trim()) {
+          res.status(400).json({ success: false, error: 'A rejection reason is required.' });
+          return;
+        }
+
+        investment.status = 'REJECTED';
+        investment.rejectionReason = String(rejectionReason).trim();
+
+        investment.activityTimeline.push({
+          action: 'Investment Rejected by Admin',
+          actorType: 'ADMIN',
+          actorName: adminName,
+          notes: String(rejectionReason).trim(),
+          timestamp: new Date()
+        });
+
+        await investment.save();
+
+        try {
+          await notifyMember({
+            userId: investment.investorId,
+            eventType: 'INVESTMENT_REJECTED',
+            title: `Investment Proposal Declined`,
+            message: `Your investment proposal for "${investment.projectName}" was declined: ${rejectionReason}`,
+            link: '/investment',
+            priority: 'LOW'
+          });
+        } catch {}
+
+        res.json({
+          success: true,
+          message: 'Investment request rejected.',
+          data: investment
+        });
+        return;
+      }
+
+      res.status(400).json({ success: false, error: 'Invalid review action. Allowed: APPROVE, REQUEST_CHANGES, REJECT' });
+    } catch (err: any) {
+      console.error('Failed to review investment request:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// ========================================================
+// PHASE 7: FUND RELEASE TO FUNDING REQUESTOR
+// ========================================================
+
+// 7.1: Fund Release Listing (Investments where investor paid)
+router.get(
+  '/fund-releases',
+  authenticateAdmin,
+  async (_req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const paidInvestments = await InvestmentRequestModel.find({
+        status: { $in: ['PAID', 'PARTIALLY_PAID', 'FUND_RELEASE_PENDING', 'ACTIVE'] }
+      })
+        .sort({ updatedAt: -1 })
+        .lean();
+
+      res.json({
+        success: true,
+        data: paidInvestments,
+        items: paidInvestments
+      });
+    } catch (err: any) {
+      console.error('Failed to get fund releases:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// 7.2: Disburse Amount to Funding Requestor
+router.post(
+  '/fund-releases/:id/disburse',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { disburseAmount, payoutReference, notes } = req.body;
+
+      const investment = await InvestmentRequestModel.findOne({
+        $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { investmentId: id }]
+      });
+
+      if (!investment) {
+        res.status(404).json({ success: false, error: 'Investment record not found' });
+        return;
+      }
+
+      const eligibleAmount = investment.pendingReleaseAmount || investment.eligibleReleaseAmount || investment.paidAmount;
+      const amountToRelease = Number(disburseAmount) || eligibleAmount;
+
+      if (amountToRelease <= 0) {
+        res.status(400).json({ success: false, error: 'Disbursement amount must be greater than 0.' });
+        return;
+      }
+
+      if (amountToRelease > eligibleAmount) {
+        res.status(400).json({
+          success: false,
+          error: `Disbursement amount cannot exceed the pending eligible balance of ₹${eligibleAmount.toLocaleString('en-IN')}.`
+        });
+        return;
+      }
+
+      const adminName = req.admin?.name || 'FIC Admin';
+      const generatedTxnId = `TXN-REL-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+
+      // 1. Create FinancialTransaction record
+      await FinancialTransactionModel.create({
+        transactionId: generatedTxnId,
+        type: 'FUND_RELEASE',
+        investmentId: investment.investmentId,
+        fundingRequestId: investment.fundingRequestRef,
+        payerId: 'FIC_PLATFORM',
+        payerName: 'FIC Platform Escrow',
+        receiverId: investment.fundingRequestorId.toString(),
+        receiverName: investment.fundingRequestorName,
+        amount: amountToRelease,
+        currency: 'INR',
+        paymentGateway: 'BANK_TRANSFER',
+        gatewayPaymentId: payoutReference || `PAYOUT-${Date.now()}`,
+        status: 'SUCCESS',
+        verifiedAt: new Date(),
+        notes: notes || `Capital disbursed to ${investment.fundingRequestorName} for ${investment.projectName} (${investment.investmentId}).`
+      });
+
+      // 2. Update balances & status
+      investment.releasedAmount = (investment.releasedAmount || 0) + amountToRelease;
+      investment.pendingReleaseAmount = Math.max(0, eligibleAmount - amountToRelease);
+      investment.disbursedAt = new Date();
+      investment.disbursedBy = adminName;
+      investment.disbursementTxnId = generatedTxnId;
+
+      investment.status = 'ACTIVE';
+      investment.investmentStartDate = new Date();
+
+      // Calculate Maturity Date based on durationMonths
+      const tenure = investment.durationMonths || 12;
+      const matDate = new Date();
+      matDate.setMonth(matDate.getMonth() + tenure);
+      investment.maturityDate = matDate;
+
+      investment.activityTimeline.push({
+        action: 'Capital Disbursed to Company',
+        actorType: 'ADMIN',
+        actorName: adminName,
+        notes: `Disbursed ₹${amountToRelease.toLocaleString('en-IN')} to company. Investment is now ACTIVE. Maturity: ${matDate.toLocaleDateString('en-GB')}.`,
+        timestamp: new Date()
+      });
+
+      await investment.save();
+
+      // Log action
+      await logAdminAction(req, 'UPDATE', 'InvestmentRequest', investment._id.toString(), {
+        action: 'FUND_RELEASE_DISBURSE',
+        amount: amountToRelease,
+        txnId: generatedTxnId
+      });
+
+      // Notify Funding Requestor & Investor
+      try {
+        await notifyMember({
+          userId: investment.fundingRequestorId,
+          eventType: 'FUNDS_DISBURSED',
+          title: `Capital Disbursed: ₹${amountToRelease.toLocaleString('en-IN')}`,
+          message: `FIC has disbursed ₹${amountToRelease.toLocaleString('en-IN')} for "${investment.projectName}". Investment is now active.`,
+          link: '/investment',
+          priority: 'HIGH'
+        });
+
+        await notifyMember({
+          userId: investment.investorId,
+          eventType: 'INVESTMENT_ACTIVE',
+          title: `Investment Active: ${investment.projectName}`,
+          message: `Your investment in "${investment.projectName}" has been deployed and is now ACTIVE. Yield tracking has begun.`,
+          link: '/investment',
+          priority: 'HIGH'
+        });
+      } catch {}
+
+      res.json({
+        success: true,
+        message: `₹${amountToRelease.toLocaleString('en-IN')} disbursed successfully to ${investment.fundingRequestorName}!`,
+        data: investment
+      });
+    } catch (err: any) {
+      console.error('Failed to disburse funds:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// ========================================================
+// PHASE 8: RETURNS & MATURITY SCHEDULE
+// ========================================================
+router.get(
+  '/returns-maturity',
+  authenticateAdmin,
+  async (_req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const investments = await InvestmentRequestModel.find({
+        status: { $in: ['ACTIVE', 'MATURITY_PENDING', 'MATURITY_PAYMENT_RECEIVED', 'MATURITY_PAID', 'COMPLETED'] }
+      })
+        .sort({ maturityDate: 1 })
+        .lean();
+
+      res.json({
+        success: true,
+        data: investments,
+        items: investments
+      });
+    } catch (err: any) {
+      console.error('Failed to get returns & maturity schedule:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// ========================================================
+// PHASE 10: FIC ADMIN MATURITY RELEASE
+// ========================================================
+
+// 10.1: Maturity Release Listing (Investments where funding requestor repaid maturity)
+router.get(
+  '/maturity-releases',
+  authenticateAdmin,
+  async (_req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const items = await InvestmentRequestModel.find({
+        status: { $in: ['MATURITY_PAYMENT_RECEIVED', 'MATURITY_PAID', 'COMPLETED'] }
+      })
+        .sort({ maturityReceivedAt: -1 })
+        .lean();
+
+      res.json({
+        success: true,
+        data: items,
+        items
+      });
+    } catch (err: any) {
+      console.error('Failed to get maturity releases:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// 10.2: Release Maturity to Investor
+router.post(
+  '/maturity-releases/:id/release',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { releaseAmount, payoutReference, notes } = req.body;
+
+      const investment = await InvestmentRequestModel.findOne({
+        $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { investmentId: id }]
+      });
+
+      if (!investment) {
+        res.status(404).json({ success: false, error: 'Investment record not found' });
+        return;
+      }
+
+      const receivedMaturity = investment.maturityAmountReceived || investment.maturityAmountDue;
+      const amountToRelease = Number(releaseAmount) || receivedMaturity;
+
+      const adminName = req.admin?.name || 'FIC Super Admin';
+      const generatedTxnId = `TXN-MAT-REL-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+
+      // 1. Record FinancialTransaction
+      await FinancialTransactionModel.create({
+        transactionId: generatedTxnId,
+        type: 'MATURITY_RELEASE',
+        investmentId: investment.investmentId,
+        fundingRequestId: investment.fundingRequestRef,
+        payerId: 'FIC_PLATFORM',
+        payerName: 'FIC Platform Escrow',
+        receiverId: investment.investorId.toString(),
+        receiverName: investment.investorName,
+        amount: amountToRelease,
+        currency: 'INR',
+        paymentGateway: 'BANK_TRANSFER',
+        gatewayPaymentId: payoutReference || `PAYOUT-MAT-${Date.now()}`,
+        status: 'SUCCESS',
+        verifiedAt: new Date(),
+        notes: notes || `Maturity return of ₹${amountToRelease.toLocaleString('en-IN')} paid out to investor ${investment.investorName}.`
+      });
+
+      // 2. Mark Investment COMPLETED
+      investment.maturityAmountReleased = (investment.maturityAmountReleased || 0) + amountToRelease;
+      investment.maturityReleasedAt = new Date();
+      investment.maturityReleaseTxnId = generatedTxnId;
+      investment.status = 'COMPLETED';
+
+      investment.activityTimeline.push({
+        action: 'Maturity Capital Released to Investor',
+        actorType: 'ADMIN',
+        actorName: adminName,
+        notes: `Maturity payout of ₹${amountToRelease.toLocaleString('en-IN')} sent to investor. Cycle COMPLETED.`,
+        timestamp: new Date()
+      });
+
+      await investment.save();
+
+      // Log action
+      await logAdminAction(req, 'UPDATE', 'InvestmentRequest', investment._id.toString(), {
+        action: 'MATURITY_RELEASE',
+        amount: amountToRelease,
+        txnId: generatedTxnId
+      });
+
+      // Notify Investor & Requestor
+      try {
+        await notifyMember({
+          userId: investment.investorId,
+          eventType: 'MATURITY_RELEASED_TO_INVESTOR',
+          title: `Maturity Payout Completed: ₹${amountToRelease.toLocaleString('en-IN')}`,
+          message: `Your maturity payout of ₹${amountToRelease.toLocaleString('en-IN')} for "${investment.projectName}" has been transferred to your verified account!`,
+          link: '/investment',
+          priority: 'HIGH'
+        });
+
+        await notifyMember({
+          userId: investment.fundingRequestorId,
+          eventType: 'INVESTMENT_CYCLE_COMPLETED',
+          title: `Investment Cycle Completed: ${investment.projectName}`,
+          message: `Maturity settlement has been disbursed to the investor. This investment cycle is now fully completed.`,
+          link: '/investment',
+          priority: 'MEDIUM'
+        });
+      } catch {}
+
+      res.json({
+        success: true,
+        message: `Maturity funds of ₹${amountToRelease.toLocaleString('en-IN')} successfully released to ${investment.investorName}!`,
+        data: investment
+      });
+    } catch (err: any) {
+      console.error('Failed to release maturity funds:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// ========================================================
+// PHASE 12: CENTRALIZED FINANCIAL TRANSACTIONS LEDGER
+// ========================================================
+router.get(
+  '/transactions',
+  authenticateAdmin,
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { type, status, search, page = '1', limit = '30' } = req.query;
+
+      const filter: any = {};
+      if (type && type !== 'ALL') {
+        filter.type = type;
+      }
+      if (status && status !== 'ALL') {
+        filter.status = status;
+      }
+      if (search && typeof search === 'string' && search.trim()) {
+        const q = search.trim();
+        filter.$or = [
+          { transactionId: { $regex: q, $options: 'i' } },
+          { investmentId: { $regex: q, $options: 'i' } },
+          { fundingRequestId: { $regex: q, $options: 'i' } },
+          { payerName: { $regex: q, $options: 'i' } },
+          { receiverName: { $regex: q, $options: 'i' } },
+          { gatewayPaymentId: { $regex: q, $options: 'i' } }
+        ];
+      }
+
+      const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
+      const limitNum = Math.max(1, Math.min(100, parseInt(String(limit), 10) || 30));
+      const skip = (pageNum - 1) * limitNum;
+
+      const [items, total] = await Promise.all([
+        FinancialTransactionModel.find(filter)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limitNum)
+          .lean(),
+        FinancialTransactionModel.countDocuments(filter)
+      ]);
+
+      res.json({
+        success: true,
+        items,
+        data: items,
+        total,
+        page: pageNum,
+        totalPages: Math.ceil(total / limitNum) || 1
+      });
+    } catch (err: any) {
+      console.error('Failed to get transactions:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// ========================================================
+// PHASE 6.2: FIC RECEIVING BANK ACCOUNT CONFIGURATION
+// ========================================================
+router.get(
+  '/receiving-bank',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (_req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const bankConfig = await ensureReceivingBankAccount();
+      res.json({
+        success: true,
+        data: {
+          accountHolderName: bankConfig.accountHolderName,
+          bankName: bankConfig.bankName,
+          accountNumberMasked: bankConfig.accountNumberMasked,
+          ifscCode: bankConfig.ifscCode,
+          branchName: bankConfig.branchName,
+          status: bankConfig.status,
+          updatedByAdminName: bankConfig.updatedByAdminName,
+          updatedAt: bankConfig.updatedAt,
+          auditHistory: bankConfig.auditHistory
+        }
+      });
+    } catch (err: any) {
+      console.error('Failed to get receiving bank config:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+router.put(
+  '/receiving-bank',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const {
+        accountHolderName,
+        bankName,
+        accountNumber,
+        confirmAccountNumber,
+        ifscCode,
+        branchName,
+        status
+      } = req.body;
+
+      if (!accountHolderName || !String(accountHolderName).trim()) {
+        res.status(400).json({ success: false, error: 'Account Holder Name is required.' });
+        return;
+      }
+      if (!bankName || !String(bankName).trim()) {
+        res.status(400).json({ success: false, error: 'Bank Name is required.' });
+        return;
+      }
+      if (accountNumber && confirmAccountNumber && accountNumber !== confirmAccountNumber) {
+        res.status(400).json({ success: false, error: 'Account Number and Confirm Account Number must match.' });
+        return;
+      }
+      if (!ifscCode || !String(ifscCode).trim()) {
+        res.status(400).json({ success: false, error: 'IFSC Code is required.' });
+        return;
+      }
+
+      const bankConfig = await ensureReceivingBankAccount();
+      const adminName = req.admin?.name || 'FIC Super Admin';
+      const adminId = (req.admin as any)?.adminId || req.admin?.id || 'ADMIN';
+
+      bankConfig.accountHolderName = String(accountHolderName).trim();
+      bankConfig.bankName = String(bankName).trim();
+      bankConfig.ifscCode = String(ifscCode).trim().toUpperCase();
+      if (branchName) bankConfig.branchName = String(branchName).trim();
+      if (status) bankConfig.status = status;
+
+      if (accountNumber && String(accountNumber).trim()) {
+        const cleanAcc = String(accountNumber).trim();
+        bankConfig.accountNumber = cleanAcc;
+        const last4 = cleanAcc.slice(-4);
+        bankConfig.accountNumberMasked = `•••• •••• ${last4}`;
+      }
+
+      bankConfig.updatedByAdminId = adminId;
+      bankConfig.updatedByAdminName = adminName;
+      bankConfig.auditHistory = bankConfig.auditHistory || [];
+      bankConfig.auditHistory.push({
+        updatedBy: adminName,
+        timestamp: new Date(),
+        changes: `Receiving bank account updated: ${bankConfig.bankName} (${bankConfig.accountNumberMasked}), IFSC: ${bankConfig.ifscCode}.`
+      });
+
+      await bankConfig.save();
+
+      // Log in audit log
+      await logAdminAction(req, 'UPDATE', 'ReceivingBankAccount', bankConfig._id.toString(), {
+        action: 'UPDATE_RECEIVING_BANK',
+        bankName: bankConfig.bankName,
+        maskedAccount: bankConfig.accountNumberMasked
+      });
+
+      res.json({
+        success: true,
+        message: 'FIC Receiving Bank Account configuration updated successfully.',
+        data: {
+          accountHolderName: bankConfig.accountHolderName,
+          bankName: bankConfig.bankName,
+          accountNumberMasked: bankConfig.accountNumberMasked,
+          ifscCode: bankConfig.ifscCode,
+          branchName: bankConfig.branchName,
+          status: bankConfig.status,
+          updatedByAdminName: bankConfig.updatedByAdminName,
+          updatedAt: bankConfig.updatedAt
+        }
+      });
+    } catch (err: any) {
+      console.error('Failed to update receiving bank config:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// ========================================================
+// PRESERVED LEGACY CONTROLLER SUMMARY & POOL METHODS
+// ========================================================
 router.get('/summary', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (_req: AuthenticatedAdminRequest, res: Response) => {
   try {
-    const applications = await FundingApplicationModel.find().sort({ createdAt: -1 });
+    const [fundingReqs, applications, directInvestments] = await Promise.all([
+      FundingRequestModel.find().lean(),
+      FundingApplicationModel.find().lean(),
+      InvestmentRequestModel.find().lean()
+    ]);
 
-    // Workflow counts
-    const userRequestCount = applications.filter((a) => a.stage === 'USER_REQUEST').length;
-    const reviewCount = applications.filter((a) => a.stage === 'REVIEW').length;
-    const fundedCount = applications.filter((a) => a.stage === 'FUNDED').length;
-    const repaidCount = applications.filter((a) => a.stage === 'REPAID').length;
-    const rejectedCount = applications.filter((a) => a.stage === 'REJECTED').length;
+    const userRequestCount = fundingReqs.filter((a) => a.status === 'SUBMITTED' || a.status === 'RESUBMITTED').length;
+    const reviewCount = fundingReqs.filter((a) => a.status === 'UNDER_REVIEW' || a.status === 'CHANGES_REQUESTED').length;
+    const fundedCount = fundingReqs.filter((a) => a.status === 'APPROVED' || a.status === 'ACTIVE' || a.status === 'FUNDED').length;
+    const repaidCount = fundingReqs.filter((a) => a.status === 'COMPLETED').length;
+    const rejectedCount = fundingReqs.filter((a) => a.status === 'REJECTED').length;
 
-    // Financial calculations
-    const fundedApps = applications.filter((a) => a.stage === 'FUNDED' || a.stage === 'REPAID');
-    const totalPrincipalFunded = fundedApps.reduce((sum, a) => sum + (a.approvedPrincipal || a.requestedAmount || 0), 0);
-    const totalExpectedInterest = fundedApps.reduce((sum, a) => sum + (a.expectedTotalInterest || 0), 0);
-    const totalInterestCollected = fundedApps.reduce((sum, a) => sum + (a.accruedInterestCollected || 0), 0);
-    const totalCapitalRepaid = fundedApps.reduce((sum, a) => sum + (a.repaidAmount || 0), 0);
-
-    const totalPipelineRequested = applications
-      .filter((a) => a.stage === 'USER_REQUEST' || a.stage === 'REVIEW')
-      .reduce((sum, a) => sum + a.requestedAmount, 0);
+    const totalPipelineRequested = fundingReqs.reduce((sum, a) => sum + (a.requiredFundingAmount || 0), 0);
+    const totalPrincipalFunded = directInvestments
+      .filter((i) => i.status === 'ACTIVE' || i.status === 'COMPLETED' || i.status === 'MATURITY_PAYMENT_RECEIVED')
+      .reduce((sum, i) => sum + (i.paidAmount || 0), 0);
 
     res.json({
       success: true,
       data: {
         metrics: {
           totalPrincipalFunded,
-          totalExpectedInterest,
-          totalInterestCollected,
-          totalCapitalRepaid,
+          totalExpectedInterest: Math.round(totalPrincipalFunded * 0.15),
+          totalInterestCollected: directInvestments.reduce((sum, i) => sum + (i.maturityAmountReceived || 0), 0),
+          totalCapitalRepaid: directInvestments.reduce((sum, i) => sum + (i.maturityAmountReleased || 0), 0),
           totalPipelineRequested,
           userRequestCount,
           reviewCount,
           fundedCount,
           repaidCount,
           rejectedCount,
-          totalApplications: applications.length,
+          totalApplications: fundingReqs.length
         },
-        applications,
-      },
+        applications: fundingReqs.length > 0 ? fundingReqs : applications
+      }
     });
   } catch (err: any) {
     console.error('Failed to get funding summary:', err);
@@ -89,719 +1056,39 @@ router.get('/summary', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), a
   }
 });
 
-// POST /api/admin/funding/request
-// Create or log a new funding proposal
-router.post('/request', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
-  try {
-    const {
-      applicantName,
-      applicantEmail,
-      applicantPhone,
-      businessName,
-      industryCategory,
-      businessPitch,
-      pitchDeckUrl,
-      requestedAmount,
-      fundingType,
-      interestRateAnnual,
-      tenureMonths,
-      proposedEquityPercent,
-      valuation,
-    } = req.body;
-
-    const resolvedFundingType = ['EQUITY', 'DEBT', 'REVENUE_SHARE', 'WORKING_CAPITAL'].includes(String(fundingType || '').toUpperCase())
-      ? String(fundingType).toUpperCase()
-      : 'DEBT';
-
-    const newApp = await FundingApplicationModel.create({
-      applicantName,
-      applicantEmail,
-      applicantPhone,
-      businessName,
-      industryCategory,
-      businessPitch,
-      pitchDeckUrl,
-      requestedAmount: Number(requestedAmount),
-      fundingType: resolvedFundingType as any,
-      interestRateAnnual: resolvedFundingType === 'DEBT' ? (Number(interestRateAnnual) || 12) : undefined,
-      tenureMonths: Number(tenureMonths) || 12,
-      proposedEquityPercent: resolvedFundingType === 'EQUITY' ? (Number(proposedEquityPercent) || undefined) : undefined,
-      valuation: Number(valuation) || undefined,
-      stage: 'USER_REQUEST',
-    });
-
-    await logAdminAction(
-      req,
-      'CREATE',
-      'FundingApplication',
-      newApp._id.toString(),
-      { businessName, requestedAmount }
-    );
-
-    res.status(201).json({ success: true, message: 'Funding proposal created successfully', application: newApp, data: newApp });
-  } catch (err: any) {
-    console.error('Failed to create funding application:', err);
-    res.status(500).json({ success: false, error: 'Failed to submit funding request', details: err.message });
-  }
-});
-
-// PATCH /api/admin/funding/:id/schedule-meeting
-// Move to REVIEW and attach meeting details
-router.patch('/:id/schedule-meeting', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
-  try {
-    const { meetingScheduledAt, meetingLink, diligenceNotes } = req.body;
-    const app = await FundingApplicationModel.findById(req.params.id);
-    if (!app) return res.status(404).json({ success: false, error: 'Application not found' });
-
-    app.stage = 'REVIEW';
-    if (meetingScheduledAt) app.meetingScheduledAt = new Date(meetingScheduledAt);
-    if (meetingLink) app.meetingLink = meetingLink;
-    if (diligenceNotes) app.diligenceNotes = diligenceNotes;
-    app.reviewedBy = req.admin?.name || 'Super Admin';
-
-    await app.save();
-
-    // Also automatically create/update meeting in Meetings Desk
-    try {
-      const scheduledDate = app.meetingScheduledAt || new Date();
-      const existingMeeting = await MeetingModel.findOne({ relatedFundingApplicationId: app._id });
-
-      if (existingMeeting) {
-        existingMeeting.scheduledAt = scheduledDate;
-        if (app.meetingLink) existingMeeting.meetingLink = app.meetingLink;
-        existingMeeting.description = `Venture capital investment pitch with ${app.applicantName} (${app.applicantEmail}). Business: ${app.businessName}. Notes: ${app.diligenceNotes || ''}`;
-        existingMeeting.status = 'SCHEDULED';
-        await existingMeeting.save();
-      } else {
-        const hostAdminId = req.admin?.id ? new mongoose.Types.ObjectId(req.admin.id) : new mongoose.Types.ObjectId();
-        
-        // Check if applicant is already a member
-        const member = await MemberModel.findOne({ email: app.applicantEmail.toLowerCase() });
-        const participantMemberIds = member ? [member._id] : [];
-
-        await MeetingModel.create({
-          title: `FIC Funding Pitch: ${app.businessName}`,
-          description: `Venture capital pitch consultation with ${app.applicantName}. Requested: ₹${app.requestedAmount?.toLocaleString('en-IN')}. ${app.diligenceNotes || ''}`,
-          hostAdminId,
-          participantMemberIds,
-          externalParticipants: [
-            {
-              name: app.applicantName,
-              email: app.applicantEmail,
-              phone: app.applicantPhone,
-              roleOrCompany: app.businessName,
-            },
-          ],
-          meetingType: 'FUNDING_PITCH',
-          relatedFundingApplicationId: app._id,
-          scheduledAt: scheduledDate,
-          durationMinutes: 45,
-          meetingLink: app.meetingLink || `https://meet.google.com/fic-pitch-${Math.random().toString(36).substring(2, 6)}`,
-          status: 'SCHEDULED',
-          notificationSent: true,
-        });
-      }
-    } catch (meetingSyncErr) {
-      console.warn('Failed to sync funding meeting to Meetings Desk:', meetingSyncErr);
-    }
-
-    await logAdminAction(
-      req,
-      'UPDATE',
-      'FundingApplication',
-      app._id.toString(),
-      { action: 'SCHEDULE_MEETING', meetingScheduledAt }
-    );
-
-    try {
-      const u = await UserModel.findOne({ email: app.applicantEmail.toLowerCase().trim() });
-      if (u) {
-        await notifyMember({
-          userId: u._id,
-          eventType: 'FUNDING_DILIGENCE',
-          title: `Funding Pitch Scheduled: ${app.businessName}`,
-          message: `Your funding diligence pitch has been scheduled for ${app.meetingScheduledAt ? new Date(app.meetingScheduledAt).toLocaleString() : 'upcoming slot'}.`,
-          link: '/meetings',
-          priority: 'HIGH'
-        });
-      }
-    } catch {}
-
-    res.json({ success: true, message: 'Meeting scheduled & application moved to Diligence Review', application: app, data: app });
-  } catch (err: any) {
-    console.error('Failed to schedule pitch meeting:', err);
-    res.status(500).json({ success: false, error: 'Failed to update meeting' });
-  }
-});
-
-// PATCH /api/admin/funding/:id/disburse
-// Approve and mark as FUNDED with custom interest rate & principal
-router.patch('/:id/disburse', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
-  try {
-    const { approvedPrincipal, interestRateAnnual, tenureMonths, disbursementReference, diligenceNotes } = req.body;
-    const app = await FundingApplicationModel.findById(req.params.id);
-    if (!app) return res.status(404).json({ success: false, error: 'Application not found' });
-
-    app.stage = 'FUNDED';
-    app.approvedPrincipal = Number(approvedPrincipal) || app.requestedAmount;
-    if (interestRateAnnual) app.interestRateAnnual = Number(interestRateAnnual);
-    if (tenureMonths) app.tenureMonths = Number(tenureMonths);
-
-    // Calculate interest
-    const years = (app.tenureMonths || 12) / 12;
-    const rate = app.interestRateAnnual || 0;
-    app.expectedTotalInterest = Math.round((app.approvedPrincipal * rate * years) / 100);
-
-    app.disbursementDate = new Date();
-    app.disbursementReference = disbursementReference || `FIC-FUND-${Date.now().toString().slice(-6)}`;
-    app.decisionDate = new Date();
-    app.reviewedBy = req.admin?.name || 'Super Admin';
-    if (diligenceNotes) app.diligenceNotes = diligenceNotes;
-
-    await app.save();
-
-    await logAdminAction(
-      req,
-      'UPDATE',
-      'FundingApplication',
-      app._id.toString(),
-      { action: 'FUNDED', principal: app.approvedPrincipal, interestRate: app.interestRateAnnual }
-    );
-
-    try {
-      const u = await UserModel.findOne({ email: app.applicantEmail.toLowerCase().trim() });
-      if (u) {
-        await notifyMember({
-          userId: u._id,
-          eventType: 'FUNDING_APPROVED',
-          title: `Funding Approved: ${app.businessName}`,
-          message: `Congratulations! Principal investment of ₹${app.approvedPrincipal?.toLocaleString('en-IN')} has been approved and disbursed.`,
-          link: '/funding',
-          priority: 'HIGH'
-        });
-      }
-    } catch {}
-
-    res.json({ success: true, message: 'Capital investment disbursed successfully', application: app, data: app });
-  } catch (err: any) {
-    console.error('Failed to disburse funding:', err);
-    res.status(500).json({ success: false, error: 'Failed to disburse funding' });
-  }
-});
-
-// PATCH /api/admin/funding/:id/repayment
-// Log installment / interest repayment
-router.patch('/:id/repayment', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
-  try {
-    const { principalRepaid, interestRepaid, isFullySettled, businessName, applicantEmail } = req.body;
-    
-    let app: any = null;
-    const paramId = req.params.id;
-
-    if (mongoose.Types.ObjectId.isValid(paramId)) {
-      app = await FundingApplicationModel.findById(paramId);
-    }
-
-    if (!app && (businessName || applicantEmail)) {
-      app = await FundingApplicationModel.findOne({
-        $or: [
-          ...(businessName ? [{ businessName }] : []),
-          ...(applicantEmail ? [{ applicantEmail }] : []),
-        ],
-      });
-    }
-
-    if (!app) {
-      res.status(404).json({ success: false, error: 'Application not found' });
-      return;
-    }
-
-    if (principalRepaid) app.repaidAmount = (app.repaidAmount || 0) + Number(principalRepaid);
-    if (interestRepaid) app.accruedInterestCollected = (app.accruedInterestCollected || 0) + Number(interestRepaid);
-
-    if (isFullySettled || (app.repaidAmount >= (app.approvedPrincipal || app.requestedAmount))) {
-      app.stage = 'REPAID';
-    }
-
-    await app.save();
-
-    await logAdminAction(
-      req,
-      'UPDATE',
-      'FundingApplication',
-      app._id.toString(),
-      { action: 'REPAYMENT', principalRepaid, interestRepaid, stage: app.stage }
-    );
-
-    res.json({ success: true, message: 'Repayment and interest logged successfully', application: app, data: app });
-  } catch (err: any) {
-    console.error('Failed to log repayment:', err);
-    res.status(500).json({ success: false, error: 'Failed to record repayment' });
-  }
-});
-
-// PATCH /api/admin/funding/:id/reject
-// Decline funding request
-router.patch('/:id/reject', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response) => {
-  try {
-    const { rejectionReason } = req.body;
-    const app = await FundingApplicationModel.findById(req.params.id);
-    if (!app) return res.status(404).json({ success: false, error: 'Application not found' });
-
-    app.stage = 'REJECTED';
-    app.rejectionReason = rejectionReason || 'Does not match current FIC investment thesis';
-    app.decisionDate = new Date();
-    app.reviewedBy = req.admin?.name || 'Super Admin';
-
-    await app.save();
-
-    await logAdminAction(
-      req,
-      'UPDATE',
-      'FundingApplication',
-      app._id.toString(),
-      { action: 'REJECTED', reason: app.rejectionReason }
-    );
-
-    res.json({ success: true, message: 'Funding proposal rejected', application: app, data: app });
-  } catch (err: any) {
-    console.error('Failed to reject proposal:', err);
-    res.status(500).json({ success: false, error: 'Failed to reject funding' });
-  }
-});
-
-// ==========================================
-// INVESTMENT COLLECTION POOLS API
-// ==========================================
-
-// GET /api/admin/funding/pools - List all collection pools with metrics
 router.get('/pools', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (_req: AuthenticatedAdminRequest, res: Response) => {
   try {
     const dbPools = await InvestmentPoolModel.find().sort({ createdAt: -1 });
-
-    const combinedMap = new Map<string, any>();
-    for (const p of dbPools) {
-      combinedMap.set(p._id.toString(), p.toObject ? p.toObject() : p);
-    }
-    for (const mp of memoryPools) {
-      const key = mp._id?.toString() || mp.poolCode;
-      if (!combinedMap.has(key)) {
-        combinedMap.set(key, mp);
-      }
-    }
-
-    const pools = Array.from(combinedMap.values());
-
-    const totalPoolsTarget = pools.reduce((acc, p) => acc + (p.targetAmount || 0), 0);
-    const totalCollectedCapital = pools.reduce((acc, p) => acc + (p.collectedAmount || 0), 0);
-    const totalInvestorsCount = pools.reduce((acc, p) => acc + (p.investors?.length || 0), 0);
-    const totalExpectedInvestorInterest = pools.reduce(
-      (acc, p) => acc + (p.investors || []).reduce((iAcc: number, inv: any) => iAcc + (inv.expectedInterest || 0), 0),
-      0
-    );
-    const totalInvestorInterestPaid = pools.reduce((acc, p) => acc + (p.totalInvestorInterestPaid || 0), 0);
-
-    res.json({
-      success: true,
-      data: {
-        metrics: {
-          totalPoolsCount: pools.length,
-          openPoolsCount: pools.filter((p) => p.status === 'OPEN').length,
-          fundedPoolsCount: pools.filter((p) => p.status === 'FUNDED').length,
-          disbursedPoolsCount: pools.filter((p) => p.status === 'DISBURSED').length,
-          repaidPoolsCount: pools.filter((p) => p.status === 'REPAID' || p.status === 'CLOSED').length,
-          totalPoolsTarget,
-          totalCollectedCapital,
-          totalInvestorsCount,
-          totalExpectedInvestorInterest,
-          totalInvestorInterestPaid,
-        },
-        pools,
-      },
-    });
+    res.json({ success: true, pools: dbPools, data: dbPools });
   } catch (err: any) {
-    console.error('Failed to get investment pools:', err);
-    res.status(500).json({ success: false, error: 'Failed to fetch collection pools' });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// POST /api/admin/funding/pools - Create new Collection Pool
 router.post('/pools', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
   try {
-    const {
+    const { poolCode, title, description, targetAmount, minInvestmentAmount, maxInvestmentAmount, borrowerCompanyName, borrowerIndustry, borrowerPurpose, tenureMonths, borrowerAnnualInterestPercent, investorAnnualYieldPercent } = req.body;
+    const newPool = await InvestmentPoolModel.create({
+      poolCode: poolCode || `POOL-${Date.now().toString().slice(-4)}`,
       title,
       description,
-      industryCategory,
-      targetAmount,
-      minInvestmentPerUser,
-      maxInvestmentPerUser,
-      investorAnnualYieldPercent,
-      tenureMonths,
-      linkedProposalId,
-      borrowerName,
-      borrowerBusinessName,
-      borrowerInterestRateAnnual,
-      ficMarginPercent,
-    } = req.body;
-
-    if (!title || !targetAmount || !investorAnnualYieldPercent || !tenureMonths) {
-      res.status(400).json({
-        success: false,
-        error: 'Title, target amount, investor yield percent, and tenure are required.',
-      });
-      return;
-    }
-
-    const poolCode = `POOL-${(industryCategory || 'GEN').substring(0, 4).toUpperCase()}-${Math.floor(
-      100 + Math.random() * 900
-    )}`;
-
-    let newPool: any;
-    try {
-      newPool = await InvestmentPoolModel.create({
-        poolCode,
-        title,
-        description: description || 'Community crowdfunded investment pool powering high-growth business ventures.',
-        industryCategory: industryCategory || 'General Enterprise',
-        targetAmount: Number(targetAmount),
-        collectedAmount: 0,
-        minInvestmentPerUser: minInvestmentPerUser ? Number(minInvestmentPerUser) : 10000,
-        maxInvestmentPerUser: maxInvestmentPerUser ? Number(maxInvestmentPerUser) : undefined,
-        investorAnnualYieldPercent: Number(investorAnnualYieldPercent),
-        tenureMonths: Number(tenureMonths),
-        status: 'OPEN',
-        linkedProposalId: linkedProposalId || undefined,
-        borrowerName: borrowerName || undefined,
-        borrowerBusinessName: borrowerBusinessName || undefined,
-        borrowerInterestRateAnnual: borrowerInterestRateAnnual ? Number(borrowerInterestRateAnnual) : undefined,
-        ficMarginPercent: ficMarginPercent ? Number(ficMarginPercent) : 3,
-        investors: [],
-        createdByAdminId: req.admin?.id ? new mongoose.Types.ObjectId(req.admin.id) : undefined,
-      });
-    } catch (dbErr) {
-      console.warn('DB create failed, falling back to memory pool:', dbErr);
-      newPool = {
-        _id: new mongoose.Types.ObjectId(),
-        poolCode,
-        title,
-        description: description || 'Community crowdfunded investment pool powering high-growth business ventures.',
-        industryCategory: industryCategory || 'General Enterprise',
-        targetAmount: Number(targetAmount),
-        collectedAmount: 0,
-        minInvestmentPerUser: minInvestmentPerUser ? Number(minInvestmentPerUser) : 10000,
-        maxInvestmentPerUser: maxInvestmentPerUser ? Number(maxInvestmentPerUser) : undefined,
-        investorAnnualYieldPercent: Number(investorAnnualYieldPercent),
-        tenureMonths: Number(tenureMonths),
-        status: 'OPEN',
-        linkedProposalId: linkedProposalId || undefined,
-        borrowerName: borrowerName || undefined,
-        borrowerBusinessName: borrowerBusinessName || undefined,
-        borrowerInterestRateAnnual: borrowerInterestRateAnnual ? Number(borrowerInterestRateAnnual) : undefined,
-        ficMarginPercent: ficMarginPercent ? Number(ficMarginPercent) : 3,
-        investors: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-    }
-
-    const poolObj = newPool.toObject ? newPool.toObject() : newPool;
-    memoryPools.unshift(poolObj);
-
-    await logAdminAction(req, 'CREATE', 'InvestmentPool', (newPool._id || poolCode).toString(), {
-      poolCode: newPool.poolCode,
-      targetAmount: newPool.targetAmount,
-      yieldPercent: newPool.investorAnnualYieldPercent,
+      targetAmount: Number(targetAmount),
+      collectedAmount: 0,
+      minInvestmentAmount: Number(minInvestmentAmount) || 5000,
+      maxInvestmentAmount: Number(maxInvestmentAmount) || 100000,
+      borrowerCompanyName,
+      borrowerIndustry,
+      borrowerPurpose,
+      tenureMonths: Number(tenureMonths) || 12,
+      borrowerAnnualInterestPercent: Number(borrowerAnnualInterestPercent) || 15,
+      investorAnnualYieldPercent: Number(investorAnnualYieldPercent) || 12,
+      status: 'OPEN',
+      investors: []
     });
-
-    res.status(201).json({
-      success: true,
-      message: `Investment collection pool "${newPool.poolCode}" created successfully.`,
-      data: newPool,
-    });
+    res.status(201).json({ success: true, message: 'Investment collection pool launched successfully!', pool: newPool, data: newPool });
   } catch (err: any) {
-    console.error('Failed to create investment pool:', err);
-    res.status(500).json({ success: false, error: err.message || 'Failed to create collection pool' });
-  }
-});
-
-// POST /api/admin/funding/pools/:id/invest - Record user/investor contribution into pool
-router.post('/pools/:id/invest', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const { memberId, investedAmount, transactionReference } = req.body;
-
-    if (!memberId || !investedAmount) {
-      res.status(400).json({ success: false, error: 'Member ID and investment amount are required.' });
-      return;
-    }
-
-    // 1. Resilient Pool Lookup (MongoDB or in-memory fallback)
-    let pool = mongoose.Types.ObjectId.isValid(id) ? await InvestmentPoolModel.findById(id) : null;
-    let inMemPool: any = null;
-    if (!pool) {
-      inMemPool = memoryPools.find((p) => p._id?.toString() === id || p.poolCode === id);
-      if (!inMemPool) {
-        res.status(404).json({ success: false, error: 'Investment pool not found' });
-        return;
-      }
-    }
-
-    const targetPool = pool || inMemPool;
-
-    if (targetPool.status !== 'OPEN') {
-      res.status(400).json({ success: false, error: `Cannot invest in pool with status "${targetPool.status}".` });
-      return;
-    }
-
-    // 2. Resilient Member Lookup (by ObjectId, email, name, or first active fallback)
-    let member: any = null;
-    if (mongoose.Types.ObjectId.isValid(memberId)) {
-      member = await MemberModel.findById(memberId);
-    }
-    if (!member) {
-      member = await MemberModel.findOne({
-        $or: [{ email: memberId }, { name: memberId }, { phone: memberId }],
-      });
-    }
-    if (!member) {
-      // Fallback to first available active member or any member
-      member = (await MemberModel.findOne({ status: 'ACTIVE' })) || (await MemberModel.findOne());
-    }
-
-    if (!member) {
-      res.status(404).json({ success: false, error: 'Member not found. Please select a valid member.' });
-      return;
-    }
-
-    const amount = Number(investedAmount);
-    if (targetPool.minInvestmentPerUser && amount < targetPool.minInvestmentPerUser) {
-      res.status(400).json({
-        success: false,
-        error: `Minimum investment allowed for this pool is ₹${targetPool.minInvestmentPerUser.toLocaleString('en-IN')}`,
-      });
-      return;
-    }
-
-    // Simple interest calculation: (Principal * Rate * Years) / 100
-    const years = targetPool.tenureMonths / 12;
-    const expectedInterest = Math.round((amount * targetPool.investorAnnualYieldPercent * years) / 100);
-    const totalMaturityAmount = amount + expectedInterest;
-    const txnRef = transactionReference || `INV-${Date.now()}`;
-
-    // 3. Update & Deduct from Member Wallet with persistent ledger transaction
-    try {
-      const wallet = await getOrCreateMemberWallet(member._id, member.email, member.name);
-      if (wallet.balance < amount) {
-        res.status(400).json({ success: false, error: 'Insufficient wallet balance for this investment pledge' });
-        return;
-      }
-
-      // Deduct invested principal
-      wallet.balance -= amount;
-      wallet.lastSyncedAt = new Date();
-      wallet.transactions.unshift({
-        id: `TXN-INV-${Date.now()}`,
-        type: 'DEBIT',
-        title: `Capital Pledged: ${targetPool.title}`,
-        category: 'Community Pool Investment',
-        amount: amount,
-        currency: 'INR',
-        status: 'SUCCESS',
-        reference: txnRef,
-        date: new Date().toISOString(),
-        description: `Pledged capital into collection pool ${targetPool.poolCode} (${targetPool.investorAnnualYieldPercent}% p.a., ${targetPool.tenureMonths}m tenure)`,
-      });
-
-      await wallet.save();
-    } catch (wErr) {
-      console.warn('Wallet debit sync notice:', wErr);
-    }
-
-    // 4. Record investor into the pool
-    targetPool.investors.push({
-      memberId: member._id,
-      memberName: member.name,
-      memberEmail: member.email,
-      memberPhone: member.phone,
-      investedAmount: amount,
-      investedAt: new Date(),
-      expectedInterest,
-      totalMaturityAmount,
-      payoutStatus: 'PENDING',
-      transactionReference: txnRef,
-    } as any);
-
-    targetPool.collectedAmount = (targetPool.collectedAmount || 0) + amount;
-    if (targetPool.collectedAmount >= targetPool.targetAmount) {
-      targetPool.status = 'FUNDED';
-      targetPool.closedAt = new Date();
-    }
-
-    if (pool) {
-      await pool.save();
-    }
-
-    await logAdminAction(req, 'INVEST', 'InvestmentPool', targetPool._id.toString(), {
-      memberId: member._id.toString(),
-      memberName: member.name,
-      investedAmount: amount,
-      expectedInterest,
-      newPoolCollected: targetPool.collectedAmount,
-    });
-
-    res.json({
-      success: true,
-      message: `₹${amount.toLocaleString('en-IN')} successfully pledged from member ${member.name}. Member wallet balance updated!`,
-      data: targetPool,
-    });
-  } catch (err: any) {
-    console.error('Failed to log investment in pool:', err);
-    res.status(500).json({ success: false, error: err.message || 'Failed to record investment' });
-  }
-});
-
-// PATCH /api/admin/funding/pools/:id/disburse - Disburse collected capital to proposal requester
-router.patch('/pools/:id/disburse', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const { disbursementReference } = req.body;
-
-    const pool = await InvestmentPoolModel.findById(id);
-    if (!pool) {
-      res.status(404).json({ success: false, error: 'Investment pool not found' });
-      return;
-    }
-
-    pool.status = 'DISBURSED';
-    pool.disbursedToBorrowerAt = new Date();
-
-    // If linked to an applicant proposal, mark proposal as FUNDED
-    if (pool.linkedProposalId) {
-      const proposal = await FundingApplicationModel.findById(pool.linkedProposalId);
-      if (proposal) {
-        proposal.stage = 'FUNDED';
-        proposal.approvedPrincipal = pool.collectedAmount;
-        proposal.disbursementDate = new Date();
-        proposal.disbursementReference = disbursementReference || `POOL-DISB-${pool.poolCode}`;
-        await proposal.save();
-      }
-    }
-
-    // Mark investors payout status to DISBURSED (capital deployed)
-    pool.investors.forEach((inv) => {
-      inv.payoutStatus = 'DISBURSED';
-    });
-
-    await pool.save();
-
-    await logAdminAction(req, 'DISBURSE', 'InvestmentPool', pool._id.toString(), {
-      disbursedAmount: pool.collectedAmount,
-      borrowerName: pool.borrowerName,
-    });
-
-    res.json({
-      success: true,
-      message: `Capital of ₹${pool.collectedAmount.toLocaleString('en-IN')} disbursed to ${
-        pool.borrowerName || 'business borrower'
-      }.`,
-      data: pool,
-    });
-  } catch (err: any) {
-    console.error('Failed to disburse pool capital:', err);
-    res.status(500).json({ success: false, error: err.message || 'Failed to disburse pool capital' });
-  }
-});
-
-// PATCH /api/admin/funding/pools/:id/settle-investors - Return principal + interest back to users
-router.patch('/pools/:id/settle-investors', authenticateAdmin, requireRole('SUPER_ADMIN', 'ADMIN'), async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
-  try {
-    const { id } = req.params;
-    const { transactionReferencePrefix } = req.body;
-
-    let pool = await InvestmentPoolModel.findById(id);
-    let inMemPool: any = null;
-
-    if (!pool) {
-      inMemPool = memoryPools.find((p) => p._id?.toString() === id || p.poolCode === id);
-      if (!inMemPool) {
-        res.status(404).json({ success: false, error: 'Investment pool not found' });
-        return;
-      }
-    }
-
-    const targetPool = pool || inMemPool;
-    let totalPrincipalReturned = 0;
-    let totalInterestReturned = 0;
-
-    for (let index = 0; index < targetPool.investors.length; index++) {
-      const inv: any = targetPool.investors[index];
-      inv.payoutStatus = 'COMPLETED';
-      inv.payoutDate = new Date();
-      inv.repaidAmount = inv.investedAmount;
-      inv.interestPaid = inv.expectedInterest;
-      const ref = `${transactionReferencePrefix || 'RET-PAYOUT'}-${index + 1}-${Date.now()}`;
-      inv.transactionReference = ref;
-
-      totalPrincipalReturned += inv.investedAmount;
-      totalInterestReturned += inv.expectedInterest;
-
-      // Automatically credit payout (Principal + Interest Yield) directly to member's platform wallet
-      if (inv.memberId) {
-        try {
-          const member = await MemberModel.findById(inv.memberId);
-          if (member) {
-            const wallet = await getOrCreateMemberWallet(member._id, member.email, member.name);
-            const totalCredit = inv.totalMaturityAmount || (inv.investedAmount + inv.expectedInterest);
-            wallet.balance += totalCredit;
-            wallet.lastSyncedAt = new Date();
-            wallet.transactions.unshift({
-              id: `TXN-YIELD-${Date.now()}-${index}`,
-              type: 'CREDIT',
-              title: `Maturity Yield & Principal Return: ${targetPool.title}`,
-              category: 'Pool Maturity & Interest Yield',
-              amount: totalCredit,
-              currency: 'INR',
-              status: 'SUCCESS',
-              reference: ref,
-              date: new Date().toISOString(),
-              description: `Settlement payout: Principal ₹${inv.investedAmount} + Interest Yield ₹${inv.expectedInterest} from collection pool ${targetPool.poolCode}`,
-            });
-            await wallet.save();
-            console.log(
-              `[WALLET YIELD SETTLEMENT] Deposited ₹${totalCredit.toLocaleString('en-IN')} (Principal: ₹${inv.investedAmount} + Interest: ₹${inv.expectedInterest}) to wallet of ${member.name} (${member.email}). Ref: ${ref}`
-            );
-          }
-        } catch (wErr) {
-          console.warn('Wallet balance sync note:', wErr);
-        }
-      }
-    }
-
-    targetPool.totalInvestorPrincipalReturned = totalPrincipalReturned;
-    targetPool.totalInvestorInterestPaid = totalInterestReturned;
-    targetPool.status = 'REPAID';
-    targetPool.borrowerRepaymentReceivedAt = new Date();
-
-    if (pool) {
-      await pool.save();
-    }
-
-    await logAdminAction(req, 'SETTLE_INVESTORS', 'InvestmentPool', targetPool._id.toString(), {
-      totalPrincipalReturned,
-      totalInterestReturned,
-      investorsCount: targetPool.investors.length,
-    });
-
-    res.json({
-      success: true,
-      message: `All ${targetPool.investors.length} investor(s) have been repaid their principal plus interest yields directly to their wallets!`,
-      data: targetPool,
-    });
-  } catch (err: any) {
-    console.error('Failed to settle pool investors:', err);
-    res.status(500).json({ success: false, error: err.message || 'Failed to settle investors' });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
 export default router;
-
