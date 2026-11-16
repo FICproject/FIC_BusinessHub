@@ -9,6 +9,7 @@ export type DocumentCategory =
   | 'FUNDING_PITCH'
   | 'INVESTMENT_DOC'
   | 'PROFILE_DOC'
+  | 'BUSINESS_IDEA'
   | 'OTHER';
 
 export type DocumentStatus =
@@ -41,6 +42,7 @@ export interface IDocumentAsset extends Document {
   storageProvider: 's3' | 'local';
   checksum: string;
   compressionRatio?: number;
+  compressionStatus?: 'OPTIMIZED' | 'RETAINED_ORIGINAL' | 'COMPRESSED';
   documentCategory: DocumentCategory;
   documentLabel: string;
   documentNumber?: string;
@@ -92,6 +94,11 @@ const DocumentAssetSchema = new Schema<IDocumentAsset>(
     storageProvider: { type: String, enum: ['s3', 'local'], required: true, default: 'local' },
     checksum: { type: String, required: true, index: true },
     compressionRatio: { type: Number },
+    compressionStatus: {
+      type: String,
+      enum: ['OPTIMIZED', 'RETAINED_ORIGINAL', 'COMPRESSED'],
+      default: 'RETAINED_ORIGINAL'
+    },
     documentCategory: {
       type: String,
       enum: [
@@ -103,6 +110,7 @@ const DocumentAssetSchema = new Schema<IDocumentAsset>(
         'FUNDING_PITCH',
         'INVESTMENT_DOC',
         'PROFILE_DOC',
+        'BUSINESS_IDEA',
         'OTHER'
       ],
       default: 'OTHER'
@@ -166,6 +174,7 @@ export interface SafeDocumentDto {
   storageProvider: 's3' | 'local';
   checksum: string;
   compressionRatio?: number;
+  compressionStatus?: 'OPTIMIZED' | 'RETAINED_ORIGINAL' | 'COMPRESSED';
   hasOptimizedPreview: boolean;
   hasThumbnail: boolean;
   documentCategory: DocumentCategory;
@@ -208,6 +217,7 @@ export function toSafeDocumentDto(doc: IDocumentAsset, apiPrefix: 'member' | 'ad
     storageProvider: doc.storageProvider,
     checksum: doc.checksum,
     compressionRatio: doc.compressionRatio,
+    compressionStatus: doc.compressionStatus || (doc.optimizedStorageKey ? 'OPTIMIZED' : 'RETAINED_ORIGINAL'),
     hasOptimizedPreview: Boolean(doc.optimizedStorageKey),
     hasThumbnail: Boolean(doc.thumbnailStorageKey),
     documentCategory: doc.documentCategory,

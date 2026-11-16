@@ -59,10 +59,10 @@ marketplaceRouter.get('/services', async (req: Request, res: Response, next: Nex
 
     // Strict projection: NEVER return provider details (no populate on provider personal data)
     // Timeline and Pricing are NOT included for public card view.
-    const [listings, total] = await Promise.all([
+    const [listings, total, categoryCountsAgg] = await Promise.all([
       ServiceListingModel.find(filter)
         .select(
-          '_id providerId title shortDescription description categoryId subcategoryId categoryName categorySlug subcategoryName servicesOffered skills tags targetCustomers coverageArea deliveryMode createdAt'
+          '_id providerId title shortDescription description categoryId subcategoryId categoryName categorySlug subcategoryName servicesOffered skills tags targetCustomers coverageArea deliveryMode pricingType price deliveryTimeline portfolioUrl supportingDocument createdAt'
         )
         .populate('categoryId', 'name slug iconName')
         .populate('subcategoryId', 'name slug')
@@ -70,14 +70,26 @@ marketplaceRouter.get('/services', async (req: Request, res: Response, next: Nex
         .skip(skip)
         .limit(Number(limit))
         .lean(),
-      ServiceListingModel.countDocuments(filter)
+      ServiceListingModel.countDocuments(filter),
+      ServiceListingModel.aggregate([
+        { $match: { status: ServiceListingStatus.APPROVED, isActive: true, providerId: { $in: validProviderIds } } },
+        { $group: { _id: '$categorySlug', count: { $sum: 1 } } }
+      ])
     ]);
+
+    const categoryCounts: Record<string, number> = {};
+    if (Array.isArray(categoryCountsAgg)) {
+      categoryCountsAgg.forEach((c: any) => {
+        if (c._id) categoryCounts[c._id] = c.count;
+      });
+    }
 
     res.status(200).json({
       success: true,
       data: {
         items: listings,
         total,
+        categoryCounts,
         page: Number(page),
         pageSize: Number(limit),
         totalPages: Math.ceil(total / Number(limit))
@@ -160,21 +172,39 @@ marketplaceRouter.get('/business-ideas', async (req: Request, res: Response, nex
     const skip = (Number(page) - 1) * Number(limit);
 
     // Strict projection: NEVER return submitter private credentials
-    const [ideas, total] = await Promise.all([
+    const [ideas, total, categoryCountsAgg] = await Promise.all([
       BusinessIdeaModel.find(filter)
         .select(
-          '_id ideaRequestId title description mainCategoryId mainCategoryName mainCategorySlug subcategoryId subcategoryName targetMarket targetLocation developmentStage supportRequirements customSupportRequirement marketplacePublished marketplacePublishedAt interestedMembersCount collaborationStatus createdAt'
+          '_id ideaRequestId userId submitterMemberId title description mainCategoryId mainCategoryName mainCategorySlug subcategoryId subcategoryName targetMarket targetLocation developmentStage supportRequirements customSupportRequirement marketplacePublished marketplacePublishedAt interestedMembersCount collaborationStatus createdAt'
         )
         .sort({ marketplacePublishedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(Number(limit))
         .lean(),
-      BusinessIdeaModel.countDocuments(filter)
+      BusinessIdeaModel.countDocuments(filter),
+      BusinessIdeaModel.aggregate([
+        {
+          $match: {
+            marketplacePublished: true,
+            adminReviewStatus: { $in: ['SHARED_ON_MARKETPLACE', 'INTEREST_RECEIVED', 'MEMBER_SELECTION_PENDING', 'MATCHED'] }
+          }
+        },
+        { $group: { _id: '$mainCategorySlug', count: { $sum: 1 } } }
+      ])
     ]);
+
+    const categoryCounts: Record<string, number> = {};
+    if (Array.isArray(categoryCountsAgg)) {
+      categoryCountsAgg.forEach((c: any) => {
+        if (c._id) categoryCounts[c._id] = c.count;
+      });
+    }
 
     const formatted = ideas.map((idea: any) => ({
       id: idea._id,
       ideaRequestId: idea.ideaRequestId || idea.refNumber,
+      userId: idea.userId ? String(idea.userId) : '',
+      submitterMemberId: idea.submitterMemberId ? String(idea.submitterMemberId) : (idea.userId ? String(idea.userId) : ''),
       title: idea.title,
       mainCategoryName: idea.mainCategoryName,
       mainCategorySlug: idea.mainCategorySlug,
@@ -186,6 +216,8 @@ marketplaceRouter.get('/business-ideas', async (req: Request, res: Response, nex
       developmentStage: idea.developmentStage || 'Just an Idea',
       supportRequirements: idea.supportRequirements || [],
       customSupportRequirement: idea.customSupportRequirement,
+      publishedAt: idea.marketplacePublishedAt || idea.createdAt,
+      createdAt: idea.createdAt,
       publishedDate: idea.marketplacePublishedAt
         ? new Date(idea.marketplacePublishedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
         : new Date(idea.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -199,6 +231,7 @@ marketplaceRouter.get('/business-ideas', async (req: Request, res: Response, nex
       data: {
         items: formatted,
         total,
+        categoryCounts,
         page: Number(page),
         pageSize: Number(limit),
         totalPages: Math.ceil(total / Number(limit))
@@ -258,8 +291,8 @@ marketplaceRouter.post(
 
       // Submitting member cannot express interest in their own idea
       if (
-        String(idea.userId) === String(req.user.userId) ||
-        String(idea.submitterMemberId) === String(req.user.userId)
+        (idea.userId && String(idea.userId) === String(req.user.userId)) ||
+        (idea.submitterMemberId && String(idea.submitterMemberId) === String(req.user.userId))
       ) {
         res.status(400).json({ success: false, error: 'You cannot submit collaboration interest for your own business idea.' });
         return;
@@ -297,10 +330,23 @@ marketplaceRouter.post(
         });
       }
 
+      // Prevent idea creator from expressing interest via member profile matching
+      if (
+        (idea.userId && user && String(idea.userId) === String(user._id)) ||
+        (idea.submitterMemberId && member && String(idea.submitterMemberId) === String(member._id))
+      ) {
+        res.status(400).json({ success: false, error: 'You cannot submit collaboration interest for your own business idea.' });
+        return;
+      }
+
       // Prevent duplicate interest submissions
       const existingInterest = await BusinessIdeaInterestModel.findOne({
         ideaId: idea._id,
-        $or: [{ interestedMemberId: member._id }, { interestedUserId: user._id }]
+        $or: [
+          { interestedMemberId: member._id },
+          { interestedUserId: user._id },
+          { interestedEmail: interestedEmail }
+        ]
       });
 
       if (existingInterest) {

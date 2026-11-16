@@ -49,6 +49,7 @@ const VALID_CATEGORIES = new Set<DocumentCategory>([
   'FUNDING_PITCH',
   'INVESTMENT_DOC',
   'PROFILE_DOC',
+  'BUSINESS_IDEA',
   'OTHER'
 ]);
 
@@ -201,6 +202,7 @@ export async function uploadAndProcessDocument(
       storageProvider: objectStorage.providerName,
       checksum: fileInfo.checksumSha256,
       compressionRatio: derivatives.compressionRatio,
+      compressionStatus: derivatives.previewBuffer ? 'OPTIMIZED' : 'RETAINED_ORIGINAL',
       documentCategory: normalizeCategory(params.documentCategory),
       documentLabel: (params.documentLabel || fileInfo.safeOriginalFileName).trim().slice(0, 140),
       ...(sanitizedDocNumber ? { documentNumber: sanitizedDocNumber } : {}),

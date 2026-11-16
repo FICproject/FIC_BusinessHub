@@ -95,7 +95,7 @@ export const BusinessIdeasPage: React.FC = () => {
   const [selectedSupports, setSelectedSupports] = useState<BusinessIdeaSupportOption[]>([]);
   const [customSupportRequirement, setCustomSupportRequirement] = useState<string>('');
   const [additionalMessage, setAdditionalMessage] = useState<string>('');
-  const [uploadedDocs, setUploadedDocs] = useState<{ name: string; fileUrl: string; fileType?: string; uploadedAt: string }[]>([]);
+  const [uploadedDocs, setUploadedDocs] = useState<{ name: string; fileUrl: string; fileType?: string; fileSize?: number; uploadedAt: string }[]>([]);
   const [isUploadingDoc, setIsUploadingDoc] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [formError, setFormError] = useState<string>('');
@@ -162,11 +162,19 @@ export const BusinessIdeasPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 6 * 1024 * 1024) {
+      setFormError(`File size exceeds 6 MB limit (${(file.size / (1024 * 1024)).toFixed(1)} MB). Please select a file up to 6 MB.`);
+      e.target.value = '';
+      return;
+    }
+
+    setFormError('');
     setIsUploadingDoc(true);
     try {
       const uploadRes = await uploadDocumentFile(file, {
         documentCategory: 'BUSINESS_IDEA',
-        documentLabel: 'Idea Supporting Document'
+        documentLabel: 'Idea Supporting Document',
+        maxBytes: 6 * 1024 * 1024
       });
 
       if (uploadRes) {
@@ -174,13 +182,14 @@ export const BusinessIdeasPage: React.FC = () => {
         const newDoc = {
           name: docAsset.originalFileName || file.name,
           fileUrl: docAsset.viewUrl || docAsset.fileUrl || '',
-          fileType: file.type,
+          fileType: file.type || docAsset.originalFileExtension || 'Document',
+          fileSize: file.size,
           uploadedAt: new Date().toISOString()
         };
         setUploadedDocs([...uploadedDocs, newDoc]);
       }
     } catch (err: any) {
-      setFormError(err.message || 'Failed to upload document.');
+      setFormError(err.message || 'Failed to upload document. Maximum file size is 6 MB.');
     } finally {
       setIsUploadingDoc(false);
       e.target.value = '';
@@ -796,7 +805,7 @@ export const BusinessIdeasPage: React.FC = () => {
                 <div className="p-3 border-2 border-dashed border-[#EDE2D7] rounded-xl bg-[#FAF7F2] flex flex-col items-center justify-center gap-1.5 text-center">
                   <UploadIcon size={20} className="text-[#8064B1]" />
                   <label className="text-xs font-bold text-[#8064B1] hover:underline cursor-pointer">
-                    <span>{isUploadingDoc ? 'Uploading...' : 'Click to Upload Document'}</span>
+                    <span>{isUploadingDoc ? 'Uploading & Optimizing...' : 'Click to Upload Document'}</span>
                     <input
                       type="file"
                       disabled={isUploadingDoc}
@@ -805,21 +814,36 @@ export const BusinessIdeasPage: React.FC = () => {
                       accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg"
                     />
                   </label>
-                  <span className="text-[10.5px] text-[#82776E]">PDF, PPT, DOC, PNG up to 25MB</span>
+                  <span className="text-[10.5px] text-[#82776E]">
+                    PDF, PPT, DOC, PNG &bull; Maximum upload size: 6 MB per file
+                  </span>
                 </div>
 
                 {uploadedDocs.length > 0 && (
-                  <div className="space-y-1 pt-1">
+                  <div className="space-y-1.5 pt-1">
                     {uploadedDocs.map((doc, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center justify-between p-2 rounded-lg bg-white border border-[#EDE2D7] text-xs"
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#EDE2D7] text-xs shadow-2xs"
                       >
-                        <span className="font-bold text-[#51463F] truncate max-w-xs">{doc.name}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileTextIcon size={14} className="text-[#8064B1] shrink-0" />
+                          <div className="truncate">
+                            <span className="font-bold text-[#51463F] truncate block">{doc.name}</span>
+                            <div className="flex items-center gap-2 text-[10px] text-[#82776E]">
+                              {doc.fileSize && (
+                                <span>{(doc.fileSize / (1024 * 1024)).toFixed(2)} MB</span>
+                              )}
+                              <span className="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                                ✓ Uploaded
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                         <button
                           type="button"
                           onClick={() => setUploadedDocs(uploadedDocs.filter((_, i) => i !== idx))}
-                          className="text-rose-600 hover:text-rose-800 text-[11px] font-bold"
+                          className="text-rose-600 hover:text-rose-800 text-[11px] font-bold px-2 py-1 rounded-lg hover:bg-rose-50 transition-colors"
                         >
                           Remove
                         </button>

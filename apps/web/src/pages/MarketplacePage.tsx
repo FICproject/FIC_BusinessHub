@@ -22,7 +22,8 @@ import {
   ArrowRightIcon,
   BriefcaseIcon,
   LightbulbIcon,
-  SparklesIcon
+  SparklesIcon,
+  EyeIcon
 } from '../components/Icons';
 
 export const MarketplacePage: React.FC = () => {
@@ -38,6 +39,10 @@ export const MarketplacePage: React.FC = () => {
 
   const [selectedCategorySlug, setSelectedCategorySlug] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Modal State for FIC Service Details View
+  const [selectedServiceForView, setSelectedServiceForView] = useState<ServiceListing | null>(null);
+  const [submittedInterestIdeaIds, setSubmittedInterestIdeaIds] = useState<Set<string>>(new Set());
 
   // Modal State for FIC Service Request
   const [selectedService, setSelectedService] = useState<ServiceListing | null>(null);
@@ -79,6 +84,11 @@ export const MarketplacePage: React.FC = () => {
           tags: item.tags || [],
           coverageArea: item.coverageArea || 'Pan India',
           deliveryMode: item.deliveryMode || 'IN_PERSON',
+          pricingType: item.pricingType,
+          price: item.price,
+          deliveryTimeline: item.deliveryTimeline,
+          portfolioUrl: item.portfolioUrl,
+          supportingDocument: item.supportingDocument,
           status: 'APPROVED',
           createdAt: new Date(item.createdAt || Date.now()).toLocaleDateString('en-GB'),
           updatedAt: new Date(item.updatedAt || Date.now()).toLocaleDateString('en-GB')
@@ -91,6 +101,19 @@ export const MarketplacePage: React.FC = () => {
     }
   };
 
+
+  // Load current member's submitted collaboration interests to prevent duplicate submissions
+  const loadMyInterests = async () => {
+    try {
+      const res = await apiRequest('/marketplace/my-interests');
+      if (res?.success && Array.isArray(res.data)) {
+        const ids = new Set<string>(res.data.map((i: any) => String(i.ideaId || i.id)));
+        setSubmittedInterestIdeaIds(ids);
+      }
+    } catch (_err) {
+      // Ignored if unauthenticated
+    }
+  };
   // Load approved & published business ideas from backend API
   const loadBusinessIdeas = async () => {
     setLoadingIdeas(true);
@@ -124,6 +147,7 @@ export const MarketplacePage: React.FC = () => {
     loadServices();
     loadBusinessIdeas();
     loadCategories();
+    loadMyInterests();
 
     const tab = searchParams.get('tab');
     if (tab === 'ideas' || tab === 'business-ideas') {
@@ -133,6 +157,28 @@ export const MarketplacePage: React.FC = () => {
     window.addEventListener('storage', loadServices);
     return () => window.removeEventListener('storage', loadServices);
   }, [searchParams]);
+
+
+  // Dynamic accurate category counts for Services and Business Ideas
+  const serviceCategoryCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    services.forEach((s) => {
+      if (s.categorySlug) {
+        counts[s.categorySlug] = (counts[s.categorySlug] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [services]);
+
+  const ideaCategoryCounts = React.useMemo(() => {
+    const counts: Record<string, number> = {};
+    ideas.forEach((i) => {
+      if (i.mainCategorySlug) {
+        counts[i.mainCategorySlug] = (counts[i.mainCategorySlug] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [ideas]);
 
   // Filter Services
   const filteredServices = services.filter((srv) => {
@@ -278,6 +324,8 @@ export const MarketplacePage: React.FC = () => {
         setInterestSuccessMessage(
           'Your interest has been submitted to FIC. Our team will review your profile and connect you if there is a mutual fit.'
         );
+        const submittedId = String(selectedIdeaForInterest.id || selectedIdeaForInterest._id);
+        setSubmittedInterestIdeaIds((prev) => new Set([...prev, submittedId]));
         loadBusinessIdeas();
       } else {
         setInterestErrorMessage(res?.error || 'Failed to submit collaboration interest. Please try again.');
@@ -373,20 +421,25 @@ export const MarketplacePage: React.FC = () => {
           >
             All Sectors ({marketplaceMode === 'SERVICES' ? services.length : ideas.length})
           </motion.button>
-          {categories.map((cat) => (
-            <motion.button
-              key={cat.id || cat._id || cat.slug}
-              whileTap={{ scale: 0.96 }}
-              onClick={() => setSelectedCategorySlug(cat.slug)}
-              className={`px-3 py-1.5 rounded-lg shrink-0 transition-all duration-200 cursor-pointer ${
-                selectedCategorySlug === cat.slug
-                  ? 'bg-gradient-to-r from-[#E8795B] to-[#D96B4E] text-white font-bold shadow-[0_2px_6px_rgba(232,121,91,0.2)]'
-                  : 'bg-white text-[#453A33] border border-[#EDE2D7] hover:border-[#E8795B]/40 hover:bg-[#FAF7F2] hover:text-[#51463F] font-semibold'
-              }`}
-            >
-              {cat.name.split('&')[0]}
-            </motion.button>
-          ))}
+          {categories.map((cat) => {
+            const count = marketplaceMode === 'SERVICES'
+              ? (serviceCategoryCounts[cat.slug] || 0)
+              : (ideaCategoryCounts[cat.slug] || 0);
+            return (
+              <motion.button
+                key={cat.id || cat._id || cat.slug}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setSelectedCategorySlug(cat.slug)}
+                className={`px-3 py-1.5 rounded-lg shrink-0 transition-all duration-200 cursor-pointer ${
+                  selectedCategorySlug === cat.slug
+                    ? 'bg-gradient-to-r from-[#E8795B] to-[#D96B4E] text-white font-bold shadow-[0_2px_6px_rgba(232,121,91,0.2)]'
+                    : 'bg-white text-[#453A33] border border-[#EDE2D7] hover:border-[#E8795B]/40 hover:bg-[#FAF7F2] hover:text-[#51463F] font-semibold'
+                }`}
+              >
+                {cat.name.split('&')[0].trim()} ({count})
+              </motion.button>
+            );
+          })}
         </div>
       </WorkspaceCard>
 
@@ -488,10 +541,14 @@ export const MarketplacePage: React.FC = () => {
 
                     {/* Card Bottom CTA */}
                     <div className="pt-3 border-t border-[#EDE2D7] flex items-center justify-between gap-2">
-                      <span className="text-[10px] text-[#82776E] flex items-center gap-1 font-semibold">
-                        <ShieldCheckIcon size={13} className="text-[#3B9C91]" />
-                        FIC Intermediary
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedServiceForView(service)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-[#51463F] bg-[#FAF7F2] hover:bg-[#F2ECE4] border border-[#EDE2D7] transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <EyeIcon size={13} className="text-[#8064B1]" />
+                        View
+                      </button>
                       {isOwnService(service) ? (
                         <span className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 select-none">
                           Your Listing
@@ -635,11 +692,16 @@ export const MarketplacePage: React.FC = () => {
                     {/* Card Bottom CTA */}
                     <div className="pt-3 border-t border-[#EDE2D7] flex items-center justify-between gap-2">
                       <span className="text-[10px] text-[#82776E]">
-                        Published {new Date(idea.publishedAt || idea.createdAt).toLocaleDateString('en-GB')}
+                        Published {idea.publishedAt ? new Date(idea.publishedAt).toLocaleDateString('en-GB') : (idea.publishedDate || 'Recently')}
                       </span>
                       {isOwnIdea(idea) ? (
-                        <span className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 select-none">
+                        <span className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 select-none flex items-center gap-1">
                           Your Idea Listing
+                        </span>
+                      ) : submittedInterestIdeaIds.has(String(idea.id)) ? (
+                        <span className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 select-none flex items-center gap-1">
+                          <CheckCircleIcon size={13} className="text-emerald-600" />
+                          Interest Submitted
                         </span>
                       ) : (
                         <WorkspaceButton
@@ -895,6 +957,145 @@ export const MarketplacePage: React.FC = () => {
           </div>
         )}
       </AnimatedModal>
+
+      {/* ========================================================
+          6. MODAL: VIEW SERVICE DETAILS
+         ======================================================== */}
+      <AnimatedModal
+        isOpen={!!selectedServiceForView}
+        onClose={() => setSelectedServiceForView(null)}
+        title={selectedServiceForView?.title || 'Service Details'}
+      >
+        {selectedServiceForView && (
+          <div className="space-y-4 text-xs">
+            {/* Header tags & badges */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2.5 py-1 rounded-lg text-xs font-black bg-[#FFF0EB] text-[#E8795B] border border-[#E8795B]/30">
+                {selectedServiceForView.categoryName}
+              </span>
+              {selectedServiceForView.subcategoryName && (
+                <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                  {selectedServiceForView.subcategoryName}
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <ShieldCheckIcon size={13} className="text-emerald-600" />
+                FIC Verified Provider
+              </span>
+            </div>
+
+            {/* Scope / Metadata cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3.5 rounded-2xl bg-[#FAF7F2] border border-[#EDE2D7]">
+              <div>
+                <span className="text-[10px] text-[#82776E] uppercase font-bold block">Delivery Mode</span>
+                <span className="font-bold text-[#51463F] text-xs">
+                  {selectedServiceForView.deliveryMode === 'ONLINE'
+                    ? 'Remote / Online'
+                    : selectedServiceForView.deliveryMode === 'IN_PERSON'
+                    ? 'In-Person'
+                    : 'Hybrid (Online & In-Person)'}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-[#82776E] uppercase font-bold block">Coverage Area</span>
+                <span className="font-bold text-[#51463F] text-xs">
+                  {selectedServiceForView.coverageArea || 'Pan-India'}
+                </span>
+              </div>
+              {selectedServiceForView.pricingType && (
+                <div>
+                  <span className="text-[10px] text-[#82776E] uppercase font-bold block">Pricing</span>
+                  <span className="font-bold text-emerald-700 text-xs">
+                    {selectedServiceForView.pricingType === 'FIXED'
+                      ? `Fixed ₹${selectedServiceForView.price?.toLocaleString('en-IN') || 'Quoted'}`
+                      : selectedServiceForView.pricingType === 'STARTING_FROM'
+                      ? `Starting from ₹${selectedServiceForView.price?.toLocaleString('en-IN') || 'Quoted'}`
+                      : 'Custom Quote via FIC'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-black uppercase tracking-wider text-[#51463F] block">
+                Service Description
+              </span>
+              <p className="text-xs text-[#5A4F47] leading-relaxed whitespace-pre-line p-3 rounded-xl bg-white border border-[#EDE2D7]">
+                {selectedServiceForView.description}
+              </p>
+            </div>
+
+            {/* Key Deliverables */}
+            {selectedServiceForView.servicesOffered && selectedServiceForView.servicesOffered.length > 0 && (
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-black uppercase tracking-wider text-[#51463F] block">
+                  Key Deliverables & Scope of Work
+                </span>
+                <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
+                  <ul className="space-y-1.5">
+                    {selectedServiceForView.servicesOffered.map((item, idx) => (
+                      <li key={idx} className="text-xs text-[#51463F] flex items-start gap-2">
+                        <span className="text-[#E8795B] font-bold shrink-0">✓</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Tags */}
+            {selectedServiceForView.tags && selectedServiceForView.tags.length > 0 && (
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-black uppercase tracking-wider text-[#51463F] block">
+                  Service Tags
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedServiceForView.tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="text-[10px] bg-[#FAF7F2] text-[#453A33] px-2.5 py-1 rounded-md border border-[#EDE2D7] font-bold"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Footer buttons */}
+            <div className="pt-3 border-t border-[#EDE2D7] flex items-center justify-between gap-3">
+              <WorkspaceButton
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedServiceForView(null)}
+              >
+                Close
+              </WorkspaceButton>
+              {isOwnService(selectedServiceForView) ? (
+                <span className="text-xs font-bold px-3 py-2 rounded-xl bg-slate-100 text-slate-500 border border-slate-200">
+                  This is your listing
+                </span>
+              ) : (
+                <WorkspaceButton
+                  variant="primary"
+                  size="sm"
+                  onClick={() => {
+                    const s = selectedServiceForView;
+                    setSelectedServiceForView(null);
+                    handleOpenRequestModal(s);
+                  }}
+                  icon={<ArrowRightIcon size={12} />}
+                >
+                  Request via FIC
+                </WorkspaceButton>
+              )}
+            </div>
+          </div>
+        )}
+      </AnimatedModal>
+
     </WorkspaceShell>
   );
 };

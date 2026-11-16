@@ -651,6 +651,9 @@ export interface ServiceListing {
   deliveryMode: 'ONLINE' | 'IN_PERSON' | 'BOTH';
   portfolioUrl?: string;
   supportingDocument?: string;
+  pricingType?: 'FIXED' | 'STARTING_FROM' | 'CUSTOM_QUOTE';
+  price?: number;
+  deliveryTimeline?: string;
   status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' | 'ARCHIVED';
   adminFeedback?: string;
   submittedAt?: string;
@@ -2760,10 +2763,11 @@ const ALLOWED_DOCUMENT_EXTENSIONS = new Set([
 ]);
 
 export const MAX_KYC_FILE_BYTES = 2 * 1024 * 1024; // 2 MB = 2,097,152 bytes
+export const MAX_DOCUMENT_FILE_BYTES = 6 * 1024 * 1024; // 6 MB = 6,291,456 bytes
 
 export const validateClientFileBeforeUpload = (
   file: File,
-  maxBytes = MAX_KYC_FILE_BYTES,
+  maxBytes = MAX_DOCUMENT_FILE_BYTES,
   allowedExtensions?: string[]
 ): void => {
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
@@ -2782,10 +2786,8 @@ export const validateClientFileBeforeUpload = (
     throw new Error('Selected file is empty.');
   }
   if (file.size > maxBytes) {
-    if (maxBytes === MAX_KYC_FILE_BYTES) {
-      throw new Error('File size must not exceed 2 MB. Please upload a smaller file.');
-    }
-    throw new Error(`File size must not exceed ${Math.round(maxBytes / (1024 * 1024))} MB.`);
+    const mbLimit = Math.round(maxBytes / (1024 * 1024));
+    throw new Error(`File size must not exceed ${mbLimit} MB. Please upload a smaller file.`);
   }
 };
 
@@ -2798,9 +2800,12 @@ export const uploadDocumentFile = async (
     entityType?: 'KYC' | 'PROFILE' | 'INVESTMENT' | 'SERVICE' | 'GENERAL';
     entityId?: string;
     tokenOverride?: string;
+    maxBytes?: number;
   }
 ): Promise<UploadedDocumentAsset> => {
-  validateClientFileBeforeUpload(file);
+  const isKyc = options?.documentCategory?.startsWith('KYC') || options?.entityType === 'KYC';
+  const limit = options?.maxBytes || (isKyc ? MAX_KYC_FILE_BYTES : MAX_DOCUMENT_FILE_BYTES);
+  validateClientFileBeforeUpload(file, limit);
   const token = options?.tokenOverride || getAuthToken();
   if (!token) {
     throw new Error('Authentication token is required to upload private documents.');
