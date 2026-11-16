@@ -1194,7 +1194,7 @@ export const AdminDashboardPage: React.FC = () => {
           MODAL: MANUAL WALLET ADJUSTMENT (SECTION 12)
          ======================================================== */}
       {adjustTarget && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-[#29302D]">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in text-[#29302D]">
           <div className="bg-[#FFF9F0] border border-[#D99B43] rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
             <h3 className="text-base font-black text-[#29302D] mb-1">Manual Wallet Ledger Adjustment</h3>
             <p className="text-xs text-[#77786E] mb-4">
@@ -1279,7 +1279,7 @@ export const AdminDashboardPage: React.FC = () => {
           MODAL: INVESTMENT STATUS & GOVERNANCE NOTES UPDATE
          ======================================================== */}
       {editingInvestment && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in text-[#29302D]">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in text-[#29302D]">
           <div className="bg-[#FFF9F0] border-2 border-[#D99B43] rounded-2xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl relative max-h-[92vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-start justify-between gap-4 pb-4 border-b border-[#E8DBC8]">

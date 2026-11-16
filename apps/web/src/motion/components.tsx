@@ -428,7 +428,7 @@ export const AnimatedModal: React.FC<AnimatedModalProps> = ({
           initial="initial"
           animate="animate"
           exit="exit"
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
           onClick={onClose}
         >
           <motion.div
@@ -485,7 +485,7 @@ export const AnimatedDrawer: React.FC<AnimatedDrawerProps> = ({
           initial="initial"
           animate="animate"
           exit="exit"
-          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex justify-end"
+          className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex justify-end"
           onClick={onClose}
         >
           <motion.div

@@ -29,7 +29,8 @@ import {
   SparklesIcon,
   ShieldCheckIcon,
   ArrowRightIcon,
-  BriefcaseIcon
+  BriefcaseIcon,
+  UsersIcon
 } from '../components/Icons';
 
 export const SkillDevelopmentPage: React.FC = () => {
@@ -45,8 +46,10 @@ export const SkillDevelopmentPage: React.FC = () => {
   const [selectedLevel, setSelectedLevel] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Active Video Modal
+  // Active Video Modal & Mentor Directory Modal
   const [activeVideo, setActiveVideo] = useState<ILearningVideo | null>(null);
+  const [isMentorDirectoryOpen, setIsMentorDirectoryOpen] = useState(false);
+  const [mentorSearch, setMentorSearch] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -84,6 +87,18 @@ export const SkillDevelopmentPage: React.FC = () => {
 
   const uniqueSubjects = Array.from(new Set(videos.map((v) => v.subject).filter(Boolean)));
 
+  const filteredMentors = mentors.filter((m) => {
+    if (!mentorSearch.trim()) return true;
+    const q = mentorSearch.toLowerCase();
+    return (
+      m.fullName.toLowerCase().includes(q) ||
+      m.subCategory.toLowerCase().includes(q) ||
+      m.organization.toLowerCase().includes(q) ||
+      m.experience.toLowerCase().includes(q) ||
+      (m.services && m.services.some((s) => s.title.toLowerCase().includes(q) || s.subject.toLowerCase().includes(q)))
+    );
+  });
+
   const handleWatchVideo = (video: ILearningVideo) => {
     setActiveVideo(video);
     if (video.id || video._id) {
@@ -115,10 +130,10 @@ export const SkillDevelopmentPage: React.FC = () => {
             <WorkspaceButton
               variant="outline"
               size="sm"
-              icon={<BriefcaseIcon size={14} />}
-              onClick={() => navigate('/marketplace')}
+              icon={<UsersIcon size={14} />}
+              onClick={() => setIsMentorDirectoryOpen(true)}
             >
-              Explore Internships
+              View Mentors
             </WorkspaceButton>
           </div>
         }
@@ -293,7 +308,7 @@ export const SkillDevelopmentPage: React.FC = () => {
                       </span>
                       <span className="text-[10.5px] text-[#82776E] flex items-center gap-1 font-semibold">
                         <SparklesIcon size={12} className="text-[#E5A23B]" />
-                        {video.viewsCount || 0} views
+                        Views: {video.viewsCount || 0}
                       </span>
                     </div>
 
@@ -347,73 +362,98 @@ export const SkillDevelopmentPage: React.FC = () => {
         </StaggerContainer>
       )}
 
-      {/* 5. ACCREDITED MENTORS DIRECTORY SHOWCASE */}
-      <WorkspaceCard variant="glass" padded={false} className="overflow-hidden mt-6">
-        <div className="px-4 sm:px-5 py-3 border-b border-[#EDE2D7] bg-white/60 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#8064A9]" />
-            <h2 className="text-xs sm:text-sm font-black text-[#51463F]">
-              Accredited Mentors Available for 1-on-1 Strategy Calls
-            </h2>
-          </div>
-          <span className="text-[11px] font-semibold text-[#82776E]">
-            Verified FIC Academic Faculty
-          </span>
-        </div>
-
-        <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          {mentors.map((mentor) => (
-            <div
-              key={mentor._id}
-              className="p-3.5 sm:p-4 rounded-xl border border-[#EDE2D7] bg-white/90 hover:border-[#8064A9] transition-all flex flex-col justify-between space-y-3"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8064A9] to-[#6E529F] text-white flex items-center justify-center font-black text-sm shadow-xs">
-                    {mentor.fullName.charAt(0)}
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-[#51463F]">
-                      {mentor.fullName}
-                    </h4>
-                    <p className="text-xs text-[#82776E]">{mentor.organization}</p>
-                    <p className="text-[11px] text-[#8064A9] font-bold mt-0.5">
-                      {mentor.experience}
-                    </p>
-                  </div>
-                </div>
-                <WorkspaceBadge variant="active">Verified Mentor</WorkspaceBadge>
-              </div>
-
-              {mentor.services && mentor.services.length > 0 && (
-                <div className="bg-[#FAF7F2] p-2.5 rounded-lg border border-[#EDE2D7]/70 text-xs text-[#51463F] space-y-1">
-                  <span className="text-[10px] font-bold uppercase text-[#82776E] block">
-                    Specialized Coaching:
-                  </span>
-                  {mentor.services.map((svc: any, i: number) => (
-                    <div key={i} className="flex items-center gap-1.5 font-semibold text-xs text-[#51463F]">
-                      <CheckCircleIcon size={12} className="text-[#3B9C91]" />
-                      <span>{svc.title}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="pt-2 border-t border-[#EDE2D7] flex items-center justify-between">
-                <span className="text-xs text-[#82776E]">45 min Virtual Meet</span>
-                <WorkspaceButton
-                  variant="primary"
-                  size="sm"
-                  icon={<CalendarIcon size={13} />}
-                  onClick={() => handleBookMentor(mentor._id, mentor.fullName)}
-                >
-                  Schedule Consultation
-                </WorkspaceButton>
-              </div>
+      {/* 5. MENTOR DIRECTORY MODAL (Phase 5: Dedicated Modal for Accredited Mentors) */}
+      <AnimatedModal
+        isOpen={isMentorDirectoryOpen}
+        onClose={() => setIsMentorDirectoryOpen(false)}
+        title="Accredited FIC Mentors Directory"
+        maxWidth="max-w-4xl"
+      >
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-[#EDE2D7]">
+            <p className="text-xs text-[#82776E]">
+              Connect directly with verified FIC academic faculty, industry leaders, and advisors for 1-on-1 strategy calls.
+            </p>
+            <div className="relative w-full sm:w-64 shrink-0">
+              <SearchIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#82776E]" />
+              <input
+                type="text"
+                value={mentorSearch}
+                onChange={(e) => setMentorSearch(e.target.value)}
+                placeholder="Search mentors, domains..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#FAF7F2] border border-[#EDE2D7] rounded-xl text-[#51463F] focus:outline-none focus:ring-1 focus:ring-[#8064A9]"
+              />
             </div>
-          ))}
+          </div>
+
+          {filteredMentors.length === 0 ? (
+            <div className="text-center py-12 text-xs text-[#82776E]">
+              No accredited mentors found matching your search.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 max-h-[60vh] overflow-y-auto pr-1">
+              {filteredMentors.map((mentor) => (
+                <div
+                  key={mentor._id}
+                  className="p-4 rounded-xl border border-[#EDE2D7] bg-white hover:border-[#8064A9] transition-all flex flex-col justify-between space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#8064A9] to-[#6E529F] text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
+                        {mentor.fullName.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-[#51463F]">
+                          {mentor.fullName}
+                        </h4>
+                        <p className="text-xs text-[#82776E]">{mentor.organization}</p>
+                        <p className="text-[11px] text-[#8064A9] font-bold mt-0.5">
+                          {mentor.experience}
+                        </p>
+                      </div>
+                    </div>
+                    <WorkspaceBadge variant="active">Verified Mentor</WorkspaceBadge>
+                  </div>
+
+                  {mentor.services && mentor.services.length > 0 && (
+                    <div className="bg-[#FAF7F2] p-2.5 rounded-lg border border-[#EDE2D7]/70 text-xs text-[#51463F] space-y-1">
+                      <span className="text-[10px] font-bold uppercase text-[#82776E] block">
+                        Specialized Coaching:
+                      </span>
+                      {mentor.services.map((svc: any, i: number) => (
+                        <div key={i} className="flex items-center gap-1.5 font-semibold text-xs text-[#51463F]">
+                          <CheckCircleIcon size={12} className="text-[#3B9C91]" />
+                          <span>{svc.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t border-[#EDE2D7] flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-[10.5px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md inline-block w-fit">
+                        FIC Complimentary
+                      </span>
+                      <span className="text-[10.5px] text-[#82776E] mt-0.5">45 min Virtual Meet</span>
+                    </div>
+                    <WorkspaceButton
+                      variant="primary"
+                      size="sm"
+                      icon={<CalendarIcon size={13} />}
+                      onClick={() => {
+                        setIsMentorDirectoryOpen(false);
+                        handleBookMentor(mentor._id, mentor.fullName);
+                      }}
+                    >
+                      Book Strategy Call
+                    </WorkspaceButton>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      </WorkspaceCard>
+      </AnimatedModal>
 
       {/* 6. WATCH MASTERCLASS MODAL */}
       <AnimatedModal

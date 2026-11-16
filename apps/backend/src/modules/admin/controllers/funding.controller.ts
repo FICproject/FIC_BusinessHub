@@ -177,11 +177,11 @@ router.put(
       const adminName = req.admin?.name || 'FIC Admin';
       const parsedReqDocs = Array.isArray(requestedDocuments)
         ? requestedDocuments.map((d: any, index: number) => ({
-            id: d.id || `REQ-DOC-${Date.now()}-${index}`,
-            name: String(d.name || '').trim(),
-            instructions: String(d.instructions || '').trim(),
-            isUploaded: false
-          })).filter((d: any) => d.name && d.instructions)
+          id: d.id || `REQ-DOC-${Date.now()}-${index}`,
+          name: String(d.name || '').trim(),
+          instructions: String(d.instructions || '').trim(),
+          isUploaded: false
+        })).filter((d: any) => d.name && d.instructions)
         : [];
 
       request.changeRequests = request.changeRequests || [];
@@ -224,7 +224,7 @@ router.put(
           link: '/investment',
           priority: 'HIGH'
         });
-      } catch {}
+      } catch { }
 
       res.json({
         success: true,
@@ -289,7 +289,7 @@ router.put(
           { fundingRequestId: request._id },
           { stage: 'REVIEW' }
         );
-      } catch {}
+      } catch { }
 
       // Log action
       await logAdminAction(req, 'UPDATE', 'FundingRequest', request._id.toString(), {
@@ -308,7 +308,7 @@ router.put(
           link: '/investment',
           priority: 'HIGH'
         });
-      } catch {}
+      } catch { }
 
       res.json({
         success: true,
@@ -428,7 +428,7 @@ router.put(
             link: '/investment',
             priority: 'HIGH'
           });
-        } catch {}
+        } catch { }
 
         await logAdminAction(req, 'UPDATE', 'InvestmentRequest', investment._id.toString(), {
           action: 'APPROVE',
@@ -471,7 +471,7 @@ router.put(
             link: '/investment',
             priority: 'HIGH'
           });
-        } catch {}
+        } catch { }
 
         res.json({
           success: true,
@@ -509,7 +509,7 @@ router.put(
             link: '/investment',
             priority: 'LOW'
           });
-        } catch {}
+        } catch { }
 
         res.json({
           success: true,
@@ -664,7 +664,7 @@ router.post(
           link: '/investment',
           priority: 'HIGH'
         });
-      } catch {}
+      } catch { }
 
       res.json({
         success: true,
@@ -818,7 +818,7 @@ router.post(
           link: '/investment',
           priority: 'MEDIUM'
         });
-      } catch {}
+      } catch { }
 
       res.json({
         success: true,

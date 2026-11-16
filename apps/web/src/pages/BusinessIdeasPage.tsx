@@ -61,7 +61,7 @@ export const STATUS_BADGE_CONFIG: Record<
   UNDER_REVIEW: { label: 'Under Review', variant: 'pending' },
   INFORMATION_REQUESTED: { label: 'Info Required', variant: 'urgent' },
   APPROVED: { label: 'Approved by FIC', variant: 'active' },
-  REJECTED: { label: 'Review Completed', variant: 'neutral' },
+  REJECTED: { label: 'Rejected', variant: 'urgent' },
   SHARED_ON_MARKETPLACE: { label: 'Live on Marketplace', variant: 'proposal' },
   INTEREST_RECEIVED: { label: 'Interest Received', variant: 'luxury' },
   MEMBER_SELECTION_PENDING: { label: 'Admin Selection', variant: 'luxury' },
@@ -881,7 +881,7 @@ export const BusinessIdeasPage: React.FC = () => {
           MODAL: VIEW DETAILS & 8-STAGE TIMELINE
          ======================================================== */}
       {selectedIdea && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -914,6 +914,24 @@ export const BusinessIdeasPage: React.FC = () => {
 
             {/* Scrollable Body */}
             <div className="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm">
+              {/* Rejection Banner & Feedback (Phase 8) */}
+              {(selectedIdea.status === 'REJECTED' || selectedIdea.adminReviewStatus === 'REJECTED') && (
+                <div className="p-4 rounded-xl bg-rose-50 border border-rose-300 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold text-rose-800 text-xs">
+                    <AlertCircleIcon size={14} className="text-rose-700" />
+                    Business Idea Status: Rejected
+                  </div>
+                  {selectedIdea.rejectionReason ? (
+                    <p className="text-xs text-rose-900 leading-relaxed font-medium">
+                      Feedback from FIC Admin: "{selectedIdea.rejectionReason}"
+                    </p>
+                  ) : (
+                    <p className="text-xs text-rose-900 leading-relaxed font-medium">
+                      This business idea was reviewed by FIC Admin and not approved for marketplace sharing at this time.
+                    </p>
+                  )}
+                </div>
+              )}
               {/* 8-Stage Dynamic Timeline */}
               <div className="p-4 rounded-xl bg-gradient-to-br from-[#FAF7F2] to-[#F4EEFB]/50 border border-[#8064B1]/20 space-y-3">
                 <span className="text-[11px] font-bold text-[#8064B1] uppercase tracking-wider block">

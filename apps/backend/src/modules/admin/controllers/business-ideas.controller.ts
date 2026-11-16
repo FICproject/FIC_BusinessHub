@@ -153,6 +153,32 @@ adminBusinessIdeasRouter.put(
         return;
       }
 
+      // Phase 7: State Transition Validation
+      const currentStatus = (idea.status || idea.adminReviewStatus || '').toUpperCase();
+      if (currentStatus === 'APPROVED' || currentStatus === 'SHARED_ON_MARKETPLACE' || currentStatus === 'ON_MARKETPLACE') {
+        res.status(400).json({
+          success: false,
+          error: 'This business idea has already been approved and cannot be reviewed again.'
+        });
+        return;
+      }
+
+      if (currentStatus === 'REJECTED') {
+        res.status(400).json({
+          success: false,
+          error: 'This business idea has already been rejected and cannot be reviewed further.'
+        });
+        return;
+      }
+
+      if (action === 'UNDER_REVIEW' && currentStatus === 'UNDER_REVIEW') {
+        res.status(400).json({
+          success: false,
+          error: 'This business idea is already marked as Under Review.'
+        });
+        return;
+      }
+
       const adminName = req.admin?.name || 'FIC Admin';
       const adminId = req.admin?.id || 'admin';
 
@@ -291,6 +317,14 @@ adminBusinessIdeasRouter.post(
 
       if (!idea) {
         res.status(404).json({ success: false, error: 'Business idea not found' });
+        return;
+      }
+
+      if (idea.status === 'REJECTED' || idea.adminReviewStatus === 'REJECTED') {
+        res.status(400).json({
+          success: false,
+          error: 'Rejected ideas cannot be published to the Marketplace.'
+        });
         return;
       }
 

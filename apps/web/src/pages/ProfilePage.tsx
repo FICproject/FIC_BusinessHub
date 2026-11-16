@@ -764,15 +764,6 @@ export const ProfilePage: React.FC = () => {
                 <span className="text-[10px] font-mono font-bold text-[#82776E] bg-[#FAF7F2] border border-[#EDE2D7] px-2 py-0.5 rounded-md">
                   ID: {user.id || user.userId}
                 </span>
-                <WorkspaceBadge variant="active" size="sm">
-                  ● ACTIVE Account
-                </WorkspaceBadge>
-                <WorkspaceBadge variant="luxury" size="sm">
-                  {user.membershipPlan || '1st Year Member'}
-                </WorkspaceBadge>
-                <WorkspaceBadge variant="proposal" size="sm">
-                  KYC Verified
-                </WorkspaceBadge>
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-[#51463F] tracking-tight">
                 {user.fullName}
@@ -1477,7 +1468,7 @@ export const ProfilePage: React.FC = () => {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
             onClick={() => setIsTransactionModalOpen(false)}
           >
             <motion.div
@@ -1917,7 +1908,7 @@ export const ProfilePage: React.FC = () => {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto"
             onClick={() => setIsReferralModalOpen(false)}
           >
             <motion.div
@@ -2134,7 +2125,7 @@ export const ProfilePage: React.FC = () => {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
             onClick={() => setIsAddFundsModalOpen(false)}
           >
             <motion.div
@@ -2239,7 +2230,7 @@ export const ProfilePage: React.FC = () => {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
             onClick={() => setIsWithdrawModalOpen(false)}
           >
             <motion.div
@@ -2371,7 +2362,7 @@ export const ProfilePage: React.FC = () => {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
             onClick={() => setIsRenewModalOpen(false)}
           >
             <motion.div
@@ -2484,7 +2475,7 @@ export const ProfilePage: React.FC = () => {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
             onClick={() => setIsBankModalOpen(false)}
           >
             <motion.div
@@ -2621,7 +2612,7 @@ export const ProfilePage: React.FC = () => {
             initial="initial"
             animate="animate"
             exit="exit"
-            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+            className="fixed inset-0 z-50 bg-black/60 dark:bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
             onClick={() => setIsPasswordModalOpen(false)}
           >
             <motion.div

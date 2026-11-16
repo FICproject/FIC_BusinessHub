@@ -65,30 +65,56 @@ function formatMonthMeta(dateInput: Date | string): { monthKey: string; label: s
   return { monthKey: `${year}-${month}`, label, shortLabel };
 }
 
+function isMembershipSubscriptionPayment(p: any): boolean {
+  const pType = String(p.paymentType || '').trim().toUpperCase();
+  const purpose = String(p.purpose || '').trim().toUpperCase();
+
+  const isFirstYear =
+    pType === 'INTRO_FEE' ||
+    pType === 'MEMBERSHIP_FIRST_YEAR' ||
+    pType === 'FIRST_YEAR_MEMBERSHIP' ||
+    purpose === 'MEMBERSHIP_FIRST_YEAR' ||
+    purpose === 'FIRST_YEAR_MEMBERSHIP' ||
+    purpose === 'INTRO_FEE';
+
+  const isRenewal =
+    pType === 'ANNUAL_RENEWAL' ||
+    pType === 'MEMBERSHIP_RENEWAL' ||
+    purpose === 'MEMBERSHIP_RENEWAL' ||
+    purpose === 'ANNUAL_RENEWAL';
+
+  return isFirstYear || isRenewal;
+}
+
 // GET /api/admin/dashboard/financial-stats
 router.get('/financial-stats', authenticateAdmin, async (req, res) => {
   try {
     const unifiedPayments = await collectUnifiedPayments();
 
-    // Only include verified successful/captured transactions; exclude failed, cancelled, pending, refunded
-    const successfulPayments = unifiedPayments.filter((p) => {
+    // Phase 3 & 4 Business Rule: Only include verified, successful membership subscription payments
+    // (First-Year Membership Fee + Membership Renewals).
+    // Strictly exclude wallet top-ups, referral rewards/disbursements, funding, investment, service orders, failed, cancelled, pending, refunded.
+    const successfulSubscriptionPayments = unifiedPayments.filter((p) => {
       if (p.status !== 'SUCCESS') return false;
       const isGatewayOrigin = Boolean(p.razorpayOrderId || p.internalOrderId);
       if (isGatewayOrigin && p.rawStatus === 'AUTHORIZED') return false;
-      return typeof p.amount === 'number' && p.amount > 0;
+      if (typeof p.amount !== 'number' || p.amount <= 0) return false;
+      return isMembershipSubscriptionPayment(p);
     });
 
-    const pendingPayments = unifiedPayments.filter((p) => p.status === 'PENDING');
+    const pendingSubscriptionPayments = unifiedPayments.filter(
+      (p) => p.status === 'PENDING' && isMembershipSubscriptionPayment(p)
+    );
 
-    const totalRevenue = successfulPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
-    const pendingAmount = pendingPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
+    const totalRevenue = successfulSubscriptionPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
+    const pendingAmount = pendingSubscriptionPayments.reduce((acc, p) => acc + (p.amount || 0), 0);
 
     const monthBuckets = new Map<
       string,
       { monthKey: string; label: string; shortLabel: string; revenue: number; transactionCount: number }
     >();
 
-    for (const payment of successfulPayments) {
+    for (const payment of successfulSubscriptionPayments) {
       const effectiveDate = payment.verifiedAt || payment.createdAt || payment.updatedAt;
       if (!effectiveDate) continue;
       const meta = formatMonthMeta(effectiveDate);
@@ -108,18 +134,63 @@ router.get('/financial-stats', authenticateAdmin, async (req, res) => {
       b.monthKey.localeCompare(a.monthKey)
     );
 
+    // Resolve requested month & year
     const currentMeta = formatMonthMeta(new Date());
-    const requestedMonthKey =
-      typeof req.query.month === 'string' && /^\d{4}-\d{2}$/.test(req.query.month)
-        ? req.query.month
-        : currentMeta.monthKey;
+    let requestedMonthKey = currentMeta.monthKey;
+
+    if (typeof req.query.month === 'string' && /^\d{4}-\d{2}$/.test(req.query.month)) {
+      requestedMonthKey = req.query.month;
+    } else if (req.query.year && req.query.month) {
+      const y = String(req.query.year).trim();
+      const m = String(req.query.month).trim().padStart(2, '0');
+      if (/^\d{4}$/.test(y) && /^\d{2}$/.test(m)) {
+        requestedMonthKey = `${y}-${m}`;
+      }
+    }
+
+    const [reqYear, reqMonth] = requestedMonthKey.split('-').map(Number);
+    const safeDate = new Date(reqYear, reqMonth - 1, 1);
+    const computedMonthLabel = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      month: 'long',
+      year: 'numeric',
+    }).format(safeDate);
 
     const selectedMonthStats = monthBuckets.get(requestedMonthKey);
     const monthlyRevenue = selectedMonthStats ? selectedMonthStats.revenue : 0;
     const monthlyTransactionCount = selectedMonthStats ? selectedMonthStats.transactionCount : 0;
-    const selectedMonthLabel =
-      selectedMonthStats?.label ||
-      (requestedMonthKey === currentMeta.monthKey ? currentMeta.label : requestedMonthKey);
+    const selectedMonthLabel = selectedMonthStats?.label || computedMonthLabel;
+
+    // Generate selectable list of past 12 months + any months with transactions
+    const availableMonthKeys = new Set<string>();
+    monthlyBreakdown.forEach((m) => availableMonthKeys.add(m.monthKey));
+    availableMonthKeys.add(currentMeta.monthKey);
+    availableMonthKeys.add(requestedMonthKey);
+
+    // Add trailing 12 months
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const meta = formatMonthMeta(d);
+      availableMonthKeys.add(meta.monthKey);
+    }
+
+    const availableMonths = Array.from(availableMonthKeys)
+      .sort((a, b) => b.localeCompare(a))
+      .map((key) => {
+        const existing = monthBuckets.get(key);
+        if (existing) return existing;
+        const [y, m] = key.split('-').map(Number);
+        const d = new Date(y, m - 1, 1);
+        const meta = formatMonthMeta(d);
+        return {
+          monthKey: key,
+          label: meta.label,
+          shortLabel: meta.shortLabel,
+          revenue: 0,
+          transactionCount: 0,
+        };
+      });
 
     res.json({
       success: true,
@@ -132,7 +203,8 @@ router.get('/financial-stats', authenticateAdmin, async (req, res) => {
         hasMonthlyData: monthlyTransactionCount > 0,
         hasHistoricalData: monthlyBreakdown.length > 0,
         monthlyBreakdown,
-        pendingPaymentsCount: pendingPayments.length,
+        availableMonths,
+        pendingPaymentsCount: pendingSubscriptionPayments.length,
         pendingAmount,
       },
     });

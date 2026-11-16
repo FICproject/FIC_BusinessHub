@@ -1,5 +1,6 @@
 import { Router, Response, NextFunction } from 'express';
 import { isValidObjectId } from 'mongoose';
+import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -7,6 +8,7 @@ import { authenticate, requireActiveVerifiedMember, AuthenticatedRequest } from 
 import { TeachingServiceModel } from './teaching-service.model';
 import { LearningVideoModel } from './learning-video.model';
 import { MentorshipRequestModel } from './mentorship.model';
+import { VideoViewModel } from './video-view.model';
 import { UserModel } from '../users/users.model';
 import { MemberModel } from '../admin/models/Member';
 import { AccountStatus } from '@fic/shared-types';
@@ -337,7 +339,7 @@ mentoringRouter.delete('/teaching-services/:id', authenticate, requireActiveVeri
 // 4. LEARNING VIDEOS (CRUD & PUBLIC)
 // ==========================================
 
-// 4.1 Get mentor's learning videos
+// 4.1 Get mentor's learning videos (Phase 6: Enriched with Unique Students Analytics)
 mentoringRouter.get('/videos/my', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user?.userId;
@@ -350,9 +352,30 @@ mentoringRouter.get('/videos/my', authenticate, requireActiveVerifiedMember, asy
       .sort({ updatedAt: -1 })
       .lean();
 
+    const videoIds = videos.map((v) => v._id);
+    const viewStats = await VideoViewModel.aggregate([
+      { $match: { videoId: { $in: videoIds } } },
+      {
+        $group: {
+          _id: '$videoId',
+          uniqueStudentsCount: { $sum: 1 },
+          studentViewsSum: { $sum: '$totalViews' }
+        }
+      }
+    ]);
+
+    const statsMap = new Map<string, { uniqueStudentsCount: number; studentViewsSum: number }>(
+      viewStats.map((s) => [s._id.toString(), s])
+    );
+
+    const enrichedVideos = videos.map((v) => ({
+      ...v,
+      uniqueStudentsCount: statsMap.get(v._id.toString())?.uniqueStudentsCount || 0
+    }));
+
     res.status(200).json({
       success: true,
-      data: videos
+      data: enrichedVideos
     });
   } catch (error) {
     next(error);
@@ -635,16 +658,55 @@ mentoringRouter.delete('/videos/:id', authenticate, requireActiveVerifiedMember,
   }
 });
 
-// 4.6 Increment video views
-mentoringRouter.patch('/videos/:id/views', async (req, res: Response, next: NextFunction) => {
+// 4.6 Increment video views (Phase 6: Unique Student Tracking & View Analytics)
+mentoringRouter.patch('/videos/:id/views', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const video = await LearningVideoModel.findByIdAndUpdate(
-      id,
-      { $inc: { viewsCount: 1 } },
-      { new: true }
-    );
-    res.status(200).json({ success: true, data: video });
+    if (!isValidObjectId(id)) {
+      res.status(400).json({ success: false, message: 'Invalid video ID' });
+      return;
+    }
+
+    const video = await LearningVideoModel.findById(id);
+    if (!video) {
+      res.status(404).json({ success: false, message: 'Video not found' });
+      return;
+    }
+
+    video.viewsCount = (video.viewsCount || 0) + 1;
+    await video.save();
+
+    // Student identification: check body or auth header if present
+    let studentId = req.body?.studentId;
+    if (!studentId && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fic_business_hub_jwt_secret_2026') as any;
+        studentId = decoded.userId || decoded.id;
+      } catch {
+        // public view increment without authenticated user
+      }
+    }
+
+    if (studentId && isValidObjectId(studentId)) {
+      await VideoViewModel.findOneAndUpdate(
+        { videoId: video._id, studentMemberId: studentId },
+        {
+          $inc: { totalViews: 1 },
+          $setOnInsert: { firstViewedAt: new Date(), mentorId: video.mentorId },
+          $set: { lastViewedAt: new Date() }
+        },
+        { upsert: true, new: true }
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: video._id,
+        viewsCount: video.viewsCount
+      }
+    });
   } catch (error) {
     next(error);
   }

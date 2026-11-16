@@ -105,15 +105,23 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const [searchQuery, setSearchQuery] = useState('');
   const [isMarkingAll, setIsMarkingAll] = useState(false);
 
-  // Close on escape key
+  // Close on escape key & lock body scroll
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, [isOpen, onClose]);
 
   // Counts for tabs
@@ -274,7 +282,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 bg-[#362b25]/60 backdrop-blur-xs"
+          className="fixed inset-0 bg-black/60 dark:bg-black/75 backdrop-blur-sm"
         />
 
         {/* Modal Dialog */}

@@ -1208,7 +1208,7 @@ export const MyServicesPage: React.FC = () => {
                     <div className="p-3.5 space-y-2">
                       <div className="flex items-center justify-between text-[10.5px]">
                         <span className="font-black uppercase text-[#8064A9]">{video.subject}</span>
-                        <span className="text-[#82776E] font-bold">{video.viewsCount || 0} views</span>
+                        <span className="text-[10px] font-bold text-[#82776E]">{video.language}</span>
                       </div>
 
                       <h4 className="text-xs font-black text-[#51463F] line-clamp-2">
@@ -1218,6 +1218,22 @@ export const MyServicesPage: React.FC = () => {
                       <p className="text-[11px] text-[#82776E] line-clamp-2 leading-relaxed">
                         {video.description}
                       </p>
+
+                      {/* Video Analytics (Phase 6: Total Views & Unique Students Viewed) */}
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#EDE2D7]">
+                        <div className="bg-[#FAF7F2] p-2 rounded-lg border border-[#EDE2D7] text-center">
+                          <span className="text-[9.5px] text-[#82776E] uppercase font-bold block">Total Video Views</span>
+                          <span className="text-xs font-black text-[#51463F] mt-0.5 block">
+                            {video.viewsCount || 0}
+                          </span>
+                        </div>
+                        <div className="bg-[#FAF7F2] p-2 rounded-lg border border-[#EDE2D7] text-center">
+                          <span className="text-[9.5px] text-[#82776E] uppercase font-bold block">Unique Students</span>
+                          <span className="text-xs font-black text-[#8064A9] mt-0.5 block">
+                            {video.uniqueStudentsCount || 0}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 

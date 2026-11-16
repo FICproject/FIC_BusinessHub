@@ -1873,6 +1873,7 @@ export interface ILearningVideo {
   learningObjectives?: string[];
   status: 'PUBLISHED' | 'DRAFT' | 'UNPUBLISHED' | 'PENDING_REVIEW';
   viewsCount?: number;
+  uniqueStudentsCount?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -2323,9 +2324,14 @@ export const deleteLearningVideo = async (id: string): Promise<boolean> => {
   return true;
 };
 
-export const incrementVideoViews = async (id: string): Promise<void> => {
+export const incrementVideoViews = async (id: string, studentId?: string): Promise<void> => {
   try {
-    await apiRequest(`/mentoring/videos/${id}/views`, { method: 'PATCH' });
+    const user = getStoredUser();
+    const currentStudentId = studentId || user?.id || (user as any)?._id || (user as any)?.userId;
+    await apiRequest(`/mentoring/videos/${id}/views`, {
+      method: 'PATCH',
+      body: JSON.stringify({ studentId: currentStudentId })
+    });
   } catch (_e) {}
 
   const all = getStoredLearningVideos();
