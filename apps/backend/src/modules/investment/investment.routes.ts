@@ -523,7 +523,7 @@ investmentRouter.put(
           { fundingRequestId: fundingRequest._id },
           { stage: 'REVIEW' }
         );
-      } catch {}
+      } catch { }
 
       // Notify Admin
       await notifyAdmins({
