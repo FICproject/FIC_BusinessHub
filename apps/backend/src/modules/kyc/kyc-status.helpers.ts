@@ -370,7 +370,7 @@ export async function evaluateMemberActivationAccess(
     resolvedAccountStatus = 'SUSPENDED';
   } else if (user.status === AccountStatus.DEACTIVATED || member?.status === 'DEACTIVATED') {
     resolvedAccountStatus = 'INACTIVE';
-  } else if (accountActive) {
+  } else if (accountActive && kycApproved) {
     resolvedAccountStatus = 'ACTIVE';
   } else {
     resolvedAccountStatus = 'UNDER_REVIEW';

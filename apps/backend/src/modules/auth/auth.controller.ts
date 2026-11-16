@@ -307,8 +307,9 @@ export const register = async (req: Request, res: Response, next: NextFunction):
           isMembershipActive: newUser.isMembershipActive,
           canAccessDashboard: false,
           activationChecks: {
-            accountActive: true,
+            accountActive: false,
             isSuspended: false,
+            accountStatus: 'UNDER_REVIEW',
             kycApproved: false,
             kycStatus: 'NOT_SUBMITTED',
             membershipActive: false,
