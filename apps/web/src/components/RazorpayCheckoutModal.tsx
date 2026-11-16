@@ -414,7 +414,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-slate-950/75 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 pt-8 sm:pt-10 pb-6 bg-slate-950/75 backdrop-blur-sm overflow-y-auto"
       role="dialog"
       aria-modal="true"
       aria-label="Razorpay Payment Checkout"
@@ -424,7 +424,7 @@ export const RazorpayCheckoutModal: React.FC<RazorpayModalProps> = ({
         }
       }}
     >
-      <div className="relative w-full max-w-[490px] my-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100vh-1.5rem)] sm:max-h-[92vh]">
+      <div className="relative w-full max-w-[490px] my-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100vh-3rem)] sm:max-h-[90vh]">
         {/* Dark Navy Razorpay Header matching reference design */}
         <div className="bg-[#0A1D37] px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3.5 min-w-0">

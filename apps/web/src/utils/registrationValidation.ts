@@ -111,10 +111,19 @@ export function isUrlFieldClient(key: string, fieldType?: string): boolean {
   if (t && t !== 'text' && t !== 'string') return false;
 
   const k = key.toLowerCase().trim();
-  if (k.includes('experience') || k.includes('company') || k.includes('companies') || k.includes('stage') || k.includes('size')) {
+  if (
+    k.includes('experience') ||
+    k.includes('company') ||
+    k.includes('companies') ||
+    k.includes('stage') ||
+    k.includes('size') ||
+    k.includes('detail') ||
+    k.includes('desc') ||
+    k.includes('type')
+  ) {
     return false;
   }
-  if (k === 'website' || k === 'portfolio' || k === 'portfolio_url' || k === 'portfoliourl' || k === 'portfoliolink') {
+  if (k === 'website' || k === 'website_url' || k === 'websiteurl' || k === 'portfolio_url' || k === 'portfoliourl' || k === 'portfoliolink') {
     return true;
   }
   if (k.endsWith('url') || k.includes('_url') || k.endsWith('link') || k.includes('_link') || k.includes('website')) {
@@ -124,8 +133,12 @@ export function isUrlFieldClient(key: string, fieldType?: string): boolean {
 }
 
 export function validateHttpUrlClient(raw: string): string | null {
-  const val = raw.trim();
+  let val = raw.trim();
   if (!val) return null;
+  if (/^(n\/?a|none|-|nil)$/i.test(val)) return null;
+  if (!val.startsWith('http://') && !val.startsWith('https://')) {
+    val = `https://${val}`;
+  }
   try {
     const parsed = new URL(val);
     if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname.includes('.')) {

@@ -155,11 +155,20 @@ export function isUrlField(key: string, fieldType?: string): boolean {
   if (t && t !== 'text' && t !== 'string') return false;
 
   const k = key.toLowerCase().trim();
-  // Disallow false positives for keys like portfolioExperience, portfolioCompanies, etc.
-  if (k.includes('experience') || k.includes('company') || k.includes('companies') || k.includes('stage') || k.includes('size')) {
+  // Disallow false positives for descriptive/select keys
+  if (
+    k.includes('experience') ||
+    k.includes('company') ||
+    k.includes('companies') ||
+    k.includes('stage') ||
+    k.includes('size') ||
+    k.includes('detail') ||
+    k.includes('desc') ||
+    k.includes('type')
+  ) {
     return false;
   }
-  if (k === 'website' || k === 'portfolio' || k === 'portfolio_url' || k === 'portfoliourl' || k === 'portfoliolink') {
+  if (k === 'website' || k === 'website_url' || k === 'websiteurl' || k === 'portfolio_url' || k === 'portfoliourl' || k === 'portfoliolink') {
     return true;
   }
   if (k.endsWith('url') || k.includes('_url') || k.endsWith('link') || k.includes('_link') || k.includes('website')) {
@@ -169,7 +178,12 @@ export function isUrlField(key: string, fieldType?: string): boolean {
 }
 
 export function validateHttpUrl(raw: unknown): string {
-  const value = typeof raw === 'string' ? raw.trim() : '';
+  let value = typeof raw === 'string' ? raw.trim() : '';
+  if (!value) return '';
+  if (/^(n\/?a|none|-|nil)$/i.test(value)) return '';
+  if (!value.startsWith('http://') && !value.startsWith('https://')) {
+    value = `https://${value}`;
+  }
   try {
     const parsed = new URL(value);
     if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname.includes('.')) {
