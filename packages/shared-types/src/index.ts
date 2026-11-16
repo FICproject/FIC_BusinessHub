@@ -7,4 +7,6 @@ export * from './service.types';
 export * from './api.types';
 export * from './wallet.types';
 export * from './admin.types';
+export * from './business-idea.types';
+export * from './scaling.types';
 

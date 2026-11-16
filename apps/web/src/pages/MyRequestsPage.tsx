@@ -254,9 +254,9 @@ export const MyRequestsPage: React.FC = () => {
           if (res && res.success && Array.isArray(res.data)) {
             setScaling(
               res.data.map((item: any) => ({
-                id: item.refNumber || item._id,
+                id: item.requestId || item.refNumber || item._id,
                 businessName: item.businessName,
-                supportType: item.supportType ? item.supportType.replace(/_/g, ' ') : 'Enterprise Support',
+                supportType: item.scalingSupportType || (item.supportType ? item.supportType.replace(/_/g, ' ') : 'Enterprise Support'),
                 status: item.status,
                 statusLabel: item.status ? item.status.replace(/_/g, ' ') : 'Under Review',
                 date: item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB') : 'Recent',

@@ -48,6 +48,7 @@ apiRouter.use('/services', servicesRouter);
 apiRouter.use('/connections', connectionsRouter);
 apiRouter.use('/business-ideas', businessIdeasRouter);
 apiRouter.use('/business-development-requests', businessDevRouter);
+apiRouter.use('/scaling', businessDevRouter);
 apiRouter.use('/investment', investmentRouter);
 apiRouter.use('/investment-profiles', investmentRouter);
 apiRouter.use('/partnership-requests', partnershipsRouter);

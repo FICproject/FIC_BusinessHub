@@ -15,6 +15,8 @@ import fundingRoutes from './controllers/funding.controller';
 import { adminDocumentsRouter } from './controllers/documents.controller';
 import { adminPricingRouter } from './controllers/pricing.controller';
 import { adminProfileRouter } from './controllers/profile.controller';
+import { adminBusinessIdeasRouter } from './controllers/business-ideas.controller';
+import { adminScalingRouter } from './controllers/scaling.controller';
 
 export const adminRouter = Router();
 
@@ -24,6 +26,8 @@ adminRouter.use('/categories', categoryRoutes);
 adminRouter.use('/kyc', kycRoutes);
 adminRouter.use('/members', memberRoutes);
 adminRouter.use('/services', serviceRoutes);
+adminRouter.use('/business-ideas', adminBusinessIdeasRouter);
+adminRouter.use('/scaling', adminScalingRouter);
 adminRouter.use('/requests', requestRoutes);
 adminRouter.use('/dashboard', dashboardRoutes);
 adminRouter.use('/meetings', meetingRoutes);

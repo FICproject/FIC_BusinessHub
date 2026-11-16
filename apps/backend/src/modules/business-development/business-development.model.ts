@@ -2,30 +2,64 @@ import mongoose, { Document, Schema } from 'mongoose';
 
 export interface IBusinessDevRequestDocument extends Document {
   userId: mongoose.Types.ObjectId;
+  memberId?: mongoose.Types.ObjectId;
+  requestId: string;
   refNumber: string;
+  submitterName?: string;
+  submitterEmail?: string;
+  submitterPhone?: string;
   businessName: string;
-  supportType:
-    | 'BUSINESS_PLANNING'
-    | 'SETUP_GUIDANCE'
-    | 'MARKET_RESEARCH'
-    | 'BRANDING_MARKETING'
-    | 'TECHNOLOGY_DEVELOPMENT'
-    | 'OPERATIONAL_IMPROVEMENT'
-    | 'EXPANSION_SCALING'
-    | 'GENERAL_CONSULTANCY';
-  currentChallenges: string;
-  expectedOutcomes: string;
-  status:
-    | 'SUBMITTED'
-    | 'UNDER_REVIEW'
-    | 'ASSESSMENT_IN_PROGRESS'
-    | 'SPECIALIST_ASSIGNED'
-    | 'DIAGNOSTIC_COMPLETED'
-    | 'ACTION_PLAN_PREPARED'
-    | 'IMPLEMENTATION_IN_PROGRESS'
-    | 'WAITING_FOR_MEMBER'
-    | 'COMPLETED'
-    | 'ON_HOLD';
+  mainCategoryId?: string;
+  mainCategoryName?: string;
+  subcategoryId?: string;
+  subcategoryName?: string;
+  scalingSupportType?: string;
+  currentBusinessStage?: string;
+  businessDescription?: string;
+  currentBusinessLocation?: string;
+  targetExpansionLocation?: string;
+  mainChallenge?: string;
+  supportRequired?: string;
+  customSupportRequired?: string;
+  additionalDetails?: string;
+  supportingDocuments?: {
+    name: string;
+    fileUrl: string;
+    fileType?: string;
+    fileSize?: number;
+    uploadedAt: string;
+  }[];
+  status: string;
+  meetingDetails?: {
+    meetingId?: string;
+    date?: string;
+    time?: string;
+    durationMinutes?: number;
+    mode?: 'VIRTUAL' | 'IN_PERSON';
+    linkOrLocation?: string;
+    notes?: string;
+    scheduledAt?: Date | string;
+    scheduledBy?: string;
+    isCompleted?: boolean;
+    completedAt?: Date | string;
+    completionSummary?: string;
+  };
+  meetingCompletedAt?: Date;
+  completionSummary?: string;
+  adminNotes?: string;
+  activityTimeline?: {
+    action: string;
+    actorType: 'MEMBER' | 'ADMIN' | 'SYSTEM';
+    actorId?: string;
+    actorName?: string;
+    notes?: string;
+    timestamp: Date | string;
+  }[];
+
+  // Backward-compatible fields
+  supportType?: string;
+  currentChallenges?: string;
+  expectedOutcomes?: string;
   latestFicUpdate?: string;
   whatHappensNext?: string;
   ficRecommendations?: string;
@@ -80,29 +114,50 @@ export interface IBusinessDevRequestDocument extends Document {
 const BusinessDevRequestSchema = new Schema<IBusinessDevRequestDocument>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    memberId: { type: Schema.Types.ObjectId, ref: 'Member', index: true },
+    requestId: { type: String, trim: true },
     refNumber: { type: String, trim: true, index: true },
+    submitterName: { type: String, trim: true },
+    submitterEmail: { type: String, trim: true },
+    submitterPhone: { type: String, trim: true },
     businessName: { type: String, required: true, trim: true },
-    supportType: {
+    mainCategoryId: { type: String, trim: true },
+    mainCategoryName: { type: String, trim: true },
+    subcategoryId: { type: String, trim: true },
+    subcategoryName: { type: String, trim: true },
+    scalingSupportType: {
       type: String,
-      enum: [
-        'BUSINESS_PLANNING',
-        'SETUP_GUIDANCE',
-        'MARKET_RESEARCH',
-        'BRANDING_MARKETING',
-        'TECHNOLOGY_DEVELOPMENT',
-        'OPERATIONAL_IMPROVEMENT',
-        'EXPANSION_SCALING',
-        'GENERAL_CONSULTANCY'
-      ],
-      required: true
+      trim: true
     },
-    currentChallenges: { type: String, required: true },
-    expectedOutcomes: { type: String, required: true },
+    currentBusinessStage: {
+      type: String,
+      trim: true
+    },
+    businessDescription: { type: String, trim: true },
+    currentBusinessLocation: { type: String, trim: true },
+    targetExpansionLocation: { type: String, trim: true },
+    mainChallenge: { type: String, trim: true },
+    supportRequired: { type: String, trim: true },
+    customSupportRequired: { type: String, trim: true },
+    additionalDetails: { type: String, trim: true },
+    supportingDocuments: [
+      {
+        name: { type: String },
+        fileUrl: { type: String },
+        fileType: { type: String },
+        fileSize: { type: Number },
+        uploadedAt: { type: String }
+      }
+    ],
     status: {
       type: String,
       enum: [
         'SUBMITTED',
         'UNDER_REVIEW',
+        'MEETING_SCHEDULED',
+        'MEETING_COMPLETED',
+        'CANCELLED',
+        // Legacy statuses
         'ASSESSMENT_IN_PROGRESS',
         'SPECIALIST_ASSIGNED',
         'DIAGNOSTIC_COMPLETED',
@@ -114,6 +169,38 @@ const BusinessDevRequestSchema = new Schema<IBusinessDevRequestDocument>(
       ],
       default: 'SUBMITTED'
     },
+    meetingDetails: {
+      meetingId: { type: String },
+      date: { type: String },
+      time: { type: String },
+      durationMinutes: { type: Number, default: 45 },
+      mode: { type: String, enum: ['VIRTUAL', 'IN_PERSON'], default: 'VIRTUAL' },
+      linkOrLocation: { type: String },
+      notes: { type: String },
+      scheduledAt: { type: Date },
+      scheduledBy: { type: String },
+      isCompleted: { type: Boolean, default: false },
+      completedAt: { type: Date },
+      completionSummary: { type: String }
+    },
+    meetingCompletedAt: { type: Date },
+    completionSummary: { type: String },
+    adminNotes: { type: String },
+    activityTimeline: [
+      {
+        action: { type: String, required: true },
+        actorType: { type: String, enum: ['MEMBER', 'ADMIN', 'SYSTEM'], default: 'MEMBER' },
+        actorId: { type: String },
+        actorName: { type: String },
+        notes: { type: String },
+        timestamp: { type: Date, default: Date.now }
+      }
+    ],
+
+    // Backward compatibility
+    supportType: { type: String, trim: true },
+    currentChallenges: { type: String },
+    expectedOutcomes: { type: String },
     latestFicUpdate: { type: String },
     whatHappensNext: { type: String },
     ficRecommendations: { type: String },
@@ -161,9 +248,9 @@ const BusinessDevRequestSchema = new Schema<IBusinessDevRequestDocument>(
     },
     activityHistory: [
       {
-        title: { type: String, required: true },
-        description: { type: String, required: true },
-        timestamp: { type: String, required: true }
+        title: { type: String },
+        description: { type: String },
+        timestamp: { type: String }
       }
     ],
     ficNotes: { type: String }
@@ -171,8 +258,11 @@ const BusinessDevRequestSchema = new Schema<IBusinessDevRequestDocument>(
   { timestamps: true }
 );
 
+// Ensure index on requestId
+BusinessDevRequestSchema.index({ requestId: 1 }, { unique: true, sparse: true });
+
 export const BusinessDevRequestModel = mongoose.model<IBusinessDevRequestDocument>(
   'BusinessDevRequest',
   BusinessDevRequestSchema
 );
-
+export const ScalingRequestModel = BusinessDevRequestModel;

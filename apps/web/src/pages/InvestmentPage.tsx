@@ -246,6 +246,7 @@ export const InvestmentPage: React.FC = () => {
 
   // Navigation Tabs: 'submit' (Seek / Investor), 'pools' (Community Collection Pools), 'my_requests' (Tracking & Payouts)
   const [activeTab, setActiveTab] = useState<'submit' | 'pools' | 'my_requests'>('pools');
+  const [linkedIdeaRequestId, setLinkedIdeaRequestId] = useState<string>('');
 
   // Community Collection Pools & Investments State
   const [pools, setPools] = useState<any[]>([]);
@@ -448,6 +449,43 @@ export const InvestmentPage: React.FC = () => {
     loadDeals();
     loadPoolsAndInvestments();
   }, [storageKey]);
+
+  // Read URL query params for idea-linked funding redirection
+  useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const tab = searchParams.get('tab');
+      const action = searchParams.get('action');
+      const ideaId = searchParams.get('ideaId');
+      const title = searchParams.get('title');
+      const category = searchParams.get('category');
+      const description = searchParams.get('description');
+      const location = searchParams.get('location');
+
+      if (action === 'from-idea' || tab === 'seek') {
+        setActiveTab('submit');
+        setSubmissionType('FUNDING');
+        if (ideaId) setLinkedIdeaRequestId(ideaId);
+        if (title) setFundingBusinessName(title);
+        if (category) setFundingIndustry(category);
+        if (description) setFundingDescription(description);
+        if (location) {
+          const parts = location.split(',').map((s) => s.trim());
+          if (parts.length >= 2) {
+            setFundingCity(parts[0]);
+            setFundingState(parts[1]);
+          } else if (parts.length === 1 && parts[0]) {
+            setFundingCity(parts[0]);
+          }
+        }
+      } else if (tab === 'history') {
+        setActiveTab('my_requests');
+      }
+    } catch (e) {
+      console.warn('Failed parsing query params:', e);
+    }
+  }, []);
+
 
   // Handle User Investing into a Community Collection Pool
   const handlePledgeToPool = async (e: React.FormEvent) => {
@@ -652,6 +690,8 @@ export const InvestmentPage: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({
           ...newFundingItem,
+          businessIdeaRequestId: linkedIdeaRequestId || undefined,
+          linkedIdeaId: linkedIdeaRequestId || undefined,
           applicantName: user?.fullName || (user as any)?.name,
           applicantEmail: user?.email,
           applicantPhone: user?.phoneNumber || (user as any)?.phone
@@ -1222,6 +1262,15 @@ export const InvestmentPage: React.FC = () => {
                       <span className="text-xs font-black text-[#1C6960] uppercase tracking-wider block border-b border-[#EDE2D7]/60 pb-1">
                         Section A – Business Information
                       </span>
+                      {linkedIdeaRequestId && (
+                        <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl text-xs text-teal-800 font-semibold flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold">Linked Business Idea:</span>
+                            <span className="font-mono bg-teal-100 text-teal-900 px-2 py-0.5 rounded">{linkedIdeaRequestId}</span>
+                            <span>Details have been pre-filled from your approved idea.</span>
+                          </div>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                         <div className="space-y-1">

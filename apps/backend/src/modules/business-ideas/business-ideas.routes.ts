@@ -5,73 +5,78 @@ import { FicRequestModel } from '../admin/models/FicRequest';
 import { MemberModel } from '../admin/models/Member';
 import { UserModel } from '../users/users.model';
 import { notifyAdmins } from '../notifications/notifications.service';
-import { authenticate, requireActiveVerifiedMember, requireRoles, AuthenticatedRequest } from '../../common/middleware/auth.middleware';
-import { UserRole } from '@fic/shared-types';
+import {
+  authenticate,
+  requireActiveVerifiedMember,
+  AuthenticatedRequest
+} from '../../common/middleware/auth.middleware';
 import { AppError } from '../../common/errors/app-error';
 
 export const businessIdeasRouter = Router();
 
-// Submit a business idea for FIC development & mentoring
-businessIdeasRouter.post('/', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    if (!req.user) throw new AppError('Unauthorized', 401);
+/**
+ * Generate unique Idea Request ID in format: IDEA-YYYY-XXXXX
+ */
+function generateIdeaRequestId(): string {
+  const year = new Date().getFullYear();
+  const randomPart = Math.floor(10000 + Math.random() * 90000);
+  return `IDEA-${year}-${randomPart}`;
+}
 
-    const { title, description, targetMarket, stage, supportNeeded, supportRequired, refNumber } = req.body;
-    const generatedRef = refNumber || `IDEA-2026-${Math.floor(100 + Math.random() * 900)}`;
-
-    const resolvedSupport = supportRequired || (Array.isArray(supportNeeded) ? supportNeeded.join(', ') : supportNeeded) || '';
-
-    const idea = await BusinessIdeaModel.create({
-      userId: req.user.userId,
-      refNumber: generatedRef,
-      title,
-      description,
-      targetMarket,
-      stage: stage || 'IDEA',
-      supportNeeded: resolvedSupport,
-      supportRequired: resolvedSupport,
-      status: 'SUBMITTED',
-      latestFicUpdate: 'Your business idea has been received. Our team is currently reviewing it.',
-      whatHappensNext: 'FIC will complete the initial review and update you.',
-      updateHistory: [
-        {
-          date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
-          status: 'Submitted',
-          update: 'Your business idea has been received. Our team is currently reviewing it.',
-          updatedBy: 'FIC Incubation Desk'
-        }
-      ],
-      currentStep: 1,
-      memberAction: {
-        isRequired: false
-      },
-      activityHistory: [
-        {
-          title: 'Idea Submitted',
-          description: 'Idea registered securely under strict FIC non-disclosure protocol.',
-          timestamp: 'Today'
-        }
-      ]
-    });
-
-    // Synchronize to FicRequestModel for Admin FIC Request Desk visibility
+// ========================================================
+// 1. Submit a Business Idea (Member)
+// ========================================================
+businessIdeasRouter.post(
+  '/',
+  authenticate,
+  requireActiveVerifiedMember,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const user = await UserModel.findById(req.user.userId);
-      const requesterEmail = (user?.email || req.user.email || '').toLowerCase().trim();
-      const requesterName = user?.fullName || 'FIC Member';
+      if (!req.user) throw new AppError('Unauthorized', 401);
 
+      const {
+        title,
+        description,
+        targetMarket,
+        targetLocation,
+        developmentStage,
+        supportRequirements,
+        customSupportRequirement,
+        additionalMessage,
+        supportingDocuments
+      } = req.body;
+
+      if (!title || !String(title).trim()) {
+        res.status(400).json({ success: false, error: 'Business Idea Title is required.' });
+        return;
+      }
+
+      if (!description || !String(description).trim()) {
+        res.status(400).json({ success: false, error: 'Business Idea Description is required.' });
+        return;
+      }
+
+      const user: any = await UserModel.findById(req.user.userId).lean();
+      if (!user) throw new AppError('User profile not found', 404);
+
+      const requesterEmail = (user.email || req.user.email || '').toLowerCase().trim();
+      const requesterName = user.fullName || (req.user as any)?.name || 'FIC Member';
+      const requesterPhone = user.phoneNumber || '';
+
+      // Find or create associated MemberModel record
       let member = await MemberModel.findOne({
         $or: [{ _id: req.user.userId }, { email: requesterEmail }]
       });
 
       if (!member) {
         member = await MemberModel.create({
+          _id: req.user.userId,
           name: requesterName,
           email: requesterEmail,
-          phone: user?.phoneNumber || '9876543210',
-          primaryCategory: user?.primaryCategoryId || new mongoose.Types.ObjectId(),
-          primaryCategoryName: user?.primaryCategoryName || 'Business & Entrepreneurship',
-          subcategories: user?.subCategory ? [user.subCategory] : [],
+          phone: requesterPhone || '9876543210',
+          primaryCategory: user.primaryCategoryId || new mongoose.Types.ObjectId(),
+          primaryCategoryName: user.primaryCategoryName || 'General Business',
+          subcategories: [user.subCategory || user.primarySubcategoryName || 'Entrepreneur'].filter(Boolean),
           status: 'ACTIVE',
           kycStatus: 'APPROVED',
           membershipPlan: 'FIRST_YEAR_INTRO',
@@ -80,144 +85,299 @@ businessIdeasRouter.post('/', authenticate, requireActiveVerifiedMember, async (
         });
       }
 
-      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
-      await FicRequestModel.create({
-        type: 'BUSINESS_IDEAS',
-        sourceModule: 'BUSINESS_IDEAS',
-        sourceRefId: idea._id,
-        title: idea.title,
-        description: `Stage: ${idea.stage}. Target Market: ${idea.targetMarket || 'N/A'}. Support: ${resolvedSupport}. Details: ${idea.description}`,
-        requesterId: member._id,
-        requesterName,
-        requesterEmail,
-        requesterPhone: member.phone || user?.phoneNumber,
-        requesterCategory: member.primaryCategoryName,
-        status: 'NEW',
-        internalNotes: [
-          `[${timestamp} by System]: Business Idea submitted (${idea.refNumber}). Incubation desk notified.`
+      // Auto-populate Category & Subcategory strictly from member's registered profile
+      const mainCategoryName =
+        user.primaryCategoryName ||
+        member.primaryCategoryName ||
+        'Business & Entrepreneurship';
+      const subcategoryName =
+        user.subCategory ||
+        user.primarySubcategoryName ||
+        (member.subcategories && member.subcategories[0]) ||
+        'Entrepreneur';
+
+      const ideaRequestId = generateIdeaRequestId();
+      const resolvedStage = developmentStage || 'Just an Idea';
+      const resolvedSupport = Array.isArray(supportRequirements) ? supportRequirements : [];
+
+      const initialTimeline = [
+        {
+          action: 'Business Idea Submitted',
+          actorType: 'MEMBER' as const,
+          actorId: String(member._id),
+          actorName: requesterName,
+          notes: 'Business idea registered securely with FIC for review and network collaboration.',
+          timestamp: new Date()
+        }
+      ];
+
+      const idea = await BusinessIdeaModel.create({
+        ideaRequestId,
+        refNumber: ideaRequestId,
+        userId: user._id,
+        submitterMemberId: member._id,
+        submitterName: requesterName,
+        submitterEmail: requesterEmail,
+        submitterPhone: requesterPhone,
+        title: String(title).trim(),
+        mainCategoryId: user.primaryCategoryId || member.primaryCategory,
+        mainCategoryName,
+        mainCategorySlug: user.primaryCategorySlug || 'general-business',
+        subcategoryId: user.primarySubcategoryId,
+        subcategoryName,
+        description: String(description).trim(),
+        targetMarket: targetMarket ? String(targetMarket).trim() : '',
+        targetLocation: targetLocation ? String(targetLocation).trim() : '',
+        developmentStage: resolvedStage,
+        supportRequirements: resolvedSupport,
+        customSupportRequirement: customSupportRequirement ? String(customSupportRequirement).trim() : '',
+        additionalMessage: additionalMessage ? String(additionalMessage).trim() : '',
+        supportingDocuments: Array.isArray(supportingDocuments) ? supportingDocuments : [],
+        adminReviewStatus: 'SUBMITTED',
+        status: 'SUBMITTED',
+        marketplacePublished: false,
+        interestedMembersCount: 0,
+        collaborationStatus: 'PENDING_REVIEW',
+        fundingAsked: false,
+        activityTimeline: initialTimeline,
+
+        // Legacy compatibility
+        stage: resolvedStage,
+        supportNeeded: resolvedSupport,
+        supportRequired: resolvedSupport.join(', '),
+        latestFicUpdate: 'Your business idea has been successfully submitted. FIC will review your idea and notify you about the next steps.',
+        whatHappensNext: 'FIC Admin will evaluate your proposal and reach out with review findings.',
+        updateHistory: [
+          {
+            date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
+            status: 'Submitted',
+            update: 'Your business idea has been successfully submitted. FIC will review your idea and notify you about the next steps.',
+            updatedBy: 'FIC Incubation Desk'
+          }
         ]
       });
 
+      // Synchronize to FicRequestModel for Admin Request Desk visibility
+      try {
+        const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 16);
+        await FicRequestModel.create({
+          type: 'BUSINESS_IDEAS',
+          sourceModule: 'BUSINESS_IDEAS',
+          sourceRefId: idea._id,
+          title: idea.title,
+          description: `Stage: ${resolvedStage}. Target: ${idea.targetMarket || 'All'}. Location: ${idea.targetLocation || 'India'}. Support: ${resolvedSupport.join(', ')}. Details: ${idea.description}`,
+          requesterId: member._id,
+          requesterName,
+          requesterEmail,
+          requesterPhone: requesterPhone || member.phone,
+          requesterCategory: mainCategoryName,
+          status: 'NEW',
+          internalNotes: [
+            `[${timestamp} by System]: Business Idea submitted (${idea.ideaRequestId}). Awaiting Admin Desk evaluation.`
+          ]
+        });
+
+        // Notify Admins
+        await notifyAdmins({
+          eventType: 'NEW_REQUEST',
+          title: `New Business Idea: ${idea.title}`,
+          message: `Member ${requesterName} submitted a new business idea (${idea.ideaRequestId}).`,
+          link: '/business-ideas',
+          priority: 'HIGH'
+        });
+      } catch (syncErr) {
+        console.warn('Failed to sync business idea with FicRequest or notify admins:', syncErr);
+      }
+
+      res.status(201).json({
+        success: true,
+        message: 'Your business idea has been successfully submitted. FIC will review your idea and notify you about the next steps.',
+        data: idea
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ========================================================
+// 2. Get Own Submitted Business Ideas (Member)
+// ========================================================
+businessIdeasRouter.get(
+  '/me',
+  authenticate,
+  requireActiveVerifiedMember,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) throw new AppError('Unauthorized', 401);
+
+      const ideas = await BusinessIdeaModel.find({
+        $or: [{ userId: req.user.userId }, { submitterMemberId: req.user.userId }]
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      res.status(200).json({
+        success: true,
+        data: ideas
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ========================================================
+// 3. Get Single Business Idea Details (Owner Member)
+// ========================================================
+businessIdeasRouter.get(
+  '/:id',
+  authenticate,
+  requireActiveVerifiedMember,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) throw new AppError('Unauthorized', 401);
+
+      const { id } = req.params;
+      const idea = await BusinessIdeaModel.findOne({
+        $and: [
+          { $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { ideaRequestId: id }, { refNumber: id }] },
+          { $or: [{ userId: req.user.userId }, { submitterMemberId: req.user.userId }] }
+        ]
+      }).lean();
+
+      if (!idea) {
+        res.status(404).json({ success: false, error: 'Business idea not found or access restricted.' });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        data: idea
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ========================================================
+// 4. Respond to Funding Requirement Question (Member)
+// ========================================================
+businessIdeasRouter.post(
+  '/:id/funding-response',
+  authenticate,
+  requireActiveVerifiedMember,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) throw new AppError('Unauthorized', 401);
+
+      const { id } = req.params;
+      const { fundingRequired } = req.body;
+
+      const idea = await BusinessIdeaModel.findOne({
+        $and: [
+          { $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { ideaRequestId: id }, { refNumber: id }] },
+          { $or: [{ userId: req.user.userId }, { submitterMemberId: req.user.userId }] }
+        ]
+      });
+
+      if (!idea) {
+        res.status(404).json({ success: false, error: 'Business idea not found.' });
+        return;
+      }
+
+      const isRequired = Boolean(fundingRequired);
+      idea.fundingRequired = isRequired;
+
+      idea.activityTimeline.push({
+        action: 'Funding Requirement Recorded',
+        actorType: 'MEMBER',
+        actorId: String(req.user.userId),
+        actorName: (req.user as any)?.name || 'Member',
+        notes: isRequired
+          ? 'Member indicated financial funding support is needed. Funding request link initialized.'
+          : 'Member confirmed funding is not currently required.',
+        timestamp: new Date()
+      });
+
+      await idea.save();
+
+      res.status(200).json({
+        success: true,
+        message: isRequired
+          ? 'Funding requirement confirmed. You may now submit your funding proposal.'
+          : 'Response recorded. No funding request will be initiated.',
+        data: idea
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// ========================================================
+// 5. Submit Additional Information (Member)
+// ========================================================
+businessIdeasRouter.put(
+  '/:id/additional-info',
+  authenticate,
+  requireActiveVerifiedMember,
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      if (!req.user) throw new AppError('Unauthorized', 401);
+
+      const { id } = req.params;
+      const { additionalInfo } = req.body;
+
+      if (!additionalInfo || !String(additionalInfo).trim()) {
+        res.status(400).json({ success: false, error: 'Please enter the requested information.' });
+        return;
+      }
+
+      const idea = await BusinessIdeaModel.findOne({
+        $and: [
+          { $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { ideaRequestId: id }, { refNumber: id }] },
+          { $or: [{ userId: req.user.userId }, { submitterMemberId: req.user.userId }] }
+        ]
+      });
+
+      if (!idea) {
+        res.status(404).json({ success: false, error: 'Business idea not found.' });
+        return;
+      }
+
+      idea.status = 'UNDER_REVIEW';
+      idea.adminReviewStatus = 'UNDER_REVIEW';
+      idea.informationRequestNotes = `Member Response: ${String(additionalInfo).trim()}`;
+      idea.latestFicUpdate = 'Additional details submitted. FIC Admin is reviewing the updated submission.';
+
+      idea.activityTimeline.push({
+        action: 'Additional Information Provided',
+        actorType: 'MEMBER',
+        actorId: String(req.user.userId),
+        actorName: (req.user as any)?.name || 'Member',
+        notes: String(additionalInfo).trim(),
+        timestamp: new Date()
+      });
+
+      await idea.save();
+
       await notifyAdmins({
         eventType: 'NEW_REQUEST',
-        title: `New Business Idea: ${idea.title}`,
-        message: `Member ${requesterName} submitted a new business idea (${idea.refNumber}).`,
-        link: '/requests',
-        priority: 'HIGH'
+        title: `Information Provided: ${idea.title}`,
+        message: `Member responded with requested information for business idea (${idea.ideaRequestId}).`,
+        link: '/business-ideas',
+        priority: 'MEDIUM'
       });
-    } catch (syncErr) {
-      console.warn('Failed to sync business idea with FicRequest:', syncErr);
+
+      res.status(200).json({
+        success: true,
+        message: 'Additional information successfully submitted to FIC Admin.',
+        data: idea
+      });
+    } catch (error) {
+      next(error);
     }
-
-    res.status(201).json({
-      success: true,
-      message: 'Business idea submitted successfully to FIC for review.',
-      data: idea
-    });
-  } catch (error) {
-    next(error);
   }
-});
-
-// Submit additional information requested by FIC
-businessIdeasRouter.put('/:id/additional-info', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    if (!req.user) throw new AppError('Unauthorized', 401);
-
-    const { id } = req.params;
-    const { additionalInfo } = req.body;
-
-    const idea = await BusinessIdeaModel.findOne({
-      $or: [{ _id: id }, { refNumber: id }],
-      userId: req.user.userId
-    });
-
-    if (!idea) {
-      throw new AppError('Business idea not found', 404);
-    }
-
-    idea.memberAction = {
-      isRequired: false,
-      title: idea.memberAction?.title,
-      reason: idea.memberAction?.reason,
-      dueDate: idea.memberAction?.dueDate,
-      submittedInfo: additionalInfo,
-      submittedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-    };
-
-    if (idea.status === 'INFO_REQUIRED') {
-      idea.status = 'UNDER_REVIEW';
-    }
-
-    idea.activityHistory = idea.activityHistory || [];
-    idea.activityHistory.push({
-      title: 'Additional Information Submitted',
-      description: 'Member provided requested clarification for incubation desk.',
-      timestamp: 'Today'
-    });
-
-    await idea.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Additional information submitted successfully.',
-      data: idea
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Get own submitted business ideas
-businessIdeasRouter.get('/me', authenticate, requireActiveVerifiedMember, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    if (!req.user) throw new AppError('Unauthorized', 401);
-
-    const ideas = await BusinessIdeaModel.find({ userId: req.user.userId }).sort({ createdAt: -1 });
-    res.status(200).json({ success: true, data: ideas });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Update request status and latest FIC update (authorized FIC team / admin)
-businessIdeasRouter.put('/:id/fic-update', authenticate, requireRoles(UserRole.ADMIN, UserRole.SUPER_ADMIN), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-  try {
-    if (!req.user) throw new AppError('Unauthorized', 401);
-
-    const { id } = req.params;
-    const { status, latestFicUpdate, whatHappensNext } = req.body;
-
-    const idea = await BusinessIdeaModel.findOne({
-      $or: [{ _id: id }, { refNumber: id }]
-    });
-
-    if (!idea) {
-      throw new AppError('Business idea not found', 404);
-    }
-
-    if (status) idea.status = status;
-    if (latestFicUpdate) idea.latestFicUpdate = latestFicUpdate;
-    if (whatHappensNext) idea.whatHappensNext = whatHappensNext;
-
-    idea.updateHistory = idea.updateHistory || [];
-    idea.updateHistory.unshift({
-      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
-      status: status || idea.status,
-      update: latestFicUpdate || idea.latestFicUpdate || 'Status updated by FIC team.',
-      updatedBy: req.user.role === 'ADMIN' ? 'FIC Admin' : 'FIC Incubation Desk'
-    });
-
-    await idea.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'FIC update and status successfully saved.',
-      data: idea
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-
+);

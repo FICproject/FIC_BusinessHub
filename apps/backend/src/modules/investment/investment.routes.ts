@@ -5,6 +5,7 @@ import {
   InvestorProfileModel,
   InvestmentProfileModel
 } from './investment.model';
+import { BusinessIdeaModel } from '../business-ideas/business-ideas.model';
 import { FundingApplicationModel } from '../admin/models/FundingApplication';
 import { InvestmentPoolModel } from '../admin/models/InvestmentPool';
 import { MemberModel } from '../admin/models/Member';
@@ -78,8 +79,12 @@ investmentRouter.post('/funding', authenticate, requireActiveVerifiedMember, asy
       refNumber,
       applicantName,
       applicantEmail,
-      applicantPhone
+      applicantPhone,
+      businessIdeaRequestId,
+      linkedIdeaId
     } = req.body;
+
+    const resolvedIdeaRequestId = businessIdeaRequestId || linkedIdeaId;
 
     const generatedRef = refNumber || `FIC-FUND-2026-${Math.floor(100 + Math.random() * 900)}`;
     const todayFormatted = new Date().toLocaleDateString('en-GB', {
@@ -123,6 +128,36 @@ investmentRouter.post('/funding', authenticate, requireActiveVerifiedMember, asy
         }
       ]
     });
+
+    // 1b. Automatically link funding request to original business idea if originating from an idea
+    if (resolvedIdeaRequestId) {
+      try {
+        const linkedIdea = await BusinessIdeaModel.findOne({
+          $or: [
+            { _id: mongoose.isValidObjectId(resolvedIdeaRequestId) ? resolvedIdeaRequestId : null },
+            { ideaRequestId: resolvedIdeaRequestId },
+            { refNumber: resolvedIdeaRequestId }
+          ]
+        });
+
+        if (linkedIdea) {
+          linkedIdea.fundingRequired = true;
+          linkedIdea.fundingRequestId = String(newFunding._id);
+          linkedIdea.fundingRequestRef = generatedRef;
+          linkedIdea.activityTimeline.push({
+            action: 'Funding Proposal Submitted & Linked',
+            actorType: 'MEMBER',
+            actorId: String(req.user.userId),
+            actorName: resolvedName,
+            notes: `Formal funding proposal linked (${generatedRef}) for ₹${parsedFundingAmount.toLocaleString('en-IN')}.`,
+            timestamp: new Date()
+          });
+          await linkedIdea.save();
+        }
+      } catch (linkErr) {
+        console.warn('Failed to link funding request to business idea:', linkErr);
+      }
+    }
 
     // 2. Synchronize immediately into FundingApplicationModel for Admin Portal's FIC Funding Desk
     try {
