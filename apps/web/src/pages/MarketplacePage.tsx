@@ -279,7 +279,7 @@ export const MarketplacePage: React.FC = () => {
   const handleOpenInterestModal = (idea: any) => {
     if (isOwnIdea(idea)) return;
     setSelectedIdeaForInterest(idea);
-    setInterestReason('');
+    setInterestReason("I'm interested. Let's discuss more about this business idea in meeting.");
     setContributionType('Business collaboration');
     setExperience('');
     setAdditionalMessage('');
@@ -835,6 +835,16 @@ export const MarketplacePage: React.FC = () => {
               </div>
             ) : (
               <form onSubmit={handleConfirmInterest} className="space-y-4">
+                {/* User Requested Interest Headline */}
+                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#F4EEFB] to-[#FAF8FD] border-2 border-[#8064B1]/40 text-center space-y-1 shadow-2xs">
+                  <div className="text-base sm:text-lg font-black text-[#8064B1]">
+                    I'm interested
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-[#51463F]">
+                    Let's discuss more about this business idea in meeting
+                  </div>
+                </div>
+
                 {/* Privacy Safeguard Alert */}
                 <div className="p-3 bg-purple-50/70 border border-[#8064B1]/30 rounded-xl text-xs space-y-1">
                   <div className="font-bold text-[#8064B1] flex items-center gap-1.5">

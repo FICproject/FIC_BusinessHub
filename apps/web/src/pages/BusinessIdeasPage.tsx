@@ -22,7 +22,8 @@ import {
   PlusIcon,
   UploadIcon,
   EyeIcon,
-  BriefcaseIcon
+  BriefcaseIcon,
+  CalendarIcon
 } from '../components/Icons';
 import {
   apiRequest,
@@ -94,6 +95,7 @@ export const BusinessIdeasPage: React.FC = () => {
   const [developmentStage, setDevelopmentStage] = useState<BusinessIdeaStage>('Just an Idea');
   const [selectedSupports, setSelectedSupports] = useState<BusinessIdeaSupportOption[]>([]);
   const [customSupportRequirement, setCustomSupportRequirement] = useState<string>('');
+  const [supportDescription, setSupportDescription] = useState<string>('');
   const [additionalMessage, setAdditionalMessage] = useState<string>('');
   const [uploadedDocs, setUploadedDocs] = useState<{ name: string; fileUrl: string; fileType?: string; fileSize?: number; uploadedAt: string }[]>([]);
   const [isUploadingDoc, setIsUploadingDoc] = useState<boolean>(false);
@@ -211,8 +213,8 @@ export const BusinessIdeasPage: React.FC = () => {
       return;
     }
 
-    if (selectedSupports.includes('Other – Specify Your Requirement') && !customSupportRequirement.trim()) {
-      setFormError('Please specify the requirement details for the "Other" support option.');
+    if (!supportDescription.trim()) {
+      setFormError('Please enter what support you need from FIC.');
       return;
     }
 
@@ -226,8 +228,8 @@ export const BusinessIdeasPage: React.FC = () => {
           targetMarket: targetMarket.trim(),
           targetLocation: targetLocation.trim(),
           developmentStage,
-          supportRequirements: selectedSupports,
-          customSupportRequirement: customSupportRequirement.trim(),
+          supportRequirements: [supportDescription.trim()],
+          customSupportRequirement: supportDescription.trim(),
           additionalMessage: additionalMessage.trim(),
           supportingDocuments: uploadedDocs
         })
@@ -246,6 +248,7 @@ export const BusinessIdeasPage: React.FC = () => {
         setDevelopmentStage('Just an Idea');
         setSelectedSupports([]);
         setCustomSupportRequirement('');
+        setSupportDescription('');
         setAdditionalMessage('');
         setUploadedDocs([]);
 
@@ -517,6 +520,34 @@ export const BusinessIdeasPage: React.FC = () => {
                             <span className="line-clamp-2 leading-relaxed">{(idea as any).latestFicUpdate}</span>
                           </div>
                         )}
+
+                        {/* Consultation Meeting Scheduled Banner */}
+                        {(idea as any).meetingDetails?.date && (
+                          <div className="p-2.5 rounded-xl bg-purple-50/80 border border-[#8064B1]/30 text-xs space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-black text-[#8064B1] flex items-center gap-1.5 uppercase tracking-wider text-[10.5px]">
+                                <CalendarIcon size={12} />
+                                {(idea as any).meetingDetails.isCompleted ? 'FIC Consultation Completed' : 'FIC Consultation Meeting Scheduled'}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-200/70 text-[#6A4D9C]">
+                                {(idea as any).meetingDetails.mode === 'IN_PERSON' ? 'In-Person Session' : 'Virtual Session'}
+                              </span>
+                            </div>
+                            <div className="text-[11px] font-medium text-[#51463F]">
+                              {(idea as any).meetingDetails.date} at {(idea as any).meetingDetails.time} ({(idea as any).meetingDetails.durationMinutes || 45} mins)
+                            </div>
+                            {!(idea as any).meetingDetails.isCompleted && (idea as any).meetingDetails.linkOrLocation && (
+                              <a
+                                href={(idea as any).meetingDetails.linkOrLocation}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[11px] font-bold text-[#8064B1] hover:underline inline-block mt-0.5"
+                              >
+                                Join Online Meeting &rarr;
+                              </a>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Card Footer */}
@@ -587,6 +618,34 @@ export const BusinessIdeasPage: React.FC = () => {
                       <div className="font-bold text-[#8064B1]">{interest.contributionType}</div>
                       <p className="text-[#51463F] text-[11px] mt-1 line-clamp-2">{interest.interestReason}</p>
                     </div>
+
+                    {/* Collaboration Meeting Scheduled Banner */}
+                    {interest.meetingDetails?.date && (
+                      <div className="p-2.5 rounded-xl bg-purple-50/80 border border-[#8064B1]/30 text-xs space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-[#8064B1] flex items-center gap-1.5 uppercase tracking-wider text-[10.5px]">
+                            <CalendarIcon size={12} />
+                            Intro Meeting Scheduled
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-200/70 text-[#6A4D9C]">
+                            {interest.meetingDetails.mode === 'IN_PERSON' ? 'In-Person' : 'Virtual'}
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-medium text-[#51463F]">
+                          {interest.meetingDetails.date} at {interest.meetingDetails.time} ({interest.meetingDetails.durationMinutes || 45} mins)
+                        </div>
+                        {interest.meetingDetails.linkOrLocation && (
+                          <a
+                            href={interest.meetingDetails.linkOrLocation}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[11px] font-bold text-[#8064B1] hover:underline inline-block mt-0.5"
+                          >
+                            Join Online Meeting &rarr;
+                          </a>
+                        )}
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-[10px] text-[#82776E] uppercase font-bold">Admin Review:</span>
@@ -739,60 +798,31 @@ export const BusinessIdeasPage: React.FC = () => {
                 </select>
               </div>
 
-              {/* 8. Support Needed from FIC (Multi-select) */}
+              {/* 8. Support Needed from FIC */}
               <div className="space-y-2">
                 <label className="block text-xs font-black text-[#51463F]">
-                  What support do you need from FIC? (Select all that apply)
+                  What support do you need from FIC? <span className="text-rose-500">*</span>
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {SUPPORT_OPTIONS.map((opt) => {
-                    const isChecked = selectedSupports.includes(opt);
-                    return (
-                      <button
-                        type="button"
-                        key={opt}
-                        onClick={() => toggleSupportOption(opt)}
-                        className={`p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer flex items-center justify-between ${
-                          isChecked
-                            ? 'bg-[#F4EEFB] border-[#8064B1] text-[#8064B1] font-bold shadow-2xs'
-                            : 'bg-white border-[#EDE2D7] text-[#51463F] hover:bg-[#FAF7F2]'
-                        }`}
-                      >
-                        <span>{opt}</span>
-                        {isChecked && <CheckCircleIcon size={14} className="text-[#8064B1] shrink-0 ml-1" />}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Other - Custom Support Input */}
-                {selectedSupports.includes('Other – Specify Your Requirement') && (
-                  <div className="pt-2">
-                    <label className="block text-xs font-black text-[#8064B1] mb-1">
-                      Specify Your Custom Support Requirement *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={customSupportRequirement}
-                      onChange={(e) => setCustomSupportRequirement(e.target.value)}
-                      placeholder="e.g. Need regulatory license clearance and export certifications..."
-                      className="w-full px-3.5 py-2 bg-white border border-[#8064B1]/50 rounded-xl text-[#51463F] focus:outline-none focus:ring-2 focus:ring-[#8064B1]/40"
-                    />
-                  </div>
-                )}
+                <textarea
+                  required
+                  rows={3}
+                  value={supportDescription}
+                  onChange={(e) => setSupportDescription(e.target.value)}
+                  placeholder="Describe the exact support, mentoring, technical validation, funding, or business connections you require from FIC..."
+                  className="w-full px-3.5 py-2.5 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F] focus:outline-none focus:ring-2 focus:ring-[#8064B1]/40 text-xs sm:text-sm"
+                />
 
                 {/* Additional Message */}
                 <div className="pt-1">
                   <label className="block text-xs font-black text-[#82776E] mb-1">
-                    Additional Message (Optional)
+                    Additional Message
                   </label>
                   <textarea
                     rows={2}
                     value={additionalMessage}
                     onChange={(e) => setAdditionalMessage(e.target.value)}
                     placeholder="Any specific questions, partner preferences, or expectations from FIC..."
-                    className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F] focus:outline-none focus:ring-2 focus:ring-[#8064B1]/40"
+                    className="w-full px-3.5 py-2 bg-white border border-[#EDE2D7] rounded-xl text-[#51463F] focus:outline-none focus:ring-2 focus:ring-[#8064B1]/40 text-xs sm:text-sm"
                   />
                 </div>
               </div>
@@ -1037,6 +1067,46 @@ export const BusinessIdeasPage: React.FC = () => {
                       {isSubmittingInfo ? 'Sending...' : 'Send Clarification to FIC'}
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Consultation Meeting Scheduled Banner */}
+              {(selectedIdea as any).meetingDetails?.date && (
+                <div className="p-4 rounded-xl bg-purple-50/80 border border-[#8064B1]/40 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-[#8064B1] flex items-center gap-1.5 uppercase tracking-wider text-xs">
+                      <CalendarIcon size={14} />
+                      {(selectedIdea as any).meetingDetails.isCompleted ? 'FIC Consultation Completed' : 'FIC Consultation Meeting Scheduled'}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-md text-[10.5px] font-bold bg-purple-200/70 text-[#6A4D9C]">
+                      {(selectedIdea as any).meetingDetails.mode === 'IN_PERSON' ? 'In-Person Session' : 'Virtual Session'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-[#51463F]">
+                    <div>
+                      <span className="text-[#82776E] font-normal">Date & Time: </span>
+                      {(selectedIdea as any).meetingDetails.date} at {(selectedIdea as any).meetingDetails.time} ({(selectedIdea as any).meetingDetails.durationMinutes || 45} mins)
+                    </div>
+                    {!(selectedIdea as any).meetingDetails.isCompleted && (selectedIdea as any).meetingDetails.linkOrLocation && (
+                      <div>
+                        <span className="text-[#82776E] font-normal">Meeting Access: </span>
+                        <a
+                          href={(selectedIdea as any).meetingDetails.linkOrLocation}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[#8064B1] font-bold hover:underline inline-flex items-center gap-1"
+                        >
+                          Join Online Meeting &rarr;
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                  {(selectedIdea as any).meetingDetails.notes && (
+                    <p className="text-[11.5px] text-[#51463F] bg-white/80 p-2.5 rounded-lg border border-[#8064B1]/20">
+                      <strong>FIC Notes: </strong>
+                      {(selectedIdea as any).meetingDetails.notes}
+                    </p>
+                  )}
                 </div>
               )}
 

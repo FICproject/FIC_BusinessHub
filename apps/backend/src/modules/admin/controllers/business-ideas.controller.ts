@@ -2,6 +2,8 @@ import { Router, Response } from 'express';
 import mongoose from 'mongoose';
 import { BusinessIdeaModel, BusinessIdeaInterestModel } from '../../business-ideas/business-ideas.model';
 import { MemberModel } from '../models/Member';
+import { AdminUserModel } from '../models/AdminUser';
+import { MeetingModel } from '../models/Meeting';
 import { notifyMember } from '../../notifications/notifications.service';
 import {
   authenticateAdmin,
@@ -577,6 +579,424 @@ adminBusinessIdeasRouter.post(
       res.status(200).json({
         success: true,
         message: 'Funding support inquiry enabled for member.',
+        data: idea
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ========================================================
+// 8. Admin Schedules Consultation Meeting with Idea Requester
+// ========================================================
+adminBusinessIdeasRouter.post(
+  '/:id/schedule-meeting',
+  authenticateAdmin,
+  requirePermission('SERVICES_APPROVE'),
+  async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { date, time, durationMinutes, mode, linkOrLocation, notes } = req.body;
+
+      if (!date || !time) {
+        res.status(400).json({ success: false, error: 'Meeting Date and Time are required.' });
+        return;
+      }
+
+      if (!linkOrLocation || !String(linkOrLocation).trim()) {
+        res.status(400).json({
+          success: false,
+          error: mode === 'VIRTUAL' ? 'Virtual Meeting Link is required.' : 'Meeting Location is required.'
+        });
+        return;
+      }
+
+      const idea = await BusinessIdeaModel.findOne({
+        $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { ideaRequestId: id }, { refNumber: id }]
+      });
+
+      if (!idea) {
+        res.status(404).json({ success: false, error: 'Business idea not found' });
+        return;
+      }
+
+      const adminName = req.admin?.name || 'FIC Admin';
+      const adminId = req.admin?.id || 'admin';
+      const scheduledDateTime = new Date(`${date}T${time}`);
+
+      let hostAdminObjectId = mongoose.isValidObjectId(adminId) ? new mongoose.Types.ObjectId(adminId) : null;
+      if (!hostAdminObjectId) {
+        const superAdmin = (await AdminUserModel.findOne({ role: 'SUPER_ADMIN' })) || (await AdminUserModel.findOne());
+        hostAdminObjectId = superAdmin?._id || new mongoose.Types.ObjectId();
+      }
+
+      // Create central MeetingModel record
+      let meetingDoc: any = null;
+      try {
+        meetingDoc = await MeetingModel.create({
+          title: `Business Idea Consultation: ${idea.title}`,
+          description: notes || `FIC Incubation & Market Advisory consultation for idea "${idea.title}". [${idea.ideaRequestId || idea.refNumber || idea._id}]`,
+          hostAdminId: hostAdminObjectId,
+          participantMemberIds: idea.submitterMemberId ? [idea.submitterMemberId] : (mongoose.isValidObjectId(idea.userId) ? [idea.userId] : []),
+          externalParticipants: [
+            {
+              name: idea.submitterName || 'Member',
+              email: idea.submitterEmail || 'member@fic.com',
+              phone: idea.submitterPhone || '',
+              roleOrCompany: idea.title
+            }
+          ],
+          meetingType: 'CONSULTATION',
+          scheduledAt: isNaN(scheduledDateTime.getTime()) ? new Date() : scheduledDateTime,
+          durationMinutes: Number(durationMinutes) || 45,
+          meetingLink: mode === 'VIRTUAL' ? linkOrLocation : undefined,
+          status: 'SCHEDULED',
+          notificationSent: true
+        });
+      } catch (mErr) {
+        console.warn('Could not create MeetingModel for idea:', mErr);
+      }
+
+      idea.status = 'MEETING_SCHEDULED';
+      idea.adminReviewStatus = 'MEETING_SCHEDULED';
+      idea.meetingDetails = {
+        meetingId: meetingDoc?._id ? String(meetingDoc._id) : undefined,
+        date: String(date).trim(),
+        time: String(time).trim(),
+        durationMinutes: Number(durationMinutes) || 45,
+        mode: mode === 'IN_PERSON' ? 'IN_PERSON' : 'VIRTUAL',
+        linkOrLocation: String(linkOrLocation).trim(),
+        notes: notes ? String(notes).trim() : '',
+        scheduledAt: isNaN(scheduledDateTime.getTime()) ? new Date() : scheduledDateTime,
+        scheduledBy: adminName,
+        isCompleted: false
+      };
+
+      idea.latestFicUpdate = `FIC consultation meeting arranged for ${date} at ${time} (${mode === 'IN_PERSON' ? 'In-Person' : 'Virtual Session'}).`;
+      idea.whatHappensNext = 'Please join the scheduled consultation call with FIC incubation coordinators.';
+
+      idea.activityTimeline.push({
+        action: 'Consultation Meeting Arranged by Admin',
+        actorType: 'ADMIN',
+        actorId: adminId,
+        actorName: adminName,
+        notes: `Scheduled ${mode} meeting on ${date} at ${time}. Link/Venue: ${linkOrLocation}.`,
+        timestamp: new Date()
+      });
+
+      await idea.save();
+
+      // Notify submitter
+      await notifyMember({
+        userId: String(idea.userId),
+        eventType: 'BUSINESS_IDEA_MEETING_SCHEDULED',
+        title: 'FIC Consultation Meeting Scheduled 📅',
+        message: `FIC Admin has arranged your Business Idea consultation meeting on ${date} at ${time}.`,
+        metadata: { link: '/meetings' }
+      });
+
+      await logAdminAction(
+        req,
+        'SCHEDULE_IDEA_MEETING',
+        'BusinessIdea',
+        idea._id.toString(),
+        { meetingId: meetingDoc?._id, date, time }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Consultation meeting arranged successfully and member notified!',
+        data: idea
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ========================================================
+// 9. Admin Marks Meeting Completed & Publishes Idea to Marketplace
+// ========================================================
+adminBusinessIdeasRouter.post(
+  '/:id/complete-meeting-publish',
+  authenticateAdmin,
+  requirePermission('SERVICES_APPROVE'),
+  async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { summary } = req.body;
+
+      const idea = await BusinessIdeaModel.findOne({
+        $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { ideaRequestId: id }, { refNumber: id }]
+      });
+
+      if (!idea) {
+        res.status(404).json({ success: false, error: 'Business idea not found' });
+        return;
+      }
+
+      const adminName = req.admin?.name || 'FIC Admin';
+      const adminId = req.admin?.id || 'admin';
+
+      // Mark meeting completed in central MeetingModel
+      if (idea.meetingDetails?.meetingId) {
+        try {
+          await MeetingModel.findByIdAndUpdate(idea.meetingDetails.meetingId, { status: 'COMPLETED' });
+        } catch (mErr) {
+          console.warn('Failed to update MeetingModel status:', mErr);
+        }
+      }
+
+      if (!idea.meetingDetails) {
+        idea.meetingDetails = {
+          isCompleted: true,
+          completedAt: new Date(),
+          completionSummary: summary ? String(summary).trim() : 'Meeting completed and verified by Admin.'
+        };
+      } else {
+        idea.meetingDetails.isCompleted = true;
+        idea.meetingDetails.completedAt = new Date();
+        if (summary) idea.meetingDetails.completionSummary = String(summary).trim();
+      }
+
+      idea.status = 'SHARED_ON_MARKETPLACE';
+      idea.adminReviewStatus = 'SHARED_ON_MARKETPLACE';
+      idea.marketplacePublished = true;
+      idea.marketplacePublishedAt = new Date();
+      idea.collaborationStatus = 'OPEN_FOR_INTEREST';
+      idea.latestFicUpdate = 'Meeting completed! Your business idea has been validated and is now live on the Universal Marketplace for network members to express interest.';
+      idea.whatHappensNext = 'Interested entrepreneurs, mentors, and partners can now review your proposal and submit collaboration requests.';
+
+      idea.activityTimeline.push({
+        action: 'Meeting Completed & Published to Marketplace',
+        actorType: 'ADMIN',
+        actorId: adminId,
+        actorName: adminName,
+        notes: summary || 'Consultation meeting successfully concluded. Idea published to Universal Marketplace.',
+        timestamp: new Date()
+      });
+
+      await idea.save();
+
+      // Notify submitter
+      await notifyMember({
+        userId: String(idea.userId),
+        eventType: 'BUSINESS_IDEA_PUBLISHED',
+        title: 'Idea Live on Marketplace! 🚀',
+        message: `Your consultation meeting for "${idea.title}" was completed and your business idea is now live on the Marketplace!`,
+        metadata: { link: '/business-ideas' }
+      });
+
+      await logAdminAction(
+        req,
+        'COMPLETE_MEETING_AND_PUBLISH',
+        'BusinessIdea',
+        idea._id.toString(),
+        { status: idea.status }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Consultation meeting marked as completed and idea published to Marketplace!',
+        data: idea
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ========================================================
+// 10. Admin Schedules Meeting for an Interested Member
+// ========================================================
+adminBusinessIdeasRouter.post(
+  '/:id/interests/:interestId/schedule-meeting',
+  authenticateAdmin,
+  requirePermission('SERVICES_APPROVE'),
+  async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+    try {
+      const { id, interestId } = req.params;
+      const { date, time, durationMinutes, mode, linkOrLocation, notes } = req.body;
+
+      if (!date || !time || !linkOrLocation) {
+        res.status(400).json({ success: false, error: 'Meeting Date, Time, and Link/Location are required.' });
+        return;
+      }
+
+      const idea = await BusinessIdeaModel.findOne({
+        $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { ideaRequestId: id }, { refNumber: id }]
+      });
+
+      if (!idea) {
+        res.status(404).json({ success: false, error: 'Business idea not found' });
+        return;
+      }
+
+      const interest = await BusinessIdeaInterestModel.findById(interestId);
+      if (!interest) {
+        res.status(404).json({ success: false, error: 'Interested member record not found' });
+        return;
+      }
+
+      const adminName = req.admin?.name || 'FIC Admin';
+      const adminId = req.admin?.id || 'admin';
+      const scheduledDateTime = new Date(`${date}T${time}`);
+
+      let hostAdminObjectId = mongoose.isValidObjectId(adminId) ? new mongoose.Types.ObjectId(adminId) : null;
+      if (!hostAdminObjectId) {
+        const superAdmin = (await AdminUserModel.findOne({ role: 'SUPER_ADMIN' })) || (await AdminUserModel.findOne());
+        hostAdminObjectId = superAdmin?._id || new mongoose.Types.ObjectId();
+      }
+
+      const participantMemberIds = [idea.submitterMemberId, interest.interestedMemberId].filter(
+        (pid) => pid && mongoose.isValidObjectId(pid)
+      );
+
+      // Create multi-party meeting in MeetingModel
+      const meetingDoc = await MeetingModel.create({
+        title: `Business Idea Collaboration: ${idea.title} - ${interest.interestedMemberName}`,
+        description: notes || `FIC multi-party intermediary call between idea submitter (${idea.submitterName}) and interested collaborator (${interest.interestedMemberName}).`,
+        hostAdminId: hostAdminObjectId,
+        participantMemberIds,
+        externalParticipants: [
+          {
+            name: idea.submitterName,
+            email: idea.submitterEmail || 'member@fic.com',
+            phone: idea.submitterPhone || '',
+            roleOrCompany: 'Idea Requester'
+          },
+          {
+            name: interest.interestedMemberName,
+            email: interest.interestedMemberEmail || 'collaborator@fic.com',
+            phone: interest.interestedMemberPhone || '',
+            roleOrCompany: interest.contributionType || 'Interested Collaborator'
+          }
+        ],
+        meetingType: 'CONSULTATION',
+        scheduledAt: isNaN(scheduledDateTime.getTime()) ? new Date() : scheduledDateTime,
+        durationMinutes: Number(durationMinutes) || 45,
+        meetingLink: mode === 'VIRTUAL' ? linkOrLocation : undefined,
+        status: 'SCHEDULED',
+        notificationSent: true
+      });
+
+      interest.reviewStatus = 'MEETING_SCHEDULED';
+      interest.meetingDetails = {
+        meetingId: String(meetingDoc._id),
+        date: String(date).trim(),
+        time: String(time).trim(),
+        durationMinutes: Number(durationMinutes) || 45,
+        mode: mode === 'IN_PERSON' ? 'IN_PERSON' : 'VIRTUAL',
+        linkOrLocation: String(linkOrLocation).trim(),
+        notes: notes ? String(notes).trim() : '',
+        scheduledAt: isNaN(scheduledDateTime.getTime()) ? new Date() : scheduledDateTime,
+        scheduledBy: adminName,
+        status: 'SCHEDULED'
+      };
+      await interest.save();
+
+      idea.activityTimeline.push({
+        action: 'Collaboration Meeting Arranged with Interested Member',
+        actorType: 'ADMIN',
+        actorId: adminId,
+        actorName: adminName,
+        notes: `Meeting scheduled with ${interest.interestedMemberName} (${interest.interestedMemberEmail}) on ${date} at ${time}.`,
+        timestamp: new Date()
+      });
+      await idea.save();
+
+      // Notify both parties
+      await notifyMember({
+        userId: String(interest.interestedUserId),
+        eventType: 'BUSINESS_IDEA_MEETING_SCHEDULED',
+        title: 'Collaboration Meeting Scheduled! 🤝',
+        message: `FIC Admin has arranged your collaboration call regarding "${idea.title}" on ${date} at ${time}.`,
+        metadata: { link: '/meetings' }
+      });
+
+      await notifyMember({
+        userId: String(idea.userId),
+        eventType: 'BUSINESS_IDEA_MEETING_SCHEDULED',
+        title: 'Intro Meeting Scheduled with Interested Member! 🤝',
+        message: `FIC Admin arranged a collaboration call with ${interest.interestedMemberName} for your idea "${idea.title}" on ${date} at ${time}.`,
+        metadata: { link: '/meetings' }
+      });
+
+      res.status(200).json({
+        success: true,
+        message: `Collaboration meeting scheduled with ${interest.interestedMemberName} and both members notified!`,
+        data: interest
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+);
+
+// ========================================================
+// 11. Admin Concludes / Removes Business Idea (Completed)
+// ========================================================
+adminBusinessIdeasRouter.post(
+  '/:id/conclude',
+  authenticateAdmin,
+  requirePermission('SERVICES_APPROVE'),
+  async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+
+      const idea = await BusinessIdeaModel.findOne({
+        $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { ideaRequestId: id }, { refNumber: id }]
+      });
+
+      if (!idea) {
+        res.status(404).json({ success: false, error: 'Business idea not found' });
+        return;
+      }
+
+      const adminName = req.admin?.name || 'FIC Admin';
+      const adminId = req.admin?.id || 'admin';
+      const concludingReason = reason ? String(reason).trim() : 'Project concluded and completed by FIC Admin.';
+
+      idea.status = 'COMPLETED';
+      idea.adminReviewStatus = 'CLOSED';
+      idea.marketplacePublished = false;
+      idea.collaborationStatus = 'COMPLETED';
+      idea.latestFicUpdate = `Business idea concluded: ${concludingReason}`;
+      idea.whatHappensNext = 'This business idea cycle has been completed and archived.';
+
+      idea.activityTimeline.push({
+        action: 'Business Idea Concluded & Removed by Admin',
+        actorType: 'ADMIN',
+        actorId: adminId,
+        actorName: adminName,
+        notes: concludingReason,
+        timestamp: new Date()
+      });
+
+      await idea.save();
+
+      // Notify submitter
+      await notifyMember({
+        userId: String(idea.userId),
+        eventType: 'BUSINESS_IDEA_COMPLETED',
+        title: 'Business Idea Concluded & Completed',
+        message: `Your business idea "${idea.title}" has been concluded by FIC Admin: ${concludingReason}`,
+        metadata: { link: '/business-ideas' }
+      });
+
+      await logAdminAction(
+        req,
+        'CONCLUDE_BUSINESS_IDEA',
+        'BusinessIdea',
+        idea._id.toString(),
+        { reason: concludingReason }
+      );
+
+      res.status(200).json({
+        success: true,
+        message: 'Business idea marked as completed and removed from Marketplace.',
         data: idea
       });
     } catch (error: any) {

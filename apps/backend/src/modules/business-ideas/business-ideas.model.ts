@@ -49,6 +49,20 @@ export interface IBusinessIdeaDocument extends Document {
   fundingRequired?: boolean | null;
   fundingRequestId?: string;
   fundingRequestRef?: string;
+  meetingDetails?: {
+    meetingId?: string;
+    date?: string;
+    time?: string;
+    durationMinutes?: number;
+    mode?: 'VIRTUAL' | 'IN_PERSON';
+    linkOrLocation?: string;
+    notes?: string;
+    scheduledAt?: Date;
+    scheduledBy?: string;
+    isCompleted?: boolean;
+    completedAt?: Date;
+    completionSummary?: string;
+  };
   activityTimeline: {
     action: string;
     actorType: 'MEMBER' | 'ADMIN' | 'SYSTEM' | 'INTERESTED_MEMBER';
@@ -130,11 +144,14 @@ const BusinessIdeaSchema = new Schema<IBusinessIdeaDocument>(
         'UNDER_REVIEW',
         'INFORMATION_REQUESTED',
         'APPROVED',
+        'MEETING_SCHEDULED',
+        'MEETING_COMPLETED',
         'REJECTED',
         'SHARED_ON_MARKETPLACE',
         'INTEREST_RECEIVED',
         'MEMBER_SELECTION_PENDING',
         'MATCHED',
+        'COMPLETED',
         'CLOSED'
       ],
       default: 'SUBMITTED',
@@ -147,22 +164,38 @@ const BusinessIdeaSchema = new Schema<IBusinessIdeaDocument>(
         'UNDER_REVIEW',
         'INFORMATION_REQUESTED',
         'APPROVED',
+        'MEETING_SCHEDULED',
+        'MEETING_COMPLETED',
         'REJECTED',
         'SHARED_ON_MARKETPLACE',
         'INTEREST_RECEIVED',
         'MEMBER_SELECTION_PENDING',
         'MATCHED',
+        'COMPLETED',
         'CLOSED',
         // Legacy support
         'INFO_REQUIRED',
         'ASSESSMENT_IN_PROGRESS',
         'ADVISOR_ASSIGNED',
-        'MEETING_SCHEDULED',
         'ACTION_PLAN_READY',
         'ON_HOLD'
       ],
       default: 'SUBMITTED',
       index: true
+    },
+    meetingDetails: {
+      meetingId: { type: String },
+      date: { type: String },
+      time: { type: String },
+      durationMinutes: { type: Number, default: 45 },
+      mode: { type: String, enum: ['VIRTUAL', 'IN_PERSON'], default: 'VIRTUAL' },
+      linkOrLocation: { type: String },
+      notes: { type: String },
+      scheduledAt: { type: Date },
+      scheduledBy: { type: String },
+      isCompleted: { type: Boolean, default: false },
+      completedAt: { type: Date },
+      completionSummary: { type: String }
     },
     adminNotes: { type: String, default: '' },
     adminFeedbackToSubmitter: { type: String, default: '' },
@@ -262,6 +295,18 @@ export interface IBusinessIdeaInterestDocument extends Document {
   selectionReason?: string;
   reviewedBy?: string;
   reviewedAt?: Date;
+  meetingDetails?: {
+    meetingId?: string;
+    date?: string;
+    time?: string;
+    durationMinutes?: number;
+    mode?: 'VIRTUAL' | 'IN_PERSON';
+    linkOrLocation?: string;
+    notes?: string;
+    scheduledAt?: Date;
+    scheduledBy?: string;
+    status?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -289,9 +334,21 @@ const BusinessIdeaInterestSchema = new Schema<IBusinessIdeaInterestDocument>(
     additionalMessage: { type: String, default: '' },
     reviewStatus: {
       type: String,
-      enum: ['INTEREST_SUBMITTED', 'UNDER_ADMIN_REVIEW', 'SHORTLISTED', 'SELECTED', 'NOT_SELECTED'],
+      enum: ['INTEREST_SUBMITTED', 'UNDER_ADMIN_REVIEW', 'MEETING_SCHEDULED', 'MEETING_COMPLETED', 'SHORTLISTED', 'SELECTED', 'NOT_SELECTED'],
       default: 'INTEREST_SUBMITTED',
       index: true
+    },
+    meetingDetails: {
+      meetingId: { type: String },
+      date: { type: String },
+      time: { type: String },
+      durationMinutes: { type: Number, default: 45 },
+      mode: { type: String, enum: ['VIRTUAL', 'IN_PERSON'], default: 'VIRTUAL' },
+      linkOrLocation: { type: String },
+      notes: { type: String },
+      scheduledAt: { type: Date },
+      scheduledBy: { type: String },
+      status: { type: String, default: 'SCHEDULED' }
     },
     adminNotes: { type: String, default: '' },
     selectionReason: { type: String, default: '' },

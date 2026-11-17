@@ -19,11 +19,14 @@ export type BusinessIdeaStatus =
   | 'UNDER_REVIEW'
   | 'INFORMATION_REQUESTED'
   | 'APPROVED'
+  | 'MEETING_SCHEDULED'
+  | 'MEETING_COMPLETED'
   | 'REJECTED'
   | 'SHARED_ON_MARKETPLACE'
   | 'INTEREST_RECEIVED'
   | 'MEMBER_SELECTION_PENDING'
   | 'MATCHED'
+  | 'COMPLETED'
   | 'CLOSED';
 
 export type CollaborationContributionType =
@@ -38,6 +41,8 @@ export type CollaborationContributionType =
 export type CollaborationInterestStatus =
   | 'INTEREST_SUBMITTED'
   | 'UNDER_ADMIN_REVIEW'
+  | 'MEETING_SCHEDULED'
+  | 'MEETING_COMPLETED'
   | 'SHORTLISTED'
   | 'SELECTED'
   | 'NOT_SELECTED';
@@ -96,6 +101,20 @@ export interface IBusinessIdea {
   fundingRequired?: boolean | null;
   fundingRequestId?: string;
   fundingRequestRef?: string;
+  meetingDetails?: {
+    meetingId?: string;
+    date?: string;
+    time?: string;
+    durationMinutes?: number;
+    mode?: 'VIRTUAL' | 'IN_PERSON';
+    linkOrLocation?: string;
+    notes?: string;
+    scheduledAt?: string | Date;
+    scheduledBy?: string;
+    isCompleted?: boolean;
+    completedAt?: string | Date;
+    completionSummary?: string;
+  };
   activityTimeline: IBusinessIdeaActivityLog[];
   createdAt: string;
   updatedAt: string;
@@ -119,6 +138,18 @@ export interface IBusinessIdeaInterest {
   experience?: string;
   additionalMessage?: string;
   reviewStatus: CollaborationInterestStatus;
+  meetingDetails?: {
+    meetingId?: string;
+    date?: string;
+    time?: string;
+    durationMinutes?: number;
+    mode?: 'VIRTUAL' | 'IN_PERSON';
+    linkOrLocation?: string;
+    notes?: string;
+    scheduledAt?: string | Date;
+    scheduledBy?: string;
+    status?: string;
+  };
   adminNotes?: string;
   selectionReason?: string;
   reviewedBy?: string;
