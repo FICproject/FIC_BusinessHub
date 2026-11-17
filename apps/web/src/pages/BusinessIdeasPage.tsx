@@ -186,6 +186,7 @@ export const BusinessIdeasPage: React.FC = () => {
           fileUrl: docAsset.viewUrl || docAsset.fileUrl || '',
           fileType: file.type || docAsset.originalFileExtension || 'Document',
           fileSize: file.size,
+          documentId: docAsset.documentId || docAsset._id || docAsset.id || '',
           uploadedAt: new Date().toISOString()
         };
         setUploadedDocs([...uploadedDocs, newDoc]);
