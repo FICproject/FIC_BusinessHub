@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { BusinessDevRequestModel } from '../../business-development/business-development.model';
 import { FicRequestModel } from '../models/FicRequest';
 import { MeetingModel } from '../models/Meeting';
+import { CentralMeetingsService } from '../services/central-meetings.service';
 import { MemberModel } from '../models/Member';
 import { AdminUserModel } from '../models/AdminUser';
 import { UserModel } from '../../users/users.model';
@@ -306,54 +307,54 @@ adminScalingRouter.post(
       // Parse scheduled timestamp
       const scheduledDateTime = new Date(`${date}T${time}`);
 
-      // Create / Sync central MeetingModel record so it appears in the member's Meetings tab
+      // Resolve member details
+      const member = await MemberModel.findOne({
+        $or: [
+          ...(mongoose.isValidObjectId(request.userId) ? [{ userId: request.userId }, { _id: request.userId }] : []),
+          ...(request.submitterEmail ? [{ email: request.submitterEmail }] : []),
+          ...(request.applicantEmail ? [{ email: request.applicantEmail }] : [])
+        ]
+      });
+
+      const participantMemberIds = member?._id
+        ? [member._id]
+        : mongoose.isValidObjectId(request.userId)
+        ? [new mongoose.Types.ObjectId(request.userId)]
+        : [];
+
+      // Create / Sync canonical MeetingModel record via CentralMeetingsService
       let meetingDoc: any = null;
       try {
-        let hostAdminObjectId = mongoose.isValidObjectId(adminId)
-          ? new mongoose.Types.ObjectId(adminId)
-          : null;
-
-        if (!hostAdminObjectId) {
-          const superAdmin = (await AdminUserModel.findOne({ role: 'SUPER_ADMIN' })) || (await AdminUserModel.findOne());
-          hostAdminObjectId = superAdmin?._id || new mongoose.Types.ObjectId();
-        }
-
-        const member = await MemberModel.findOne({
-          $or: [
-            ...(mongoose.isValidObjectId(request.userId) ? [{ userId: request.userId }, { _id: request.userId }] : []),
-            ...(request.submitterEmail ? [{ email: request.submitterEmail }] : []),
-            ...(request.applicantEmail ? [{ email: request.applicantEmail }] : [])
-          ]
-        });
-
-        const participantMemberIds = member?._id
-          ? [member._id]
-          : mongoose.isValidObjectId(request.userId)
-          ? [new mongoose.Types.ObjectId(request.userId)]
-          : [];
-
-        meetingDoc = await MeetingModel.create({
+        meetingDoc = await CentralMeetingsService.syncOrCreateMeeting({
+          meetingId: request.meetingDetails?.meetingId,
+          sourceModule: 'BUSINESS_SCALING',
+          sourceRecordId: request._id.toString(),
+          relatedEntityId: request.requestId,
           title: `Business Scaling Advisory: ${request.businessName || 'Scaling'}`,
           description: notes || `FIC scaling consultation for ${request.scalingSupportType || 'Business Scaling'}. [${request.requestId || request._id}]`,
-          hostAdminId: hostAdminObjectId,
+          hostAdminId: adminId,
+          hostAdminName: adminName,
           participantMemberIds,
-          externalParticipants: [
+          externalParticipants: participantMemberIds.length === 0 ? [
             {
               name: request.submitterName || member?.name || 'Member',
               email: request.submitterEmail || request.applicantEmail || member?.email || 'member@fic.com',
               phone: request.submitterPhone || member?.phone || '',
-              roleOrCompany: request.businessName || 'Business Owner'
+              roleOrCompany: request.businessName || 'Business Owner',
+              badge: 'Scaling Requester'
             }
-          ],
-          meetingType: 'CONSULTATION',
-          scheduledAt: isNaN(scheduledDateTime.getTime()) ? new Date() : scheduledDateTime,
+          ] : [],
+          meetingDate: String(date).trim(),
+          startTime: String(time).trim(),
           durationMinutes: Number(durationMinutes) || 45,
-          meetingLink: mode === 'VIRTUAL' ? linkOrLocation : undefined,
-          status: 'SCHEDULED',
-          notificationSent: true
+          meetingMode: mode === 'IN_PERSON' ? 'IN_PERSON' : 'VIRTUAL',
+          meetingLink: mode === 'VIRTUAL' ? String(linkOrLocation).trim() : undefined,
+          meetingLocation: mode === 'IN_PERSON' ? String(linkOrLocation).trim() : undefined,
+          meetingType: 'CONSULTATION',
+          status: 'SCHEDULED'
         });
       } catch (meetErr) {
-        console.warn('Could not create MeetingModel entry:', meetErr);
+        console.warn('Could not sync MeetingModel entry via CentralMeetingsService:', meetErr);
       }
 
       // Update Scaling Request status and embedded meetingDetails
@@ -366,7 +367,7 @@ adminScalingRouter.post(
         mode: mode === 'IN_PERSON' ? 'IN_PERSON' : 'VIRTUAL',
         linkOrLocation: String(linkOrLocation).trim(),
         notes: notes ? String(notes).trim() : '',
-        scheduledAt: new Date(),
+        scheduledAt: meetingDoc?.scheduledAt || new Date(),
         scheduledBy: adminName,
         isCompleted: false
       };
@@ -484,19 +485,20 @@ adminScalingRouter.post(
         timestamp: new Date()
       });
 
-      // Update linked MeetingModel if exists
-      if (prevMeeting?.meetingId && mongoose.isValidObjectId(prevMeeting.meetingId)) {
-        try {
-          const scheduledDateTime = new Date(`${date}T${time}`);
-          await MeetingModel.findByIdAndUpdate(prevMeeting.meetingId, {
-            scheduledAt: isNaN(scheduledDateTime.getTime()) ? new Date() : scheduledDateTime,
-            meetingLink: mode === 'VIRTUAL' ? linkOrLocation : undefined,
-            status: 'SCHEDULED'
-          });
-        } catch (mErr) {
-          console.warn('Failed to update linked MeetingModel:', mErr);
-        }
-      }
+      // Update linked MeetingModel via CentralMeetingsService
+      await CentralMeetingsService.rescheduleMeeting({
+        id: prevMeeting?.meetingId,
+        sourceModule: 'BUSINESS_SCALING',
+        sourceRecordId: request._id.toString()
+      }, {
+        date: String(date).trim(),
+        time: String(time).trim(),
+        durationMinutes: Number(durationMinutes) || 45,
+        meetingLink: mode === 'VIRTUAL' ? String(linkOrLocation).trim() : undefined,
+        meetingLocation: mode === 'IN_PERSON' ? String(linkOrLocation).trim() : undefined,
+        notes: notes || `Rescheduled by ${adminName}`,
+        adminName
+      });
 
       await request.save();
 
@@ -570,14 +572,12 @@ adminScalingRouter.post(
         timestamp: new Date()
       });
 
-      // Update linked MeetingModel to CANCELLED
-      if (prevMeetingId && mongoose.isValidObjectId(prevMeetingId)) {
-        try {
-          await MeetingModel.findByIdAndUpdate(prevMeetingId, { status: 'CANCELLED' });
-        } catch (mErr) {
-          console.warn('Failed to cancel linked MeetingModel:', mErr);
-        }
-      }
+      // Update linked MeetingModel to CANCELLED via CentralMeetingsService
+      await CentralMeetingsService.cancelMeeting({
+        id: prevMeetingId,
+        sourceModule: 'BUSINESS_SCALING',
+        sourceRecordId: request._id.toString()
+      }, cancellationReason);
 
       await request.save();
 
@@ -653,14 +653,12 @@ adminScalingRouter.post(
         timestamp: completionDate
       });
 
-      // Update linked MeetingModel
-      if (request.meetingDetails?.meetingId && mongoose.isValidObjectId(request.meetingDetails.meetingId)) {
-        try {
-          await MeetingModel.findByIdAndUpdate(request.meetingDetails.meetingId, { status: 'COMPLETED' });
-        } catch (mErr) {
-          console.warn('Failed to mark linked MeetingModel completed:', mErr);
-        }
-      }
+      // Update linked MeetingModel via CentralMeetingsService
+      await CentralMeetingsService.completeMeeting({
+        id: request.meetingDetails?.meetingId,
+        sourceModule: 'BUSINESS_SCALING',
+        sourceRecordId: request._id.toString()
+      }, completionSummary);
 
       await request.save();
 

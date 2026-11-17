@@ -4,6 +4,7 @@ import { BusinessIdeaModel, BusinessIdeaInterestModel } from '../../business-ide
 import { MemberModel } from '../models/Member';
 import { AdminUserModel } from '../models/AdminUser';
 import { MeetingModel } from '../models/Meeting';
+import { CentralMeetingsService } from '../services/central-meetings.service';
 import { notifyMember } from '../../notifications/notifications.service';
 import {
   authenticateAdmin,
@@ -631,44 +632,47 @@ adminBusinessIdeasRouter.post(
         hostAdminObjectId = superAdmin?._id || new mongoose.Types.ObjectId();
       }
 
-      // Create central MeetingModel record
-      let meetingDoc: any = null;
-      try {
-        meetingDoc = await MeetingModel.create({
-          title: `Business Idea Consultation: ${idea.title}`,
-          description: notes || `FIC Incubation & Market Advisory consultation for idea "${idea.title}". [${idea.ideaRequestId || idea.refNumber || idea._id}]`,
-          hostAdminId: hostAdminObjectId,
-          participantMemberIds: idea.submitterMemberId ? [idea.submitterMemberId] : (mongoose.isValidObjectId(idea.userId) ? [idea.userId] : []),
-          externalParticipants: [
-            {
-              name: idea.submitterName || 'Member',
-              email: idea.submitterEmail || 'member@fic.com',
-              phone: idea.submitterPhone || '',
-              roleOrCompany: idea.title
-            }
-          ],
-          meetingType: 'CONSULTATION',
-          scheduledAt: isNaN(scheduledDateTime.getTime()) ? new Date() : scheduledDateTime,
-          durationMinutes: Number(durationMinutes) || 45,
-          meetingLink: mode === 'VIRTUAL' ? linkOrLocation : undefined,
-          status: 'SCHEDULED',
-          notificationSent: true
-        });
-      } catch (mErr) {
-        console.warn('Could not create MeetingModel for idea:', mErr);
-      }
+      // Create / Sync central MeetingModel record via CentralMeetingsService
+      const meetingDoc = await CentralMeetingsService.syncOrCreateMeeting({
+        meetingId: idea.meetingDetails?.meetingId,
+        sourceModule: 'BUSINESS_IDEA',
+        sourceRecordId: idea._id.toString(),
+        relatedEntityId: idea.ideaRequestId || idea.refNumber,
+        title: `Business Idea Consultation: ${idea.title}`,
+        description: notes || `FIC Incubation & Market Advisory consultation for idea "${idea.title}". [${idea.ideaRequestId || idea.refNumber || idea._id}]`,
+        hostAdminId: adminId,
+        hostAdminName: adminName,
+        participantMemberIds: idea.submitterMemberId ? [idea.submitterMemberId] : (mongoose.isValidObjectId(idea.userId) ? [idea.userId] : []),
+        externalParticipants: [
+          {
+            name: idea.submitterName || 'Member',
+            email: idea.submitterEmail || 'member@fic.com',
+            phone: idea.submitterPhone || '',
+            roleOrCompany: idea.title,
+            badge: 'Idea Requester'
+          }
+        ],
+        meetingDate: String(date).trim(),
+        startTime: String(time).trim(),
+        durationMinutes: Number(durationMinutes) || 45,
+        meetingMode: mode === 'IN_PERSON' ? 'IN_PERSON' : 'VIRTUAL',
+        meetingLink: mode === 'VIRTUAL' ? String(linkOrLocation).trim() : undefined,
+        meetingLocation: mode === 'IN_PERSON' ? String(linkOrLocation).trim() : undefined,
+        meetingType: 'CONSULTATION',
+        status: 'SCHEDULED'
+      });
 
       idea.status = 'MEETING_SCHEDULED';
       idea.adminReviewStatus = 'MEETING_SCHEDULED';
       idea.meetingDetails = {
-        meetingId: meetingDoc?._id ? String(meetingDoc._id) : undefined,
+        meetingId: String(meetingDoc._id),
         date: String(date).trim(),
         time: String(time).trim(),
         durationMinutes: Number(durationMinutes) || 45,
         mode: mode === 'IN_PERSON' ? 'IN_PERSON' : 'VIRTUAL',
         linkOrLocation: String(linkOrLocation).trim(),
         notes: notes ? String(notes).trim() : '',
-        scheduledAt: isNaN(scheduledDateTime.getTime()) ? new Date() : scheduledDateTime,
+        scheduledAt: meetingDoc.scheduledAt,
         scheduledBy: adminName,
         isCompleted: false
       };
@@ -739,14 +743,12 @@ adminBusinessIdeasRouter.post(
       const adminName = req.admin?.name || 'FIC Admin';
       const adminId = req.admin?.id || 'admin';
 
-      // Mark meeting completed in central MeetingModel
-      if (idea.meetingDetails?.meetingId) {
-        try {
-          await MeetingModel.findByIdAndUpdate(idea.meetingDetails.meetingId, { status: 'COMPLETED' });
-        } catch (mErr) {
-          console.warn('Failed to update MeetingModel status:', mErr);
-        }
-      }
+      // Mark meeting completed in central MeetingModel via CentralMeetingsService
+      await CentralMeetingsService.completeMeeting({
+        id: idea.meetingDetails?.meetingId,
+        sourceModule: 'BUSINESS_IDEA',
+        sourceRecordId: idea._id.toString()
+      }, summary ? String(summary).trim() : 'Meeting completed and verified by Admin.');
 
       if (!idea.meetingDetails) {
         idea.meetingDetails = {
@@ -853,32 +855,42 @@ adminBusinessIdeasRouter.post(
         (pid) => pid && mongoose.isValidObjectId(pid)
       );
 
-      // Create multi-party meeting in MeetingModel
-      const meetingDoc = await MeetingModel.create({
+      // Create / Reschedule multi-party meeting via CentralMeetingsService (no duplicates!)
+      const meetingDoc = await CentralMeetingsService.syncOrCreateMeeting({
+        meetingId: interest.meetingDetails?.meetingId,
+        sourceModule: 'BUSINESS_IDEA',
+        sourceRecordId: idea._id.toString(),
+        sourceSubId: interest._id.toString(),
+        relatedEntityId: idea.ideaRequestId || idea.refNumber,
         title: `Business Idea Collaboration: ${idea.title} - ${interest.interestedMemberName}`,
         description: notes || `FIC multi-party intermediary call between idea submitter (${idea.submitterName}) and interested collaborator (${interest.interestedMemberName}).`,
-        hostAdminId: hostAdminObjectId,
+        hostAdminId: adminId,
+        hostAdminName: adminName,
         participantMemberIds,
         externalParticipants: [
           {
             name: idea.submitterName,
             email: idea.submitterEmail || 'member@fic.com',
             phone: idea.submitterPhone || '',
-            roleOrCompany: 'Idea Requester'
+            roleOrCompany: 'Idea Requester',
+            badge: 'Requester'
           },
           {
             name: interest.interestedMemberName,
             email: interest.interestedMemberEmail || 'collaborator@fic.com',
             phone: interest.interestedMemberPhone || '',
-            roleOrCompany: interest.contributionType || 'Interested Collaborator'
+            roleOrCompany: interest.contributionType || 'Interested Collaborator',
+            badge: 'Interested Member'
           }
         ],
-        meetingType: 'CONSULTATION',
-        scheduledAt: isNaN(scheduledDateTime.getTime()) ? new Date() : scheduledDateTime,
+        meetingDate: String(date).trim(),
+        startTime: String(time).trim(),
         durationMinutes: Number(durationMinutes) || 45,
-        meetingLink: mode === 'VIRTUAL' ? linkOrLocation : undefined,
-        status: 'SCHEDULED',
-        notificationSent: true
+        meetingMode: mode === 'IN_PERSON' ? 'IN_PERSON' : 'VIRTUAL',
+        meetingLink: mode === 'VIRTUAL' ? String(linkOrLocation).trim() : undefined,
+        meetingLocation: mode === 'IN_PERSON' ? String(linkOrLocation).trim() : undefined,
+        meetingType: 'CONSULTATION',
+        status: interest.meetingDetails?.date ? 'RESCHEDULED' : 'SCHEDULED'
       });
 
       interest.reviewStatus = 'MEETING_SCHEDULED';
@@ -890,9 +902,9 @@ adminBusinessIdeasRouter.post(
         mode: mode === 'IN_PERSON' ? 'IN_PERSON' : 'VIRTUAL',
         linkOrLocation: String(linkOrLocation).trim(),
         notes: notes ? String(notes).trim() : '',
-        scheduledAt: isNaN(scheduledDateTime.getTime()) ? new Date() : scheduledDateTime,
+        scheduledAt: meetingDoc.scheduledAt,
         scheduledBy: adminName,
-        status: 'SCHEDULED'
+        status: interest.meetingDetails?.date ? 'RESCHEDULED' : 'SCHEDULED'
       };
       await interest.save();
 

@@ -1218,8 +1218,10 @@ export const ProfilePage: React.FC = () => {
 
           <div className="p-3 rounded-xl bg-[#FAF7F2] border border-[#EDE2D7]">
             <span className="text-[#82776E] block font-medium">Account Status</span>
-            <span className="inline-block mt-0.5 text-emerald-700 font-bold">
-              ● {user.membershipStatus || 'ACTIVE'}
+            <span className={`inline-block mt-0.5 font-bold ${
+              user?.isKycApproved || (user?.kycStatus as string) === 'APPROVED' || user?.kycStatus === 'VERIFIED' ? 'text-emerald-700' : 'text-amber-700'
+            }`}>
+              ● {user?.isKycApproved || (user?.kycStatus as string) === 'APPROVED' || user?.kycStatus === 'VERIFIED' ? (user.membershipStatus || 'ACTIVE') : 'UNDER REVIEW'}
             </span>
           </div>
         </div>

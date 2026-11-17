@@ -275,24 +275,22 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   if (!isOpen) return null;
 
   return createPortal(
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
-        {/* Backdrop */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm"
-        />
+    <div className="fixed inset-0 z-[9999] overflow-y-auto">
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
+      />
 
+      {/* Centering Wrapper guaranteeing true viewport centering and no top clipping */}
+      <div className="flex min-h-full items-center justify-center p-3 sm:p-6 text-center pointer-events-none">
         {/* Modal Dialog */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 8 }}
-          transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-          className="relative w-full max-w-2xl my-auto bg-white rounded-3xl shadow-2xl border border-[#EDE2D7] overflow-hidden flex flex-col max-h-[calc(100vh-2.5rem)] sm:max-h-[88vh] z-10"
+          exit={{ opacity: 0, scale: 0.96, y: 6 }}
+          transition={{ duration: 0.2 }}
+          className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border border-[#EDE2D7] overflow-hidden flex flex-col max-h-[88vh] text-left pointer-events-auto z-10"
         >
           {/* Modal Header */}
           <div className="px-5 py-4 bg-[#FAF7F2] border-b border-[#EDE2D7] flex items-center justify-between">
@@ -591,7 +589,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>,
+    </div>,
     document.body
   );
 };
