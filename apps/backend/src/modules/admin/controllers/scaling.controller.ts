@@ -4,6 +4,7 @@ import { BusinessDevRequestModel } from '../../business-development/business-dev
 import { FicRequestModel } from '../models/FicRequest';
 import { MeetingModel } from '../models/Meeting';
 import { MemberModel } from '../models/Member';
+import { AdminUserModel } from '../models/AdminUser';
 import { UserModel } from '../../users/users.model';
 import { notifyMember } from '../../notifications/notifications.service';
 import {
@@ -308,21 +309,40 @@ adminScalingRouter.post(
       // Create / Sync central MeetingModel record so it appears in the member's Meetings tab
       let meetingDoc: any = null;
       try {
-        const hostAdminObjectId = mongoose.isValidObjectId(adminId)
+        let hostAdminObjectId = mongoose.isValidObjectId(adminId)
           ? new mongoose.Types.ObjectId(adminId)
-          : new mongoose.Types.ObjectId();
+          : null;
+
+        if (!hostAdminObjectId) {
+          const superAdmin = (await AdminUserModel.findOne({ role: 'SUPER_ADMIN' })) || (await AdminUserModel.findOne());
+          hostAdminObjectId = superAdmin?._id || new mongoose.Types.ObjectId();
+        }
+
+        const member = await MemberModel.findOne({
+          $or: [
+            ...(mongoose.isValidObjectId(request.userId) ? [{ userId: request.userId }, { _id: request.userId }] : []),
+            ...(request.submitterEmail ? [{ email: request.submitterEmail }] : []),
+            ...(request.applicantEmail ? [{ email: request.applicantEmail }] : [])
+          ]
+        });
+
+        const participantMemberIds = member?._id
+          ? [member._id]
+          : mongoose.isValidObjectId(request.userId)
+          ? [new mongoose.Types.ObjectId(request.userId)]
+          : [];
 
         meetingDoc = await MeetingModel.create({
-          title: `Business Scaling Advisory: ${request.businessName}`,
-          description: notes || `FIC scaling consultation for ${request.scalingSupportType || 'Business Scaling'}.`,
+          title: `Business Scaling Advisory: ${request.businessName || 'Scaling'}`,
+          description: notes || `FIC scaling consultation for ${request.scalingSupportType || 'Business Scaling'}. [${request.requestId || request._id}]`,
           hostAdminId: hostAdminObjectId,
-          participantMemberIds: mongoose.isValidObjectId(request.userId) ? [request.userId] : [],
+          participantMemberIds,
           externalParticipants: [
             {
-              name: request.submitterName || 'Member',
-              email: request.submitterEmail || 'member@fic.com',
-              phone: request.submitterPhone || '',
-              roleOrCompany: request.businessName
+              name: request.submitterName || member?.name || 'Member',
+              email: request.submitterEmail || request.applicantEmail || member?.email || 'member@fic.com',
+              phone: request.submitterPhone || member?.phone || '',
+              roleOrCompany: request.businessName || 'Business Owner'
             }
           ],
           meetingType: 'CONSULTATION',

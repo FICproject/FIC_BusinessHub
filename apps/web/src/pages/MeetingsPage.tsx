@@ -127,22 +127,55 @@ export const MeetingsPage: React.FC = () => {
     try {
       const res = await apiRequest('/investment/my-meetings');
       if (res && res.success && Array.isArray(res.data)) {
-        const backendMeetings: MeetingItem[] = res.data.map((m: any) => ({
-          id: m._id,
-          userId,
-          title: m.title,
-          category: m.meetingType === 'FUNDING_PITCH' ? 'Funding Pitch & Diligence' : (m.externalParticipants?.[0]?.roleOrCompany || 'Consultation'),
-          scheduledDate: m.scheduledAt ? new Date(m.scheduledAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-          scheduledTime: m.scheduledAt ? new Date(m.scheduledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '11:00 AM',
-          mode: 'VIRTUAL_MEET',
-          modeLabel: m.meetingLink && m.meetingLink.includes('meet.google') ? 'Google Meet (Encrypted Video)' : (m.status === 'PENDING_COORDINATION' ? 'Awaiting Coordinator Setup' : 'FIC Facilitated Room'),
-          locationOrUrl: m.meetingLink || undefined,
-          facilitatorName: m.hostAdminId?.name || (m.status === 'PENDING_COORDINATION' ? 'FIC Coordinator Review' : 'FIC Assigned Coordinator'),
-          facilitatorRole: m.status === 'PENDING_COORDINATION' ? 'Assigning Specialist...' : 'Verified FIC Coordinator',
-          agenda: m.description || 'Consultation session with FIC coordinator regarding verified service requirements.',
-          status: (m.status || 'PENDING_COORDINATION') as MeetingStatus,
-          createdAt: m.createdAt ? new Date(m.createdAt).toLocaleDateString() : 'Today'
-        }));
+        const backendMeetings: MeetingItem[] = res.data.map((m: any) => {
+          let mappedCategory = 'Business Scaling Advisory';
+          const titleLower = (m.title || '').toLowerCase();
+          if (m.meetingType === 'FUNDING_PITCH' || titleLower.includes('funding') || titleLower.includes('pitch')) {
+            mappedCategory = 'Investment Pitch Review';
+          } else if (titleLower.includes('stage 1') || titleLower.includes('stage 2') || titleLower.includes('service')) {
+            mappedCategory = 'Service Scope Alignment';
+          } else if (titleLower.includes('scaling') || titleLower.includes('growth')) {
+            mappedCategory = 'Business Scaling Advisory';
+          } else if (titleLower.includes('idea') || titleLower.includes('venture') || titleLower.includes('incubation')) {
+            mappedCategory = 'FIC Opportunity Consultation';
+          } else if (titleLower.includes('partnership')) {
+            mappedCategory = 'B2B Partnership Exploration';
+          } else if (m.externalParticipants?.[0]?.roleOrCompany) {
+            mappedCategory = m.externalParticipants[0].roleOrCompany;
+          }
+
+          const hasMeetUrl = Boolean(m.meetingLink || m.locationOrUrl);
+          const meetUrl = m.meetingLink || m.locationOrUrl || '';
+
+          return {
+            id: m._id,
+            userId,
+            title: m.title,
+            category: mappedCategory,
+            scheduledDate: m.scheduledAt ? new Date(m.scheduledAt).toISOString().split('T')[0] : (m.scheduledDate || new Date().toISOString().split('T')[0]),
+            scheduledTime: m.scheduledAt ? new Date(m.scheduledAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : (m.scheduledTime || '11:00 AM'),
+            mode: 'VIRTUAL_MEET',
+            modeLabel: meetUrl.includes('meet.google')
+              ? 'Google Meet (Encrypted Video)'
+              : meetUrl.includes('zoom')
+              ? 'Zoom Encrypted Video'
+              : hasMeetUrl
+              ? 'Virtual Session Room'
+              : m.status === 'PENDING_COORDINATION'
+              ? 'Awaiting Coordinator Setup'
+              : 'FIC Facilitated Room',
+            locationOrUrl: hasMeetUrl ? meetUrl : undefined,
+            facilitatorName: (typeof m.hostAdminId === 'object' && m.hostAdminId?.name)
+              ? m.hostAdminId.name
+              : m.facilitatorName || (m.status === 'PENDING_COORDINATION' ? 'FIC Coordinator Review' : 'FIC Assigned Coordinator'),
+            facilitatorRole: (typeof m.hostAdminId === 'object' && m.hostAdminId?.role)
+              ? (m.hostAdminId.role === 'SUPER_ADMIN' ? 'FIC Super Administrator' : 'Verified FIC Coordinator')
+              : 'Verified FIC Coordinator',
+            agenda: m.description || m.agenda || 'Consultation session with FIC coordinator regarding verified service requirements.',
+            status: (m.status || 'PENDING_COORDINATION') as MeetingStatus,
+            createdAt: m.createdAt ? new Date(m.createdAt).toLocaleDateString() : 'Today'
+          };
+        });
 
         setMeetings(backendMeetings);
         return;

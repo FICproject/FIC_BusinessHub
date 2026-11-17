@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import mongoose from 'mongoose';
 import { MeetingModel } from '../models/Meeting';
 import { MemberModel } from '../models/Member';
 import { AdminUserModel } from '../models/AdminUser';
@@ -179,11 +180,126 @@ router.get('/', authenticateAdmin, async (req, res) => {
       console.warn('Service requests meeting sync warning:', srvMeetingSyncErr);
     }
 
+    // Sync Scaling Requests with meetings into central Meetings collection
+    try {
+      const { BusinessDevRequestModel } = await import('../../business-development/business-development.model');
+      const scalingWithMeetings = await BusinessDevRequestModel.find({
+        $or: [
+          { status: { $in: ['MEETING_SCHEDULED', 'MEETING_COMPLETED'] } },
+          { 'meetingDetails.scheduledAt': { $exists: true, $ne: null } },
+          { 'meetingDetails.date': { $exists: true, $ne: '' } }
+        ]
+      });
+
+      const sampleAdmin = (await AdminUserModel.findOne({ role: 'SUPER_ADMIN' })) || (await AdminUserModel.findOne());
+
+      for (const sReq of scalingWithMeetings) {
+        let existingMeeting = sReq.meetingDetails?.meetingId
+          ? await MeetingModel.findById(sReq.meetingDetails.meetingId)
+          : null;
+
+        if (!existingMeeting) {
+          existingMeeting = await MeetingModel.findOne({
+            $or: [
+              { title: `Business Scaling Advisory: ${sReq.businessName}` },
+              { description: { $regex: sReq.requestId || String(sReq._id) } }
+            ]
+          });
+        }
+
+        const sDate = sReq.meetingDetails?.scheduledAt || (
+          sReq.meetingDetails?.date && sReq.meetingDetails?.time
+            ? new Date(`${sReq.meetingDetails.date}T${sReq.meetingDetails.time}:00`)
+            : new Date()
+        );
+
+        const isCompleted = sReq.status === 'MEETING_COMPLETED' || sReq.meetingDetails?.isCompleted;
+
+        if (!existingMeeting) {
+          const sReqAny = sReq as any;
+          const member = await MemberModel.findOne({
+            $or: [
+              ...(mongoose.isValidObjectId(sReq.userId) ? [{ userId: sReq.userId }, { _id: sReq.userId }] : []),
+              ...(sReq.submitterEmail ? [{ email: sReq.submitterEmail }] : []),
+              ...(sReqAny.applicantEmail ? [{ email: sReqAny.applicantEmail }] : [])
+            ]
+          });
+
+          const participantMemberIds = member?._id
+            ? [member._id]
+            : mongoose.isValidObjectId(sReq.userId)
+            ? [new mongoose.Types.ObjectId(sReq.userId)]
+            : [];
+
+          existingMeeting = await MeetingModel.create({
+            title: `Business Scaling Advisory: ${sReq.businessName || 'Scaling'}`,
+            description: sReq.meetingDetails?.notes || `FIC scaling consultation for ${sReq.scalingSupportType || 'Business Scaling'}. [${sReq.requestId || sReq._id}]`,
+            hostAdminId: sampleAdmin?._id,
+            participantMemberIds,
+            externalParticipants: [
+              {
+                name: sReq.submitterName || member?.name || 'Member',
+                email: sReq.submitterEmail || sReqAny.applicantEmail || member?.email || 'member@fic.com',
+                phone: sReq.submitterPhone || member?.phone || '',
+                roleOrCompany: sReq.businessName || 'Business Owner'
+              }
+            ],
+            meetingType: 'CONSULTATION',
+            scheduledAt: isNaN(new Date(sDate).getTime()) ? new Date() : new Date(sDate),
+            durationMinutes: sReq.meetingDetails?.durationMinutes || 45,
+            meetingLink: sReq.meetingDetails?.linkOrLocation || 'https://meet.google.com/fic-scaling-session',
+            status: isCompleted ? 'COMPLETED' : 'SCHEDULED',
+            notificationSent: true
+          });
+
+          if (!sReq.meetingDetails) {
+            (sReq as any).meetingDetails = { meetingId: existingMeeting._id.toString() };
+          } else {
+            sReq.meetingDetails.meetingId = existingMeeting._id.toString();
+          }
+          await sReq.save();
+        } else {
+          let changed = false;
+          if (isCompleted && existingMeeting.status !== 'COMPLETED') {
+            existingMeeting.status = 'COMPLETED';
+            changed = true;
+          }
+          if (sReq.meetingDetails?.linkOrLocation && existingMeeting.meetingLink !== sReq.meetingDetails.linkOrLocation) {
+            existingMeeting.meetingLink = sReq.meetingDetails.linkOrLocation;
+            changed = true;
+          }
+          if (!existingMeeting.hostAdminId && sampleAdmin?._id) {
+            existingMeeting.hostAdminId = sampleAdmin._id;
+            changed = true;
+          }
+          if (changed) await existingMeeting.save();
+        }
+      }
+    } catch (scalingSyncErr) {
+      console.warn('Scaling meeting sync warning:', scalingSyncErr);
+    }
+
+    const defaultAdmin = (await AdminUserModel.findOne({ role: 'SUPER_ADMIN' })) || (await AdminUserModel.findOne());
+
     let meetings = await MeetingModel.find(filter)
       .populate('hostAdminId', 'name email role')
       .populate('participantMemberIds', 'name email phone primaryCategoryName')
       .populate('relatedFundingApplicationId', 'businessName requestedAmount approvedPrincipal stage')
       .sort({ scheduledAt: -1 });
+
+    // Ensure hostAdminId has proper fallback data for any orphaned meetings
+    meetings = meetings.map((m: any) => {
+      const mObj = m.toObject ? m.toObject() : m;
+      if (!mObj.hostAdminId || !mObj.hostAdminId.name) {
+        mObj.hostAdminId = {
+          _id: defaultAdmin?._id,
+          name: defaultAdmin?.name || 'FIC Super Administrator',
+          email: defaultAdmin?.email || 'admin@fic.com',
+          role: defaultAdmin?.role || 'SUPER_ADMIN'
+        };
+      }
+      return mObj;
+    });
 
     if (search && typeof search === 'string') {
       const q = search.toLowerCase();
