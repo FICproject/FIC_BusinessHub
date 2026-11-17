@@ -58,6 +58,10 @@ export interface IAdminAdditionalDocumentRequest {
   reviewedAt?: Date;
   reviewedByName?: string;
   reviewReason?: string;
+  cancelledAt?: Date;
+  cancelledBy?: mongoose.Types.ObjectId;
+  cancelledByName?: string;
+  cancellationReason?: string;
 }
 
 export interface IKycSubmission extends Document {
@@ -147,7 +151,7 @@ const KycDocumentItemSchema = new Schema(
     uploadedAt: { type: String, required: true },
     status: {
       type: String,
-      enum: ['PENDING_REVIEW', 'PENDING', 'APPROVED', 'VERIFIED', 'REUPLOAD_REQUIRED', 'REJECTED'],
+      enum: ['PENDING_REVIEW', 'PENDING', 'APPROVED', 'VERIFIED', 'REUPLOAD_REQUIRED', 'REJECTED', 'CANCELLED'],
       default: 'PENDING_REVIEW',
     },
     rejectionReason: { type: String },
@@ -185,6 +189,10 @@ const AdminAdditionalDocRequestSchema = new Schema(
     reviewedAt: { type: Date },
     reviewedByName: { type: String },
     reviewReason: { type: String },
+    cancelledAt: { type: Date },
+    cancelledBy: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
+    cancelledByName: { type: String },
+    cancellationReason: { type: String },
   },
   { _id: false }
 );

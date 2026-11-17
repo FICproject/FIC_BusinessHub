@@ -12,7 +12,8 @@ export type CanonicalDocStatus =
   | 'PENDING_REVIEW'
   | 'APPROVED'
   | 'REUPLOAD_REQUIRED'
-  | 'REJECTED';
+  | 'REJECTED'
+  | 'CANCELLED';
 
 export function normalizeDocStatus(raw?: string): CanonicalDocStatus {
   const s = String(raw || 'PENDING_REVIEW').trim().toUpperCase();
@@ -21,6 +22,7 @@ export function normalizeDocStatus(raw?: string): CanonicalDocStatus {
     return 'REUPLOAD_REQUIRED';
   }
   if (s === 'REJECTED') return 'REJECTED';
+  if (s === 'CANCELLED' || s === 'DELETED') return 'CANCELLED';
   return 'PENDING_REVIEW';
 }
 
@@ -42,50 +44,77 @@ export function normalizeOverallKycStatus(raw?: string, isApproved?: boolean): s
 export function buildNormalizedKycDocuments(
   adminDocs: any[] = [],
   customerDocs: any[] = [],
-  privateAssets: any[] = []
+  privateAssets: any[] = [],
+  additionalRequests: any[] = []
 ) {
+  const cancelledDocKeys = new Set(
+    (additionalRequests || [])
+      .filter((r: any) => String(r?.status || '').toUpperCase() === 'CANCELLED')
+      .map((r: any) => String(r.docKey || r.requestId || '').trim())
+      .filter(Boolean)
+  );
+  const cancelledDocIds = new Set(
+    (additionalRequests || [])
+      .filter((r: any) => String(r?.status || '').toUpperCase() === 'CANCELLED' && r.fulfilledDocumentId)
+      .map((r: any) => String(r.fulfilledDocumentId).trim())
+      .filter(Boolean)
+  );
+
   const assetById = new Map<string, any>();
   for (const a of privateAssets) {
-    if (a?.documentId) assetById.set(String(a.documentId), a);
+    if (a?.documentId && !a?.isDeleted && a?.documentStatus !== 'CANCELLED') {
+      assetById.set(String(a.documentId), a);
+    }
   }
 
   const sourceList = adminDocs && adminDocs.length > 0 ? adminDocs : customerDocs || [];
-  return sourceList.map((doc: any, idx: number) => {
-    const docId = doc.documentId ? String(doc.documentId) : undefined;
-    const asset = docId ? assetById.get(docId) : undefined;
-    const docKey = doc.docKey || doc.documentType || docId || `doc_${idx}`;
-    const canonicalStatus = normalizeDocStatus(doc.status || doc.verificationStatus || asset?.documentStatus);
-    const reason = doc.adminReviewReason || doc.rejectionReason || doc.remarks || asset?.adminReviewReason || undefined;
-    const version = Number(doc.version || asset?.version || 1);
+  return sourceList
+    .filter((doc: any) => {
+      const s = String(doc.status || doc.verificationStatus || '').toUpperCase();
+      if (s === 'CANCELLED') return false;
+      const docKey = String(doc.docKey || doc.documentType || '').trim();
+      const docId = String(doc.documentId || '').trim();
+      if (docKey && cancelledDocKeys.has(docKey)) return false;
+      if (docId && cancelledDocIds.has(docId)) return false;
+      return true;
+    })
+    .map((doc: any, idx: number) => {
+      const docId = doc.documentId ? String(doc.documentId) : undefined;
+      const asset = docId ? assetById.get(docId) : undefined;
+      const docKey = doc.docKey || doc.documentType || docId || `doc_${idx}`;
+      const canonicalStatus = normalizeDocStatus(doc.status || doc.verificationStatus || asset?.documentStatus);
+      const reason = doc.adminReviewReason || doc.rejectionReason || doc.remarks || asset?.adminReviewReason || undefined;
+      const version = Number(doc.version || asset?.version || 1);
 
-    return {
-      docKey,
-      documentType: doc.documentType || doc.docKey || docKey,
-      documentId: docId,
-      title: doc.title || doc.documentName || asset?.documentLabel || doc.docKey || `Document #${idx + 1}`,
-      fileName: doc.fileName || doc.originalFileName || asset?.originalFileName || `Document_${idx + 1}`,
-      fileUrl: docId ? `/api/v1/documents/${docId}/view` : doc.fileUrl,
-      adminViewUrl: docId ? `/api/admin/documents/${docId}/view` : doc.fileUrl,
-      originalMimeType: doc.originalMimeType || asset?.originalMimeType,
-      originalFileSize: doc.originalFileSize || asset?.originalFileSize,
-      checksum: doc.checksum || asset?.checksum,
-      documentNumber: doc.documentNumber || asset?.documentNumber || '',
-      status: canonicalStatus,
-      adminReviewReason: canonicalStatus === 'APPROVED' ? undefined : reason,
-      rejectionReason: canonicalStatus === 'APPROVED' ? undefined : reason,
-      version,
-      previousVersionReference: doc.previousVersionReference || asset?.previousVersionReference || asset?.previousVersionId,
-      reviewedAt: doc.reviewedAt || asset?.reviewedAt,
-      reviewedByName: doc.reviewedByName || asset?.reviewedByName,
-      uploadedAt: doc.uploadedAt || asset?.createdAt || new Date().toISOString(),
-      versionHistory: Array.isArray(doc.versionHistory) ? doc.versionHistory : []
-    };
-  });
+      return {
+        docKey,
+        documentType: doc.documentType || doc.docKey || docKey,
+        documentId: docId,
+        title: doc.title || doc.documentName || asset?.documentLabel || doc.docKey || `Document #${idx + 1}`,
+        fileName: doc.fileName || doc.originalFileName || asset?.originalFileName || `Document_${idx + 1}`,
+        fileUrl: docId ? `/api/v1/documents/${docId}/view` : doc.fileUrl,
+        adminViewUrl: docId ? `/api/admin/documents/${docId}/view` : doc.fileUrl,
+        originalMimeType: doc.originalMimeType || asset?.originalMimeType,
+        originalFileSize: doc.originalFileSize || asset?.originalFileSize,
+        checksum: doc.checksum || asset?.checksum,
+        documentNumber: doc.documentNumber || asset?.documentNumber || '',
+        status: canonicalStatus,
+        adminReviewReason: canonicalStatus === 'APPROVED' ? undefined : reason,
+        rejectionReason: canonicalStatus === 'APPROVED' ? undefined : reason,
+        version,
+        previousVersionReference: doc.previousVersionReference || asset?.previousVersionReference || asset?.previousVersionId,
+        reviewedAt: doc.reviewedAt || asset?.reviewedAt,
+        reviewedByName: doc.reviewedByName || asset?.reviewedByName,
+        uploadedAt: doc.uploadedAt || asset?.createdAt || new Date().toISOString(),
+        versionHistory: Array.isArray(doc.versionHistory) ? doc.versionHistory : []
+      };
+    });
 }
 
 /**
  * Returns strictly Admin-approved KYC and additional documents for Member Profile display.
- * Excludes pending, rejected, superseded, and duplicate documents.
+ * Excludes cancelled, pending, rejected, superseded, and duplicate documents.
+ * NEVER returns phantom placeholder documents without an actual uploaded file asset.
  */
 export function buildApprovedProfileDocuments(
   normalizedDocs: any[] = [],
@@ -94,20 +123,44 @@ export function buildApprovedProfileDocuments(
 ) {
   const assetById = new Map<string, any>();
   for (const a of privateAssets) {
-    if (a?.documentId && a?.isLatestVersion !== false && !a?.isDeleted) {
+    if (a?.documentId && a?.isLatestVersion !== false && !a?.isDeleted && a?.documentStatus !== 'CANCELLED') {
       assetById.set(String(a.documentId), a);
     }
+  }
+
+  const cancelledReqs = (additionalDocumentRequests || []).filter(
+    (r: any) => String(r?.status || '').toUpperCase() === 'CANCELLED'
+  );
+  const cancelledDocKeys = new Set<string>();
+  const cancelledDocIds = new Set<string>();
+  for (const cr of cancelledReqs) {
+    if (cr.docKey) cancelledDocKeys.add(String(cr.docKey).trim());
+    if (cr.requestId) cancelledDocKeys.add(String(cr.requestId).trim());
+    if (cr.fulfilledDocumentId) cancelledDocIds.add(String(cr.fulfilledDocumentId).trim());
   }
 
   const deduped = new Map<string, any>();
 
   for (const doc of normalizedDocs || []) {
     if (normalizeDocStatus(doc.status) !== 'APPROVED') continue;
-    const docId = doc.documentId ? String(doc.documentId) : '';
-    const dedupeKey = docId || `KEY:${String(doc.docKey || doc.documentType || doc.title || '').trim().toUpperCase()}`;
+    if (String(doc.status || '').toUpperCase() === 'CANCELLED') continue;
+
+    const docId = doc.documentId ? String(doc.documentId).trim() : '';
+    const docKey = String(doc.docKey || doc.documentType || '').trim();
+
+    // Strictly exclude if belongs to a cancelled additional document request
+    if (docId && cancelledDocIds.has(docId)) continue;
+    if (docKey && cancelledDocKeys.has(docKey)) continue;
+
+    // A valid approved document MUST have an actual documentId or real fileUrl
+    if (!docId && !doc.fileUrl) continue;
+
+    const dedupeKey = docId || `KEY:${docKey.toUpperCase() || String(doc.title || '').trim().toUpperCase()}`;
     if (!dedupeKey) continue;
 
     const asset = docId ? assetById.get(docId) : undefined;
+    if (asset && (asset.isDeleted || asset.documentStatus === 'CANCELLED')) continue;
+
     const existing = deduped.get(dedupeKey);
     const version = Number(doc.version || asset?.version || 1);
     if (existing && Number(existing.version || 1) >= version) continue;
@@ -133,30 +186,40 @@ export function buildApprovedProfileDocuments(
   }
 
   for (const reqDoc of additionalDocumentRequests || []) {
+    // Cancelled requests must NEVER be in approved profile documents
+    if (String(reqDoc?.status || '').toUpperCase() === 'CANCELLED') continue;
     if (normalizeDocStatus(reqDoc?.status) !== 'APPROVED') continue;
-    const uploadedDoc = reqDoc?.uploadedDocument || {};
-    const docId = uploadedDoc.documentId ? String(uploadedDoc.documentId) : '';
-    const dedupeKey = docId || `ADD:${String(reqDoc.requestId || reqDoc.documentName || '').trim().toUpperCase()}`;
-    if (!dedupeKey || deduped.has(dedupeKey)) continue;
 
-    const asset = docId ? assetById.get(docId) : undefined;
-    deduped.set(dedupeKey, {
-      documentId: docId || undefined,
-      docKey: reqDoc.requestId || dedupeKey,
-      documentCategory: 'ADDITIONAL_KYC_DOCUMENT',
-      title: reqDoc.documentName || uploadedDoc.title || asset?.documentLabel || 'Approved Additional Document',
-      fileName: uploadedDoc.fileName || asset?.originalFileName || reqDoc.documentName || 'additional-document',
-      originalFileName: uploadedDoc.fileName || asset?.originalFileName || reqDoc.documentName || 'additional-document',
-      originalFileExtension: asset?.originalFileExtension || (uploadedDoc.fileName?.split('.').pop() || 'file'),
-      originalMimeType: uploadedDoc.originalMimeType || asset?.originalMimeType || 'application/octet-stream',
-      originalFileSize: Number(uploadedDoc.originalFileSize || asset?.originalFileSize || 0),
-      checksum: uploadedDoc.checksum || asset?.checksum,
-      version: Number(uploadedDoc.version || asset?.version || 1),
+    // MUST have an actual fulfilled documentId and real asset to be displayed
+    const docId = reqDoc.fulfilledDocumentId
+      ? String(reqDoc.fulfilledDocumentId).trim()
+      : (reqDoc.uploadedDocument?.documentId ? String(reqDoc.uploadedDocument.documentId).trim() : '');
+
+    // Never create phantom document cards without an uploaded file
+    if (!docId) continue;
+    if (cancelledDocIds.has(docId)) continue;
+    if (deduped.has(docId)) continue; // Already added via normalizedDocs, skip duplicate
+
+    const asset = assetById.get(docId);
+    if (asset && (asset.isDeleted || asset.documentStatus === 'CANCELLED')) continue;
+
+    deduped.set(docId, {
+      documentId: docId,
+      docKey: reqDoc.docKey || reqDoc.requestId || docId,
+      documentCategory: reqDoc.docKey || 'ADDITIONAL_KYC_DOCUMENT',
+      title: reqDoc.documentName || asset?.documentLabel || 'Approved Additional Document',
+      fileName: asset?.originalFileName || reqDoc.documentName || 'additional-document',
+      originalFileName: asset?.originalFileName || reqDoc.documentName || 'additional-document',
+      originalFileExtension: asset?.originalFileExtension || 'pdf',
+      originalMimeType: asset?.originalMimeType || 'application/pdf',
+      originalFileSize: Number(asset?.originalFileSize || 0),
+      checksum: asset?.checksum,
+      version: Number(asset?.version || 1),
       status: 'APPROVED',
       documentStatus: 'APPROVED',
       reviewedAt: reqDoc.reviewedAt || asset?.reviewedAt,
-      uploadedAt: uploadedDoc.uploadedAt || asset?.createdAt,
-      viewUrl: docId ? `/api/v1/documents/${docId}/view` : uploadedDoc.fileUrl
+      uploadedAt: asset?.createdAt || reqDoc.submittedAt,
+      viewUrl: `/api/v1/documents/${docId}/view`
     });
   }
 

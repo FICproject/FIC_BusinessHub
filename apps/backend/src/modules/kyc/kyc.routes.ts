@@ -989,18 +989,19 @@ kycRouter.get('/status', authenticate, async (req: AuthenticatedRequest, res: Re
       activation.checks.kycApproved
     );
 
-    const normalizedDocuments = buildNormalizedKycDocuments(
-      adminSubmission?.documents,
-      submission?.documents,
-      privateDocs
-    );
-
     const rawAdditionalDocumentRequests =
       Array.isArray(adminSubmission?.additionalDocumentRequests) && adminSubmission.additionalDocumentRequests.length > 0
         ? adminSubmission.additionalDocumentRequests
         : Array.isArray(submission?.additionalDocumentRequests)
         ? submission.additionalDocumentRequests
         : [];
+
+    const normalizedDocuments = buildNormalizedKycDocuments(
+      adminSubmission?.documents,
+      submission?.documents,
+      privateDocs,
+      rawAdditionalDocumentRequests
+    );
 
     const approvedDocuments = buildApprovedProfileDocuments(
       normalizedDocuments,

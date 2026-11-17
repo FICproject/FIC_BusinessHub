@@ -270,7 +270,15 @@ export const ProfilePage: React.FC = () => {
               const s = String(d?.status || '').toUpperCase();
               return s === 'APPROVED' || s === 'VERIFIED';
             });
-        const normalizedApproved: UploadedDocumentAsset[] = approvedRaw.map((doc: any, idx: number) => ({
+        const validApproved = approvedRaw.filter((doc: any) => {
+          if (!doc) return false;
+          const s = String(doc.status || doc.documentStatus || doc.verificationStatus || '').toUpperCase();
+          if (s === 'CANCELLED' || s === 'DELETED') return false;
+          const hasDocId = Boolean(doc.documentId && !String(doc.documentId).startsWith('approved-'));
+          const hasFileUrl = Boolean(doc.fileUrl || doc.viewUrl);
+          return hasDocId || hasFileUrl;
+        });
+        const normalizedApproved: UploadedDocumentAsset[] = validApproved.map((doc: any, idx: number) => ({
           documentId: doc.documentId || `approved-${doc.docKey || idx}`,
           entityType: 'KYC',
           documentCategory: doc.documentCategory || doc.documentType || doc.docKey || 'KYC_DOCUMENT',
@@ -1401,7 +1409,12 @@ export const ProfilePage: React.FC = () => {
         <div className="divide-y divide-[#EDE2D7]/70">
           {privateDocuments.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
-              {privateDocuments.map((doc) => {
+              {privateDocuments
+                .filter((doc) => {
+                  const hasStoredAsset = Boolean(doc.documentId && !String(doc.documentId).startsWith('approved-'));
+                  return hasStoredAsset || Boolean(doc.viewUrl);
+                })
+                .map((doc) => {
                 const hasStoredAsset = Boolean(doc.documentId && !String(doc.documentId).startsWith('approved-'));
                 return (
                   <div

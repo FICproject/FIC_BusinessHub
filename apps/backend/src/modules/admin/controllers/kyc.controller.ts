@@ -268,8 +268,8 @@ async function resolveReferralAttribution(userDoc: any) {
   };
 }
 
-function summarizeSubmissionDocs(docs: any[] = []) {
-  const normalizedDocs = buildNormalizedKycDocuments(docs, [], []);
+function summarizeSubmissionDocs(docs: any[] = [], additionalRequests: any[] = []) {
+  const normalizedDocs = buildNormalizedKycDocuments(docs, [], [], additionalRequests);
   const approvedDocsCount = normalizedDocs.filter((d) => d.status === 'APPROVED').length;
   const reuploadRequiredDocsCount = normalizedDocs.filter((d) => d.status === 'REUPLOAD_REQUIRED').length;
   const rejectedDocsCount = normalizedDocs.filter((d) => d.status === 'REJECTED').length;
@@ -351,7 +351,7 @@ router.get('/', authenticateAdmin, requirePermission('KYC_VERIFY'), async (req, 
           $or: [{ _id: sub.memberId?._id || sub.memberId }, { email: sub.memberEmail?.toLowerCase() }]
         }).lean()) as any;
 
-        const { normalizedDocs, docSummary } = summarizeSubmissionDocs(sub.documents || []);
+        const { normalizedDocs, docSummary } = summarizeSubmissionDocs(sub.documents || [], sub.additionalDocumentRequests || []);
         const referralInfo = await resolveReferralAttribution(user);
 
         return {
@@ -427,8 +427,8 @@ router.get('/:id', authenticateAdmin, requirePermission('KYC_VERIFY'), async (re
 
     subObj.documentAssets = privateAssets.map((a) => toSafeDocumentDto(a, 'admin'));
 
-    const normalizedDocs = buildNormalizedKycDocuments(subObj.documents || [], [], privateAssets);
-    const { docSummary } = summarizeSubmissionDocs(normalizedDocs);
+    const normalizedDocs = buildNormalizedKycDocuments(subObj.documents || [], [], privateAssets, subObj.additionalDocumentRequests || []);
+    const { docSummary } = summarizeSubmissionDocs(normalizedDocs, subObj.additionalDocumentRequests || []);
     subObj.documents = normalizedDocs.map((d) => ({
       ...d,
       fileUrl: d.adminViewUrl || d.fileUrl
@@ -679,7 +679,7 @@ router.patch(
         reason: trimmedReason || undefined
       });
 
-      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || []);
+      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || [], submission.additionalDocumentRequests || []);
 
       res.json({
         success: true,
@@ -697,28 +697,34 @@ router.patch(
 );
 
 function buildMemberKycDocuments(docs: any[]) {
-  return (docs || []).map((d: any) => ({
-    ...(d.documentId ? { documentId: d.documentId } : {}),
-    documentType: d.docKey,
-    title: d.title,
-    documentNumber: d.documentNumber || '',
-    originalFileName: d.fileName,
-    originalMimeType: d.originalMimeType,
-    originalFileSize: d.originalFileSize,
-    checksum: d.checksum,
-    hasOptimizedPreview: d.hasOptimizedPreview,
-    hasThumbnail: d.hasThumbnail,
-    fileUrl: d.documentId ? `/api/v1/documents/${d.documentId}/view` : d.fileUrl,
-    uploadedAt: new Date(d.uploadedAt),
-    verificationStatus: normalizeDocStatus(d.status),
-    adminReviewReason: d.adminReviewReason,
-    remarks: d.adminReviewReason,
-    version: d.version || 1,
-    previousVersionReference: d.previousVersionReference,
-    reviewedAt: d.reviewedAt,
-    reviewedByName: d.reviewedByName,
-    versionHistory: d.versionHistory || []
-  }));
+  return (docs || [])
+    .filter((d: any) => {
+      if (!d) return false;
+      const s = normalizeDocStatus(d.status);
+      return s !== 'CANCELLED';
+    })
+    .map((d: any) => ({
+      ...(d.documentId ? { documentId: d.documentId } : {}),
+      documentType: d.docKey,
+      title: d.title,
+      documentNumber: d.documentNumber || '',
+      originalFileName: d.fileName,
+      originalMimeType: d.originalMimeType,
+      originalFileSize: d.originalFileSize,
+      checksum: d.checksum,
+      hasOptimizedPreview: d.hasOptimizedPreview,
+      hasThumbnail: d.hasThumbnail,
+      fileUrl: d.documentId ? `/api/v1/documents/${d.documentId}/view` : d.fileUrl,
+      uploadedAt: new Date(d.uploadedAt),
+      verificationStatus: normalizeDocStatus(d.status),
+      adminReviewReason: d.adminReviewReason,
+      remarks: d.adminReviewReason,
+      version: d.version || 1,
+      previousVersionReference: d.previousVersionReference,
+      reviewedAt: d.reviewedAt,
+      reviewedByName: d.reviewedByName,
+      versionHistory: d.versionHistory || []
+    }));
 }
 
 // PATCH /api/admin/kyc/:id/review - Overall Review/Decision on KYC submission
@@ -814,60 +820,77 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
       ? new mongoose.Types.ObjectId(req.admin.id)
       : undefined;
 
+    const cancelledReqs = (submission.additionalDocumentRequests || []).filter(
+      (r: any) => String(r?.status || '').toUpperCase() === 'CANCELLED'
+    );
+    const cancelledDocKeys = new Set(cancelledReqs.map((r: any) => String(r.docKey || r.requestId || '').trim()).filter(Boolean));
+    const cancelledFulfilledIds = new Set(cancelledReqs.map((r: any) => String(r.fulfilledDocumentId || '').trim()).filter(Boolean));
+
     if (Array.isArray(submission.documents) && submission.documents.length > 0) {
-      submission.documents = submission.documents.map((rawDoc: any) => {
-        const doc = typeof rawDoc?.toObject === 'function' ? rawDoc.toObject() : { ...rawDoc };
-        const docKey = String(doc.docKey || '').trim();
-        const docId = String(doc.documentId || '').trim();
-        const isSelectedForReupload = !hasExplicitReuploadList
-          || (Boolean(docKey) && selectedKeysSet.has(docKey))
-          || (Boolean(docId) && selectedKeysSet.has(docId));
+      submission.documents = submission.documents
+        .filter((rawDoc: any) => {
+          const doc = typeof rawDoc?.toObject === 'function' ? rawDoc.toObject() : { ...rawDoc };
+          const docKey = String(doc.docKey || '').trim();
+          const docId = String(doc.documentId || '').trim();
+          const s = normalizeDocStatus(doc.status);
+          if (s === 'CANCELLED') return false;
+          if (docKey && cancelledDocKeys.has(docKey)) return false;
+          if (docId && cancelledFulfilledIds.has(docId)) return false;
+          return true;
+        })
+        .map((rawDoc: any) => {
+          const doc = typeof rawDoc?.toObject === 'function' ? rawDoc.toObject() : { ...rawDoc };
+          const docKey = String(doc.docKey || '').trim();
+          const docId = String(doc.documentId || '').trim();
+          const isSelectedForReupload = !hasExplicitReuploadList
+            || (Boolean(docKey) && selectedKeysSet.has(docKey))
+            || (Boolean(docId) && selectedKeysSet.has(docId));
 
-        if (decision === 'APPROVED') {
-          return {
-            ...doc,
-            status: 'APPROVED',
-            adminReviewReason: undefined,
-            rejectionReason: undefined,
-            reviewedAt: now,
-            ...(reviewerObjectId ? { reviewedBy: reviewerObjectId } : {}),
-            reviewedByName: reviewerName
-          };
-        }
-
-        if (decision === 'RESUBMISSION_REQUESTED') {
-          if (isSelectedForReupload) {
+          if (decision === 'APPROVED') {
             return {
               ...doc,
-              status: 'REUPLOAD_REQUIRED',
-              adminReviewReason: trimmedReason,
-              rejectionReason: trimmedReason,
+              status: 'APPROVED',
+              adminReviewReason: undefined,
+              rejectionReason: undefined,
               reviewedAt: now,
               ...(reviewerObjectId ? { reviewedBy: reviewerObjectId } : {}),
               reviewedByName: reviewerName
             };
           }
+
+          if (decision === 'RESUBMISSION_REQUESTED') {
+            if (isSelectedForReupload) {
+              return {
+                ...doc,
+                status: 'REUPLOAD_REQUIRED',
+                adminReviewReason: trimmedReason,
+                rejectionReason: trimmedReason,
+                reviewedAt: now,
+                ...(reviewerObjectId ? { reviewedBy: reviewerObjectId } : {}),
+                reviewedByName: reviewerName
+              };
+            }
+            return {
+              ...doc,
+              status: 'APPROVED',
+              adminReviewReason: undefined,
+              rejectionReason: undefined,
+              reviewedAt: now,
+              ...(reviewerObjectId ? { reviewedBy: reviewerObjectId } : {}),
+              reviewedByName: reviewerName
+            };
+          }
+
           return {
             ...doc,
-            status: 'APPROVED',
-            adminReviewReason: undefined,
-            rejectionReason: undefined,
+            status: 'REJECTED',
+            adminReviewReason: trimmedReason,
+            rejectionReason: trimmedReason,
             reviewedAt: now,
             ...(reviewerObjectId ? { reviewedBy: reviewerObjectId } : {}),
             reviewedByName: reviewerName
           };
-        }
-
-        return {
-          ...doc,
-          status: 'REJECTED',
-          adminReviewReason: trimmedReason,
-          rejectionReason: trimmedReason,
-          reviewedAt: now,
-          ...(reviewerObjectId ? { reviewedBy: reviewerObjectId } : {}),
-          reviewedByName: reviewerName
-        };
-      }) as any;
+        }) as any;
       submission.markModified('documents');
     }
 
@@ -875,6 +898,9 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
     if (isApproved && Array.isArray(submission.additionalDocumentRequests) && submission.additionalDocumentRequests.length > 0) {
       submission.additionalDocumentRequests = submission.additionalDocumentRequests.map((reqDoc: any) => {
         const plain = typeof reqDoc?.toObject === 'function' ? reqDoc.toObject() : { ...reqDoc };
+        if (String(plain.status || '').toUpperCase() === 'CANCELLED') {
+          return plain;
+        }
         if (String(plain.status || '').toUpperCase() === 'SUBMITTED') {
           return {
             ...plain,
@@ -1061,20 +1087,35 @@ router.patch('/:id/review', authenticateAdmin, requirePermission('KYC_VERIFY'), 
 
     const docsList = submission.documents || [];
     const additionalApprovedDocIds = (submission.additionalDocumentRequests || [])
-      .filter((r: any) => normalizeDocStatus(r?.status) === 'APPROVED' && r?.uploadedDocument?.documentId)
-      .map((r: any) => r.uploadedDocument.documentId);
+      .filter((r: any) => normalizeDocStatus(r?.status) === 'APPROVED')
+      .map((r: any) => r?.fulfilledDocumentId || r?.uploadedDocument?.documentId)
+      .filter(Boolean);
     const approvedDocIds = [
       ...docsList
         .filter((d: any) => normalizeDocStatus(d.status) === 'APPROVED' && d.documentId)
         .map((d: any) => d.documentId),
       ...additionalApprovedDocIds
-    ];
+    ].filter((docId: string) => !cancelledFulfilledIds.has(docId));
     const reuploadDocIds = docsList
       .filter((d: any) => normalizeDocStatus(d.status) === 'REUPLOAD_REQUIRED' && d.documentId)
       .map((d: any) => d.documentId);
     const rejectedDocIds = docsList
       .filter((d: any) => normalizeDocStatus(d.status) === 'REJECTED' && d.documentId)
       .map((d: any) => d.documentId);
+
+    if (cancelledFulfilledIds.size > 0) {
+      await DocumentAssetModel.updateMany(
+        { documentId: { $in: Array.from(cancelledFulfilledIds) } },
+        {
+          $set: {
+            documentStatus: 'CANCELLED',
+            isDeleted: true,
+            reviewedAt: now,
+            reviewedByName: reviewerName
+          }
+        }
+      );
+    }
 
     if (approvedDocIds.length > 0) {
       await DocumentAssetModel.updateMany(
@@ -1323,7 +1364,7 @@ router.post(
         required: Boolean(required)
       });
 
-      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || []);
+      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || [], submission.additionalDocumentRequests || []);
       res.status(201).json({
         success: true,
         message: `Additional document request "${trimmedName}" sent to member.`,
@@ -1386,43 +1427,79 @@ router.patch(
       }
 
       const now = new Date();
+      const adminObjectId = req.admin?.id && mongoose.Types.ObjectId.isValid(req.admin.id)
+        ? new mongoose.Types.ObjectId(req.admin.id)
+        : undefined;
+      const adminName = req.admin?.name || 'FIC Compliance Officer';
+
       const targetReq = reqList[idx] as any;
       targetReq.status = normalizedDecision;
       targetReq.reviewedAt = now;
-      targetReq.reviewedByName = req.admin?.name || 'FIC Compliance Officer';
+      targetReq.reviewedByName = adminName;
       targetReq.reviewReason = trimmedReason || undefined;
-      submission.additionalDocumentRequests![idx] = targetReq;
-      submission.markModified('additionalDocumentRequests');
 
-      // Also sync linked document inside submission.documents if uploaded
-      const linkedDocIdx = (submission.documents || []).findIndex(
-        (d: any) =>
-          String(d.docKey) === String(targetReq.docKey) ||
-          (targetReq.fulfilledDocumentId && String(d.documentId) === String(targetReq.fulfilledDocumentId))
-      );
-      if (linkedDocIdx >= 0 && normalizedDecision !== 'CANCELLED') {
-        const linkedDoc = submission.documents[linkedDocIdx] as any;
-        linkedDoc.status = normalizedDecision;
-        linkedDoc.adminReviewReason = normalizedDecision === 'APPROVED' ? undefined : trimmedReason;
-        linkedDoc.reviewedAt = now;
-        linkedDoc.reviewedByName = req.admin?.name || 'FIC Compliance Officer';
-        submission.documents[linkedDocIdx] = linkedDoc;
+      if (normalizedDecision === 'CANCELLED') {
+        targetReq.cancelledAt = now;
+        if (adminObjectId) targetReq.cancelledBy = adminObjectId;
+        targetReq.cancelledByName = adminName;
+        targetReq.cancellationReason = trimmedReason || 'Cancelled by admin';
+
+        // Completely remove any linked document from submission.documents
+        submission.documents = (submission.documents || []).filter(
+          (d: any) =>
+            String(d.docKey) !== String(targetReq.docKey) &&
+            (!targetReq.fulfilledDocumentId || String(d.documentId) !== String(targetReq.fulfilledDocumentId))
+        ) as any;
         submission.markModified('documents');
 
-        if (linkedDoc.documentId) {
-          await DocumentAssetModel.updateOne(
-            { documentId: linkedDoc.documentId },
+        // Mark DocumentAsset as CANCELLED and deleted if uploaded
+        if (targetReq.fulfilledDocumentId) {
+          await DocumentAssetModel.updateMany(
+            { documentId: targetReq.fulfilledDocumentId },
             {
               $set: {
-                documentStatus: normalizedDecision,
+                documentStatus: 'CANCELLED',
+                isDeleted: true,
                 reviewedAt: now,
-                reviewedByName: req.admin?.name || 'FIC Compliance Officer',
-                ...(trimmedReason && normalizedDecision !== 'APPROVED' ? { adminReviewReason: trimmedReason } : {})
+                reviewedByName: adminName
               }
             }
           );
         }
+      } else {
+        // Also sync linked document inside submission.documents if uploaded
+        const linkedDocIdx = (submission.documents || []).findIndex(
+          (d: any) =>
+            String(d.docKey) === String(targetReq.docKey) ||
+            (targetReq.fulfilledDocumentId && String(d.documentId) === String(targetReq.fulfilledDocumentId))
+        );
+        if (linkedDocIdx >= 0) {
+          const linkedDoc = submission.documents[linkedDocIdx] as any;
+          linkedDoc.status = normalizedDecision;
+          linkedDoc.adminReviewReason = normalizedDecision === 'APPROVED' ? undefined : trimmedReason;
+          linkedDoc.reviewedAt = now;
+          linkedDoc.reviewedByName = adminName;
+          submission.documents[linkedDocIdx] = linkedDoc;
+          submission.markModified('documents');
+
+          if (linkedDoc.documentId) {
+            await DocumentAssetModel.updateOne(
+              { documentId: linkedDoc.documentId },
+              {
+                $set: {
+                  documentStatus: normalizedDecision,
+                  reviewedAt: now,
+                  reviewedByName: adminName,
+                  ...(trimmedReason && normalizedDecision !== 'APPROVED' ? { adminReviewReason: trimmedReason } : {})
+                }
+              }
+            );
+          }
+        }
       }
+
+      submission.additionalDocumentRequests![idx] = targetReq;
+      submission.markModified('additionalDocumentRequests');
 
       await submission.save();
 
@@ -1464,10 +1541,122 @@ router.patch(
         decision: normalizedDecision
       });
 
-      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || []);
+      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(
+        submission.documents || [],
+        submission.additionalDocumentRequests || []
+      );
       res.json({
         success: true,
         message: `Additional document "${targetReq.documentName}" updated to ${normalizedDecision}.`,
+        data: {
+          ...submission.toObject(),
+          documents: normalizedDocs.map((d) => ({ ...d, fileUrl: d.adminViewUrl || d.fileUrl })),
+          docSummary
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// DELETE /api/admin/kyc/:id/additional-documents/:requestId - Delete/Cancel an additional document request
+router.delete(
+  '/:id/additional-documents/:requestId',
+  authenticateAdmin,
+  requirePermission('KYC_VERIFY'),
+  async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+    try {
+      const { id, requestId } = req.params;
+      const submission = await KycSubmissionModel.findById(id);
+      if (!submission) {
+        res.status(404).json({ success: false, error: 'KYC submission not found' });
+        return;
+      }
+      if (submission.isLocked || submission.status === 'APPROVED') {
+        res.status(409).json({
+          success: false,
+          code: 'KYC_ALREADY_APPROVED',
+          error: 'This KYC application is already permanently approved and locked.'
+        });
+        return;
+      }
+
+      const reqList = Array.isArray(submission.additionalDocumentRequests)
+        ? submission.additionalDocumentRequests
+        : [];
+      const idx = reqList.findIndex((r: any) => String(r.requestId) === requestId);
+      if (idx === -1) {
+        res.status(404).json({ success: false, error: 'Additional document request not found.' });
+        return;
+      }
+
+      const now = new Date();
+      const adminObjectId = req.admin?.id && mongoose.Types.ObjectId.isValid(req.admin.id)
+        ? new mongoose.Types.ObjectId(req.admin.id)
+        : undefined;
+      const adminName = req.admin?.name || 'FIC Compliance Officer';
+
+      const targetReq = reqList[idx] as any;
+      targetReq.status = 'CANCELLED';
+      targetReq.cancelledAt = now;
+      if (adminObjectId) targetReq.cancelledBy = adminObjectId;
+      targetReq.cancelledByName = adminName;
+      targetReq.cancellationReason = 'Deleted by admin';
+
+      submission.additionalDocumentRequests![idx] = targetReq;
+      submission.markModified('additionalDocumentRequests');
+
+      submission.documents = (submission.documents || []).filter(
+        (d: any) =>
+          String(d.docKey) !== String(targetReq.docKey) &&
+          (!targetReq.fulfilledDocumentId || String(d.documentId) !== String(targetReq.fulfilledDocumentId))
+      ) as any;
+      submission.markModified('documents');
+
+      if (targetReq.fulfilledDocumentId) {
+        await DocumentAssetModel.updateMany(
+          { documentId: targetReq.fulfilledDocumentId },
+          {
+            $set: {
+              documentStatus: 'CANCELLED',
+              isDeleted: true,
+              reviewedAt: now,
+              reviewedByName: adminName
+            }
+          }
+        );
+      }
+
+      await submission.save();
+
+      const memberUser = await UserModel.findOne({
+        $or: [{ _id: submission.memberId }, ...(submission.memberEmail ? [{ email: submission.memberEmail.toLowerCase() }] : [])]
+      });
+
+      await KYCSubmissionModel.findOneAndUpdate(
+        { $or: [{ userId: submission.memberId }, ...(memberUser?._id ? [{ userId: memberUser._id }] : [])] },
+        {
+          $set: {
+            additionalDocumentRequests: submission.additionalDocumentRequests,
+            documents: buildMemberKycDocuments(submission.documents || [])
+          }
+        }
+      );
+
+      await logAdminAction(req, 'KYC_CANCEL_ADDITIONAL_DOC', 'KycSubmission', id, {
+        requestId,
+        documentName: targetReq.documentName,
+        action: 'DELETE'
+      });
+
+      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(
+        submission.documents || [],
+        submission.additionalDocumentRequests || []
+      );
+      res.json({
+        success: true,
+        message: `Additional document request "${targetReq.documentName}" has been cancelled/deleted.`,
         data: {
           ...submission.toObject(),
           documents: normalizedDocs.map((d) => ({ ...d, fileUrl: d.adminViewUrl || d.fileUrl })),
@@ -1571,7 +1760,7 @@ router.post(
         previousApprovedAt: historyEntry.previousApprovedAt
       });
 
-      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || []);
+      const { normalizedDocs, docSummary } = summarizeSubmissionDocs(submission.documents || [], submission.additionalDocumentRequests || []);
       res.json({
         success: true,
         message: 'Approved KYC unlocked for Super Admin reverification with full history preserved.',
