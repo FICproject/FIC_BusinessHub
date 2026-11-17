@@ -322,6 +322,131 @@ router.put(
   }
 );
 
+// 2.4: Admin Marks Funding Request Under Review
+router.put(
+  '/requests/:id/review',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { notes } = req.body;
+
+      const request = await FundingRequestModel.findOne({
+        $or: [
+          { _id: mongoose.isValidObjectId(id) ? id : null },
+          { fundingRequestId: id },
+          { refNumber: id }
+        ]
+      });
+
+      if (!request) {
+        res.status(404).json({ success: false, error: 'Funding request not found' });
+        return;
+      }
+
+      const adminName = req.admin?.name || 'FIC Admin';
+      request.status = 'UNDER_REVIEW';
+      request.latestFicUpdate = notes
+        ? `Under active review by ${adminName}: ${notes}`
+        : `Proposal is currently under review by FIC Credit & Compliance team.`;
+      request.whatHappensNext = 'Evaluation in progress. Admin may request clarifications or schedule a diligence call.';
+
+      request.activityTimeline.push({
+        action: 'Review Started by Admin',
+        actorType: 'ADMIN',
+        actorName: adminName,
+        notes: notes || 'Proposal moved to Under Review.',
+        timestamp: new Date()
+      });
+
+      await request.save();
+
+      await logAdminAction(req, 'UPDATE', 'FundingRequest', request._id.toString(), {
+        action: 'UNDER_REVIEW',
+        notes
+      });
+
+      res.json({
+        success: true,
+        message: 'Funding request marked as under review.',
+        data: request
+      });
+    } catch (err: any) {
+      console.error('Failed to mark funding request under review:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// 2.5: Admin Rejects Funding Request
+router.put(
+  '/requests/:id/reject',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { rejectionReason, notes } = req.body;
+
+      const request = await FundingRequestModel.findOne({
+        $or: [
+          { _id: mongoose.isValidObjectId(id) ? id : null },
+          { fundingRequestId: id },
+          { refNumber: id }
+        ]
+      });
+
+      if (!request) {
+        res.status(404).json({ success: false, error: 'Funding request not found' });
+        return;
+      }
+
+      const reason = rejectionReason || notes || 'Does not meet current FIC platform risk criteria.';
+      const adminName = req.admin?.name || 'FIC Super Admin';
+
+      request.status = 'REJECTED';
+      request.latestFicUpdate = `Application declined by FIC Review Board: ${reason}`;
+      request.whatHappensNext = 'You may review our funding criteria and submit a new proposal after 30 days.';
+
+      request.activityTimeline.push({
+        action: 'Application Declined by Admin',
+        actorType: 'ADMIN',
+        actorName: adminName,
+        notes: reason,
+        timestamp: new Date()
+      });
+
+      await request.save();
+
+      await logAdminAction(req, 'UPDATE', 'FundingRequest', request._id.toString(), {
+        action: 'REJECTED',
+        reason
+      });
+
+      try {
+        await notifyMember({
+          userId: request.userId,
+          eventType: 'FUNDING_REJECTED',
+          title: `Update on Funding Proposal: ${request.companyName}`,
+          message: `Your funding proposal was not approved at this time: ${reason}`,
+          link: '/investment',
+          priority: 'LOW'
+        });
+      } catch { }
+
+      res.json({
+        success: true,
+        message: 'Funding request rejected successfully.',
+        data: request
+      });
+    } catch (err: any) {
+      console.error('Failed to reject funding request:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
 // ========================================================
 // PHASE 5: FIC ADMIN INVESTMENT REQUESTS
 // ========================================================
@@ -373,6 +498,32 @@ router.get(
       });
     } catch (err: any) {
       console.error('Failed to get investment requests:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// 5.1.1: Get Single Investment Request
+router.get(
+  '/investment-requests/:id',
+  authenticateAdmin,
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const item = await InvestmentRequestModel.findOne({
+        $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { investmentId: id }]
+      })
+        .populate('investorId', 'fullName email phoneNumber primaryCategoryName')
+        .populate('fundingRequestId')
+        .lean();
+
+      if (!item) {
+        res.status(404).json({ success: false, error: 'Investment request not found' });
+        return;
+      }
+
+      res.json({ success: true, data: item });
+    } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
   }
@@ -535,11 +686,38 @@ router.put(
 router.get(
   '/fund-releases',
   authenticateAdmin,
-  async (_req: AuthenticatedAdminRequest, res: Response) => {
+  async (req: AuthenticatedAdminRequest, res: Response) => {
     try {
-      const paidInvestments = await InvestmentRequestModel.find({
-        status: { $in: ['PAID', 'PARTIALLY_PAID', 'FUND_RELEASE_PENDING', 'ACTIVE'] }
-      })
+      const { status, search } = req.query;
+      const filter: any = {};
+
+      if (status && status !== 'ALL') {
+        if (status === 'READY_FOR_RELEASE') {
+          filter.status = { $in: ['PAID', 'FUND_RELEASE_PENDING'] };
+          filter.pendingReleaseAmount = { $gt: 0 };
+        } else if (status === 'RELEASED') {
+          filter.releasedAmount = { $gt: 0 };
+        } else if (status === 'PAYMENT_PENDING') {
+          filter.status = { $in: ['APPROVED', 'PAYMENT_PENDING'] };
+        } else {
+          filter.status = status;
+        }
+      } else {
+        filter.status = { $in: ['PAID', 'PARTIALLY_PAID', 'FUND_RELEASE_PENDING', 'ACTIVE', 'APPROVED', 'PAYMENT_PENDING', 'COMPLETED'] };
+      }
+
+      if (search && typeof search === 'string' && search.trim()) {
+        const q = search.trim();
+        filter.$or = [
+          { investmentId: { $regex: q, $options: 'i' } },
+          { fundingRequestRef: { $regex: q, $options: 'i' } },
+          { projectName: { $regex: q, $options: 'i' } },
+          { investorName: { $regex: q, $options: 'i' } },
+          { fundingRequestorName: { $regex: q, $options: 'i' } }
+        ];
+      }
+
+      const paidInvestments = await InvestmentRequestModel.find(filter)
         .sort({ updatedAt: -1 })
         .lean();
 
@@ -550,6 +728,115 @@ router.get(
       });
     } catch (err: any) {
       console.error('Failed to get fund releases:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// 7.1.1: Verify Investor Payment Status (Offline / Bank Transfer confirmation)
+router.post(
+  '/fund-releases/:id/verify-payment',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { paymentReference, amountPaid, notes } = req.body;
+
+      const investment = await InvestmentRequestModel.findOne({
+        $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { investmentId: id }]
+      });
+
+      if (!investment) {
+        res.status(404).json({ success: false, error: 'Investment record not found' });
+        return;
+      }
+
+      const verifiedAmt = Number(amountPaid) || investment.approvedAmount || investment.requestedAmount;
+      const adminName = req.admin?.name || 'FIC Admin';
+      const generatedTxnId = `TXN-VER-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+
+      // 1. Record verified incoming transaction
+      await FinancialTransactionModel.create({
+        transactionId: generatedTxnId,
+        type: 'INVESTMENT_PAYMENT',
+        investmentId: investment.investmentId,
+        fundingRequestId: investment.fundingRequestRef,
+        payerId: investment.investorId.toString(),
+        payerName: investment.investorName,
+        receiverId: 'FIC_PLATFORM_ESCROW',
+        receiverName: 'FIC Verified Capital Escrow',
+        amount: verifiedAmt,
+        currency: 'INR',
+        paymentGateway: 'BANK_TRANSFER',
+        gatewayPaymentId: paymentReference || `NEFT-${Date.now()}`,
+        status: 'SUCCESS',
+        verifiedAt: new Date(),
+        notes: notes || `Admin-verified payment of ₹${verifiedAmt.toLocaleString('en-IN')} for ${investment.projectName}.`
+      });
+
+      // 2. Update investment balances & status
+      investment.paidAmount = verifiedAmt;
+      investment.pendingPaymentAmount = 0;
+      investment.eligibleReleaseAmount = verifiedAmt;
+      investment.pendingReleaseAmount = verifiedAmt;
+      investment.status = 'PAID';
+
+      investment.activityTimeline.push({
+        action: 'Payment Verified by Admin',
+        actorType: 'ADMIN',
+        actorName: adminName,
+        notes: `Bank payment of ₹${verifiedAmt.toLocaleString('en-IN')} confirmed. Ref: ${paymentReference || 'N/A'}. Ready for Fund Release.`,
+        timestamp: new Date()
+      });
+
+      await investment.save();
+
+      // 3. Update FundingRequest totalInvested
+      const fundingReq = await FundingRequestModel.findById(investment.fundingRequestId);
+      if (fundingReq) {
+        fundingReq.totalInvested = (fundingReq.totalInvested || 0) + verifiedAmt;
+        fundingReq.remainingFundingAmount = Math.max(0, (fundingReq.requiredFundingAmount || 0) - fundingReq.totalInvested);
+        fundingReq.investorCount = (fundingReq.investorCount || 0) + 1;
+        if (fundingReq.remainingFundingAmount <= 0) {
+          fundingReq.status = 'FUNDED';
+        }
+        await fundingReq.save();
+      }
+
+      await logAdminAction(req, 'UPDATE', 'InvestmentRequest', investment._id.toString(), {
+        action: 'VERIFY_INVESTOR_PAYMENT',
+        amount: verifiedAmt,
+        txnId: generatedTxnId
+      });
+
+      try {
+        await notifyMember({
+          userId: investment.fundingRequestorId,
+          eventType: 'INVESTMENT_PAYMENT_VERIFIED',
+          title: `Capital Verified: ₹${verifiedAmt.toLocaleString('en-IN')}`,
+          message: `Investor ${investment.investorName}'s payment has been verified. FIC Fund Release will be processed.`,
+          link: '/investment',
+          priority: 'HIGH'
+        });
+
+        await notifyMember({
+          userId: investment.investorId,
+          eventType: 'PAYMENT_VERIFIED',
+          title: `Payment Verified: ${investment.projectName}`,
+          message: `Your payment of ₹${verifiedAmt.toLocaleString('en-IN')} has been verified by FIC. Funds are scheduled for disbursement.`,
+          link: '/investment',
+          priority: 'MEDIUM'
+        });
+      } catch { }
+
+      res.json({
+        success: true,
+        message: `Investor payment of ₹${verifiedAmt.toLocaleString('en-IN')} verified successfully. Now READY FOR RELEASE!`,
+        data: investment
+      });
+    } catch (err: any) {
+      console.error('Failed to verify investor payment:', err);
       res.status(500).json({ success: false, error: err.message });
     }
   }
@@ -684,21 +971,196 @@ router.post(
 router.get(
   '/returns-maturity',
   authenticateAdmin,
-  async (_req: AuthenticatedAdminRequest, res: Response) => {
+  async (req: AuthenticatedAdminRequest, res: Response) => {
     try {
-      const investments = await InvestmentRequestModel.find({
-        status: { $in: ['ACTIVE', 'MATURITY_PENDING', 'MATURITY_PAYMENT_RECEIVED', 'MATURITY_PAID', 'COMPLETED'] }
-      })
+      const { status, search } = req.query;
+      const filter: any = {
+        status: { $in: ['ACTIVE', 'MATURITY_PENDING', 'MATURITY_PAYMENT_RECEIVED', 'MATURITY_PAID', 'COMPLETED', 'FUND_RELEASE_PENDING'] }
+      };
+
+      if (search && typeof search === 'string' && search.trim()) {
+        const q = search.trim();
+        filter.$or = [
+          { investmentId: { $regex: q, $options: 'i' } },
+          { fundingRequestRef: { $regex: q, $options: 'i' } },
+          { projectName: { $regex: q, $options: 'i' } },
+          { investorName: { $regex: q, $options: 'i' } },
+          { fundingRequestorName: { $regex: q, $options: 'i' } }
+        ];
+      }
+
+      const rawInvestments = await InvestmentRequestModel.find(filter)
         .sort({ maturityDate: 1 })
         .lean();
 
+      const enriched = rawInvestments.map((inv: any) => {
+        const principal = inv.releasedAmount || inv.paidAmount || inv.approvedAmount || 0;
+        const rate = inv.returnRatePercent || 15;
+        const tenureMonths = inv.durationMonths || 12;
+        const totalExpectedReturn = Math.round(principal * (rate / 100) * (tenureMonths / 12));
+        
+        // Sum returns from repayments or maturityAmountReceived
+        const repaymentSum = Array.isArray(inv.repayments)
+          ? inv.repayments.reduce((acc: number, r: any) => acc + (r.amountPaid || 0), 0)
+          : 0;
+        const amountReceived = repaymentSum || inv.maturityAmountReceived || 0;
+        const outstandingAmount = Math.max(0, totalExpectedReturn - amountReceived);
+
+        // Next due date
+        let nextDueDate = inv.maturityDate ? new Date(inv.maturityDate) : new Date();
+        if (inv.investmentStartDate) {
+          const start = new Date(inv.investmentStartDate);
+          const freq = (inv.returnFrequency || 'YEARLY').toUpperCase();
+          if (freq === 'MONTHLY') {
+            nextDueDate = new Date(start.setMonth(start.getMonth() + 1));
+          } else if (freq === 'QUARTERLY') {
+            nextDueDate = new Date(start.setMonth(start.getMonth() + 3));
+          }
+        }
+
+        // Computed status
+        let computedRepaymentStatus = 'SCHEDULED';
+        const now = new Date();
+        if (inv.status === 'COMPLETED' || amountReceived >= totalExpectedReturn) {
+          computedRepaymentStatus = 'FULLY_RECEIVED';
+        } else if (inv.maturityDate && new Date(inv.maturityDate) < now) {
+          computedRepaymentStatus = 'MATURITY_DUE';
+        } else if (amountReceived > 0) {
+          computedRepaymentStatus = 'PARTIALLY_RECEIVED';
+        } else if (nextDueDate < now) {
+          computedRepaymentStatus = 'DUE';
+        }
+
+        return {
+          ...inv,
+          releasedPrincipalAmount: principal,
+          expectedReturnRate: `${rate}% p.a.`,
+          returnPayoutFrequency: inv.returnFrequency || 'YEARLY',
+          totalExpectedReturn,
+          amountReceived,
+          outstandingAmount,
+          nextDueDate,
+          repaymentStatus: computedRepaymentStatus
+        };
+      });
+
+      // Filter by repaymentStatus if specified
+      const filtered = (status && status !== 'ALL')
+        ? enriched.filter((i) => i.repaymentStatus === status || i.status === status)
+        : enriched;
+
       res.json({
         success: true,
-        data: investments,
-        items: investments
+        data: filtered,
+        items: filtered
       });
     } catch (err: any) {
       console.error('Failed to get returns & maturity schedule:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// 8.3: Record Repayment Received from Funding Requestor
+router.post(
+  '/returns-maturity/:id/record-repayment',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { amount, paymentReference, notes, installmentNumber } = req.body;
+
+      const numAmount = Number(amount);
+      if (!numAmount || numAmount <= 0) {
+        res.status(400).json({ success: false, error: 'A valid positive repayment amount is required.' });
+        return;
+      }
+
+      const investment = await InvestmentRequestModel.findOne({
+        $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { investmentId: id }]
+      });
+
+      if (!investment) {
+        res.status(404).json({ success: false, error: 'Investment record not found.' });
+        return;
+      }
+
+      const adminName = req.admin?.name || 'FIC Admin';
+      const generatedTxnId = `TXN-RET-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+
+      // 1. Record FinancialTransaction
+      await FinancialTransactionModel.create({
+        transactionId: generatedTxnId,
+        type: 'RETURN_PAYMENT',
+        investmentId: investment.investmentId,
+        fundingRequestId: investment.fundingRequestRef,
+        payerId: investment.fundingRequestorId.toString(),
+        payerName: investment.fundingRequestorName,
+        receiverId: 'FIC_PLATFORM_ESCROW',
+        receiverName: 'FIC Verified Returns Escrow',
+        amount: numAmount,
+        currency: 'INR',
+        paymentGateway: 'BANK_TRANSFER',
+        gatewayPaymentId: paymentReference || `RET-${Date.now()}`,
+        status: 'SUCCESS',
+        verifiedAt: new Date(),
+        notes: notes || `Incoming return installment of ₹${numAmount.toLocaleString('en-IN')} received from ${investment.fundingRequestorName}.`
+      });
+
+      // 2. Add to repayments array
+      investment.repayments = investment.repayments || [];
+      investment.repayments.push({
+        installmentNumber: Number(installmentNumber) || investment.repayments.length + 1,
+        dueDate: new Date(),
+        amountDue: numAmount,
+        amountPaid: numAmount,
+        paidAt: new Date(),
+        paymentReference: paymentReference || generatedTxnId,
+        status: 'PAID',
+        verifiedBy: adminName,
+        verifiedAt: new Date(),
+        notes: notes || `Repayment verified by ${adminName}`
+      });
+
+      investment.maturityAmountReceived = (investment.maturityAmountReceived || 0) + numAmount;
+
+      investment.activityTimeline.push({
+        action: 'Return Repayment Recorded',
+        actorType: 'ADMIN',
+        actorName: adminName,
+        notes: `Recorded incoming return of ₹${numAmount.toLocaleString('en-IN')}. Ref: ${paymentReference || 'N/A'}.`,
+        timestamp: new Date()
+      });
+
+      await investment.save();
+
+      // Log action
+      await logAdminAction(req, 'UPDATE', 'InvestmentRequest', investment._id.toString(), {
+        action: 'RECORD_REPAYMENT',
+        amount: numAmount,
+        txnId: generatedTxnId
+      });
+
+      // Notify Investor & Requestor
+      try {
+        await notifyMember({
+          userId: investment.investorId,
+          eventType: 'RETURN_RECEIVED',
+          title: `Return Repayment Credited: ₹${numAmount.toLocaleString('en-IN')}`,
+          message: `A return installment of ₹${numAmount.toLocaleString('en-IN')} has been verified for "${investment.projectName}".`,
+          link: '/investment',
+          priority: 'MEDIUM'
+        });
+      } catch { }
+
+      res.json({
+        success: true,
+        message: `Repayment of ₹${numAmount.toLocaleString('en-IN')} recorded and verified successfully!`,
+        data: investment
+      });
+    } catch (err: any) {
+      console.error('Failed to record repayment:', err);
       res.status(500).json({ success: false, error: err.message });
     }
   }
@@ -708,25 +1170,153 @@ router.get(
 // PHASE 10: FIC ADMIN MATURITY RELEASE
 // ========================================================
 
-// 10.1: Maturity Release Listing (Investments where funding requestor repaid maturity)
+// 10.1: Maturity Release Listing
 router.get(
   '/maturity-releases',
   authenticateAdmin,
-  async (_req: AuthenticatedAdminRequest, res: Response) => {
+  async (req: AuthenticatedAdminRequest, res: Response) => {
     try {
-      const items = await InvestmentRequestModel.find({
-        status: { $in: ['MATURITY_PAYMENT_RECEIVED', 'MATURITY_PAID', 'COMPLETED'] }
-      })
-        .sort({ maturityReceivedAt: -1 })
+      const { status, search } = req.query;
+      const filter: any = {};
+
+      if (status && status !== 'ALL') {
+        if (status === 'READY_FOR_MATURITY_RELEASE') {
+          filter.status = 'MATURITY_PAYMENT_RECEIVED';
+        } else if (status === 'REPAYMENT_AWAITING') {
+          filter.status = 'MATURITY_PENDING';
+        } else {
+          filter.status = status;
+        }
+      } else {
+        filter.status = { $in: ['MATURITY_PENDING', 'MATURITY_PAYMENT_RECEIVED', 'MATURITY_PAID', 'COMPLETED', 'ACTIVE'] };
+      }
+
+      if (search && typeof search === 'string' && search.trim()) {
+        const q = search.trim();
+        filter.$or = [
+          { investmentId: { $regex: q, $options: 'i' } },
+          { fundingRequestRef: { $regex: q, $options: 'i' } },
+          { projectName: { $regex: q, $options: 'i' } },
+          { investorName: { $regex: q, $options: 'i' } },
+          { fundingRequestorName: { $regex: q, $options: 'i' } }
+        ];
+      }
+
+      const items = await InvestmentRequestModel.find(filter)
+        .sort({ maturityReceivedAt: -1, maturityDate: 1 })
         .lean();
+
+      // Format with settlement calculation
+      const formatted = items.map((inv: any) => {
+        const principal = inv.paidAmount || inv.approvedAmount || 0;
+        const rate = inv.returnRatePercent || 15;
+        const tenureMonths = inv.durationMonths || 12;
+        const totalReturn = Math.round(principal * (rate / 100) * (tenureMonths / 12));
+        const totalSettlement = principal + totalReturn;
+
+        let releaseStatus = inv.status;
+        if (inv.status === 'MATURITY_PAYMENT_RECEIVED') releaseStatus = 'READY_FOR_MATURITY_RELEASE';
+        if (inv.status === 'MATURITY_PENDING') releaseStatus = 'REPAYMENT_AWAITING';
+
+        return {
+          ...inv,
+          originalInvestmentPrincipal: principal,
+          principalPayable: principal,
+          returnPayable: totalReturn,
+          totalSettlementAmount: totalSettlement,
+          amountReceivedFromRequester: inv.maturityAmountReceived || 0,
+          amountReleasedToInvestor: inv.maturityAmountReleased || 0,
+          releaseStatus
+        };
+      });
 
       res.json({
         success: true,
-        data: items,
-        items
+        data: formatted,
+        items: formatted
       });
     } catch (err: any) {
       console.error('Failed to get maturity releases:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// 10.1.1: Verify Incoming Maturity Repayment from Borrower
+router.post(
+  '/maturity-releases/:id/verify-incoming',
+  authenticateAdmin,
+  requireRole('SUPER_ADMIN', 'ADMIN'),
+  async (req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const { id } = req.params;
+      const { amountReceived, paymentReference, notes } = req.body;
+
+      const investment = await InvestmentRequestModel.findOne({
+        $or: [{ _id: mongoose.isValidObjectId(id) ? id : null }, { investmentId: id }]
+      });
+
+      if (!investment) {
+        res.status(404).json({ success: false, error: 'Investment record not found.' });
+        return;
+      }
+
+      const principal = investment.paidAmount || investment.approvedAmount || 0;
+      const rate = investment.returnRatePercent || 15;
+      const tenure = investment.durationMonths || 12;
+      const totalSettlement = principal + Math.round(principal * (rate / 100) * (tenure / 12));
+
+      const verifiedAmt = Number(amountReceived) || totalSettlement;
+      const adminName = req.admin?.name || 'FIC Super Admin';
+      const generatedTxnId = `TXN-MAT-IN-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`;
+
+      // 1. Record incoming transaction
+      await FinancialTransactionModel.create({
+        transactionId: generatedTxnId,
+        type: 'MATURITY_PAYMENT',
+        investmentId: investment.investmentId,
+        fundingRequestId: investment.fundingRequestRef,
+        payerId: investment.fundingRequestorId.toString(),
+        payerName: investment.fundingRequestorName,
+        receiverId: 'FIC_PLATFORM_ESCROW',
+        receiverName: 'FIC Maturity Escrow',
+        amount: verifiedAmt,
+        currency: 'INR',
+        paymentGateway: 'BANK_TRANSFER',
+        gatewayPaymentId: paymentReference || `MAT-REC-${Date.now()}`,
+        status: 'SUCCESS',
+        verifiedAt: new Date(),
+        notes: notes || `Incoming maturity settlement of ₹${verifiedAmt.toLocaleString('en-IN')} confirmed from borrower.`
+      });
+
+      // 2. Update investment
+      investment.maturityAmountReceived = verifiedAmt;
+      investment.maturityReceivedAt = new Date();
+      investment.status = 'MATURITY_PAYMENT_RECEIVED';
+
+      investment.activityTimeline.push({
+        action: 'Maturity Repayment Confirmed by Admin',
+        actorType: 'ADMIN',
+        actorName: adminName,
+        notes: `Borrower maturity payment of ₹${verifiedAmt.toLocaleString('en-IN')} verified. Ready for Maturity Release to investor.`,
+        timestamp: new Date()
+      });
+
+      await investment.save();
+
+      await logAdminAction(req, 'UPDATE', 'InvestmentRequest', investment._id.toString(), {
+        action: 'VERIFY_MATURITY_INCOMING',
+        amount: verifiedAmt,
+        txnId: generatedTxnId
+      });
+
+      res.json({
+        success: true,
+        message: `Maturity repayment of ₹${verifiedAmt.toLocaleString('en-IN')} verified. Now eligible for Maturity Release!`,
+        data: investment
+      });
+    } catch (err: any) {
+      console.error('Failed to verify incoming maturity repayment:', err);
       res.status(500).json({ success: false, error: err.message });
     }
   }
@@ -1004,6 +1594,86 @@ router.put(
       });
     } catch (err: any) {
       console.error('Failed to update receiving bank config:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+);
+
+// ========================================================
+// PHASE 13: LIFECYCLE METRICS & DASHBOARD KPIS
+// ========================================================
+router.get(
+  '/lifecycle-kpis',
+  authenticateAdmin,
+  async (_req: AuthenticatedAdminRequest, res: Response) => {
+    try {
+      const [fundingReqs, investmentReqs] = await Promise.all([
+        FundingRequestModel.find().lean(),
+        InvestmentRequestModel.find().lean()
+      ]);
+
+      const totalFundingRequested = fundingReqs.reduce((sum, f) => sum + (f.requiredFundingAmount || 0), 0);
+      const totalFundingApproved = fundingReqs
+        .filter((f) => ['APPROVED', 'ACTIVE', 'FUNDED', 'COMPLETED'].includes(f.status))
+        .reduce((sum, f) => sum + (f.requiredFundingAmount || 0), 0);
+
+      const totalInvestmentProposals = investmentReqs.length;
+      const totalInvestmentApproved = investmentReqs
+        .filter((i) => ['APPROVED', 'PAYMENT_PENDING', 'PAID', 'ACTIVE', 'COMPLETED', 'MATURITY_PENDING', 'MATURITY_PAYMENT_RECEIVED'].includes(i.status))
+        .reduce((sum, i) => sum + (i.approvedAmount || i.requestedAmount || 0), 0);
+
+      const totalVerifiedInvestorPayments = investmentReqs.reduce((sum, i) => sum + (i.paidAmount || 0), 0);
+      const totalFundsReleased = investmentReqs.reduce((sum, i) => sum + (i.releasedAmount || 0), 0);
+
+      const totalActiveFundedProjects = investmentReqs.filter((i) =>
+        ['ACTIVE', 'FUNDED', 'MATURITY_PENDING'].includes(i.status)
+      ).length;
+
+      let totalExpectedReturns = 0;
+      let totalReturnsReceived = 0;
+      let totalMaturityDue = 0;
+
+      for (const inv of investmentReqs) {
+        const principal = inv.releasedAmount || inv.paidAmount || 0;
+        const rate = inv.returnRatePercent || 15;
+        const tenureMonths = inv.durationMonths || 12;
+        const expectedReturn = Math.round(principal * (rate / 100) * (tenureMonths / 12));
+        totalExpectedReturns += expectedReturn;
+
+        const rec = inv.maturityAmountReceived || 0;
+        totalReturnsReceived += rec;
+        totalMaturityDue += (principal + expectedReturn);
+      }
+
+      const totalOutstandingReturns = Math.max(0, totalExpectedReturns - totalReturnsReceived);
+      const totalMaturityReleased = investmentReqs.reduce((sum, i) => sum + (i.maturityAmountReleased || 0), 0);
+
+      res.json({
+        success: true,
+        data: {
+          totalFundingRequested,
+          totalFundingApproved,
+          totalInvestmentProposals,
+          totalInvestmentApproved,
+          totalVerifiedInvestorPayments,
+          totalFundsReleased,
+          totalActiveFundedProjects,
+          totalReturnsReceived,
+          totalOutstandingReturns,
+          totalMaturityDue,
+          totalMaturityReleased,
+          counts: {
+            fundingRequestsCount: fundingReqs.length,
+            approvedFundingCount: fundingReqs.filter((f) => f.status === 'APPROVED').length,
+            investmentRequestsCount: investmentReqs.length,
+            readyReleaseCount: investmentReqs.filter((i) => ['PAID', 'FUND_RELEASE_PENDING'].includes(i.status) && (i.pendingReleaseAmount || 0) > 0).length,
+            activeReturnsCount: totalActiveFundedProjects,
+            readyMaturityCount: investmentReqs.filter((i) => i.status === 'MATURITY_PAYMENT_RECEIVED').length
+          }
+        }
+      });
+    } catch (err: any) {
+      console.error('Failed to get lifecycle KPIs:', err);
       res.status(500).json({ success: false, error: err.message });
     }
   }

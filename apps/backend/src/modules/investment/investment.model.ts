@@ -370,6 +370,20 @@ export interface IInvestmentRequestDocument extends Document {
   maturityReleasedAt?: Date;
   maturityReleaseTxnId?: string;
 
+  // Returns & Repayment Ledger
+  repayments?: {
+    installmentNumber?: number;
+    dueDate?: Date;
+    amountDue: number;
+    amountPaid?: number;
+    paidAt?: Date;
+    paymentReference?: string;
+    status: 'SCHEDULED' | 'DUE' | 'OVERDUE' | 'PARTIALLY_PAID' | 'PAID';
+    verifiedBy?: string;
+    verifiedAt?: Date;
+    notes?: string;
+  }[];
+
   status: InvestmentRequestStatus;
 
   // Admin Changes & Rejection
@@ -462,6 +476,25 @@ const InvestmentRequestSchema = new Schema<IInvestmentRequestDocument>(
     rejectionReason: { type: String },
     approvedBy: { type: String },
     approvedAt: { type: Date },
+
+    repayments: [
+      {
+        installmentNumber: { type: Number },
+        dueDate: { type: Date },
+        amountDue: { type: Number, required: true },
+        amountPaid: { type: Number, default: 0 },
+        paidAt: { type: Date },
+        paymentReference: { type: String },
+        status: {
+          type: String,
+          enum: ['SCHEDULED', 'DUE', 'OVERDUE', 'PARTIALLY_PAID', 'PAID'],
+          default: 'SCHEDULED'
+        },
+        verifiedBy: { type: String },
+        verifiedAt: { type: Date },
+        notes: { type: String }
+      }
+    ],
 
     activityTimeline: [
       {
