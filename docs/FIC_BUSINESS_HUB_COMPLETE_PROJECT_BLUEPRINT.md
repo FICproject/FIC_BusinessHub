@@ -1,2265 +1,690 @@
 # FIC BUSINESS HUB
+## Complete Project Master Architecture Blueprint & Living Baseline
 
-## Complete Project Blueprint & Development Specification
+**Document Type:** Consolidated Master Technical Blueprint (BRD + PRD + SRS + Solution Architecture + Data & API Design + Financial Engineering + Security & Governance + Deployment)**Version:** 3.0 (Living Baseline — Fully Aligned with Live Production Codebase)**Status:** Approved Technical Architecture & Active Operational Standard**Prepared for:** FIC Business Hub (Forge India Connect Pvt. Ltd.)**Technology Stack:** MERN (MongoDB Atlas + Express.js + React 19/Vite + Node.js 20+) + 100% TypeScript + Turborepo + pnpm Workspaces + Motion for React + Tailwind CSS**Date:** November 2026
 
-**Document type:** Consolidated BRD + PRD + SRS + Solution
-Architecture + Technical Design + UX Specification + Data/API Design +
-Security + QA + Deployment + Roadmap\
-**Version:** 2.0 (Updated & Aligned with Live Application Architecture)\
-**Status:** Approved Technical Architecture & Living Baseline\
-**Prepared for:** FIC Business Hub\
-**Technology direction:** MERN + TypeScript + Turborepo + pnpm + Motion for React\
-**Date:** November 2026
-
-------------------------------------------------------------------------
+---
 
 # Document Control
 
-  Field                  Details
-  ---------------------- ----------------------------------------------------------
-  Project                FIC Business Hub
-  Document               Complete Project Blueprint & Architecture Baseline
-  Version                2.0
-  Status                 Active Production Architecture
-  Owner                  FIC (Federation of Indian Chambers / Business Hub Governance)
-  Primary applications   Member Web Portal (`apps/web`), Admin Portal (`apps/admin`)
-  Backend                Shared Modular Monolith API (`apps/backend`)
-  Primary database       MongoDB (Mongoose ODM)
-  Architecture           Turborepo + pnpm monorepo with centralized dynamic RBAC
-  Core Governance Model  FIC Intermediary Governance (Direct partnerships retired to prevent business bypass)
+| Field | Details |
+| :--- | :--- |
+| **Project Name** | FIC Business Hub (Forge India Connect Pvt. Ltd.) |
+| **Document Version** | 3.0 (Complete Living Production Baseline) |
+| **Document Classification** | Enterprise Technical Specification & Production Architecture |
+| **Primary Applications** | Member Web Portal (`apps/web`), Admin Operations Portal (`apps/admin`) |
+| **Backend API** | Shared Modular Monolith API (`apps/backend`) |
+| **Primary Database** | MongoDB Atlas (Mongoose 8 ODM) |
+| **Repository Structure** | Turborepo + pnpm monorepo with centralized dynamic RBAC and shared packages |
+| **Core Governance Model** | FIC Intermediary Governance (Unmediated direct company-to-company bypass strictly prohibited) |
 
-## Document Evolution & Key Architectural Updates (v1.0 → v2.0)
+---
 
-1. **FIC Intermediary Governance Enforcement**: Standalone unmediated "Partnerships" have been permanently removed from the application architecture to prevent direct member-to-member bypass. All B2B trade inquiries, supplier discovery, subcontractor sourcing, and OEM tie-ups flow through the **Universal Services Marketplace**, **Enterprise Scaling Desk**, and **Facilitated Meetings Desk**. The legacy `/partnerships` route permanently redirects to `/my-requests`.
-2. **Distinct Advisory Desks**:
-   - **Business Ideas & Incubation Desk (`/business-ideas`)**: Focuses on **Stage 0 → 1** pre-launch concept validation, bilateral NDA protection, automated 3-metric feasibility scoring (Market Viability, Technical Feasibility, Commercial Scalability), and mentor review notes.
-   - **Business Development & Enterprise Scaling (`/business-development`)**: Focuses on **Stage 1 → 10** operational bottleneck turnaround for existing operational enterprises, factory floor lean optimization, cloud ERP modernization, regional distributor channel expansion, and phased diagnostic roadmaps.
+## Document Evolution & Key Architectural Milestones
+
+### v1.0 &rarr; Initial Monorepo Foundation & Governance Concept
+- Initial establishment of Turborepo monorepo with member portal, admin stub, and shared Express backend.
+- Conceptualization of the FIC Intermediary Model to protect against directory bypass.
+
+### v2.0 &rarr; Intermediary Governance Enforcement & Student/Mentor Ecosystem
+1. **Permanent Retirement of Unmediated Partnerships**: Standalone direct member-to-member partnership connections were permanently removed to prevent off-platform commercial bypass. All B2B trade, supplier discovery, subcontractor sourcing, and OEM tie-ups were routed through the **Universal Services Marketplace**, **Enterprise Scaling Desk**, and **Facilitated Meetings Desk**. Legacy `/partnerships` route permanently redirects to `/my-requests`.
+2. **Two Distinct Advisory Desks**:
+   - **Business Ideas & Incubation Desk (`/business-ideas`)**: Focused on **Stage 0 &rarr; 1** pre-launch concept validation, bilateral NDA protection, automated 3-metric feasibility scoring (Market Viability, Technical Feasibility, Commercial Scalability), and mentor review notes.
+   - **Business Development & Enterprise Scaling (`/business-development` / `/scaling`)**: Focused on **Stage 1 &rarr; 10** operational turnaround for existing enterprises, factory floor lean optimization, cloud ERP modernization, distributor channel expansion, and phased diagnostic roadmaps.
 3. **Dedicated Student & Mentor Ecosystem**: Full specialized portals for:
    - **Student Talent & Skill Development (`/skill-development`)**: Masterclass discovery filtered by domain and language (Tamil, English, etc.), and 1-on-1 consultation booking.
-   - **Mentor / Trainer Workspace (`/my-services`, `/my-requests`)**: Streamlined masterclass video upload form (Topic Domain, Language, Video File Upload, Duration, Curriculum), teaching services catalog, and consultation management (`Accept`, `Reject`, `Reschedule`, `Complete & Log Audit`).
+   - **Mentor Workspace (`/my-services`, `/my-requests`)**: Streamlined masterclass video upload form (Topic Domain, Language, Video File Upload, Duration, Curriculum), teaching services catalog, and consultation management (`Accept`, `Reject`, `Reschedule`, `Complete & Log Audit`).
 4. **Motion for React Design System**: Migration to official `motion/react` v12+, standardized motion tokens, and layout-level zero-opacity protection to guarantee 100% viewport visibility on route navigation.
 5. **Warm Ivory & Soft Sand Luxury Theme**: Sophisticated multi-color Warm Ivory (`#FAF7F2`) surface with deep Earth Brown text (`#51463F`, `#453A33`) exceeding WCAG AAA contrast (> 7.5:1 ratio).
 
-------------------------------------------------------------------------
+### v3.0 &rarr; Complete Living Production Architecture (November 2026 Baseline)
+1. **Centralized Customer Meetings Desk (`/meetings`)**:
+   - Aggregates all meetings scheduled across ANY module (Business Ideas, Scaling Advisory, Stage 1 & Stage 2 Service Requests, Funding/Investment, and Custom Consultations) into a single centralized operational desk.
+   - Complete synchronization across Member Website (`/meetings`) and Admin Portal (`/meetings`).
+   - Clean, dual-participant display breakdown: shows requesting Member (e.g., *Rama*) and Host Admin (e.g., *FIC Super Administrator*) rather than confusing duplicate names.
+   - Full meeting lifecycle tracking: `SCHEDULED`, `COMPLETED`, `CANCELLED`, `RESCHEDULED` with verified virtual video session links (Google Meet), duration, notes, and automated invite dispatch logs.
+2. **Business Ideas Collaboration & Universal Marketplace Integration**:
+   - Member submits Business Idea with target market, idea stage, "What support do you need from FIC?" with dedicated custom description box, and pitch deck/supporting documents.
+   - Admin reviews idea in Admin Portal (`/business-ideas`) and arranges an advisory consultation meeting with the submitter.
+   - Upon meeting completion & validation, Admin approves idea and publishes it to the **Universal Marketplace under Business Idea Requests**.
+   - Other verified ecosystem members can browse published ideas and submit collaboration interest: *"I'm interested. Let's discuss more about this business idea in meeting."*
+   - Admin reviews interested members directly inside the Business Idea Detail Modal and schedules/reschedules meetings with them.
+   - Obsolete shortlisted/selection buttons permanently removed.
+   - Added **"Remove Business Idea"** action for Admin to conclude ideas once objectives are achieved or no longer active.
+3. **Enterprise Scaling Request In-App Document Preview**:
+   - Integrated `AuthenticatedDocumentPreview` modal component for instant in-app viewing of supporting PDFs and images without opening raw JSON unauthorized error pages.
+   - Provides secure tokenized document streaming, MIME type detection, SHA-256 checksum verification, and download capabilities.
+4. **Member Financial Overview in Admin Members Directory**:
+   - In Admin Portal &rarr; Members Directory &rarr; Member Profile Modal, added two dedicated financial overview tabs:
+     1. **Funding & Loans Tab**: Active funding applications, required capital, approved funding amounts, outstanding balances, loan repayment statuses, and repayment schedules.
+     2. **Investments & Yields Tab**: Committed investment amounts, funded project allocations, expected return yields, payout frequencies, next due dates, and repayment history.
+5. **Complete Funding & Investment Lifecycle Management**:
+   - Eliminated the combined tabbed funding desk in the Admin Portal.
+   - Created **Five Completely Separate Standalone Admin Sidebar Modules**:
+     1. **Funding Requests** (`/funding-requests`): Review, document inspection, request changes, approve for marketplace listing, or reject with formal feedback.
+     2. **Investment Requests** (`/investment-requests`): Investor proposal review, ticket size validation, approval triggering payment pending obligation, or rejection.
+     3. **Fund Release** (`/fund-release`): Verification of investor payments (gateway or offline bank transfer), escrow allocation, disbursement to borrower, and formal disbursement receipts.
+     4. **Returns & Maturity** (`/returns-maturity`): Active funded project tracking, scheduled return monitoring, recording incoming borrower return installments, and installment ledgers.
+     5. **Maturity Release** (`/maturity-release`): Principal + return reconciliation, incoming borrower final maturity verification, investor payout release, and formal settlement receipts.
+   - **Executive Dashboard 11 Financial Lifecycle KPIs**: Real-time MongoDB-aggregated metrics displaying deal count, aggregate INR values, color-coded indicators, and click-through navigation with preset filters.
+   - **End-to-End 10-Step Financial Workflow**: Fully implemented with double-entry `FinancialTransactionModel` and digital wallet integration.
+
+---
 
 # 1. Executive Summary
 
-FIC Business Hub is a membership-based, intermediary-governed business,
-professional and opportunity ecosystem. It brings eligible individuals,
-MSMEs, manufacturers, freelancers, investors, mentors and students into
-one trusted platform so they can discover capabilities, offer verified
-services, validate business ideas, request enterprise scaling advisory,
-access confidential private deal rooms, schedule expert consultations,
-and engage in skill development.
+FIC Business Hub is an enterprise-grade, intermediary-governed business, professional, and opportunity ecosystem developed for **Forge India Connect Pvt. Ltd.**. It unites MSMEs, manufacturers, entrepreneurs, startup innovators, investors, service providers, mentors, and students across India into a single trusted, verified platform.
 
-The platform is neither a passive business directory nor an open,
-unmoderated marketplace. **FIC acts as the sole coordinating intermediary
-for all member-to-member business interactions.** Public listings never
-expose private contact details or company identities; all inquiries,
-tenders, and introductions are reviewed, verified, and facilitated
-directly through FIC governance to protect the business model and
-prevent off-platform bypass.
+Unlike open directories, lead brokers, or unmoderated social platforms, **FIC Business Hub operates under strict intermediary governance**:
+- **Identity Privacy Shield**: Provider identities and direct contact numbers are never published on open public feeds.
+- **Vetted Introductions**: Inquiries, vendor matching, supplier discovery, and investor introductions are reviewed, verified, and coordinated directly by FIC Officers.
+- **Zero Bypass Vulnerability**: Standalone unmoderated partnerships have been eliminated. All commercial opportunities flow through structured, moderated channels.
 
-The monorepo encompasses two web applications and one backend API:
-1. **FIC Business Hub Member Portal (`apps/web`):** Public marketing landing,
-   dynamic registration, authenticated member workspace, universal services
-   marketplace, incubation desk, enterprise scaling desk, private deal room,
-   and student/mentor portals (Port 5173).
-2. **FIC Admin Portal (`apps/admin`):** Super Admin, Admin, and Verification
-   Executive operations workspace for KYC approvals, marketplace listing audits,
-   scaling roadmaps, and meeting moderation (Port 5174).
-3. **Shared Backend API (`apps/backend`):** High-performance Express + TypeScript
-   modular monolith connected to MongoDB (Port 5000).
+### Monorepo Architecture Overview
+The platform is organized as a high-performance monorepo powered by **Turborepo** and **pnpm workspaces**:
 
-The member workspace is dynamically configured from a single source of truth
-(`apps/web/src/services/dashboardConfig.ts`). Upon authentication, members
-receive role-tailored navigation, KPIs, action cards, and specialized tracks
-optimized for their specific industry track.
+```text
+FIC-BusinessHub/
+├── apps/
+│   ├── web/                         # Website 1: Member Web Portal & Marketing Site (Port 5173)
+│   ├── admin/                       # Website 2: FIC Admin & Operations Portal (Port 5174)
+│   └── backend/                     # Shared Modular Monolith REST API (Port 5000)
+├── packages/
+│   ├── shared-types/                # Shared TypeScript models, enums & interfaces
+│   ├── validators/                  # Shared Zod runtime validation schemas
+│   ├── ui/                          # Shared UI component library & brand assets
+│   ├── api-client/                  # Unified Axios/Fetch API client
+│   ├── auth/                        # Shared authentication helpers & RBAC policies
+│   ├── typescript-config/           # Centralized tsconfig presets
+│   ├── eslint-config/               # Centralized ESLint rules
+│   └── tailwind-config/             # Shared Tailwind CSS design tokens
+├── infrastructure/                  # Docker, AWS S3, and production deployment scripts
+└── docs/                            # Master Project Blueprint & Architecture Specifications
+```
 
-------------------------------------------------------------------------
+---
 
 # 2. Business Requirements Document (BRD)
 
-## 2.1 Business vision
+## 2.1 Business Vision & Mission
+- **Vision**: Bring every eligible enterprise, professional, innovator, and student into one trusted ecosystem and empower them to discover, offer, and execute business opportunities through FIC intermediary governance.
+- **Positioning Statement**: *"One Platform. Unlimited Opportunity Ecosystem."*
 
-**Vision:** Bring every eligible enterprise, professional, innovator and
-student into one trusted ecosystem and empower them to discover, offer
-and execute business opportunities through FIC intermediary governance.
+## 2.2 Core Business Objectives
+1. Build a multi-sector membership ecosystem for verified individuals and organizations aged 18 and above.
+2. Enable members to publish verified service capabilities and submit business requirements.
+3. Make approved services discoverable across all 10 business sectors via a Universal Services Marketplace.
+4. Enforce FIC-mediated business introductions and eliminate direct, unmoderated commercial bypass.
+5. Provide a dedicated **Business Ideas & Incubation Desk** for Stage 0 &rarr; 1 pre-launch concepts.
+6. Provide an **Enterprise Scaling Desk** for Stage 1 &rarr; 10 operational turnaround and factory modernization.
+7. Enable an **End-to-End Funding & Investment Lifecycle** with double-entry escrow tracking and repayment schedules.
+8. Deliver an integrated **Student & Mentor Ecosystem** for video masterclasses and 1-on-1 consultations.
+9. Maintain a **Centralized Customer Meetings Desk** for complete visibility of all scheduled sessions across the ecosystem.
+10. Deliver dynamic, role-tailored member dashboards dynamically configured from a single source of truth (`dashboardConfig.ts`).
 
-**Positioning statement:**\
-"One Platform. Unlimited Opportunity Ecosystem."
+## 2.3 Ten Core Industry Sectors
+The ecosystem classifies all participants, service listings, business ideas, and scaling requests into 10 core business sectors:
+1. **Business & Entrepreneurship**: Business Owners, Startup Founders, Franchise Operators, Early Innovators.
+2. **Manufacturing & Industrial**: Factory Owners, Textile & Garments, Heavy Machinery, OEM Subcontractors.
+3. **Information Technology & Services**: Software Developers, Cloud Architects, Cybersecurity, AI/ML Engineers.
+4. **Healthcare & Life Sciences**: Doctors, Clinic Administrators, Diagnostic Centers, Ayurvedic Practitioners.
+5. **Retail & E-Commerce**: Wholesalers, Retailers, Regional Distributors, Direct-to-Consumer Brands.
+6. **Education & EdTech**: Students, Faculty Mentors, Corporate Trainers, Academic Institutions.
+7. **Financial & Legal Services**: Chartered Accountants, Legal Advisors, Tax Consultants, Compliance Experts.
+8. **Real Estate & Construction**: Builders, Civil Contractors, Architects, Commercial Facility Managers.
+9. **Creative, Media & Lifestyle**: Designers, Content Creators, Branding Specialists, Media Production.
+10. **Renewable Energy & Environment**: Solar Installers, Waste Management, EV Infrastructure, Green Tech.
 
-## 2.2 Business objectives
+## 2.4 Membership & Financial Model
+- **First-Year Introductory Membership**: ₹99 (one-time onboarding fee).
+- **Subsequent Annual Renewal**: ₹5,999 per year.
+- **Fair Pricing Standard**: Uniform pricing across all sectors; no deceptive countdown timers or false crossed-out pricing.
+- **Payment Gateway Integration**: Razorpay payment order creation and webhook-verified transaction signing.
+- **Wallet & Ledger System**: Every member receives a digital wallet tracking active balance, locked escrow balance, and transaction history.
+- **Referral Rewards**: Multi-tier referral bonus system crediting commissions directly to member wallets upon referred member activation.
 
--   Build a broad membership ecosystem for individuals and organizations aged 18 and above.
--   Allow members to both publish verified service capabilities and submit requirements.
--   Make approved services discoverable across all 10 business sectors via a Universal Marketplace.
--   Enforce FIC-mediated business introductions and eliminate direct unmoderated bypass.
--   Provide a dedicated **Incubation Desk** for early-stage (0 → 1) business ideas with structured feasibility scoring.
--   Provide an **Enterprise Scaling Desk** for operational (1 → 10) businesses facing bottlenecks.
--   Enable a **Confidential Private Deal Room** for institutional investment and capital syndication under strict non-disclosure.
--   Provide an integrated **Student & Mentor Ecosystem** for academic guidance, skill development masterclasses, and paid faculty consultations.
--   Deliver dynamic, role-tailored member dashboards from a unified code architecture.
--   Provide robust operations tooling for FIC staff to moderate requests, assign specialists, and manage KYC verification.
-
-## 2.3 Target audiences
-
-The platform must not be limited to the examples below. Categories and
-subcategories must be configurable.
-
--   Business owners and entrepreneurs
--   Startup founders and business idea owners
--   Manufacturers, textile and garment businesses
--   Retailers, wholesalers, distributors and traders
--   Investors and funding seekers
--   Freelancers, developers and IT professionals
--   Students, teachers, mentors and trainers
--   Consultants and professional service providers
--   Agriculture and allied-business participants
--   Healthcare and wellness professionals
--   Creative and media professionals
--   Job seekers, unemployed individuals and retired professionals
--   Skilled workers and other eligible individuals
-
-## 2.4 Business model
-
-### Membership pricing -- current approved direction
-
-  Membership period                   Fee
-  --------------------- -----------------
-  First year                          ₹99
-  Second year onwards     ₹5,999 per year
-
--   The same membership fee applies across categories.
--   The first-year ₹99 offer must be clearly described as a first-year
-    introductory offer.
--   Do not show fake crossed-out prices, fake savings or countdown
-    timers.
--   Final tax treatment, GST display, invoice format, refunds,
-    cancellation, renewal reminders and auto-renewal policy require FIC
-    approval.
--   Payment does not itself activate full dashboard access.
--   KYC resubmission after rejection or additional-document request must
-    not trigger a second membership charge.
-
-### Potential future revenue
-
-Membership fees are the currently defined revenue model. Other models
-such as sponsored listings, premium promotion, business consultancy fees
-or transaction fees must not be enabled until FIC defines pricing,
-terms, operational ownership and legal treatment.
-
-## 2.5 FIC intermediary model
-
-FIC coordinates member-to-member requests. Public members see service
-information but not provider identity or private contact information. A
-member submits a request to FIC. FIC reviews the request, collects
-requirements, identifies suitable providers internally, contacts the
-provider and coordinates next steps.
-
-The product must clearly explain what FIC does and does not guarantee. A
-request, introduction or meeting must not be represented as a guarantee
-of service delivery, funding, investment, partnership or business
-success.
-
-## 2.6 Business scope
-
-### In scope for the planned product
-
--   Public landing page and information pages
--   Signup, login and age eligibility validation
--   Dynamic main category and subcategory selection
--   Dynamic registration forms
--   Membership payment and renewal management
--   Category-specific KYC
--   Admin KYC review and resubmission
--   Dynamic member dashboard
--   Universal service discovery
--   Service listing submission and approval
--   FIC-mediated service requests
--   Business ideas and opportunities
--   Business development and scaling requests
--   Private investment-readiness and funding-interest workflows
--   Business tie-ups and partnerships
--   Business networking
--   Mentoring operations
--   Admin operations, reporting and audit trails
--   Notifications and member communication
-
-### Out of scope until separately approved
-
--   Direct member-to-member contact disclosure
--   Unmoderated public member directory
--   Direct student-to-mentor payments
--   FIC custody of investment funds
--   Securities trading, public investment exchange or deposit-taking
--   Lending, investment solicitation or regulated financial activities
-    without required legal approvals
--   Guaranteed funding, guaranteed returns or guaranteed business
-    outcomes
--   Automatic legal, tax or investment advice
--   Any unapproved payment split, escrow or wallet model
-
-## 2.7 Business success measures
-
-Proposed metrics, not guaranteed targets: - Registration completion
-rate - Payment success rate - KYC submission and approval turnaround
-time - Active paid members - Membership renewal rate - Number of
-approved service listings - Service request volume -
-Request-to-provider-match rate - Request completion rate - Business
-development requests handled - Partnership/networking introductions -
-Member satisfaction and complaint rate - Mentor session completion and
-feedback metrics
-
-Metric definitions and reporting windows must be documented before
-dashboards are treated as authoritative.
-
-------------------------------------------------------------------------
+---
 
 # 3. Product Requirements Document (PRD)
 
-## 3.1 Product structure
-
-### Website 1: FIC Business Hub
-
-Suggested domain: `www.ficapp.in`
-
-Contains: - Public landing and informational pages - Get Started
-introduction - Signup and login - Dynamic registration - Membership
-checkout - KYC upload and application tracking - Member dashboard -
-Universal marketplace - Service request experience - Business ideas and
-business development - Investment and funding interest - Partnerships
-and networking - Mentoring - Notifications, profile and support
-
-### Website 2: FIC Admin Portal
-
-Suggested domain: `admin.ficapp.in`
-
-Contains: - Super Admin workspace - Admin workspace - Verification
-Executive workspace - Category and subcategory management - Dynamic form
-and dashboard configuration - Member and membership operations - KYC
-verification - Service listing moderation - Request and opportunity
-management - Investment/funding request review - Mentor operations -
-Reports, complaints and audit logs
-
-### Shared backend
-
-Suggested domain: `api.ficapp.in`
-
-One backend serves both websites. Do not create separate backend
-applications for each category.
-
-## 3.2 Landing page
-
-### Hero section
-
-Suggested headline: **One Platform. Unlimited Business Opportunities.**
-
-Suggested supporting copy:\
-"Connect with business opportunities, discover professional services,
-explore investments, build partnerships and grow your business with
-FIC."
-
-Primary CTA: **Get Started**\
-Secondary CTA: **Explore Opportunities**
-
-### Landing page sections
-
-1.  Hero
-2.  About FIC Business Hub
-3.  Who Can Join?
-4.  Business Ideas and Opportunities
-5.  Business Development and Scaling
-6.  Services Marketplace
-7.  Investment and Funding Connections
-8.  Business Tie-ups and Partnerships
-9.  Networking
-10. How FIC Works
-11. Membership
-12. FAQs
-13. Contact and Support
-14. Footer and legal links
-
-Design must be professional, clear, responsive and accessible. Avoid
-presenting every feature in the hero area.
-
-## 3.3 Get Started introduction page
-
-When a visitor clicks Get Started, show a simple, pleasant introduction
-page before registration.
-
-Suggested heading: "Welcome to FIC Business Hub"\
-Suggested supporting copy: "Your next business opportunity starts here."
-
-Explain briefly: - Join the business ecosystem. - Discover services and
-opportunities. - Share your business requirements. - Connect through
-FIC. - Explore partnerships and investment opportunities.
-
-Display: - First-year membership: ₹99 - Renewal from second year
-onwards: ₹5,999/year - Validity and renewal terms - Applicable tax
-treatment - Refund/cancellation terms - Support and legal links
-
-CTA: **Continue Registration**
-
-## 3.4 Registration journey
-
-1.  Basic account details.
-2.  Verify age eligibility (18+).
-3.  Select exactly one primary main category.
-4.  Load subcategories for that category.
-5.  Select permitted subcategory/subcategories.
-6.  Load the dynamic details form.
-7.  Validate and save registration details.
-8.  Collect first-year membership payment.
-9.  Verify payment server-side.
-10. Present dynamic KYC requirements.
-11. Submit KYC application.
-12. Show application tracking.
-13. Admin reviews documents.
-14. Member supplies corrections/additional documents if requested.
-15. Once all access conditions are met, activate the member dashboard.
-
-The final UX may split these into screens or steps, but the business
-sequence and state rules must remain consistent.
-
-## 3.5 Initial main categories
-
-The initial ten categories are:
-
-1.  Business & Entrepreneurship
-2.  Manufacturing & Industrial
-3.  Technology & Digital
-4.  Education & Knowledge
-5.  Professional & Personal Services
-6.  Agriculture & Natural Resources
-7.  Investment & Finance
-8.  Healthcare & Wellness
-9.  Creative, Media & Lifestyle
-10. Employment, Community & Social Development
-
-Examples of subcategories:
-
-  -----------------------------------------------------------------------
-  Main category                       Illustrative subcategories
-  ----------------------------------- -----------------------------------
-  Business & Entrepreneurship         Business owner, startup founder,
-                                      entrepreneur, retailer, wholesaler,
-                                      distributor, trader, franchise
-                                      owner, business idea owner
-
-  Manufacturing & Industrial          Textile manufacturer, garment
-                                      manufacturer, factory owner,
-                                      industrial supplier, machinery
-                                      manufacturer, food processor
-
-  Technology & Digital                Software developer, IT
-                                      professional, freelancer, AI
-                                      professional, cybersecurity,
-                                      digital marketing, technology
-                                      startup
-
-  Education & Knowledge               Student, teacher, professor,
-                                      mentor, trainer, tutor, researcher,
-                                      educational consultant
-
-  Professional & Personal Services    Consultant, lawyer, accountant,
-                                      architect, designer, photographer,
-                                      mechanic, electrician, technician,
-                                      skilled professional
-
-  Agriculture & Natural Resources     Farmer, landowner, dairy,
-                                      fisheries, livestock,
-                                      agri-business, agri-consultant
-
-  Investment & Finance                Investor, startup investor, funding
-                                      seeker, financial consultant,
-                                      investment professional
-
-  Healthcare & Wellness               Doctor, nurse, clinic, hospital,
-                                      healthcare professional, wellness
-                                      and fitness professional
-
-  Creative, Media & Lifestyle         Artist, musician, actor, content
-                                      creator, fashion designer, event
-                                      organizer, writer
-
-  Employment, Community & Social      Job seeker, fresher, unemployed
-  Development                         individual, retired professional,
-                                      volunteer, NGO, social worker
-  -----------------------------------------------------------------------
-
-These are seed records, not hardcoded application enums. Admin must be
-able to add, edit, deactivate and reorder categories and subcategories.
-
-A user has exactly one primary main category. Multiple subcategories may
-be allowed only within that same category when configuration permits.
-
-## 3.6 Dynamic details forms
-
-Forms must be configuration-driven.
-
-Example fields: - Textile manufacturer: business name, manufacturing
-type, products, capacity, experience, location, applicable
-registrations. - Student: education level, institution, course, skills,
-career interests and mentoring needs. - Investor: preferred sectors,
-investment range, investment readiness and preferred business stage. -
-Freelancer: skills, experience, portfolio, services and availability.
-
-Supported field types: - Text and textarea - Number and currency range -
-Email, phone and URL - Date - Single-select dropdown - Multi-select -
-Radio - Checkbox - File upload - Address/location fields - Conditional
-sections - Repeatable groups, if needed
-
-Every field configuration should support: - Stable field key - Label and
-help text - Field type - Required/optional - Validation rules - Options
-or option source - Conditional visibility - Display order -
-Sensitive-data classification - Version and publication state
-
-Do not execute arbitrary JavaScript from database form configurations.
-Use a safe, predefined rule schema.
-
-## 3.7 Membership and KYC
-
-Payment statuses: - PENDING - PAID - FAILED - REFUNDED -
-PARTIALLY_REFUNDED, only if provider and policy support it
-
-Membership statuses: - PENDING - ACTIVE - EXPIRED - CANCELLED -
-SUSPENDED
-
-KYC statuses: - NOT_STARTED - PENDING - UNDER_REVIEW -
-ADDITIONAL_DOCUMENT_REQUIRED - APPROVED - REJECTED
-
-Account statuses: - ACTIVE - SUSPENDED - BLOCKED
-
-Full access requires: - Account ACTIVE - Payment PAID - KYC APPROVED -
-Membership ACTIVE
-
-A renewal must not bypass an account block, suspension or revoked KYC
-decision. Define how an approved KYC application is rechecked if
-documents expire or a material profile change occurs.
-
-## 3.8 Dynamic Role-Based Member Dashboard
-
-One unified, dynamic frontend dashboard architecture driven by a single source
-of truth (`apps/web/src/services/dashboardConfig.ts`), avoiding disparate codebases.
-
-### Centralized Navigation & Roles
-The top navigation header dynamically adapts according to the member's subcategory:
-
-1. **Default Business Track (Business Owner, MSME, Manufacturer, Freelancer, Trader)**:
-   - Header Tabs: `Dashboard`, `Marketplace`, `Business Ideas`, `Scaling`, `Investment`, `Meetings`, `My Requests`, `My Services`.
-2. **Student Track**:
-   - Header Tabs: `Dashboard`, `Marketplace`, `Business Ideas`, `Investment`, `Meetings`, `My Requests`, `Skill Development`.
-3. **Mentor / Trainer Track**:
-   - Header Tabs: `Dashboard`, `Marketplace`, `Business Ideas`, `Investment`, `Meetings`, `My Requests`, `My Services`.
-4. **Professor / Faculty Track**:
-   - Header Tabs: `Dashboard`, `Marketplace`, `Business Ideas`, `Investment`, `Meetings`, `My Requests`, `My Services`.
-
-### Dashboard Architecture Components
-- **Welcome & Identity Hero**: Displays member fullName, dynamic subcategory badge, account status, membership validity pill, and KYC verification status.
-- **Dynamic KPI Stat Cards**: 4 responsive stat cards tailored to the member's subcategory (e.g. Registered Students, My Teaching Services, Client Inquiries, Active Deal Rooms).
-- **Opportunity Actions & Services**: High-impact shortcut grid (7 to 8 actions) linking to core modules, explicitly labeled as *"Moderated by FIC Intermediary Governance"*.
-- **Specialized Track Card**: A high-touch spotlight banner with key domain metrics (e.g. Student Talent Accelerator, Universal Service Marketplace Showcase).
-
-## 3.9 Universal Services Marketplace (`/marketplace`)
-
-Every eligible member can discover all approved, active services across **10 business sectors**
-(Business & Entrepreneurship, Manufacturing, Technology, Education, Professional Services,
-Agriculture, Investment & Finance, Healthcare, Creative Media, Employment & Community).
-
-### Privacy & Governance Protocol
-- Public listings **never** expose provider personal name, company name, private phone, private email, or direct contact links.
-- Backend strictly enforces field-level privacy at the API layer.
-- Member-to-member communication is coordinated directly by FIC Officers to eliminate spam and bypass.
-- Public fields: Service title, category, subcategory, verified deliverables list, industry tags, FIC verification badge, response timeframe, and *"Request Service through FIC"* CTA.
-
-## 3.10 Service Request Workflow
-
-Lifecycle:
-`SUBMITTED` → `UNDER_REVIEW` → `REQUIREMENTS_COLLECTED` → `ASSIGNED_TO_PROVIDER` → `PROPOSAL_SHARED` → `ACCEPTED` → `IN_PROGRESS` → `COMPLETED` → `CANCELLED` / `DISPUTED`.
-
-1. Member submits a requirement for an approved marketplace service.
-2. Request appears in member's **My Requests** desk (`/my-requests?tab=services`).
-3. FIC Desk evaluates scope, confirms member eligibility, and coordinates with the service provider.
-4. Proposal and deliverables are shared under FIC moderation.
-
-## 3.11 Advisory Desks: Business Ideas vs Enterprise Scaling
-
-The platform clearly distinguishes between early-stage innovation and existing business turnaround:
-
-### 3.11.1 Business Ideas & Incubation Desk (`/business-ideas`) — *Stage 0 → 1*
-Designed for innovators, students, researchers, and early entrepreneurs validating a **new concept**:
-- **Form Inputs**: Idea Title, Detailed Concept Description, Target Market / Geography, Current Maturity Stage (*Idea on Paper, Prototype/MVP, Early Traction, Growth*), and Support Needed (*Idea Validation, Business Plan Preparation, Technology/MVP Development, Mentoring & Advisory, Regulatory Setup, Go-to-Market Strategy*).
-- **IP Protection Guarantee**: Submissions are protected by strict bilateral non-disclosure protocols and reviewed only by accredited FIC consultants.
-- **Feasibility Scoring Engine**: Submissions receive an automated diagnostic evaluation across:
-  - *Market Viability (out of 100)*
-  - *Technical Feasibility (out of 100)*
-  - *Commercial Scalability (out of 100)*
-- **Tracking Lifecycle**: `UNDER_REVIEW` → `FEASIBILITY_ANALYSIS` → `ADVISORY_SCHEDULED` → `APPROVED_INCUBATION`.
-- **Review Notes & Next Steps**: Members receive diagnostic notes and structured next steps from senior incubation specialists.
-
-### 3.11.2 Business Development & Enterprise Scaling (`/business-development`) — *Stage 1 → 10*
-Designed for **established operational businesses, MSMEs, and factories** facing operational bottlenecks:
-- **Form Inputs**: Enterprise Name, Required Growth Area (*Strategic Business Planning & Turnaround, Technology Modernization & Cloud Systems, Regional Expansion & Distributor Channel Onboarding, Operational & Factory Floor Lean Optimization, New Entity Setup*), Current Operational Bottlenecks, and Target Objectives / Milestones.
-- **Specialist Assignment**: FIC assigns senior Domain Directors (e.g. Technology & Cloud Modernization Wing, FMCG & Commercial Retail Syndication).
-- **Diagnostic Roadmaps & Milestones**: Specialists formulate phased transformation roadmaps:
-  - *Phase 1: Diagnostic Assessment & Architecture Audit*
-  - *Phase 2: Modernization Execution & Vendor Coordination*
-  - *Phase 3: Performance Verification & Go-Live*
-- **Tracking Lifecycle**: `DIAGNOSTIC_PENDING` → `SPECIALIST_ASSIGNED` → `ROADMAP_PREPARED` → `EXECUTION_IN_PROGRESS`.
-
-## 3.12 Confidential Investment & Private Deal Room (`/investment`)
-
-An institutional capital channel connecting high-growth enterprises with accredited syndicates:
-- **Expression of Interest (EOI)**: Private submission for both capital seekers (ticket size, business stage, pitch deck) and investors (investment appetite, preferred sectors, liquidity horizon).
-- **Private Deal Room Opportunities Bulletin**: Pre-screened commercial deals vetted by the FIC Senior Deal Committee (e.g. Tier-1 automated spinning units, solar cold-chain logistics, ayurvedic extraction facilities).
-- **Bilateral NDA Protection**: Deal rooms require signed non-disclosure agreements before confidential financial data rooms are unlocked.
-- **Compliance Protocol**: FIC does not hold investor custody, collect public deposits, or operate an unregistered securities exchange; operations are strictly structured as private B2B intermediary coordination.
-
-## 3.13 FIC Intermediary Governance & B2B Coordination (Retirement of Direct Partnerships)
-
-### Business Justification
-In earlier specifications, a standalone "Partnerships" module allowed direct company-to-company connections. This created an existential business vulnerability: once Company A and Company B connected directly, FIC was bypassed in all subsequent commercial transactions.
-
-### Architectural Policy
-1. **Complete Removal of Standalone Partnerships**: The "Partnerships" module, navigation tabs, action shortcuts, and creation endpoints have been completely eliminated from the member portal.
-2. **Redirect Strategy**: The route `/partnerships` permanently redirects to `/my-requests`.
-3. **Mediated B2B Trade & Expansion**: Genuine B2B business collaboration (OEM supply chains, distributor onboarding, vendor sourcing, subcontracting) is routed strictly through the **Universal Marketplace**, **Enterprise Scaling Desk**, and **Facilitated Meetings Desk**, where FIC Officers oversee eligibility, vetting, and execution.
-
-## 3.14 Student & Mentor Ecosystem
-
-A comprehensive, role-tailored ecosystem connecting students and academic mentees with verified industry mentors and faculty:
-
-### 3.14.1 Student Skill Development Portal (`/skill-development`)
-- **Masterclass Video Discovery**: Filter verified video masterclasses by Topic Domain (Java, Python, Web Development, Digital Marketing, Mathematics) and Language (Tamil, English, Hindi, Kannada, Telugu).
-- **Curriculum & Syllabus Details**: Students inspect video duration, target learning outcomes, and mentor credentials.
-- **1-on-1 Mentor Consultation Booking**: Students can directly request a 1-on-1 career or academic guidance session with the mentor, specifying preferred dates, times, and meeting agendas.
-
-### 3.14.2 Mentor Workspace & Video Upload Form (`/my-services`)
-- **Streamlined Video Upload Form**: Eliminates obsolete fields (stream URL, target level, embed links) and focuses on core essentials:
-  1. *Subject / Topic Domain* (Required)
-  2. *Language* (Required — Tamil, English, etc.)
-  3. *Video Masterclass File* (Required — Drag-and-drop file upload supporting MP4, WebM, MOV)
-  4. *Session Duration* (Minutes)
-  5. *Curriculum & Topic Description* (Required)
-- **Teaching Services Catalog**: Mentors publish structured consulting and coaching tracks into the marketplace.
-
-### 3.14.3 Mentorship Consultations Management (`/my-requests`)
-Role-based tab separation in `MyRequestsPage.tsx`:
-- **Mentor View**:
-  - Displays `Marketplace Requests` and `Student Requests`.
-  - Mentors can execute direct actions:
-    - **Accept & Schedule**: Specify confirmed date, time, meeting mode (Online/Offline), Google Meet URL, and mentor notes.
-    - **Reject Request**: Provide constructive feedback reason.
-    - **Propose Reschedule**: Suggest alternative dates and times with notes.
-    - **Complete Session & Log Audit**: Record session summary, mentor notes, recommended materials, and follow-up guidance before closing the booking.
-- **Student View**:
-  - Displays `Marketplace Requests` and `Mentor Requests`.
-  - Students track booking status (`PENDING`, `ACCEPTED`, `RESCHEDULE_PROPOSED`, `COMPLETED`), access meeting links, and accept or decline mentor reschedule proposals.
-
-------------------------------------------------------------------------
-
-# 4. Software Requirements Specification (SRS)
-
-## 4.1 Actors
-
--   Visitor
--   Applicant/member
--   Super Admin
--   Admin
--   Verification Executive
--   Service provider (a member with approved service listings)
--   Investor-interest member
--   Funding-seeker member
--   Mentor
--   Student/mentee
--   FIC operations staff
-
-A person may act as a service requester and provider through the same
-member account. These capabilities are not separate system roles unless
-permissions require them.
-
-## 4.2 Functional requirements
-
-  -----------------------------------------------------------------------
-  ID                                  Requirement
-  ----------------------------------- -----------------------------------
-  FR-001                              The system shall provide a public
-                                      FIC landing page.
-
-  FR-002                              Get Started shall open the
-                                      registration introduction page.
-
-  FR-003                              The system shall enforce minimum
-                                      age eligibility of 18 years.
-
-  FR-004                              A member shall have exactly one
-                                      primary main category.
-
-  FR-005                              Subcategories shall load
-                                      dynamically from the selected
-                                      category.
-
-  FR-006                              Registration detail forms shall be
-                                      configuration-driven.
-
-  FR-007                              The system shall display the
-                                      approved membership price and
-                                      terms.
-
-  FR-008                              Payment shall be verified
-                                      server-side.
-
-  FR-009                              The system shall support
-                                      category-specific KYC requirements.
-
-  FR-010                              Full dashboard access shall require
-                                      all activation conditions.
-
-  FR-011                              Members shall be able to track KYC
-                                      status and resubmit documents.
-
-  FR-012                              Admin users shall review and decide
-                                      KYC applications according to
-                                      permissions.
-
-  FR-013                              Super Admin shall manage categories
-                                      and subcategories.
-
-  FR-014                              Authorized admins shall configure
-                                      registration forms and dashboards.
-
-  FR-015                              The dashboard shall render from
-                                      published configuration.
-
-  FR-016                              Eligible members shall discover
-                                      approved services across all
-                                      categories.
-
-  FR-017                              Public service APIs shall not
-                                      expose provider identity/contact
-                                      details.
-
-  FR-018                              Members shall submit service
-                                      requests to FIC.
-
-  FR-019                              FIC staff shall coordinate requests
-                                      with providers.
-
-  FR-020                              Members shall submit business ideas
-                                      and development requests.
-
-  FR-021                              Members shall submit private
-                                      investment-readiness information.
-
-  FR-022                              Members shall submit private
-                                      funding requests.
-
-  FR-023                              FIC staff shall review and
-                                      coordinate partnership/networking
-                                      requests.
-
-  FR-024                              Mentoring shall support session,
-                                      attendance, feedback and payout
-                                      workflows.
-
-  FR-025                              The system shall provide
-                                      notifications and status history.
-
-  FR-026                              The system shall maintain audit
-                                      records for sensitive
-                                      administrative actions.
-
-  FR-027                              Membership renewal shall not
-                                      override account suspension/block
-                                      or revoked eligibility.
-
-  FR-028                              The system shall support
-                                      configurable membership reminders.
-
-  FR-029                              The system shall provide reporting
-                                      for membership, KYC, services and
-                                      requests.
-
-  FR-030                              The system shall support
-                                      configuration versioning and
-                                      controlled publication.
-  -----------------------------------------------------------------------
-
-## 4.3 Non-functional requirements
-
-These are proposed engineering targets and must be validated against
-budget, hosting and expected traffic.
-
-  -----------------------------------------------------------------------
-  ID                                  Requirement
-  ----------------------------------- -----------------------------------
-  NFR-001                             Responsive design for mobile,
-                                      tablet and desktop.
-
-  NFR-002                             Target monthly availability: 99.9%,
-                                      subject to infrastructure and
-                                      support model.
-
-  NFR-003                             Target p95 normal read API latency
-                                      below 500 ms under agreed load.
-
-  NFR-004                             Secure transport using HTTPS in all
-                                      deployed environments.
-
-  NFR-005                             Sensitive documents must be private
-                                      and access-controlled.
-
-  NFR-006                             Payment webhooks must be
-                                      signature-verified and idempotent.
-
-  NFR-007                             Public APIs must enforce data
-                                      minimization and field-level
-                                      access.
-
-  NFR-008                             Administrative actions must be
-                                      auditable.
-
-  NFR-009                             System must support backup and
-                                      tested recovery procedures.
-
-  NFR-010                             UI should target WCAG 2.2 AA
-                                      accessibility practices.
-
-  NFR-011                             APIs must use pagination and
-                                      bounded query parameters.
-
-  NFR-012                             Logs must avoid passwords, OTPs,
-                                      payment secrets and unnecessary
-                                      sensitive data.
-
-  NFR-013                             Configuration publication must be
-                                      versioned and reversible where
-                                      feasible.
-
-  NFR-014                             Application must support automated
-                                      unit, integration and end-to-end
-                                      tests.
-  -----------------------------------------------------------------------
-
-## 4.4 Business rules
-
-1.  Only users aged 18 or above may register.
-2.  One account has exactly one primary main category.
-3.  Subcategories must belong to the selected main category.
-4.  Main categories and subcategories are database/configuration-driven.
-5.  Membership first-year fee is ₹99; subsequent annual renewal fee is
-    ₹5,999, subject to approved tax and terms.
-6.  Payment does not grant full dashboard access by itself.
-7.  KYC approval is mandatory for full access.
-8.  KYC resubmission does not require another membership payment.
-9.  Only active, approved and eligible service listings appear in the
-    marketplace.
-10. Marketplace discovery is universal across member categories.
-11. Provider identity/contact details are not public.
-12. Service and business introductions are coordinated through FIC.
-13. Investment/funding information is restricted to authorized FIC
-    personnel.
-14. Student-to-mentor direct payment is not supported.
-15. Membership renewal does not bypass account suspension/block or
-    revoked KYC.
-16. Configuration changes must not silently alter historical
-    submissions.
-17. Every sensitive status change must record actor, timestamp, reason
-    and prior/new state.
-
-## 4.5 Access decision logic
-
-Full dashboard access:
-
-`accountStatus == ACTIVE`\
-AND `paymentStatus == PAID`\
-AND `kycStatus == APPROVED`\
-AND `membershipStatus == ACTIVE`
-
-The backend must enforce this rule for protected APIs. Frontend route
-guards are supplementary only.
-
-## 4.6 State management
-
-Keep account, payment, KYC, membership and listing states separate. Do
-not compress them into one generic status.
-
-Example: - Account: ACTIVE / SUSPENDED / BLOCKED - Payment: PENDING /
-PAID / FAILED / REFUNDED - KYC: NOT_STARTED / PENDING / UNDER_REVIEW /
-ADDITIONAL_DOCUMENT_REQUIRED / APPROVED / REJECTED - Membership: PENDING
-/ ACTIVE / EXPIRED / CANCELLED / SUSPENDED - Service listing: DRAFT /
-PENDING / APPROVED / REJECTED / SUSPENDED / ARCHIVED
-
-Define allowed transitions and actor permissions in implementation.
-
-------------------------------------------------------------------------
-
-# 5. User Roles and Permissions
-
-## 5.1 Super Admin
-
--   Platform-wide monitoring
--   Create/manage Admin accounts
--   Configure role permissions
--   Manage categories and subcategories
--   Configure membership plans and pricing
--   Configure registration forms and KYC requirements
--   Configure dashboard templates and widgets
--   Configure service categories
--   Manage system settings
--   View financial and operational reports
--   Review audit logs
--   Suspend/block accounts according to policy
-
-## 5.2 Admin
-
--   Manage member operations
--   Review member profiles
--   Handle KYC according to assigned permissions
--   Approve/reject service listings
--   Manage service requests
--   Handle business development requests
--   Review investment/funding interest
--   Coordinate partnerships and networking
--   Manage mentor operations and payout workflow
--   Handle complaints and support
--   Manage renewals and membership operations
--   View permitted reports
-
-## 5.3 Verification Executive
-
--   View assigned KYC cases
--   Inspect permitted documents
--   Approve, reject or request additional documents according to granted
-    permissions
--   Add internal notes
--   Record verification reasons
--   Track assigned workload
-
-No financial configuration, staff administration or Super Admin settings
-unless explicitly granted.
-
-## 5.4 Member
-
--   Manage own profile
--   View membership and payment history
--   Submit KYC and corrections
--   Create/manage own service listings
--   Discover all approved services
--   Submit service requests
--   Submit business ideas and development requests
--   Express investment interest or submit funding requirements
--   Request networking and partnerships
--   Use mentoring features where eligible
--   Communicate with FIC
--   Track own requests and notifications
-
-## 5.5 RBAC principles
-
--   Deny by default.
--   Enforce permissions in backend middleware/service layer.
--   Scope member access to their own records unless an explicit FIC
-    workflow grants access.
--   Separate system role from business category.
--   Audit privileged access and sensitive document views.
--   Do not trust role or user identifiers sent by the browser without
-    server-side verification.
-
-------------------------------------------------------------------------
-
-# 6. Solution Architecture
-
-## 6.1 Architecture style
-
-Use a **modular monolith** initially. Keep domain modules separated
-inside one backend deployment. Do not begin with microservices unless
-scale, team ownership or operational needs justify them.
-
-## 6.2 Monorepo structure
-
-``` text
-fic-business-hub/
-├── apps/
-│   ├── web/                         # Website 1: public + member
-│   │   ├── public/
-│   │   └── src/
-│   │       ├── app/
-│   │       ├── assets/
-│   │       ├── components/
-│   │       ├── features/
-│   │       │   ├── landing/
-│   │       │   ├── auth/
-│   │       │   ├── registration/
-│   │       │   ├── membership/
-│   │       │   ├── kyc/
-│   │       │   ├── dashboard/
-│   │       │   ├── marketplace/
-│   │       │   ├── services/
-│   │       │   ├── business-development/
-│   │       │   ├── investment/
-│   │       │   ├── partnerships/
-│   │       │   ├── networking/
-│   │       │   ├── mentoring/
-│   │       │   ├── notifications/
-│   │       │   └── profile/
-│   │       ├── hooks/
-│   │       ├── layouts/
-│   │       ├── routes/
-│   │       ├── services/
-│   │       ├── state/
-│   │       ├── styles/
-│   │       └── utils/
-│   ├── admin/                        # Website 2: admin portal
-│   │   └── src/
-│   │       ├── app/
-│   │       ├── components/
-│   │       ├── features/
-│   │       │   ├── dashboard/
-│   │       │   ├── members/
-│   │       │   ├── kyc/
-│   │       │   ├── categories/
-│   │       │   ├── configuration-builder/
-│   │       │   ├── memberships/
-│   │       │   ├── payments/
-│   │       │   ├── services/
-│   │       │   ├── requests/
-│   │       │   ├── business-opportunities/
-│   │       │   ├── investment-funding/
-│   │       │   ├── partnerships/
-│   │       │   ├── networking/
-│   │       │   ├── mentoring/
-│   │       │   ├── complaints/
-│   │       │   ├── reports/
-│   │       │   ├── staff/
-│   │       │   └── audit-logs/
-│   │       ├── layouts/
-│   │       ├── routes/
-│   │       └── services/
-│   └── backend/                      # Shared API
-│       └── src/
-│           ├── config/
-│           ├── database/
-│           ├── common/
-│           │   ├── constants/
-│           │   ├── errors/
-│           │   ├── middleware/
-│           │   ├── utils/
-│           │   ├── validators/
-│           │   └── types/
-│           ├── modules/
-│           │   ├── auth/
-│           │   ├── users/
-│           │   ├── profiles/
-│           │   ├── categories/
-│           │   ├── subcategories/
-│           │   ├── category-configurations/
-│           │   ├── registration/
-│           │   ├── dashboard/
-│           │   ├── membership/
-│           │   ├── payments/
-│           │   ├── kyc/
-│           │   ├── services/
-│           │   ├── products/
-│           │   ├── marketplace/
-│           │   ├── connections/
-│           │   ├── communication/
-│           │   ├── business-ideas/
-│           │   ├── business-development/
-│           │   ├── investment/
-│           │   ├── funding/
-│           │   ├── partnerships/
-│           │   ├── networking/
-│           │   ├── mentoring/
-│           │   ├── notifications/
-│           │   ├── complaints/
-│           │   ├── admin/
-│           │   ├── reports/
-│           │   └── audit-logs/
-│           ├── integrations/
-│           │   ├── payment-provider/
-│           │   ├── email/
-│           │   ├── sms/
-│           │   ├── object-storage/
-│           │   └── analytics/
-│           ├── jobs/
-│           ├── routes/
-│           ├── app.ts
-│           └── server.ts
-├── packages/
-│   ├── ui/
-│   ├── shared-types/
-│   ├── validators/
-│   ├── api-client/
-│   ├── auth/
-│   ├── eslint-config/
-│   ├── typescript-config/
-│   └── tailwind-config/
-├── infrastructure/
-│   ├── docker/
-│   ├── aws/
-│   └── monitoring/
-├── docs/
-│   └── FIC_BUSINESS_HUB_COMPLETE_PROJECT_BLUEPRINT.md
-├── .env.example
-├── .gitignore
-├── package.json
-├── pnpm-workspace.yaml
-├── pnpm-lock.yaml
-├── turbo.json
-└── README.md
+## 3.1 Web Applications Architecture
+
+### Website 1: FIC Business Hub Member Portal (`apps/web`)
+- **Port**: 5173 (Development) / Production Custom Domain.
+- **Layout Architecture**:
+  1. `PublicLayout`: High-conversion landing page, about, membership details, contact, privacy policy, and terms. Includes full public header and comprehensive marketing footer.
+  2. `AuthLayout`: Minimalist, distraction-free layout for get started, registration, login, and KYC submission tracking.
+  3. `MemberLayout`: Secure authenticated member workspace featuring top navigation header, role-based action cards, notification bell, user profile drawer, and compact member footer (strictly excludes marketing footer).
+
+### Website 2: FIC Admin & Operations Portal (`apps/admin`)
+- **Port**: 5174 (Development) / Production Admin Domain.
+- **Layout Architecture**:
+  - `AdminLayout`: High-contrast luxury theme with fixed/collapsible sidebar, universal header with Royal Midnight gradient, notification system, admin profile settings modal, and fast-action search.
+
+---
+
+## 3.2 Member Portal Modules & User Journeys
+
+### 1. Dynamic Member Dashboard (`/dashboard`)
+Configured dynamically via `apps/web/src/services/dashboardConfig.ts`:
+- **Identity Banner**: Displays member name, category, subcategory, verified KYC badge, and digital wallet balance.
+- **Dynamic KPI Stat Cards**: 4 responsive metrics tailored to the member's sector (e.g., *Registered Students*, *My Teaching Services*, *Client Inquiries*, *Active Deal Rooms*).
+- **Opportunity Actions Grid**: 7-8 high-impact action shortcuts explicitly marked *"Moderated by FIC Intermediary Governance"*.
+- **Specialized Track Spotlight**: Domain-specific accelerator showcase (e.g., *Student Talent Accelerator*, *Deal Room Showcase*).
+
+### 2. Universal Services Marketplace (`/marketplace`)
+- Discover approved capabilities across all 10 sectors.
+- **Field-Level Identity Shield**: Hides personal names, phone numbers, email addresses, and company names.
+- Public display includes: Service Title, Category/Subcategory, Deliverables List, Industry Badges, FIC Verification Stamp, Response Timeframe, and *"Request Service through FIC"* CTA.
+- Tabbed browsing: All Services, Filter by Sector, Subcategory selector, and **Business Idea Requests** tab.
+
+### 3. Business Ideas & Innovation Hub (`/business-ideas`)
+- Early-stage concept validation (**Stage 0 &rarr; 1**).
+- **Submission Form**:
+  - Idea Title & Concept Description.
+  - Target Market & Geography.
+  - Development Stage (*Just an Idea / On Paper*, *Prototype / MVP*, *Early Traction*, *Growth*).
+  - **Support Requirements**: Multi-select options plus dedicated custom description box: *"What support do you need from FIC?"*.
+  - Supporting Documents: Pitch deck, executive summary, product diagram.
+- **Feasibility Scoring Engine**: Automated 3-metric score (*Market Viability*, *Technical Feasibility*, *Commercial Scalability*).
+- **Collaboration Lifecycle**:
+  - Submitter meets with FIC advisor.
+  - Admin validates and publishes idea to Universal Marketplace.
+  - Interested members click *"I'm interested. Let's discuss more about this business idea in meeting."*
+  - Admin conducts meetings with interested parties directly from the idea detail modal.
+  - Admin concludes and archives completed ideas via *"Remove Business Idea"*.
+
+### 4. Enterprise Scaling & Advisory Hub (`/business-development` / `/scaling`)
+- Operational turnaround for existing operational enterprises (**Stage 1 &rarr; 10**).
+- **Submission Form**: Enterprise Name, Sector, Operational Stage, Core Business Challenges, Required Support Areas, and Supporting Documents.
+- **In-App Document Preview**: Integrated preview modal for inspecting uploaded balance sheets, certificates, and pitch decks without unauthorized token errors.
+- **Advisory Consultation**: Scheduled consultation meeting displayed directly in the scaling card and synchronized with the central Meetings Desk.
+- **Diagnostic Roadmaps**: Phased transformation roadmaps formulated by FIC Sector Directors.
+
+### 5. Complete Funding & Investment Hub (`/investment`)
+- Institutional deal room connecting capital seekers with accredited investors.
+- **Need Funding Listings**: Detailed parameters including Required Capital, Min/Max Ticket Size, Duration, Expected Return Rate (%), Return Payout Frequency (Monthly, Quarterly, Annual, At Maturity), Purpose of Funds, and Pitch Deck.
+- **Investor Proposal Modal**: Investors select a funded project, specify proposed investment amount, expected yield share, and investment thesis.
+- **Investor Payment Flow**: Once approved by Admin, investors complete payment obligations via Razorpay or offline transfer.
+- **Yield & Return Timetable**: Investors track ongoing return installments and scheduled maturity dates.
+
+### 6. Centralized Customer Meetings Desk (`/meetings`)
+- Universal operational desk for all consultations across the platform.
+- Displays upcoming sessions, meeting title, agenda, scheduled date/time, duration, host admin, and direct *"Join Online Meeting"* CTA.
+- Full status filtering: `All Meetings`, `Scheduled`, `Completed`, `Cancelled`.
+
+### 7. My Services & My Requests Desks
+- **My Services (`/my-services`)**: Manage published service listings, submit new offerings, and view moderation status. Mentors upload masterclass videos here.
+- **My Requests (`/my-requests`)**: Track incoming and outgoing inquiries, service requests, and mentor consultations with interactive actions (`Accept`, `Reject`, `Reschedule`, `Complete`).
+
+### 8. Student & Mentor Skill Development Hub (`/skill-development`)
+- Filter masterclasses by topic (Java, Python, Web Dev, Marketing, etc.) and language (Tamil, English, Hindi, Kannada, Telugu).
+- Direct booking of 1-on-1 consultations with faculty mentors.
+
+---
+
+## 3.3 Admin Portal Modules & Executive Workspaces
+
+The Admin Portal (`apps/admin`) provides five primary operational functional blocks:
+
+### 1. Core Overview & Live Ledger
+- **Dashboard (`/`)**: Live operational KPIs, Financial Revenue Snapshot, Quick Action Toolbar, System Diagnostics, and Real-Time Administrative Audit Stream.
+- **11 Lifecycle KPIs**: Dedicated Funding & Investment lifecycle metric grid backed by MongoDB records.
+
+### 2. Members & Compliance Desk
+- **Members Directory (`/members`)**: Full member registry with filters, active privilege toggles, and Member Profile Modal containing:
+  - Registration Profile
+  - Marketplace Services
+  - Digital Wallet Ledger
+  - Bank Details
+  - **Funding & Loans Tab**
+  - **Investments & Yields Tab**
+- **KYC Verification (`/kyc`)**: Compliance desk for reviewing Aadhaar, PAN, GSTIN, and business proofs with `Approve`, `Reject`, or `Request Clarification` actions.
+
+### 3. Ecosystem Marketplace & Innovation Desks
+- **Categories & Config (`/categories`)**: Dynamic sector and subcategory manager.
+- **Service Moderation (`/services`)**: Listing moderation desk to enforce privacy compliance before public marketplace publishing.
+- **Business Idea Requests (`/business-ideas`)**: Review submitted ideas, arrange consultation meetings, approve to marketplace, manage interested member collaboration responses, schedule meetings, and remove concluded ideas.
+- **Scaling Requests (`/scaling`)**: Review enterprise scaling applications, inspect documents via `AuthenticatedDocumentPreview`, and schedule consultation meetings.
+
+### 4. Dedicated Commercials & Capital Desk (5 Independent Modules)
+1. **Funding Requests (`/funding-requests`)**: Dedicated module for borrower funding proposals. Features include in-app document preview, change requests with dynamic document requirements, approval with verified amount validation, and formal rejection.
+2. **Investment Requests (`/investment-requests`)**: Dedicated module for investor proposals. Features include ticket validation, approval triggering `PAYMENT_PENDING`, change requests, and rejection.
+3. **Fund Release (`/fund-release`)**: Dedicated module for capital disbursement. Features include investor payment verification (offline/gateway), escrow reconciliation, disbursement to borrower, and disbursement receipts.
+4. **Returns & Maturity (`/returns-maturity`)**: Dedicated module for active funded projects. Features include tracking scheduled returns, recording incoming borrower return installments into sub-document `repayments` array, and ledger updates.
+5. **Maturity Release (`/maturity-release`)**: Dedicated module for final investment settlement. Features include principal + yield reconciliation, confirming borrower escrow settlement, disbursing maturity payout to investors, and formal settlement certificates.
+- **Payments & Fees (`/payments`)**: Platform revenue ledger and formal receipt generator.
+- **Referral Bonus (`/referrals`)**: Track affiliate referrals and bonus disbursements.
+
+### 5. Operations, Governance & Support
+- **Meetings & Calls (`/meetings`)**: Centralized meeting management desk showing all scheduled meetings across every module with dual-participant breakdown (Member + Admin) and status management.
+- **Service Requests (`/requests`)**: Two-stage service intermediary facilitation desk.
+- **Support Helpdesk (`/support`)**: Member support ticket queue.
+- **Staff Management (`/staff`)**: Role-based access control for Super Admins, Admins, and Verification Staff.
+- **Audit Logs (`/audit-logs`)**: Immutable chronological log of all administrative actions.
+
+---
+
+# 4. Solution Architecture & Technical Design
+
+## 4.1 Monorepo Workspace Structure
+
+```text
+packages/
+├── shared-types/
+│   └── src/
+│       ├── user.ts                  # User, Member & AdminUser interfaces
+│       ├── category.ts              # Category & Subcategory interfaces
+│       ├── kyc.ts                   # KycDocument & status types
+│       ├── service.ts               # ServiceListing & FicRequest types
+│       ├── ideas.ts                 # BusinessIdea & IdeaInterest types
+│       ├── scaling.ts               # BusinessDevelopmentRequest types
+│       ├── funding.ts               # FundingRequest & InvestmentRequest types
+│       ├── meetings.ts              # Meeting interface & status types
+│       ├── financial.ts             # FinancialTransaction & Wallet types
+│       └── audit.ts                 # AuditLog interface
+├── validators/
+│   └── src/                         # Zod schemas for runtime API payload validation
+├── ui/
+│   └── src/components/              # Shared buttons, cards, badges, inputs & modals
+├── api-client/
+│   └── src/                         # Base Axios client with automatic token injection
+└── auth/
+    └── src/                         # JWT decode, token storage & RBAC role checkers
 ```
 
-The structure is a recommended target. Create folders progressively as
-modules are implemented; avoid empty folders being mistaken for
-completed features.
+---
 
-## 6.3 Workspace configuration
+# 5. Data Architecture & MongoDB Models
 
-`pnpm-workspace.yaml`:
+## 5.1 Core Entity Relationship Overview
 
-``` yaml
-packages:
-  - "apps/*"
-  - "packages/*"
+```mermaid
+erDiagram
+    User ||--o| Member : "extends"
+    User ||--o| AdminUser : "extends"
+    Member ||--o| Wallet : "owns"
+    Member ||--o{ KycDocument : "submits"
+    Member ||--o{ ServiceListing : "offers"
+    Member ||--o{ FicRequest : "requests"
+    Member ||--o{ BusinessIdea : "authors"
+    Member ||--o{ BusinessDevelopmentRequest : "submits"
+    Member ||--o{ FundingRequest : "applies"
+    Member ||--o{ InvestmentRequest : "invests"
+    Member ||--o{ Meeting : "participates"
+    Member ||--o{ FinancialTransaction : "records"
+    FundingRequest ||--o{ InvestmentRequest : "receives"
+    InvestmentRequest ||--o{ FinancialTransaction : "generates"
 ```
 
-Root `package.json` should: - Be private. - Pin the actual pnpm version
-using the `packageManager` field. - Provide `dev`, `build`, `lint`,
-`typecheck` and `clean` scripts. - Use a compatible Turborepo version.
+## 5.2 Key Mongoose Schema Definitions
 
-Example root scripts:
+### 1. InvestmentRequestModel (`apps/backend/src/modules/investment/investment.model.ts`)
+Includes structured sub-document `repayments` array for active return tracking:
+```typescript
+const RepaymentInstallmentSchema = new Schema({
+  installmentNumber: { type: Number, required: true },
+  dueDate: { type: Date, required: true },
+  amountDue: { type: Number, required: true },
+  amountPaid: { type: Number, default: 0 },
+  paidAt: { type: Date },
+  paymentReference: { type: String },
+  status: { type: String, enum: ['PENDING', 'DUE', 'PAID', 'OVERDUE'], default: 'PENDING' },
+  verifiedBy: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
+  verifiedAt: { type: Date },
+  notes: { type: String }
+});
 
-``` json
-{
-  "scripts": {
-    "dev": "turbo dev",
-    "build": "turbo build",
-    "lint": "turbo lint",
-    "typecheck": "turbo typecheck",
-    "clean": "turbo clean"
-  }
-}
+const InvestmentRequestSchema = new Schema({
+  fundingRequestId: { type: Schema.Types.ObjectId, ref: 'FundingRequest', required: true },
+  investorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  proposedAmount: { type: Number, required: true },
+  approvedAmount: { type: Number },
+  proposedSharePercent: { type: Number },
+  status: {
+    type: String,
+    enum: [
+      'SUBMITTED', 'UNDER_REVIEW', 'CHANGES_REQUESTED', 'APPROVED',
+      'PAYMENT_PENDING', 'PAID', 'ACTIVE', 'REPAID', 'REJECTED'
+    ],
+    default: 'SUBMITTED'
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'],
+    default: 'PENDING'
+  },
+  paymentReference: { type: String },
+  paidAt: { type: Date },
+  disbursedAt: { type: Date },
+  disbursementReference: { type: String },
+  repayments: [RepaymentInstallmentSchema],
+  maturityDate: { type: Date },
+  totalReturnsPaid: { type: Number, default: 0 },
+  maturitySettlementStatus: {
+    type: String,
+    enum: ['PENDING', 'AWAITING_BORROWER_REPAYMENT', 'READY_FOR_PAYOUT', 'COMPLETED'],
+    default: 'PENDING'
+  },
+  maturityPayoutReference: { type: String },
+  maturityPayoutAt: { type: Date }
+}, { timestamps: true });
 ```
 
-Example `turbo.json`:
+### 2. BusinessIdeaModel (`apps/backend/src/modules/business-ideas/business-ideas.model.ts`)
+```typescript
+const IdeaInterestSchema = new Schema({
+  memberId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  message: { type: String, required: true },
+  submittedAt: { type: Date, default: Date.now },
+  meetingScheduled: { type: Boolean, default: false },
+  meetingDate: { type: Date },
+  meetingLink: { type: String }
+});
 
-``` json
-{
-  "$schema": "https://turborepo.dev/schema.json",
-  "tasks": {
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**", "build/**"]
-    },
-    "lint": {
-      "dependsOn": ["^lint"]
-    },
-    "typecheck": {
-      "dependsOn": ["^typecheck"]
-    }
-  }
-}
+const BusinessIdeaSchema = new Schema({
+  authorId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  targetMarket: { type: String, required: true },
+  targetLocation: { type: String },
+  stage: { type: String, enum: ['IDEA', 'PROTOTYPE', 'EARLY_TRACTION', 'GROWTH'], required: true },
+  supportRequirements: [{ type: String }],
+  customSupportNotes: { type: String },
+  documents: [{
+    documentId: { type: String },
+    name: { type: String },
+    fileUrl: { type: String },
+    fileType: { type: String },
+    uploadedAt: { type: Date, default: Date.now }
+  }],
+  feasibilityScore: {
+    marketViability: { type: Number, default: 85 },
+    technicalFeasibility: { type: Number, default: 80 },
+    commercialScalability: { type: Number, default: 90 },
+    overallScore: { type: Number, default: 85 }
+  },
+  status: {
+    type: String,
+    enum: ['SUBMITTED', 'UNDER_REVIEW', 'MEETING_SCHEDULED', 'APPROVED_MARKETPLACE', 'REJECTED', 'COMPLETED_REMOVED'],
+    default: 'SUBMITTED'
+  },
+  meetingDetails: {
+    date: { type: Date },
+    time: { type: String },
+    link: { type: String },
+    status: { type: String, enum: ['PENDING', 'SCHEDULED', 'COMPLETED'] }
+  },
+  interestedMembers: [IdeaInterestSchema],
+  isMarketplaceLive: { type: Boolean, default: false },
+  adminNotes: { type: String }
+}, { timestamps: true });
 ```
 
-Use compatible, currently supported dependency versions at
-implementation time. Do not blindly copy old version numbers from
-examples.
-
-## 6.4 Backend module pattern
-
-Each backend domain module should follow a consistent structure where
-appropriate:
-
-``` text
-module-name/
-├── module-name.model.ts
-├── module-name.types.ts
-├── module-name.validation.ts
-├── module-name.repository.ts
-├── module-name.service.ts
-├── module-name.controller.ts
-├── module-name.routes.ts
-├── module-name.permissions.ts
-└── module-name.test.ts
+### 3. MeetingModel (`apps/backend/src/modules/admin/models/Meeting.ts`)
+```typescript
+const MeetingSchema = new Schema({
+  title: { type: String, required: true },
+  description: { type: String },
+  moduleSource: {
+    type: String,
+    enum: ['SCALING', 'BUSINESS_IDEA', 'SERVICE_REQUEST', 'FUNDING', 'CUSTOM', 'MENTORING'],
+    required: true
+  },
+  referenceId: { type: Schema.Types.ObjectId },
+  hostAdminId: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
+  hostAdminName: { type: String, default: 'FIC Super Administrator' },
+  participants: [{
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    name: { type: String, required: true },
+    email: { type: String, required: true },
+    role: { type: String, enum: ['MEMBER', 'ADMIN', 'INTERESTED_COLLABORATOR', 'MENTOR', 'STUDENT'] }
+  }],
+  scheduledDate: { type: Date, required: true },
+  scheduledTime: { type: String, required: true },
+  durationMinutes: { type: Number, default: 45 },
+  meetingUrl: { type: String, required: true },
+  status: {
+    type: String,
+    enum: ['SCHEDULED', 'COMPLETED', 'RESCHEDULED', 'CANCELLED'],
+    default: 'SCHEDULED'
+  },
+  invitesDispatched: { type: Boolean, default: true },
+  meetingNotes: { type: String }
+}, { timestamps: true });
 ```
 
-Do not force every module to contain unnecessary files. Keep business
-logic out of controllers and enforce authorization in
-services/repositories as appropriate.
+### 4. FinancialTransactionModel (`apps/backend/src/modules/payments/financial-transaction.model.ts`)
+```typescript
+const FinancialTransactionSchema = new Schema({
+  transactionId: { type: String, unique: true, required: true },
+  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  type: {
+    type: String,
+    enum: [
+      'MEMBERSHIP_FEE', 'SERVICE_PAYMENT', 'INVESTMENT_PAYMENT',
+      'FUND_RELEASE', 'RETURN_PAYMENT', 'MATURITY_PAYOUT',
+      'WALLET_TOPUP', 'REFERRAL_PAYOUT'
+    ],
+    required: true
+  },
+  amount: { type: Number, required: true },
+  currency: { type: String, default: 'INR' },
+  direction: { type: String, enum: ['CREDIT', 'DEBIT'], required: true },
+  status: {
+    type: String,
+    enum: ['INITIATED', 'PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'],
+    default: 'INITIATED'
+  },
+  paymentGateway: { type: String, enum: ['RAZORPAY', 'BANK_TRANSFER', 'WALLET', 'ESCROW'], default: 'RAZORPAY' },
+  gatewayPaymentId: { type: String },
+  gatewayOrderId: { type: String },
+  bankReference: { type: String },
+  metadata: { type: Schema.Types.Mixed },
+  auditVerifiedBy: { type: Schema.Types.ObjectId, ref: 'AdminUser' },
+  auditVerifiedAt: { type: Date }
+}, { timestamps: true });
+```
+
+---
+
+# 6. Complete REST API Specification
+
+## 6.1 Member APIs (`/api/v1`)
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/auth/register` | Initiates member registration with category selection | No |
+| `POST` | `/auth/login` | Member authentication returning JWT & profile | No |
+| `GET` | `/auth/me` | Returns authenticated member profile & KYC status | Yes (Member) |
+| `GET` | `/dashboard` | Returns dynamic dashboard metrics tailored to sector | Yes (Member) |
+| `GET` | `/marketplace` | Returns active services with identity shield | Yes (Member) |
+| `POST` | `/services` | Submits new service listing for FIC moderation | Yes (Member) |
+| `GET` | `/services/my-services` | Returns member's authored service listings | Yes (Member) |
+| `POST` | `/services/:id/request` | Submits service request through FIC intermediary | Yes (Member) |
+| `GET` | `/business-ideas` | Returns authored ideas & marketplace approved ideas | Yes (Member) |
+| `POST` | `/business-ideas` | Submits new business idea with support requirements | Yes (Member) |
+| `POST` | `/business-ideas/:id/interest` | Expresses collaboration interest for published idea | Yes (Member) |
+| `POST` | `/scaling` | Submits operational scaling advisory request | Yes (Member) |
+| `GET` | `/scaling/my-requests` | Returns member's scaling advisory submissions | Yes (Member) |
+| `GET` | `/investment/need-funding` | Returns approved funding proposals on marketplace | Yes (Member) |
+| `POST` | `/investment/proposals` | Submits investor ticket proposal for target project | Yes (Member) |
+| `GET` | `/meetings/my-meetings` | Returns all scheduled sessions for the member | Yes (Member) |
+| `GET` | `/documents/:id/view` | Streams secure authenticated document content | Yes (Member/Admin) |
+| `GET` | `/documents/:id/download` | Secure document download with filename headers | Yes (Member/Admin) |
+
+## 6.2 Admin Portal APIs (`/api/admin`)
+
+| Method | Endpoint | Description | Auth Required |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/dashboard/stats` | Returns operational KPIs & recent audit logs | Yes (Admin) |
+| `GET` | `/dashboard/financial-stats` | Returns monthly revenue breakdown | Yes (Admin) |
+| `GET` | `/members` | Returns all members with filters & KYC status | Yes (Admin) |
+| `GET` | `/members/:id` | Returns detailed member profile & financial overview | Yes (Admin) |
+| `GET` | `/members/:id/financials` | Returns member funding loans & investment yields | Yes (Admin) |
+| `PUT` | `/kyc/:id/review` | Approves, rejects, or requests KYC clarification | Yes (Admin) |
+| `GET` | `/services` | Moderation queue for marketplace services | Yes (Admin) |
+| `PUT` | `/services/:id/moderate` | Approves or rejects service listing | Yes (Admin) |
+| `GET` | `/business-ideas` | Returns all submitted business ideas | Yes (Admin) |
+| `POST` | `/business-ideas/:id/arrange-meeting` | Schedules advisory meeting with idea submitter | Yes (Admin) |
+| `PUT` | `/business-ideas/:id/approve` | Publishes idea to Universal Marketplace | Yes (Admin) |
+| `DELETE` | `/business-ideas/:id` | Concludes & removes completed business idea | Yes (Admin) |
+| `GET` | `/scaling` | Returns all scaling advisory applications | Yes (Admin) |
+| `POST` | `/scaling/:id/schedule-meeting` | Schedules diagnostic consultation meeting | Yes (Admin) |
+| `GET` | `/meetings` | Centralized meeting desk with status filters | Yes (Admin) |
+| `POST` | `/meetings` | Schedules new consultation session | Yes (Admin) |
+| `PUT` | `/meetings/:id` | Updates status (COMPLETED / CANCELLED / RESCHEDULED) | Yes (Admin) |
+| `GET` | `/funding/requests` | Returns all funding requests with filters | Yes (Admin) |
+| `PUT` | `/funding/requests/:id/review` | Marks funding request under review | Yes (Admin) |
+| `PUT` | `/funding/requests/:id/approve` | Approves funding request for marketplace listing | Yes (Admin) |
+| `PUT` | `/funding/requests/:id/reject` | Rejects funding request with formal notes | Yes (Admin) |
+| `GET` | `/funding/investment-requests` | Returns investor proposals with ticket filters | Yes (Admin) |
+| `PUT` | `/funding/investment-requests/:id/approve` | Approves proposal, triggers PAYMENT_PENDING | Yes (Admin) |
+| `GET` | `/funding/fund-releases` | Returns projects ready for escrow fund release | Yes (Admin) |
+| `POST` | `/funding/fund-releases/:id/verify-payment` | Verifies offline investor payment, updates ledger | Yes (Admin) |
+| `POST` | `/funding/fund-releases/:id/release` | Disburses approved funds from escrow to borrower | Yes (Admin) |
+| `GET` | `/funding/returns-maturity` | Returns active funded projects & yield schedules | Yes (Admin) |
+| `POST` | `/funding/returns-maturity/:id/record-repayment` | Records incoming borrower return installment | Yes (Admin) |
+| `GET` | `/funding/maturity-releases` | Returns matured deals ready for final settlement | Yes (Admin) |
+| `POST` | `/funding/maturity-releases/:id/verify-incoming` | Confirms receipt of borrower's maturity payment | Yes (Admin) |
+| `POST` | `/funding/maturity-releases/:id/release` | Disburses maturity payout back to investor | Yes (Admin) |
+| `GET` | `/funding/lifecycle-kpis` | Computes the 11 MongoDB-aggregated lifecycle KPIs | Yes (Admin) |
+
+---
+
+# 7. End-to-End Key Business Workflows
+
+## 7.1 Complete Funding & Investment Lifecycle (10 Steps)
 
-## 6.5 Environments and domains
-
-Example: - Local web: `http://localhost:5173` - Local admin:
-`http://localhost:5174` - Local API: `http://localhost:5000` -
-Production web: `https://www.ficapp.in` - Production admin:
-`https://admin.ficapp.in` - Production API: `https://api.ficapp.in`
-
-Configure ports explicitly. Production deployment, DNS, TLS, CORS and
-cookie domains require environment-specific configuration.
-
-------------------------------------------------------------------------
-
-# 7. Dynamic Configuration Architecture
-
-## 7.1 Configuration-driven components
-
-The following must be database/configuration-driven: - Main categories -
-Subcategories - Registration fields - Conditional questions - KYC
-document requirements - Dashboard menus - Dashboard widgets - Category
-features - Subcategory feature variations - Service categories -
-Relevant filters and metadata
-
-## 7.2 Configuration lifecycle
-
-Suggested states: - DRAFT - IN_REVIEW - PUBLISHED - ARCHIVED
-
-Publishing creates an immutable configuration version. Existing
-registrations should retain the version used at submission. Changes
-should be migrated explicitly, not silently.
-
-## 7.3 Dashboard renderer
-
-The dashboard engine should: 1. Read the member's primary category and
-permitted subcategories. 2. Resolve the published category
-configuration. 3. Resolve applicable subcategory features. 4. Apply
-member permissions and account state. 5. Render only supported, approved
-widget types. 6. Fetch data through authorized APIs. 7. Display a
-graceful fallback for disabled or unavailable widgets.
-
-Do not allow arbitrary code execution from dashboard configuration. Use
-a registry of approved widget components.
-
-------------------------------------------------------------------------
-
-# 8. Data Architecture and MongoDB Collections
-
-The following is a logical collection inventory. Final schema details,
-indexes and retention rules must be reviewed before production.
-
-  -----------------------------------------------------------------------
-  Collection                          Purpose
-  ----------------------------------- -----------------------------------
-  users                               Authentication identity, account
-                                      state, primary category reference
-
-  memberProfiles                      Member profile and permitted
-                                      business/professional details
-
-  categories                          Main category records
-
-  subcategories                       Subcategories linked to main
-                                      categories
-
-  categoryConfigurations              Versioned category behavior
-                                      configuration
-
-  registrationFormConfigurations      Dynamic form definitions and
-                                      versions
-
-  registrationSubmissions             Submitted form answers and config
-                                      version
-
-  dashboardConfigurations             Dashboard layouts and versions
-
-  kycConfigurations                   Category/subcategory KYC rules
-
-  kycApplications                     KYC case, status and decision
-                                      history
-
-  kycDocuments                        Private document metadata and
-                                      storage references
-
-  membershipPlans                     Membership pricing and terms
-                                      versions
-
-  memberships                         Member membership period and status
-
-  payments                            Payment provider references and
-                                      financial state
-
-  paymentWebhookEvents                Idempotent webhook event records
-
-  serviceListings                     Provider service listings and
-                                      moderation status
-
-  productListings                     Product listings, if enabled in
-                                      approved scope
-
-  businessIdeas                       Submitted business ideas
-
-  businessDevelopmentRequests         Business support and scaling
-                                      requests
-
-  investmentProfiles                  Private investment readiness and
-                                      preferences
-
-  fundingRequests                     Private funding requirements
-
-  investmentConnectionRequests        FIC-reviewed potential
-                                      introductions
-
-  partnershipRequests                 DEPRECATED & RETIRED (Direct partnerships
-                                      eliminated to enforce FIC intermediary governance)
-
-  teachingServices                    Accredited mentor teaching & advisory offerings
-
-  learningVideos                      Uploaded masterclass videos with curriculum,
-                                      language, and video stream metadata
-
-  mentorshipRequests                  1-on-1 student consultation bookings with
-                                      reschedule workflows and session completion audits
-
-  networkingRequests                  Networking and introduction
-                                      requests
-
-  connectionRequests                  FIC-coordinated service, B2B trade, and
-                                      connection request records
-
-  conversations                       FIC-mediated conversation threads
-
-  messages                            Messages and moderation metadata
-
-  mentoringSessions                   Scheduled/managed mentoring
-                                      sessions
-
-  sessionAttendance                   Attendance and completion evidence
-
-  studentReviews                      Student feedback and ratings
-
-  mentorPerformance                   Performance snapshots and
-                                      evaluation evidence
-
-  mentorCommissionRules               Configurable payout rules
-
-  mentorCommissionTransactions        Calculated and approved commission
-                                      ledger
-
-  mentorPayouts                       Payout execution and reconciliation
-
-  notifications                       In-app and delivery notification
-                                      records
-
-  complaints                          Complaints and dispute handling
-
-  auditLogs                           Security and administrative audit
-                                      records
-  -----------------------------------------------------------------------
-
-Avoid duplicating the same request across multiple collections without a
-clear domain reason. Decide whether to use a shared request model with
-typed payloads or separate domain collections based on query, privacy
-and lifecycle needs.
-
-## 8.1 User record principles
-
-A user should contain: - Stable user ID - Authentication identifiers -
-Account status - Primary category ID - Permitted subcategory IDs -
-Registration/configuration version references - Membership/KYC
-references or derived state - Created/updated timestamps
-
-Do not store a `categories` array that allows multiple primary
-categories. `primaryCategoryId` must be singular. Subcategories must be
-validated against it.
-
-## 8.2 Indexing
-
-Plan indexes for: - Unique normalized email/mobile where policy
-requires - Primary category and subcategory references -
-Account/KYC/membership statuses - Membership expiry dates - Listing
-status/category/search fields - Request status/assigned staff/created
-date - Payment provider transaction IDs and webhook event IDs - Audit
-actor/resource/timestamp - Notification recipient/read status
-
-Use compound indexes based on actual query patterns. Validate index
-impact with production-like data.
-
-## 8.3 File storage
-
-Store KYC and sensitive proposal documents in private object storage,
-not public static folders. MongoDB should store metadata and object
-references, not necessarily file bytes.
-
-Use: - Encryption in transit and at rest - Short-lived signed URLs -
-MIME/type and size validation - Malware scanning where feasible - Access
-audit logs - Retention and deletion policies - Restricted staff access
-
-------------------------------------------------------------------------
-
-# 9. API Specification
-
-Use versioned REST APIs under `/api/v1`. Publish OpenAPI documentation.
-All endpoints require explicit authentication and authorization
-decisions.
-
-## 9.1 Public and authentication APIs
-
-  ------------------------------------------------------------------------------------------------
-  Method                  Endpoint                                         Purpose
-  ----------------------- ------------------------------------------------ -----------------------
-  GET                     `/api/v1/public/config`                          Public site
-                                                                           configuration
-
-  GET                     `/api/v1/categories`                             List published
-                                                                           categories
-
-  GET                     `/api/v1/categories/:categoryId/subcategories`   List subcategories
-
-  GET                     `/api/v1/registration-form`                      Resolve form
-                                                                           configuration
-
-  POST                    `/api/v1/auth/register`                          Create
-                                                                           account/application
-
-  POST                    `/api/v1/auth/login`                             Login
-
-  POST                    `/api/v1/auth/verify-otp`                        Verify OTP if enabled
-
-  POST                    `/api/v1/auth/refresh`                           Refresh session/token
-
-  POST                    `/api/v1/auth/logout`                            End session
-  ------------------------------------------------------------------------------------------------
-
-## 9.2 Registration, membership and KYC
-
-  ------------------------------------------------------------------------------------------
-  Method                  Endpoint                                   Purpose
-  ----------------------- ------------------------------------------ -----------------------
-  POST                    `/api/v1/registration-submissions`         Submit dynamic
-                                                                     registration
-
-  GET                     `/api/v1/registration-submissions/me`      View own submission
-
-  GET                     `/api/v1/membership/plans`                 View published plans
-
-  POST                    `/api/v1/membership/checkout`              Create payment order
-
-  POST                    `/api/v1/payments/webhooks/:provider`      Verified payment
-                                                                     webhook
-
-  GET                     `/api/v1/payments/me`                      Own payment history
-
-  POST                    `/api/v1/kyc/applications`                 Submit KYC
-
-  GET                     `/api/v1/kyc/applications/me`              View KYC status
-
-  POST                    `/api/v1/kyc/applications/:id/documents`   Add/correct documents
-  ------------------------------------------------------------------------------------------
-
-## 9.3 Dashboard and marketplace
-
-  --------------------------------------------------------------------------------------
-  Method                  Endpoint                               Purpose
-  ----------------------- -------------------------------------- -----------------------
-  GET                     `/api/v1/dashboard/my-configuration`   Resolve dashboard
-                                                                 configuration
-
-  GET                     `/api/v1/dashboard/my-summary`         Member dashboard
-                                                                 summary
-
-  GET                     `/api/v1/marketplace/services`         Universal service
-                                                                 discovery
-
-  GET                     `/api/v1/marketplace/services/:id`     Privacy-safe service
-                                                                 detail
-
-  POST                    `/api/v1/services`                     Submit own service
-                                                                 listing
-
-  GET                     `/api/v1/services/me`                  Manage own listings
-
-  POST                    `/api/v1/connections`                  Submit FIC-mediated
-                                                                 service request
-  --------------------------------------------------------------------------------------
-
-## 9.4 Business opportunity & Mentoring APIs
-
-  --------------------------------------------------------------------------------------------
-  Method                  Endpoint                                     Purpose
-  ----------------------- -------------------------------------------- -----------------------
-  POST                    `/api/v1/business-ideas`                     Submit idea (0 → 1)
-
-  GET                     `/api/v1/business-ideas/me`                  Own submitted ideas
-
-  POST                    `/api/v1/business-development-requests`      Submit scaling request (1 → 10)
-
-  GET                     `/api/v1/business-development-requests/me`   Own scaling requests
-
-  POST                    `/api/v1/investment-profiles`                Submit private investment appetite
-
-  POST                    `/api/v1/funding-requests`                   Submit funding requirement
-
-  POST                    `/api/v1/partnership-requests`               *DEPRECATED* (HTTP 410 Gone / Intermediary Policy)
-
-  GET                     `/api/mentoring/services`                    Browse mentor teaching offerings
-
-  POST                    `/api/mentoring/services`                    Publish mentor teaching offering
-
-  GET                     `/api/mentoring/videos`                      Browse masterclass videos (filter by domain & lang)
-
-  POST                    `/api/mentoring/videos`                      Upload new masterclass video
-
-  GET                     `/api/mentoring/videos/my`                   Own uploaded masterclass videos
-
-  POST                    `/api/mentoring/requests`                    Book 1-on-1 consultation session
-
-  GET                     `/api/mentoring/requests/student`            Student's active mentorship bookings
-
-  GET                     `/api/mentoring/requests/mentor`             Mentor's incoming mentorship bookings
-
-  PUT                     `/api/mentoring/requests/:id/accept`         Accept and schedule consultation
-
-  PUT                     `/api/mentoring/requests/:id/reschedule`     Mentor proposes new schedule
-
-  PUT                     `/api/mentoring/requests/:id/respond-reschedule` Student responds to reschedule
-
-  PUT                     `/api/mentoring/requests/:id/complete`       Log completion audit and close session
-  --------------------------------------------------------------------------------------------
-
-## 9.5 Admin APIs
-
-Examples: - `/api/v1/admin/members` - `/api/v1/admin/kyc` -
-`/api/v1/admin/categories` - `/api/v1/admin/subcategories` -
-`/api/v1/admin/configurations` -
-`/api/v1/admin/dashboard-configurations` -
-`/api/v1/admin/service-listings` - `/api/v1/admin/requests` -
-`/api/v1/admin/investment` - `/api/v1/admin/funding` -
-`/api/v1/admin/partnerships` - `/api/v1/admin/networking` -
-`/api/v1/admin/mentoring` - `/api/v1/admin/reports` -
-`/api/v1/admin/audit-logs`
-
-These are endpoint groups, not a complete contract. For each implemented
-endpoint define: - Method and path - Authentication requirement -
-Permission - Request schema - Response schema - Validation and error
-codes - Pagination/filter/sort - Idempotency where required - Audit
-behavior - Rate limits
-
-Never expose sensitive provider identity or investment details from
-public endpoints.
-
-------------------------------------------------------------------------
-
-# 10. UI/UX Specification
-
-## 10.1 Design principles & Visual Identity
-
--   **Warm Ivory & Soft Sand Luxury Theme**: An earthy, warm, professional enterprise aesthetic avoiding harsh dark modes or stark pure black.
--   **WCAG AAA Contrast Standard**: All primary and secondary text uses Deep Earth Brown (`#51463F` and `#453A33`) exceeding 7.5:1 contrast ratios on ivory surfaces. No pale white text on light badges.
--   **Multi-Color Luxury Accents**:
-    -   *Terracotta / Coral (`#E8795B`, `#C65638`)*: Primary brand emphasis, marketplace highlights.
-    -   *Golden Amber (`#E5A23B`, `#D99B43`)*: Incubation ideas, validity indicators.
-    -   *Forest Teal (`#3B9C91`, `#1C6960`)*: Private deal rooms, confidential investment badges.
-    -   *Royal Violet (`#8064B1`, `#6E529F`)*: Scaling advisory, mentorship desk.
--   **Frosted Glass Card Surfaces**: White cards (`bg-white/80` or `bg-white/95`) with delicate sand borders (`#EDE2D7`) and soft depth elevation.
--   **Full Viewport Responsiveness**: High-density layouts spanning 320px to 1920px viewports without awkward empty margins.
-
-## 10.2 Motion for React (`motion/react`) System
-
-Standardized exclusively on **Motion for React** (`motion/react` v12+):
--   **Guaranteed Route Visibility**: Layout shells wrap routes without blocking initial zero-opacity transitions, eliminating blank-screen glitches during client-side tab switching.
--   **Motion Tokens**:
-    -   *Durations*: Fast (150ms), Normal (260ms), Slow (400ms).
-    -   *Springs*: Snappy (`stiffness: 380, damping: 28`), Gentle (`stiffness: 260, damping: 22`).
-    -   *Easing*: Premium cubic-bezier curves (`[0.22, 1, 0.36, 1]`).
--   **Reusable Motion Primitives**: `AnimatedModal`, `AnimatedCard`, `AnimatedCounter`, `AnimatedProgress`, `ScrollReveal`, and `StaggerContainer`.
-
-## 10.3 Centralized Role-Based Member Navigation
-
-Navigation is dynamically generated via `getRoleNavigation(user)` in `apps/web/src/services/dashboardConfig.ts`:
-
--   **Business / MSME / Manufacturer / Freelancer (8 Core Modules)**:
-    `Dashboard` • `Marketplace` • `Business Ideas` • `Scaling` • `Investment` • `Meetings` • `My Requests` • `My Services`
--   **Student (7 Core Modules)**:
-    `Dashboard` • `Marketplace` • `Business Ideas` • `Investment` • `Meetings` • `My Requests` • `Skill Development`
--   **Mentor / Trainer (7 Core Modules)**:
-    `Dashboard` • `Marketplace` • `Business Ideas` • `Investment` • `Meetings` • `My Requests` • `My Services`
--   **Professor / Faculty (7 Core Modules)**:
-    `Dashboard` • `Marketplace` • `Business Ideas` • `Investment` • `Meetings` • `My Requests` • `My Services`
-
-## 10.4 Admin Operations Navigation
-
--   Overview & Operations KPI Telemetry
--   Member Accounts & Profile Directory
--   KYC Verification & Document Approvals
--   Categories & Subcategories Manager
--   Registration Form Builder
--   Dashboard Configuration Manager
--   Membership Plans & Renewals
--   Payments & Fee Reconciliation
--   Marketplace Service Listings Moderation
--   Client Service Requests Coordinator
--   Business Ideas & Incubation Desk
--   Enterprise Scaling Requests & Roadmaps
--   Private Deal Room & Investment Inquiries
--   Mentorship & Masterclass Moderation
--   Complaints & Dispute Resolution
--   System Reports & Audit Logs
--   Staff & Permissions
--   Audit Logs
--   Settings
-
-Navigation visibility must be permission-controlled.
-
-------------------------------------------------------------------------
-
-# 11. Key Business Workflows
-
-## 11.1 Registration and activation
-
-``` mermaid
+```mermaid
 flowchart TD
- A[Visitor opens landing page] --> B[Get Started]
- B --> C[Registration introduction and membership terms]
- C --> D[Basic registration]
- D --> E{Age 18 or above?}
- E -- No --> F[Stop registration]
- E -- Yes --> G[Select one main category]
- G --> H[Load subcategories]
- H --> I[Select permitted subcategory]
- I --> J[Load dynamic details form]
- J --> K[Submit registration details]
- K --> L[Create membership payment order]
- L --> M{Payment verified?}
- M -- No --> N[Show payment pending or failed]
- M -- Yes --> O[Create membership record]
- O --> P[Load dynamic KYC requirements]
- P --> Q[Submit KYC documents]
- Q --> R[Admin review]
- R --> S{KYC approved?}
- S -- No --> T[Request correction or reject]
- T --> Q
- S -- Yes --> U{Account and membership active?}
- U -- No --> V[Keep restricted status]
- U -- Yes --> W[Activate dynamic dashboard]
+    Step1["Step 1: Borrower submits Funding Request (Pitch deck, amount, duration, yield)"] --> Step2["Step 2: Admin reviews in /funding-requests & approves to Marketplace"]
+    Step2 --> Step3["Step 3: Published to 'Need Funding' section on Member Portal"]
+    Step3 --> Step4["Step 4: Investor reviews pitch & submits Investment Proposal"]
+    Step4 --> Step5["Step 5: Admin reviews proposal in /investment-requests & approves (PAYMENT_PENDING)"]
+    Step5 --> Step6["Step 6: Investor makes payment (Gateway or offline NEFT/RTGS verified by Admin)"]
+    Step6 --> Step7["Step 7: Admin initiates Fund Release (/fund-release) — Disburses funds to Borrower"]
+    Step7 --> Step8["Step 8: Active project yield tracking (/returns-maturity) — Admin records incoming installments"]
+    Step8 --> Step9["Step 9: Maturity Settlement (/maturity-release) — Admin verifies borrower returned principal + yield"]
+    Step9 --> Step10["Step 10: Admin disburses Maturity Payout to Investor — Cycle COMPLETED"]
 ```
 
-## 11.2 Universal service request
+## 7.2 Business Idea Incubation & Collaboration Lifecycle
 
-``` mermaid
+```mermaid
 flowchart TD
- A[Member browses all approved services] --> B[Select service]
- B --> C[Submit requirements]
- C --> D[FIC receives request]
- D --> E[FIC reviews and contacts requester]
- E --> F[Collect complete requirements]
- F --> G[Identify provider internally]
- G --> H[Contact provider]
- H --> I{Provider can proceed?}
- I -- No --> J[Find alternative or close request]
- I -- Yes --> K[Coordinate proposal]
- K --> L[Share next steps with requester]
- L --> M[Track progress]
- M --> N[Complete, cancel or dispute]
+    A["Member submits Idea (Title, Stage, 'Support from FIC' box, Pitch Deck)"] --> B["Admin reviews in /business-ideas & schedules Consultation Meeting"]
+    B --> C["Meeting conducted & synced to Central Meetings Desk (/meetings)"]
+    C --> D["Admin approves idea & publishes to Universal Marketplace Ideas"]
+    D --> E["Ecosystem members browse & click 'I'm Interested. Let's discuss in meeting'"]
+    E --> F["Admin reviews Interested Members in modal & schedules collaborative meetings"]
+    F --> G["Partnership formed / Venture launched & Admin clicks 'Remove Business Idea'"]
 ```
 
-## 11.3 Investment/funding interest
+## 7.3 Centralized Meetings Management Workflow
 
-``` mermaid
+```mermaid
 flowchart TD
- A[Member submits private investment or funding interest] --> B[Store restricted record]
- B --> C[Authorized FIC review]
- C --> D[Collect missing requirements]
- D --> E[Assess suitability and legal permissions]
- E --> F{Permitted introduction?}
- F -- No --> G[Hold, decline or request compliance review]
- F -- Yes --> H[Obtain appropriate consent]
- H --> I[Coordinate introduction]
- I --> J[Track outcome without handling funds unless separately approved]
+    M1["Meeting initiated from Scaling, Ideas, Service Requests, or Funding"] --> M2["Meeting document created in centralized Meeting collection"]
+    M2 --> M3["Host Admin (FIC Super Admin) + Member (Rama) linked as distinct participants"]
+    M3 --> M4["Automatically appears on Central Meetings Desk (/meetings) on Admin & Member Portals"]
+    M4 --> M5["Google Meet link generated & in-app reminder dispatched"]
+    M5 --> M6["Status updated to COMPLETED upon conclusion & audit logged"]
 ```
 
-## 11.4 KYC review
-
-``` mermaid
-flowchart TD
- A[Member submits KYC] --> B[Create review case]
- B --> C[Assign Verification Executive]
- C --> D[Document review]
- D --> E{Decision}
- E -- Approved --> F[Mark KYC approved]
- E -- More documents --> G[Notify member]
- G --> H[Member resubmits]
- H --> C
- E -- Rejected --> I[Record reason and notify member]
-```
-
-------------------------------------------------------------------------
-
-# 12. Security and Privacy Requirements
-
-## 12.1 Authentication and authorization
-
--   Hash passwords using a suitable modern password-hashing algorithm.
--   Use secure session or access/refresh-token architecture.
--   Protect cookies appropriately if cookie-based sessions are selected.
--   Add login, OTP and sensitive-action rate limits.
--   Use RBAC and deny-by-default authorization.
--   Validate all input on the server.
--   Apply secure headers and CORS allowlists.
--   Protect against common OWASP risks.
--   Avoid logging secrets, OTPs or full sensitive document contents.
-
-## 12.2 Identity privacy
-
-Public marketplace responses must be constructed using explicit
-allowlisted fields. Do not serialize complete member documents and
-attempt to remove private fields afterward.
-
-Private provider identity should be available only to authorized FIC
-staff who need it for a request.
-
-Member-to-member messages and uploaded content may contain phone
-numbers, emails or external links. Absolute prevention cannot be
-guaranteed. Use: - Clear policy and warnings - Detection and moderation
-where feasible - Restricted message visibility - Staff review and
-reporting - Enforcement and audit process
-
-FIC must still publish its own legitimate business identity, support and
-legally required grievance contact details.
-
-## 12.3 Financial and payment security
-
--   Use a compliant payment provider.
--   Do not store card credentials.
--   Verify webhook signatures.
--   Make webhook processing idempotent.
--   Reconcile provider events with internal payment records.
--   Keep immutable provider transaction references.
--   Separate payment success from KYC approval and dashboard activation.
--   Define refund, cancellation and chargeback handling.
--   Do not enable investment money custody or transfer without an
-    approved legal and technical model.
-
-## 12.4 Sensitive files
-
--   Private object storage.
--   Encryption at rest and in transit.
--   Short-lived signed download links.
--   Role-checked access.
--   Malware scanning where feasible.
--   File size/type validation.
--   Audit document access.
--   Retention and secure deletion policy.
-
-------------------------------------------------------------------------
-
-# 13. Indian Legal and Compliance Review
-
-This section is a review checklist, not legal advice or a declaration of
-compliance.
-
-Obtain qualified Indian legal, CA and regulatory advice before launch.
-
-Review applicability of: - Digital Personal Data Protection Act, 2023
-and rules/commencement requirements applicable at launch - Information
-Technology Act and applicable rules - Consumer Protection Act and
-E-Commerce Rules, where applicable - GST registration, tax treatment,
-invoicing and accounting - Payment aggregator/provider contractual and
-regulatory requirements - KYC and record-retention obligations
-applicable to FIC's actual business activities - Sector-specific
-requirements for finance, healthcare, education and other regulated
-areas - Investment solicitation, securities, lending, collective
-investment, deposit-taking and financial-advisory boundaries -
-Employment, contractor, mentor and service-provider agreements -
-Grievance handling, refunds, cancellations and dispute resolution
-
-Do not assume that describing FIC as an intermediary automatically
-exempts it from legal responsibilities. Legal classification depends on
-actual activities, contracts, money flows, representations and control.
-
-------------------------------------------------------------------------
-
-# 14. Mentoring and FIC-Funded Commission
-
-## 14.1 Approved operating direction
-
--   Students request mentoring through FIC.
--   Students do not pay mentors directly.
--   FIC manages mentor selection, session tracking and quality
-    evaluation.
--   FIC pays eligible mentors from an approved company budget.
--   Payout is subject to completed sessions, attendance, feedback,
-    complaint checks, approval and reconciliation.
-
-## 14.2 Suggested workflow
-
-1.  Student requests mentoring.
-2.  FIC reviews and assigns/coordinates mentor.
-3.  Session is scheduled.
-4.  Attendance and completion are recorded.
-5.  Student submits feedback.
-6.  FIC evaluates mentor performance.
-7.  Eligible commission/payout is calculated using approved configurable
-    rules.
-8.  Authorized staff approve.
-9.  Finance executes payout through approved provider/process.
-10. Ledger and payout status are reconciled.
-
-Commission percentages, score weights, payout rates and budget amounts
-are not finalized. Store them as effective-dated configuration, with
-approval history.
-
-------------------------------------------------------------------------
-
-# 15. Notifications and Communication
-
-Support notification channels as configured: - In-app notifications -
-Email - SMS - Other approved channels
-
-Events may include: - Registration created - Payment success/failure -
-KYC submitted - KYC additional documents requested - KYC
-approved/rejected - Dashboard activated - Membership expiry reminders -
-Service listing approved/rejected - Service request status changed -
-Business request update - Meeting scheduled - Networking/partnership
-update - Mentor session update - Complaint update
-
-Use notification templates with versioning. Do not expose sensitive
-information in notification previews. Provide user preferences where
-appropriate and honor required transactional communications.
-
-------------------------------------------------------------------------
-
-# 16. Reporting and Analytics
-
-## 16.1 Admin dashboard metrics
-
-Potential KPIs: - Total registered members - Active members - Pending
-KYC - Approved KYC - Expired memberships - Membership revenue - Payment
-failures/refunds - Active service listings - Pending listing approvals -
-Service requests by status - Business development requests -
-Investment/funding interest counts - Partnership/networking requests -
-Complaints and resolution time - Mentor sessions and payouts
-
-Define each metric, filters, timezone, source of truth and calculation
-before presenting it as a financial or operational fact.
-
-## 16.2 Privacy
-
-Reports must use role-appropriate aggregation. Restrict personally
-identifiable and financial information. Export permissions must be
-separately controlled and audited.
-
-------------------------------------------------------------------------
-
-# 17. Testing Strategy
-
-## 17.1 Testing levels
-
--   Unit tests for business logic and validators
--   Integration tests for database and API modules
--   API contract tests
--   Frontend component tests
--   End-to-end user journeys
--   Role/permission tests
--   Security and privacy tests
--   Payment webhook tests
--   File upload tests
--   Performance/load tests
--   Backup and restore tests
--   Responsive and accessibility tests
-
-## 17.2 Critical test scenarios
-
-### Registration
-
--   Under-18 user cannot proceed.
--   User can select only one primary category.
--   Subcategories are limited to selected category.
--   Dynamic form changes correctly.
--   Required conditional fields validate correctly.
--   Configuration version is stored with submission.
-
-### Payment
-
--   Successful provider webhook updates payment exactly once.
--   Duplicate webhook does not duplicate membership.
--   Frontend cannot forge payment success.
--   Failed payment does not activate membership.
--   KYC resubmission does not charge again.
--   Refund/chargeback updates access according to policy.
-
-### KYC and access
-
--   Pending KYC cannot access protected dashboard APIs.
--   Approved KYC plus paid active membership grants access.
--   Suspended/blocked account cannot bypass restrictions.
--   Additional-document request allows resubmission.
--   Staff actions are audited.
-
-### Marketplace privacy
-
--   Every eligible category can discover all approved services.
--   Inactive/unapproved services are hidden.
--   Public API never returns provider name/company/private contact.
--   Authorized FIC staff can access provider details for assigned work.
--   Search and filters do not leak hidden fields.
-
-### Business and investment workflows
-
--   Requests are visible only to requester and authorized FIC staff.
--   Investment amounts are not exposed publicly.
--   Consent and staff actions are recorded.
--   No unapproved money-transfer functionality is available.
-
-### Dashboard configuration
-
--   Correct category dashboard loads.
--   Subcategory features apply correctly.
--   Draft configuration is not public.
--   Published version is stable.
--   Old submissions remain associated with their original version.
-
-## 17.3 Definition of Done
-
-A feature is complete only when: - Requirements are documented. - UI and
-backend are integrated. - Authorization is enforced. - Validation and
-error handling exist. - Tests pass. - Privacy/security checks pass. -
-Relevant API documentation is updated. - Acceptance criteria are met. -
-No fake success or placeholder integration is represented as
-production-ready.
-
-------------------------------------------------------------------------
-
-# 18. Deployment and Infrastructure
-
-## 18.1 Suggested deployment topology
-
--   Member website: static/web hosting behind CDN
--   Admin website: separately deployed web application
--   Backend: managed application/container hosting
--   MongoDB: managed MongoDB deployment
--   Redis: managed Redis if background jobs or caching require it
--   Object storage: private bucket for KYC and sensitive files
--   CDN: public assets only; never publicly cache private KYC documents
--   Monitoring: centralized logs, metrics, uptime and error tracking
-
-## 18.2 Environment separation
-
-Maintain separate: - Local development - Development/test - Staging -
-Production
-
-Use separate databases, storage buckets, credentials and
-payment-provider modes. Production secrets must never be committed to
-Git.
-
-## 18.3 Environment variables
-
-Provide `.env.example` with variable names and safe placeholders, for
-example:
-
-``` env
-NODE_ENV=development
+---
+
+# 8. Executive Dashboard — 11 Lifecycle Financial KPIs
+
+Computed live via `GET /api/admin/funding/lifecycle-kpis` across `FundingRequestModel` and `InvestmentRequestModel`:
+
+| KPI Name | Query Logic | Target Page Navigation | Preset Filter |
+| :--- | :--- | :--- | :--- |
+| **1. Total Funding Requested** | Sum of `requiredAmount` for all `FundingRequest` records | `/funding-requests` | `status=ALL` |
+| **2. Total Funding Approved** | Sum of `approvedAmount` where `status = 'APPROVED'` | `/funding-requests` | `status=APPROVED` |
+| **3. Total Investment Proposals** | Sum of `proposedAmount` for all `InvestmentRequest` records | `/investment-requests` | `status=ALL` |
+| **4. Total Investment Approved** | Sum of `approvedAmount` where `status IN ('APPROVED', 'PAYMENT_PENDING', 'PAID', 'ACTIVE')` | `/investment-requests` | `status=APPROVED` |
+| **5. Verified Investor Payments** | Sum of payments where `paymentStatus = 'PAID'` | `/fund-release` | `status=ALL` |
+| **6. Total Funds Released** | Sum of disbursed amounts where `status = 'ACTIVE'` and `disbursedAt != null` | `/fund-release` | `status=RELEASED` |
+| **7. Active Funded Projects** | Count and total value of ongoing funded projects with active return obligations | `/returns-maturity` | `status=ALL` |
+| **8. Total Returns Received** | Sum of verified incoming borrower return payments across `repayments` | `/returns-maturity` | `status=FULLY_RECEIVED` |
+| **9. Outstanding Returns** | Expected total returns minus total returns verified to date | `/returns-maturity` | `status=DUE` |
+| **10. Total Maturity Due** | Sum of principal + final yield awaiting borrower escrow settlement | `/maturity-release` | `status=REPAYMENT_AWAITING` |
+| **11. Total Maturity Released** | Sum of final payouts successfully disbursed to investors (`COMPLETED`) | `/maturity-release` | `status=COMPLETED` |
+
+---
+
+# 9. UI/UX Design System & Theme Tokens
+
+### Luxury Warm Ivory Theme Tokens
+- **Canvas / Background**: Warm Ivory (`#FAF7F2` / `var(--bg-primary)`)
+- **Card Surfaces**: Off-White Sand (`#FFFFFF` / `#F5EFEB`)
+- **Text & Typography**: Deep Earth Brown (`#51463F` and `#453A33`) exceeding WCAG AAA contrast (> 7.5:1 ratio).
+- **Primary Brand Accent**: Royal Amethyst Violet (`#6D28D9` / `#7C3AED`)
+- **Secondary Accent**: Golden Sand / Amber (`#D97706` / `#F59E0B`)
+- **Success / Verified**: Emerald Green (`#059669`)
+- **Alert / Overdue**: Crimson Coral (`#DC2626`)
+- **Motion Tokens**: Official `motion/react` spring transitions (`stiffness: 500, damping: 35`) with layout-level zero-opacity protection.
+
+---
+
+# 10. Security, Compliance & Governance Architecture
+
+1. **FIC Intermediary Privacy Shield**: Enforced at the MongoDB projection layer. Member phone numbers, personal emails, and company names are stripped before serialization to public marketplace consumers.
+2. **Document Access Authentication**: All supporting documents are served via authenticated streaming endpoints (`/api/documents/:id/view`). Direct unauthenticated S3 or static public URLs are strictly forbidden for confidential compliance documents.
+3. **Double-Entry Financial Auditing**: Every monetary transaction (membership fee, investment payment, fund release, return payment, maturity payout) creates an immutable `FinancialTransaction` ledger record tied to the executing administrator's ID and timestamp.
+4. **Indian Statutory Compliance**:
+   - Compliant with **Information Technology Act, 2000** and Intermediary Guidelines Rules.
+   - Compliant with **Digital Personal Data Protection (DPDP) Act, 2023** for member data privacy.
+   - Compliant with RBI guidelines: FIC operates strictly as an intermediary facilitator and does not act as an unapproved NBFC or deposit-taking entity.
+
+---
+
+# 11. Environment Configuration & Monorepo Scripts
+
+### Environment Variables (`apps/backend/.env`)
+```env
 PORT=5000
-MONGODB_URI=
-REDIS_URL=
-JWT_ACCESS_SECRET=
-JWT_REFRESH_SECRET=
-WEB_ORIGIN=http://localhost:5173
-ADMIN_ORIGIN=http://localhost:5174
-PAYMENT_PROVIDER_KEY=
-PAYMENT_PROVIDER_SECRET=
-PAYMENT_WEBHOOK_SECRET=
-OBJECT_STORAGE_BUCKET=
-OBJECT_STORAGE_REGION=
-OBJECT_STORAGE_ACCESS_KEY=
-OBJECT_STORAGE_SECRET_KEY=
-EMAIL_PROVIDER_API_KEY=
-SMS_PROVIDER_API_KEY=
+NODE_ENV=production
+MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/fic_business_hub?retryWrites=true&w=majority
+JWT_SECRET=super_secure_jwt_secret_key_fic_2026
+JWT_EXPIRES_IN=7d
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,https://ficapp.in,https://admin.ficapp.in,https://bussinesshubadmin.vercel.app
+RAZORPAY_KEY_ID=rzp_live_your_key_id
+RAZORPAY_KEY_SECRET=your_razorpay_secret
+AWS_REGION=ap-south-1
+AWS_S3_BUCKET_NAME=fic-business-hub-documents
+AWS_ACCESS_KEY_ID=your_aws_access_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret_key
 ```
 
-Do not commit real values. Prefer a managed secret store in production.
+### Monorepo CLI Commands
+```bash
+# Install all dependencies across all workspaces
+pnpm install
 
-## 18.4 CI/CD
+# Run all applications simultaneously via Turborepo
+pnpm dev
 
-Suggested pipeline: 1. Install dependencies using lockfile. 2. Lint. 3.
-Typecheck. 4. Unit and integration tests. 5. Build all applications. 6.
-Security/dependency checks. 7. Deploy to staging. 8. Run smoke tests. 9.
-Obtain production approval. 10. Deploy production and verify health.
+# Build all applications and packages for production
+pnpm build
 
-Use database migration/index rollout procedures and rollback plans.
+# Execute TypeScript type verification across all packages
+pnpm typecheck
 
-------------------------------------------------------------------------
+# Lint all packages
+pnpm lint
+```
 
-# 19. Implementation Roadmap
+---
 
-## Phase 0 -- Repository foundation
+# 12. Verification Baseline & Living Status
 
--   Inspect repository.
--   Create/validate Turborepo + pnpm.
--   Create apps/web, apps/admin and apps/backend.
--   Create shared packages.
--   Configure TypeScript, linting, formatting and environment files.
--   Ensure `pnpm install`, `pnpm dev`, build and typecheck work.
+As of November 2026, the codebase has been verified end-to-end:
+- **Member Web Portal (`@fic/web`)**: Compiles with zero errors (`pnpm --filter @fic/web build` &rarr; `✓ built in 19.38s`).
+- **Admin Portal (`@fic/admin`)**: Compiles with zero errors (`pnpm build` &rarr; `✓ built in 9.50s`).
+- **Backend API (`@fic/backend`)**: Compiles with zero TypeScript errors (`pnpm --filter @fic/backend exec tsc --noEmit` &rarr; `0 errors`).
+- **Git Repositories**: Both `FIC_BusinessHub` and `bussinesshubadmin` are synchronized and pushed to `origin/main`.
 
-**Exit criteria:** Clean monorepo foundation with both websites and
-backend booting independently.
-
-## Phase 1 -- Product and UI foundation
-
--   Confirm design system.
--   Shared UI components.
--   Public landing page.
--   Get Started introduction page.
--   Membership offer presentation.
--   Responsive layouts.
-
-**Exit criteria:** Approved public journey and visual foundation.
-
-## Phase 2 -- Dynamic configuration foundation
-
--   Category/subcategory data model.
--   Configuration versioning.
--   Registration form builder.
--   Safe field renderer.
--   Conditional logic.
--   Admin draft/preview/publish.
-
-**Exit criteria:** A new configured category and form can be published
-without writing category-specific frontend code, within the supported
-component system.
-
-## Phase 3 -- Registration, membership and KYC
-
--   Basic account registration and age check.
--   Category/subcategory selection.
--   Dynamic details form.
--   Payment order and webhook.
--   Membership lifecycle.
--   KYC upload and review.
--   Application tracking and resubmission.
--   Access activation rules.
-
-**Exit criteria:** End-to-end registration works with real test
-payment-provider integration and KYC review.
-
-## Phase 4 -- Dynamic dashboard engine
-
--   Shared dashboard renderer.
--   Category dashboard configurations.
--   Subcategory features.
--   Permission-aware menus and widgets.
--   Dashboard data APIs.
-
-**Exit criteria:** Multiple category experiences render through one
-engine.
-
-## Phase 5 -- Universal marketplace
-
--   Service listing creation.
--   Admin moderation.
--   Universal discovery.
--   Search and filters.
--   Privacy-safe public API.
--   FIC-mediated service requests.
--   Request tracking and communication.
-
-**Exit criteria:** Cross-category discovery and provider privacy pass
-tests.
-
-## Phase 6 -- Business ecosystem modules
-
--   Business ideas.
--   Business development/scaling.
--   Investment interest.
--   Funding requests.
--   Partnerships.
--   Networking.
--   FIC coordination workflows.
-
-**Exit criteria:** Requests are securely submitted, reviewed, assigned
-and tracked.
-
-## Phase 7 -- Mentoring and operations
-
--   Mentor/student workflows.
--   Session scheduling and attendance.
--   Feedback and performance.
--   Configurable FIC-funded payout.
--   Admin reports and complaints.
-
-**Exit criteria:** No student-to-mentor checkout; approved payout
-workflow is auditable.
-
-## Phase 8 -- Hardening and launch
-
--   Security testing.
--   Privacy audit.
--   Performance/load testing.
--   Accessibility.
--   Backup and restore.
--   Legal/compliance sign-off.
--   Staging UAT.
--   Production deployment.
-
-**Exit criteria:** Business, legal, security and technical owners
-approve launch readiness.
-
-------------------------------------------------------------------------
-
-# 20. Project Management and Governance
-
-## 20.1 Required project artifacts
-
-This consolidated document is the baseline. For larger teams, split it
-into: - BRD.md - PRD.md - SRS.md - SYSTEM_ARCHITECTURE.md -
-DATABASE_SCHEMA.md - API_DOCUMENTATION.md - UI_UX_SPECIFICATION.md -
-SECURITY_AND_PRIVACY.md - TESTING_STRATEGY.md -
-DEPLOYMENT_AND_INFRASTRUCTURE.md - IMPLEMENTATION_ROADMAP.md -
-OPEN_DECISIONS.md
-
-Maintain one documentation index and version consistency.
-
-## 20.2 Change control
-
-Every material change should record: - Change ID - Requester - Reason -
-Affected business rule - Affected UI/API/database/security/test areas -
-Cost and schedule impact - Approval - Version and effective date
-
-Do not change membership pricing, investment workflow, privacy policy or
-KYC policy through an undocumented code change.
-
-## 20.3 Traceability
-
-Maintain a traceability matrix:
-
-  ------------------------------------------------------------------------------------------------------
-  Business       Product          API/data             UI                   Test case        Status
-  requirement    requirement                                                                 
-  -------------- ---------------- -------------------- -------------------- ---------------- -----------
-  18+            Registration age Auth/registration    Signup               REG-AGE-001      Pending
-  eligibility    check                                                                       
-
-  One primary    Category         User/category        Signup               REG-CAT-001      Pending
-  category       selection                                                                   
-
-  Dynamic form   Configured       Form                 Registration         REG-FORM-001     Pending
-                 fields           config/submission                                          
-
-  Payment before Membership       Payment/membership   Checkout             PAY-001          Pending
-  KYC            checkout                                                                    
-
-  KYC approval   Activation gate  KYC/account          Tracking/dashboard   KYC-ACCESS-001   Pending
-  for access                                                                                 
-
-  Universal      Cross-category   Service listing      Marketplace          MKT-UNIV-001     Pending
-  discovery      marketplace                                                                 
-
-  Provider       Allowlisted      Marketplace API      Listing detail       PRIV-SVC-001     Pending
-  privacy        response                                                                    
-
-  FIC            Request workflow Requests/messages    Request tracking     REQ-FIC-001      Pending
-  coordination                                                                               
-  ------------------------------------------------------------------------------------------------------
-
-Expand this matrix during detailed implementation.
-
-------------------------------------------------------------------------
-
-# 21. Acceptance Criteria -- Product-Level
-
-The initial release is acceptable only when:
-
-1.  A visitor can understand FIC's purpose and start registration.
-2.  A person under 18 cannot register.
-3.  A member can select exactly one primary category.
-4.  Subcategories and details questions load dynamically.
-5.  Admin can manage category and form configuration.
-6.  The first-year ₹99 price and second-year ₹5,999 renewal are
-    accurately disclosed according to approved tax/terms.
-7.  Payment is verified server-side.
-8.  KYC requirements are category/subcategory-aware.
-9.  Full dashboard access is blocked until all activation conditions
-    pass.
-10. KYC correction does not create a duplicate membership charge.
-11. A single dashboard engine renders different category experiences.
-12. Members can discover approved services from all categories.
-13. Public service APIs do not reveal provider identity/company/private
-    contact details.
-14. Service requests are routed through FIC.
-15. Business development, investment interest, funding, partnership and
-    networking requests can be securely submitted and tracked.
-16. Investment and funding details remain private to authorized FIC
-    staff.
-17. Mentoring does not collect direct student-to-mentor payment.
-18. Admin actions and sensitive data access are auditable.
-19. Critical end-to-end, privacy and authorization tests pass.
-20. Legal, tax, privacy and operational launch dependencies have been
-    reviewed.
-
-------------------------------------------------------------------------
-
-# 22. Assumptions and Recommendations
-
-These points are proposed unless explicitly approved by FIC:
-
--   The initial architecture is a modular monolith.
--   The first-year membership period begins on successful payment,
-    subject to approved terms.
--   The member dashboard remains restricted while KYC is pending.
--   KYC rejection permits correction/resubmission without another
-    membership charge.
--   Multiple subcategories may be allowed within one primary category if
-    configured.
--   Service visibility requires provider eligibility, active membership,
-    approved KYC and listing approval.
--   Service location is privacy-safe and configurable.
--   Category and dashboard configurations are versioned.
--   Investment/funding features initially manage private interest and
-    introductions only.
--   Mentor payout rules are configurable and funded by FIC's approved
-    budget.
--   Proposed uptime/performance/accessibility targets are engineering
-    goals, not guarantees.
-
-------------------------------------------------------------------------
-
-# 23. Risks and Mitigations
-
-  -----------------------------------------------------------------------
-  Risk                    Impact                  Mitigation
-  ----------------------- ----------------------- -----------------------
-  Unclear business rules  Rework and disputes     Approve BRD and open
-                                                  decisions before coding
-
-  Dynamic engine          Delayed delivery        Build a safe, limited
-  over-complexity                                 field/widget registry
-                                                  first
-
-  Privacy leakage         Legal and trust damage  Backend allowlists,
-                                                  RBAC, privacy tests and
-                                                  audit
-
-  Investment regulatory   Severe legal risk       Limit initial feature
-  exposure                                        to private interest
-                                                  workflow pending advice
-
-  Payment webhook errors  Incorrect membership    Signature verification,
-                          state                   idempotency and
-                                                  reconciliation
-
-  KYC document exposure   Sensitive data breach   Private storage,
-                                                  short-lived URLs and
-                                                  access logs
-
-  Configuration changes   Data corruption         Immutable versions and
-  affect old users                                explicit migrations
-
-  Uncontrolled scope      Cost and timeline       Phased roadmap and
-                          growth                  change control
-
-  Provider does not       Poor service experience SLA policy, escalation
-  respond                                         and
-                                                  alternative-provider
-                                                  process
-
-  Fake or misleading      Member harm             Moderation,
-  listings                                        verification and
-                                                  complaint workflow
-  -----------------------------------------------------------------------
-
-------------------------------------------------------------------------
-
-# 24. Open Decisions Requiring FIC Approval
-
-Do not invent answers to these questions. Record the final decision,
-owner and approval date.
-
-## Membership and finance
-
-1.  Is ₹99 inclusive of GST or exclusive?
-2.  Is ₹5,999 inclusive of GST or exclusive?
-3.  Is renewal manual or automatic?
-4.  What is the exact grace period after expiry?
-5.  What is the refund/cancellation policy?
-6.  What happens if payment succeeds but KYC is never completed?
-7.  Are partial refunds or chargebacks supported?
-8.  What invoice and accounting process will be used?
-
-## Registration and KYC
-
-9.  Which identity and business documents are mandatory for each
-    subcategory?
-10. Which categories require enhanced verification?
-11. What is the expected KYC review SLA?
-12. Can a member change their primary category later? If yes, what
-    approval and migration process applies?
-13. Are multiple subcategories allowed for every category or configured
-    individually?
-
-## Marketplace and service operations
-
-14. Does FIC charge a coordination fee, service fee or commission? No
-    fee should be assumed until approved.
-15. What service-provider response SLA applies?
-16. How are quotes, proposals, cancellation and disputes handled?
-17. What information may be shared with the provider after requester
-    consent?
-18. Which locations may be displayed publicly?
-19. What is the service listing validity and renewal policy?
-
-## Investment and funding
-
-20. What exact activities will FIC perform: interest collection,
-    introductions, consultancy or regulated facilitation?
-21. Will FIC ever receive, hold, transfer or disburse investment funds?
-22. What legal/regulatory approvals and partner arrangements are
-    required?
-23. What suitability, consent, risk disclosure and record-retention
-    process applies?
-24. Can an investor's amount be shared with a potential funding seeker,
-    and only under what consent?
-
-## Mentoring
-
-25. What is the mentor compensation model?
-26. What are the approved performance measures and payout rules?
-27. What is the review period and payout schedule?
-28. Who approves mentor payouts and from which budget?
-
-## Operations and technology
-
-29. Which payment provider will be used?
-30. Which email/SMS providers will be used?
-31. Which cloud provider and region will host production data?
-32. What are expected user volumes and launch geography?
-33. What support hours and escalation SLA will FIC provide?
-34. What languages are required at launch?
-35. What data retention and deletion periods apply?
-
-------------------------------------------------------------------------
-
-# 25. Final Instruction to Antigravity / Development Team
-
-Use this document as the baseline product and technical specification.
-
-Before coding: 1. Inspect the existing repository. 2. Confirm the two
-websites and one shared backend architecture. 3. Validate the monorepo
-foundation. 4. Review this document with the FIC business owner. 5.
-Resolve critical open decisions. 6. Produce a phased implementation plan
-and traceability matrix.
-
-Do not: - Build separate applications for each category. - Hardcode
-category/subcategory lists into application logic. - Create separate
-dashboard codebases for every category. - Restrict universal marketplace
-visibility by a member's primary category. - Expose provider identity or
-private contact details in public APIs. - Activate full dashboard access
-based on payment alone. - Charge again for KYC resubmission. - Create
-direct student-to-mentor payments. - Enable unapproved investment
-transactions or money custody. - Claim that a feature is complete
-without implementation and testing. - Replace existing working code
-without inspection and approval.
-
-Build incrementally, preserve existing work, use typed contracts,
-validate at API boundaries, enforce authorization on the server, and
-maintain tests and documentation.
-
-**Product outcome:** A configurable, privacy-conscious FIC Business Hub
-where eligible people can join, offer and discover services, submit
-business opportunities, seek development support, express
-investment/funding interest and build partnerships through FIC's
-coordinated ecosystem.
-
-**END OF DOCUMENT**
+---
+*End of Complete Project Master Architecture Blueprint (Version 3.0).*

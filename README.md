@@ -1,8 +1,8 @@
 # FIC Business Hub — Opportunity Ecosystem
 
-Welcome to the **FIC Business Hub** platform repository. This enterprise platform is structured as a high-performance monorepo using **Turborepo** and **pnpm**, engineered with the **MERN** stack (MongoDB, Express, React, Node.js) and 100% **TypeScript**.
+Welcome to the **FIC Business Hub** platform repository. This enterprise platform is structured as a high-performance monorepo using **Turborepo** and **pnpm**, engineered with the **MERN** stack (MongoDB Atlas, Express.js, React 19 / Vite, Node.js 20+) and 100% **TypeScript**.
 
-FIC Business Hub operates as an **intermediary-governed business ecosystem** designed to connect MSMEs, entrepreneurs, manufacturers, professionals, mentors, and students across India while ensuring all business interactions are verified, coordinated, and protected under strict FIC governance.
+FIC Business Hub operates as an **intermediary-governed business ecosystem** developed for **Forge India Connect Pvt. Ltd.** to connect MSMEs, entrepreneurs, manufacturers, professionals, mentors, and students across India while ensuring all business interactions are verified, coordinated, and protected under strict FIC governance.
 
 ---
 
@@ -26,7 +26,7 @@ fic-business-hub/
 │   ├── eslint-config/               # Centralized ESLint rules
 │   └── tailwind-config/             # Shared Tailwind CSS presets
 ├── infrastructure/                  # Docker, AWS, and deployment configurations
-└── docs/                            # Comprehensive Project Blueprint and technical specifications
+└── docs/                            # Master Project Blueprint (FIC_BUSINESS_HUB_COMPLETE_PROJECT_BLUEPRINT.md)
 ```
 
 ---
@@ -35,9 +35,9 @@ fic-business-hub/
 
 Unlike open directories or social networks, **FIC Business Hub strictly prohibits unmediated company-to-company bypass**:
 
-1. **Intermediary Shield**: Provider identities and direct contact information are never published on open feeds.
+1. **Intermediary Shield**: Provider identities and direct contact information are never published on open public feeds.
 2. **Coordinated Inquiries**: When Company A requires services from Company B, or an investor seeks deal access, the request is moderated and vetted by FIC Officers.
-3. **Removal of Direct "Partnerships"**: Standalone direct partnership connections have been permanently retired. All B2B trade, subcontracting, joint ventures, and distribution networks flow through the **Universal Marketplace**, **Scaling & Enterprise Advisory**, and **Facilitated Meetings**.
+3. **Removal of Direct "Partnerships"**: Standalone direct partnership connections have been permanently retired. All B2B trade, subcontracting, joint ventures, and distribution networks flow through the **Universal Marketplace**, **Scaling & Enterprise Advisory**, and **Centralized Meetings Desk**.
 4. **Confidentiality & Non-Disclosure**: High-value transactions, incubation ideas, and investment deal rooms are governed by bilateral NDAs and verified compliance protocols.
 
 ---
@@ -48,17 +48,17 @@ Unlike open directories or social networks, **FIC Business Hub strictly prohibit
 The portal uses an enterprise-grade luxury multi-color theme designed for high readability and visual warmth:
 * **Background Canvas**: Warm Ivory (`#FAF7F2`) with subtle ambient atmospheric mesh glows.
 * **Text & Typography**: Deep Earth Brown (`#51463F` and `#453A33`) exceeding WCAG AAA contrast (> 7.5:1 ratio) on light backgrounds.
-* **Luxury Accents**:
+* **Brand Accents**:
+  * **Royal Amethyst Violet** (`#6D28D9`, `#7C3AED`) — Header glow, executive operations.
   * **Terracotta / Coral** (`#E8795B`, `#C65638`) — Primary actions, marketplace highlights.
   * **Golden Amber** (`#E5A23B`, `#D99B43`) — Incubation ideas, membership badges.
-  * **Forest Teal** (`#3B9C91`, `#1C6960`) — Private deal room, investment channels.
-  * **Royal Violet** (`#8064B1`, `#6E529F`) — Enterprise scaling, mentorship desk.
+  * **Forest Teal / Emerald** (`#059669`, `#1C6960`) — Private deal room, investment yields, verified KYC.
 * **Surface Containers**: Frosted white glass cards (`bg-white/80` or `bg-white/95`) with delicate sand borders (`#EDE2D7`) and soft depth shadows.
 
 ### 2. Motion for React (`motion/react`)
-Animations are powered exclusively by **Motion for React** (current official `motion/react` v12+ package):
-* **Guaranteed Route Visibility**: Layout containers wrap active routes in non-blocking DOM shells to eliminate stuck zero-opacity transitions during tab switching.
-* **Micro-Interactions**: Spring-animated buttons, interactive tabs with shared layout transitions (`layoutId`), staggered lists (`StaggerContainer`), animated metric counters (`AnimatedCounter`), and scroll reveals (`ScrollReveal`).
+Animations are powered by **Motion for React** (`motion/react` v12+):
+* **Guaranteed Route Visibility**: Layout containers wrap active routes in non-blocking DOM shells to eliminate stuck zero-opacity transitions during navigation.
+* **Micro-Interactions**: Spring-animated buttons, interactive tabs with shared layout transitions (`layoutId`), staggered lists, animated metric counters, and scroll reveals.
 
 ---
 
@@ -78,109 +78,99 @@ Navigation is centralized in `apps/web/src/services/dashboardConfig.ts` (`getRol
 ## 🚀 Key Functional Modules
 
 ### 1. Universal Services Marketplace (`/marketplace`)
-* Privacy-safe catalog across **10 business sectors** (Textiles, Manufacturing, IT, Agro-Tech, Logistics, Professional Services, etc.).
+* Privacy-safe catalog across **10 business sectors** (Manufacturing, IT, Agriculture, Healthcare, Retail, Education, Finance & Legal, Real Estate, Creative Media, Renewable Energy).
 * Verified provider credentials with FIC intermediary badges.
-* Members discover verified capabilities without exposing sensitive provider contact data.
+* Integrated **Business Idea Requests** tab allowing members to browse approved business ideas and collaborate.
 
-### 2. Business Ideas & Incubation Desk (`/business-ideas`) — *Stage 0 &rarr; 1*
-* Dedicated to **new venture creation, patent incubation, and idea validation**.
-* Submission form captures: Concept title, detailed problem/solution description, target geography, maturity stage (*Idea on Paper, Prototype/MVP, Early Traction, Growth*), and support needs.
-* **Automated Feasibility Scoring**: Institutional scoring across **Market Viability**, **Technical Feasibility**, and **Commercial Scalability** (out of 100).
-* Phased progression: `Under Review` &rarr; `Feasibility Analysis` &rarr; `Advisory Scheduled` &rarr; `Approved Incubation`.
+### 2. Business Ideas & Incubation Hub (`/business-ideas`) — *Stage 0 &rarr; 1*
+* **Submission Form**: Concept title, detailed description, target market/geography, maturity stage, support requirements with dedicated custom description box (*"What support do you need from FIC?"*), and pitch deck/supporting documents.
+* **Feasibility Scoring Engine**: Evaluates *Market Viability*, *Technical Feasibility*, and *Commercial Scalability* (out of 100).
+* **End-to-End Collaboration**:
+  - Admin schedules exploratory consultation meeting with submitter.
+  - Upon validation, Admin approves and publishes idea to Universal Marketplace.
+  - Ecosystem members submit interest: *"I'm interested. Let's discuss more about this business idea in meeting."*
+  - Admin conducts meetings with interested parties directly from the detail modal.
+  - Concluded ideas can be archived via Admin *"Remove Business Idea"* action.
 
-### 3. Business Development & Enterprise Scaling (`/business-development`) — *Stage 1 &rarr; 10*
+### 3. Business Development & Enterprise Scaling (`/business-development` / `/scaling`) — *Stage 1 &rarr; 10*
 * Dedicated to **operational turnaround and expansion for existing businesses**.
 * Diagnoses operational bottlenecks: Cloud ERP modernization, factory floor lean manufacturing, regional distributor onboarding, and working capital advisory.
-* Phased diagnostic roadmaps prepared by assigned FIC Industry Domain Specialists.
-* Phased progression: `Diagnostic Pending` &rarr; `Specialist Assigned` &rarr; `Roadmap Prepared` &rarr; `Execution in Progress`.
+* **In-App Document Preview**: Integrated preview modal (`AuthenticatedDocumentPreview`) for reviewing balance sheets, compliance certificates, and pitch decks without unauthorized token errors.
+* Phased diagnostic roadmaps and advisory consultation meetings synchronized with the Central Meetings Desk.
 
-### 4. Confidential Investment & Funding Channel (`/investment`)
-* Institutional private deal room governed by strict regulatory compliance protocols.
-* **Expression of Interest (EOI)** submission for both capital seekers and accredited investors.
-* Vetted commercial opportunities with bilateral NDAs, ticket sizes, convertible note structures, and verified due diligence scores.
+### 4. Complete Funding & Investment Lifecycle (`/investment`)
+* **Borrower Funding Listings**: Pitch deck, funding parameters, min/max ticket, duration, return rate, payout frequency.
+* **Investor Proposals**: Ticket submissions, yield expectations, and administrative review.
+* **Double-Entry Escrow Ledger**: Verification of investor payments, escrow allocation, and fund release disbursement.
+* **Active Yield Tracking**: Sub-document `repayments` schedule tracking incoming return installments and maturity payouts.
 
-### 5. Student & Mentor Ecosystem (`/skill-development`, `/my-services`, `/my-requests`)
+### 5. Centralized Customer Meetings Desk (`/meetings`)
+* Universal desk aggregating all meetings scheduled across any module (Scaling, Business Ideas, Service Requests, Funding, and Custom consultations).
+* Clean dual-participant visibility: shows requesting Member (e.g. *Rama*) and Host Admin (e.g. *FIC Super Administrator*).
+* Status management: `SCHEDULED`, `COMPLETED`, `CANCELLED`, `RESCHEDULED` with verified Google Meet virtual links, duration, notes, and invitation logging.
+
+### 6. Student & Mentor Ecosystem (`/skill-development`, `/my-services`, `/my-requests`)
 * **Skill Development Portal (`/skill-development`)**: Allows students to search and filter masterclasses by domain and language (Tamil, English, etc.), view syllabi, and book 1-on-1 consultations.
 * **Mentor Video Masterclasses (`/my-services`)**: Streamlined masterclass upload workflow with topic domain selection, language choice, drag-and-drop video file upload, duration, and curriculum descriptions.
 * **Mentorship Consultations Hub (`/my-requests`)**:
   * **Mentors**: View incoming bookings with full interactive actions (`Accept & Schedule`, `Reject with Reason`, `Propose Reschedule`, `Complete Session & Log Audit`).
   * **Students**: Track application statuses, view verified meeting links, and accept/decline mentor reschedule proposals.
 
-### 6. Facilitated Meetings Desk (`/meetings`)
-* Structured consultation scheduling between members and FIC officers.
-* Google Meet integration, agenda tracking, and post-session advisory minutes.
+---
+
+## 🛠 Admin Portal — Five Standalone Capital Desk Modules
+
+The Admin Portal features **five completely independent sidebar modules** for financial governance:
+1. **Funding Requests (`/funding-requests`)**: Dedicated to borrower applications, in-app document preview, change requests, and approvals.
+2. **Investment Requests (`/investment-requests`)**: Dedicated to investor proposals, ticket size checks, and payment pending activation.
+3. **Fund Release (`/fund-release`)**: Dedicated to payment verification, escrow reconciliation, borrower disbursement, and disbursement receipts.
+4. **Returns & Maturity (`/returns-maturity`)**: Dedicated to active funded projects, installment schedule tracking, and recording incoming returns.
+5. **Maturity Release (`/maturity-release`)**: Dedicated to final investment settlement, borrower escrow reconciliation, and investor maturity payouts.
+
+### Executive Dashboard Lifecycle KPIs
+Backed by real-time MongoDB aggregations (`GET /api/admin/funding/lifecycle-kpis`):
+1. Total Funding Requested
+2. Total Funding Approved
+3. Total Investment Proposals
+4. Total Investment Approved
+5. Verified Investor Payments
+6. Total Funds Released
+7. Total Active Funded Projects
+8. Total Returns Received
+9. Outstanding Returns
+10. Total Maturity Due
+11. Total Maturity Released
 
 ---
 
-## 🛠 Tech Stack Reference
+## 💻 Tech Stack & Getting Started
 
-* **Frontend (`@fic/web`)**: React 18, TypeScript 5, Vite 6, Tailwind CSS 3.4, Motion for React 12, Lucide/Heroicons SVG Icons.
-* **Admin Portal (`@fic/admin`)**: React 18, TypeScript 5, Vite 6, Tailwind CSS 3.4.
-* **Backend (`@fic/backend`)**: Node.js, Express, TypeScript, MongoDB, Mongoose 8, JWT Authentication, Helmet, CORS, Multer.
+### Tech Stack Reference
+* **Frontend Web (`@fic/web`)**: React 19, TypeScript 5, Vite 6, Tailwind CSS 3.4, Motion for React 12, Lucide Icons.
+* **Admin Portal (`@fic/admin`)**: React 19, TypeScript 5, Vite 6, Tailwind CSS 3.4, Framer Motion.
+* **Backend API (`@fic/backend`)**: Node.js 20+, Express.js 4.21, TypeScript, MongoDB Atlas, Mongoose 8, JWT, Helmet, CORS, Multer.
 * **Monorepo Tools**: Turborepo 2.11, pnpm 9 workspaces.
 
----
-
-## 💻 Getting Started
-
-### Prerequisites
-* **Node.js**: v20+ or v22+
-* **pnpm**: v9+
-* **MongoDB**: v7+ (running locally or MongoDB Atlas)
-
-### 1. Installation
+### Quick Start
 ```bash
+# 1. Install dependencies
 pnpm install
-```
 
-### 2. Environment Configuration
-Copy the example environment file for the backend:
-```bash
-cp .env.example apps/backend/.env
-```
-Ensure your `apps/backend/.env` points to your MongoDB instance:
-```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/fic_business_hub
-JWT_SECRET=your_jwt_secret_key_here
-```
-
-### 3. Database Seeding
-Seed verified accounts, categories, sample masterclasses, and regional MSME listings:
-```bash
-pnpm --filter @fic/backend seed
-```
-
-### 4. Development Servers
-Run all applications concurrently via Turborepo:
-```bash
+# 2. Run all applications concurrently
 pnpm dev
-```
-Or run individually:
-```bash
-# Member Web Portal (http://localhost:5173)
-pnpm --filter @fic/web dev
 
-# Admin Operations Portal (http://localhost:5174)
-pnpm --filter @fic/admin dev
+# Or run individually:
+pnpm --filter @fic/web dev      # Member Web Portal (http://localhost:5173)
+pnpm --filter @fic/admin dev    # Admin Operations Portal (http://localhost:5174)
+pnpm --filter @fic/backend dev  # Shared REST API (http://localhost:5000)
 
-# Backend API Service (http://localhost:5000)
-pnpm --filter @fic/backend dev
+# 3. Production build
+pnpm build
 ```
 
 ---
 
-## 📦 Monorepo Scripts Reference
+## 📄 License & Governance
 
-* `pnpm dev` — Starts all development servers simultaneously.
-* `pnpm build` — Compiles TypeScript and builds all web applications and backend services.
-* `pnpm lint` — Executes ESLint across all workspaces.
-* `pnpm typecheck` — Validates TypeScript types across all projects.
-* `pnpm clean` — Cleans build caches, `dist/` folders, and temporary artifacts.
-
----
-
-## 📄 License & Confidentiality
-
-Copyright &copy; 2026 **FIC Business Hub**. All rights reserved.  
-Proprietary software governed by FIC Enterprise Business Governance.
+Copyright &copy; 2026 **Forge India Connect Pvt. Ltd. (FIC Business Hub)**. All rights reserved.  
+Proprietary enterprise software governed by FIC Intermediary Business Governance.
