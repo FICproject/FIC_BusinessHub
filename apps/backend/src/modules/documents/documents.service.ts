@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import { config } from '../../config';
 import { AppError } from '../../common/errors/app-error';
 import { objectStorage } from '../../integrations/object-storage';
@@ -233,8 +234,12 @@ export async function getAuthorizedDocumentAsset(params: {
   isAdmin: boolean;
   action: 'view' | 'download';
 }): Promise<IDocumentAsset> {
+  const cleanId = String(params.documentId || '').trim();
   const doc = await DocumentAssetModel.findOne({
-    documentId: params.documentId,
+    $or: [
+      { documentId: cleanId },
+      ...(mongoose.isValidObjectId(cleanId) ? [{ _id: cleanId }] : [])
+    ],
     isDeleted: { $ne: true }
   });
 
@@ -260,18 +265,81 @@ export async function getAuthorizedDocumentAsset(params: {
     doc.uploadedBy?.toString() === requesterStr;
 
   if (!isDirectOwner) {
-    // Resilient check: verify if requester has a KYC submission containing this document
+    // Resilient check across modules where requester may own the entity with this document attached:
+    // 1. KYC Submissions
     const { KYCSubmissionModel } = await import('../kyc/kyc.model');
-    const hasDoc = await KYCSubmissionModel.findOne({
-      $or: [{ userId: requesterStr }, { memberId: requesterStr }],
+    const hasKycDoc = await KYCSubmissionModel.findOne({
+      $or: [
+        { userId: mongoose.isValidObjectId(requesterStr) ? requesterStr : null },
+        { memberId: mongoose.isValidObjectId(requesterStr) ? requesterStr : null }
+      ],
       'documents.documentId': doc.documentId
     })
       .lean()
       .catch(() => null);
 
-    if (!hasDoc) {
-      throw new AppError('Forbidden. You are not authorized to access this document.', 403, 'FORBIDDEN');
+    if (hasKycDoc) {
+      return doc;
     }
+
+    // 2. Scaling Requests (BusinessDevRequestModel)
+    const { BusinessDevRequestModel } = await import('../business-development/business-development.model');
+    const hasScalingDoc = await BusinessDevRequestModel.findOne({
+      $and: [
+        {
+          $or: [
+            { userId: mongoose.isValidObjectId(requesterStr) ? requesterStr : null },
+            { memberId: mongoose.isValidObjectId(requesterStr) ? requesterStr : null }
+          ]
+        },
+        {
+          $or: [
+            { 'supportingDocuments.fileUrl': new RegExp(doc.documentId) },
+            { 'supportingDocuments.name': doc.originalFileName }
+          ]
+        }
+      ]
+    })
+      .lean()
+      .catch(() => null);
+
+    if (hasScalingDoc) {
+      return doc;
+    }
+
+    // 3. Business Ideas
+    const { BusinessIdeaModel } = await import('../business-ideas/business-ideas.model');
+    const hasIdeaDoc = await BusinessIdeaModel.findOne({
+      $or: [
+        { userId: requesterStr },
+        { submitterMemberId: mongoose.isValidObjectId(requesterStr) ? requesterStr : null }
+      ],
+      'supportingDocuments.fileUrl': new RegExp(doc.documentId)
+    })
+      .lean()
+      .catch(() => null);
+
+    if (hasIdeaDoc) {
+      return doc;
+    }
+
+    // 4. Service Requests (FicRequestModel)
+    const { FicRequestModel } = await import('../admin/models/FicRequest');
+    const hasServiceDoc = await FicRequestModel.findOne({
+      $or: [
+        { requesterId: mongoose.isValidObjectId(requesterStr) ? requesterStr : null },
+        { targetProviderId: mongoose.isValidObjectId(requesterStr) ? requesterStr : null }
+      ],
+      'documents.documentId': doc.documentId
+    })
+      .lean()
+      .catch(() => null);
+
+    if (hasServiceDoc) {
+      return doc;
+    }
+
+    throw new AppError('Forbidden. You are not authorized to access this document.', 403, 'FORBIDDEN');
   }
 
   const ownerAllowed =

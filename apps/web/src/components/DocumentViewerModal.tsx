@@ -41,9 +41,15 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
   checksum,
   tokenOverride
 }) => {
-  const isImage = Boolean(originalMimeType?.startsWith('image/'));
-  const isPdf = originalMimeType === 'application/pdf';
-  const isText = originalMimeType === 'text/plain';
+  const isImage =
+    Boolean(originalMimeType?.startsWith('image/')) ||
+    Boolean(originalFileName?.match(/\.(jpeg|jpg|png|webp|gif|svg)$/i));
+  const isPdf =
+    originalMimeType === 'application/pdf' ||
+    Boolean(originalFileName?.toLowerCase().endsWith('.pdf'));
+  const isText =
+    originalMimeType === 'text/plain' ||
+    Boolean(originalFileName?.toLowerCase().endsWith('.txt'));
 
   const [variant, setVariant] = useState<'preview' | 'original'>('preview');
   const [blobUrl, setBlobUrl] = useState<string | null>(null);

@@ -268,10 +268,15 @@ documentsRouter.get(
       if (!userId) {
         throw new AppError('Authentication required.', 401, 'UNAUTHORIZED');
       }
+      const isAdmin =
+        req.user?.role === 'SUPER_ADMIN' ||
+        req.user?.role === 'ADMIN' ||
+        (req.user as any)?.isAdmin === true;
+
       const doc = await getAuthorizedDocumentAsset({
         documentId: req.params.documentId,
         requesterId: userId,
-        isAdmin: false,
+        isAdmin: Boolean(isAdmin),
         action: 'view'
       });
       res.json({ success: true, data: toSafeDocumentDto(doc, 'member') });
@@ -347,10 +352,15 @@ documentsRouter.get(
       const variant: ViewVariant =
         rawVariant === 'thumbnail' ? 'thumbnail' : rawVariant === 'original' ? 'original' : 'preview';
 
+      const isAdmin =
+        req.user?.role === 'SUPER_ADMIN' ||
+        req.user?.role === 'ADMIN' ||
+        (req.user as any)?.isAdmin === true;
+
       const doc = await getAuthorizedDocumentAsset({
         documentId: req.params.documentId,
         requesterId: userId,
-        isAdmin: false,
+        isAdmin: Boolean(isAdmin),
         action: 'view'
       });
 
@@ -385,10 +395,15 @@ documentsRouter.get(
         throw new AppError('Authentication required.', 401, 'UNAUTHORIZED');
       }
 
+      const isAdmin =
+        req.user?.role === 'SUPER_ADMIN' ||
+        req.user?.role === 'ADMIN' ||
+        (req.user as any)?.isAdmin === true;
+
       const doc = await getAuthorizedDocumentAsset({
         documentId: req.params.documentId,
         requesterId: userId,
-        isAdmin: false,
+        isAdmin: Boolean(isAdmin),
         action: 'download'
       });
 

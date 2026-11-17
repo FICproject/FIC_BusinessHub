@@ -8,6 +8,9 @@ import { MemberWalletModel } from '../models/MemberWallet';
 import { AdminPaymentModel } from '../models/Payment';
 import { MemberBankAccountModel, MemberWalletModel as LiveWalletModel, WalletTransactionModel } from '../../wallet/wallet.model';
 import { DocumentAssetModel, toSafeDocumentDto } from '../../documents/documents.model';
+import { FundingRequestModel, InvestmentRequestModel } from '../../investment/investment.model';
+import { FundingApplicationModel } from '../models/FundingApplication';
+import { InvestmentPoolModel } from '../models/InvestmentPool';
 import { AccountStatus } from '@fic/shared-types';
 import { authenticateAdmin, AuthenticatedAdminRequest, requirePermission, logAdminAction } from '../middleware/admin-auth.middleware';
 import { notifyMember } from '../../notifications/notifications.service';
@@ -297,6 +300,14 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
         : (user?.subCategory ? [user.subCategory] : (user?.primarySubcategoryName ? [user.primarySubcategoryName] : []))
     };
 
+    // Authentically retrieve comprehensive member financial summary (Funding & Loans + Investments & Yields)
+    let financialData: any = null;
+    try {
+      financialData = await getMemberFinancialData(req.params.id);
+    } catch (finErr) {
+      console.warn('Could not compute member financial summary:', finErr);
+    }
+
     res.json({
       success: true,
       data: {
@@ -306,8 +317,283 @@ router.get('/:id', authenticateAdmin, async (req: AuthenticatedAdminRequest, res
         documentAssets,
         wallet,
         bankDetails,
+        funding: financialData?.funding || {
+          totalFundingRequested: 0,
+          totalFundingApproved: 0,
+          totalFundedPrincipal: 0,
+          totalOutstandingPrincipal: 0,
+          totalInterestObligations: 0,
+          totalRepaidAmount: 0,
+          activeFundingRequests: 0,
+          records: []
+        },
+        investments: financialData?.investments || {
+          totalInvestedCapital: 0,
+          totalCommittedCapital: 0,
+          totalPaidInvestment: 0,
+          activeInvestments: 0,
+          completedInvestments: 0,
+          expectedReturns: 0,
+          realizedYields: 0,
+          records: []
+        }
       },
     });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * Reusable helper to aggregate actual member financial records for Funding and Investments
+ */
+export async function getMemberFinancialData(memberId: string) {
+  const member = await MemberModel.findById(memberId);
+  if (!member) return null;
+
+  const user = await UserModel.findOne({
+    $or: [{ _id: member._id }, { email: member.email.toLowerCase() }]
+  }).lean() as any;
+
+  const memberIds: any[] = [member._id, user?._id].filter(Boolean);
+  const memberEmail = member.email.toLowerCase().trim();
+
+  // 1. Funding Requests & Proposals
+  const [fundingRequests, fundingApps] = await Promise.all([
+    FundingRequestModel.find({
+      $or: [{ userId: { $in: memberIds } }]
+    }).sort({ createdAt: -1 }).lean(),
+    FundingApplicationModel.find({
+      $or: [{ memberUserId: { $in: memberIds } }, { applicantEmail: memberEmail }]
+    }).sort({ createdAt: -1 }).lean()
+  ]);
+
+  const fundingRecords: any[] = [];
+
+  for (const r of fundingRequests) {
+    const isApproved = ['APPROVED', 'ACTIVE', 'FUNDED', 'COMPLETED', 'REPAID'].includes(r.status);
+    const isFunded = ['FUNDED', 'ACTIVE', 'COMPLETED', 'REPAID'].includes(r.status);
+    const isRepaid = ['REPAID', 'COMPLETED'].includes(r.status);
+    const reqAmt = r.requiredFundingAmount || r.fundingAmount || 0;
+    const fundedAmt = isFunded ? (r.totalInvested || reqAmt) : 0;
+    const approvedAmt = isApproved ? (r.totalInvested || reqAmt) : 0;
+    const durMonths = r.durationMonths || 12;
+    const returnRate = r.returnRatePercent || 15;
+    const totalInterest = isFunded ? Math.round(fundedAmt * (returnRate / 100) * (durMonths / 12)) : 0;
+    const repaid = isRepaid ? fundedAmt : 0;
+    const outstandingPrincipal = isFunded ? Math.max(0, fundedAmt - repaid) : 0;
+    const outstandingInterest = isFunded ? (isRepaid ? 0 : totalInterest) : 0;
+
+    fundingRecords.push({
+      id: r._id.toString(),
+      fundingRequestId: r.fundingRequestId || r.refNumber || `FR-${r._id.toString().slice(-6).toUpperCase()}`,
+      projectName: r.companyName || r.businessName || 'Business Venture',
+      requestedAmount: reqAmt,
+      approvedAmount: approvedAmt,
+      fundedPrincipal: fundedAmt,
+      monthlyInterestRate: Number((returnRate / 12).toFixed(2)),
+      interestCalculationType: r.returnFrequency || 'Fixed APR',
+      totalInterestPayable: totalInterest,
+      amountRepaid: repaid,
+      outstandingPrincipal,
+      outstandingInterest,
+      repaymentStatus: isRepaid ? 'Fully Repaid' : isFunded ? 'Active Obligation' : 'Not Yet Disbursed',
+      fundingStatus: r.status,
+      fundingStartDate: r.createdAt,
+      repaymentStartDate: isFunded ? r.updatedAt : undefined,
+      nextDueDate: isFunded && !isRepaid ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : undefined,
+      maturityDate: isFunded ? new Date(new Date(r.createdAt).setMonth(new Date(r.createdAt).getMonth() + durMonths)) : undefined,
+      source: 'FUNDING_REQUEST'
+    });
+  }
+
+  for (const r of fundingApps) {
+    const isFunded = ['FUNDED', 'REPAID'].includes(r.stage);
+    const isRepaid = r.stage === 'REPAID';
+    const reqAmt = r.requestedAmount || 0;
+    const appAmt = r.approvedPrincipal || (isFunded ? reqAmt : 0);
+    const fundedAmt = isFunded ? appAmt : 0;
+    const repaidAmt = r.repaidAmount || (isRepaid ? fundedAmt : 0);
+    const outstandingPrincipal = isFunded ? Math.max(0, fundedAmt - repaidAmt) : 0;
+    const outstandingInterest = isFunded ? Math.max(0, (r.expectedTotalInterest || 0) - (r.accruedInterestCollected || 0)) : 0;
+
+    fundingRecords.push({
+      id: r._id.toString(),
+      fundingRequestId: `FUND-APP-${r._id.toString().slice(-6).toUpperCase()}`,
+      projectName: r.businessName || 'Business Proposal',
+      requestedAmount: reqAmt,
+      approvedAmount: appAmt,
+      fundedPrincipal: fundedAmt,
+      monthlyInterestRate: r.interestRateAnnual ? Number((r.interestRateAnnual / 12).toFixed(2)) : 1.0,
+      interestCalculationType: 'Annual Percentage Rate (APR)',
+      totalInterestPayable: r.expectedTotalInterest || 0,
+      amountRepaid: repaidAmt,
+      outstandingPrincipal,
+      outstandingInterest,
+      repaymentStatus: isRepaid ? 'Fully Repaid' : repaidAmt > 0 ? 'Partially Repaid' : isFunded ? 'Active Obligation' : 'Not Disbursed',
+      fundingStatus: r.stage,
+      fundingStartDate: r.disbursementDate || r.createdAt,
+      repaymentStartDate: r.disbursementDate,
+      nextDueDate: isFunded && !isRepaid ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : undefined,
+      maturityDate: r.tenureMonths && r.disbursementDate ? new Date(new Date(r.disbursementDate).setMonth(new Date(r.disbursementDate).getMonth() + r.tenureMonths)) : undefined,
+      source: 'FUNDING_APPLICATION'
+    });
+  }
+
+  // Funding Summary Metrics
+  const totalFundingRequested = fundingRecords.reduce((acc, r) => acc + (r.requestedAmount || 0), 0);
+  const totalFundingApproved = fundingRecords.reduce((acc, r) => acc + (r.approvedAmount || 0), 0);
+  const totalFundedPrincipal = fundingRecords.reduce((acc, r) => acc + (r.fundedPrincipal || 0), 0);
+  const totalOutstandingPrincipal = fundingRecords.reduce((acc, r) => acc + (r.outstandingPrincipal || 0), 0);
+  const totalInterestObligations = fundingRecords.reduce((acc, r) => acc + (r.totalInterestPayable || 0), 0);
+  const totalRepaidAmount = fundingRecords.reduce((acc, r) => acc + (r.amountRepaid || 0), 0);
+  const activeFundingRequests = fundingRecords.filter((r) => ['ACTIVE', 'FUNDED', 'APPROVED'].includes(r.fundingStatus)).length;
+
+  const fundingSummary = {
+    totalFundingRequested,
+    totalFundingApproved,
+    totalFundedPrincipal,
+    totalOutstandingPrincipal,
+    totalInterestObligations,
+    totalRepaidAmount,
+    activeFundingRequests,
+    records: fundingRecords
+  };
+
+  // 2. Investments & Yields
+  const [directInvestments, poolInvestments] = await Promise.all([
+    InvestmentRequestModel.find({
+      $or: [{ investorId: { $in: memberIds } }, { investorEmail: memberEmail }]
+    }).sort({ createdAt: -1 }).lean(),
+    InvestmentPoolModel.find({ 'investors.memberId': { $in: memberIds } }).lean()
+  ]);
+
+  const investmentRecords: any[] = [];
+
+  for (const r of directInvestments) {
+    const isPaid = ['PAID', 'ACTIVE', 'COMPLETED', 'MATURITY_PENDING', 'MATURITY_PAID'].includes(r.status);
+    const isCompleted = ['COMPLETED', 'MATURITY_PAID'].includes(r.status);
+    const commAmt = r.requestedAmount || r.approvedAmount || 0;
+    const paidAmt = r.paidAmount || (isPaid ? (r.approvedAmount || commAmt) : 0);
+    const pendingAmt = r.pendingPaymentAmount || Math.max(0, (r.approvedAmount || commAmt) - paidAmt);
+    const expYield = r.maturityAmountDue || (paidAmt ? Math.round(paidAmt * ((r.returnRatePercent || 15) / 100) * ((r.durationMonths || 12) / 12)) : 0);
+    const realYield = isCompleted ? (r.maturityAmountReleased || expYield) : (r.maturityAmountReleased || 0);
+
+    investmentRecords.push({
+      id: r._id.toString(),
+      investmentId: r.investmentId || `INV-${r._id.toString().slice(-6).toUpperCase()}`,
+      referenceId: r.fundingRequestRef || 'N/A',
+      projectName: r.projectName || 'Venture Syndicate',
+      investmentPool: 'Direct Strategic Funding',
+      committedAmount: commAmt,
+      amountPaid: paidAmt,
+      outstandingCommitment: pendingAmt,
+      expectedReturnRate: r.returnRatePercent ? `${r.returnRatePercent}% p.a.` : (r.expectedReturns || '15% p.a.'),
+      expectedYieldAmount: expYield,
+      realizedYieldAmount: realYield,
+      payoutFrequency: r.returnFrequency || 'At Maturity',
+      startDate: r.investmentStartDate || r.createdAt,
+      maturityDate: r.maturityDate,
+      investmentStatus: r.status,
+      paymentStatus: isPaid ? 'PAID' : paidAmt > 0 ? 'PARTIALLY_PAID' : 'PAYMENT_PENDING',
+      source: 'DIRECT_INVESTMENT'
+    });
+  }
+
+  for (const p of poolInvestments) {
+    for (const inv of (p.investors || [])) {
+      if (memberIds.some((id: any) => id.toString() === inv.memberId?.toString())) {
+        const isCompleted = p.status === 'CLOSED' || p.status === 'REPAID' || inv.payoutStatus === 'COMPLETED';
+        const investedAmt = inv.investedAmount || 0;
+        const expInterest = inv.expectedInterest || 0;
+        const realYield = inv.interestPaid || (inv.payoutStatus === 'COMPLETED' ? expInterest : 0);
+
+        investmentRecords.push({
+          id: (inv as any)._id?.toString() || p._id.toString(),
+          investmentId: `POOL-${(inv as any)._id?.toString().slice(-6).toUpperCase() || p.poolCode}`,
+          referenceId: p.poolCode || 'POOL-001',
+          projectName: p.title,
+          investmentPool: p.industryCategory || 'Capital Pool',
+          committedAmount: investedAmt,
+          amountPaid: investedAmt,
+          outstandingCommitment: 0,
+          expectedReturnRate: `${p.investorAnnualYieldPercent}% p.a.`,
+          expectedYieldAmount: expInterest,
+          realizedYieldAmount: realYield,
+          payoutFrequency: 'At Maturity',
+          startDate: inv.investedAt || p.openedAt,
+          maturityDate: p.repaymentDueDate,
+          investmentStatus: p.status,
+          paymentStatus: 'PAID',
+          source: 'INVESTMENT_POOL'
+        });
+      }
+    }
+  }
+
+  // Investment Summary Metrics
+  const totalCommittedCapital = investmentRecords.reduce((acc, r) => acc + (r.committedAmount || 0), 0);
+  const totalPaidInvestment = investmentRecords.reduce((acc, r) => acc + (r.amountPaid || 0), 0);
+  const totalInvestedCapital = totalPaidInvestment;
+  const activeInvestments = investmentRecords.filter((r) => ['ACTIVE', 'PAID', 'FUNDED', 'OPEN'].includes(r.investmentStatus)).length;
+  const completedInvestments = investmentRecords.filter((r) => ['COMPLETED', 'REPAID', 'CLOSED', 'MATURITY_PAID'].includes(r.investmentStatus)).length;
+  const expectedReturns = investmentRecords.reduce((acc, r) => acc + (r.expectedYieldAmount || 0), 0);
+  const realizedYields = investmentRecords.reduce((acc, r) => acc + (r.realizedYieldAmount || 0), 0);
+
+  const investmentSummary = {
+    totalInvestedCapital,
+    totalCommittedCapital,
+    totalPaidInvestment,
+    activeInvestments,
+    completedInvestments,
+    expectedReturns,
+    realizedYields,
+    records: investmentRecords
+  };
+
+  return {
+    funding: fundingSummary,
+    investments: investmentSummary
+  };
+}
+
+// GET /api/admin/members/:id/financial-summary
+router.get('/:id/financial-summary', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+  try {
+    const fin = await getMemberFinancialData(req.params.id);
+    if (!fin) {
+      res.status(404).json({ success: false, error: 'Member not found' });
+      return;
+    }
+    res.json({ success: true, data: fin });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/admin/members/:id/funding
+router.get('/:id/funding', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+  try {
+    const fin = await getMemberFinancialData(req.params.id);
+    if (!fin) {
+      res.status(404).json({ success: false, error: 'Member not found' });
+      return;
+    }
+    res.json({ success: true, data: fin.funding });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/admin/members/:id/investments
+router.get('/:id/investments', authenticateAdmin, async (req: AuthenticatedAdminRequest, res: Response): Promise<void> => {
+  try {
+    const fin = await getMemberFinancialData(req.params.id);
+    if (!fin) {
+      res.status(404).json({ success: false, error: 'Member not found' });
+      return;
+    }
+    res.json({ success: true, data: fin.investments });
   } catch (err: any) {
     res.status(500).json({ success: false, error: err.message });
   }

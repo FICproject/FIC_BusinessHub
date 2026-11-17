@@ -130,7 +130,16 @@ businessDevRouter.post(
         supportRequired: selectedSupportRequired,
         customSupportRequired: customSupportRequired ? String(customSupportRequired).trim() : '',
         additionalDetails: additionalDetails ? String(additionalDetails).trim() : '',
-        supportingDocuments: Array.isArray(supportingDocuments) ? supportingDocuments : [],
+        supportingDocuments: Array.isArray(supportingDocuments)
+          ? supportingDocuments.map((doc: any) => ({
+              documentId: doc.documentId || doc.fileUrl?.match(/\/documents\/([A-Za-z0-9_-]+)/)?.[1],
+              name: doc.name || 'Document',
+              fileUrl: doc.fileUrl,
+              fileType: doc.fileType,
+              fileSize: doc.fileSize,
+              uploadedAt: doc.uploadedAt || new Date().toISOString()
+            }))
+          : [],
         status: 'SUBMITTED',
         activityTimeline: [
           {

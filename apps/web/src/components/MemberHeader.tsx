@@ -524,7 +524,7 @@ export const MemberHeader: React.FC = () => {
         <div className="lg:hidden flex items-center justify-end gap-2">
           {/* Mobile Bell */}
           <button
-            onClick={() => setNotificationOpen(!notificationOpen)}
+            onClick={() => setIsNotificationCenterOpen(true)}
             className="relative p-2 text-[#51463F] rounded-xl border border-[#EDE2D7] bg-white cursor-pointer"
           >
             <BellIcon size={18} />

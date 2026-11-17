@@ -2898,10 +2898,14 @@ export const fetchAuthenticatedDocumentBlob = async (
     throw new Error('Authentication required to access private documents.');
   }
 
+  const cleanDocId =
+    documentId.match(/\/documents\/([A-Za-z0-9_-]+)/)?.[1] ||
+    documentId.replace(/^.*\/documents\//, '').replace(/\/.*$/, '').trim();
+
   const action = options?.action || 'view';
   const variantQuery =
     action === 'view' ? `?variant=${encodeURIComponent(options?.variant || 'preview')}` : '';
-  const response = await fetch(`${BASE_URL}/documents/${encodeURIComponent(documentId)}/${action}${variantQuery}`, {
+  const response = await fetch(`${BASE_URL}/documents/${encodeURIComponent(cleanDocId)}/${action}${variantQuery}`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 

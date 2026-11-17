@@ -23,6 +23,7 @@ export interface IBusinessDevRequestDocument extends Document {
   customSupportRequired?: string;
   additionalDetails?: string;
   supportingDocuments?: {
+    documentId?: string;
     name: string;
     fileUrl: string;
     fileType?: string;
@@ -142,6 +143,7 @@ const BusinessDevRequestSchema = new Schema<IBusinessDevRequestDocument>(
     additionalDetails: { type: String, trim: true },
     supportingDocuments: [
       {
+        documentId: { type: String },
         name: { type: String },
         fileUrl: { type: String },
         fileType: { type: String },

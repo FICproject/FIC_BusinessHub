@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   WorkspaceShell,
@@ -9,6 +10,7 @@ import {
   WorkspaceEmptyState
 } from '../components/workspace/WorkspaceComponents';
 import { AnimatedModal } from '../motion';
+import { DocumentViewerModal } from '../components/DocumentViewerModal';
 import {
   RocketIcon,
   CheckCircleIcon,
@@ -29,6 +31,7 @@ import {
 } from '../services/api';
 
 export interface ScalingSupportingDocument {
+  documentId?: string;
   name: string;
   fileUrl: string;
   fileType?: string;
@@ -90,6 +93,7 @@ export interface ScalingRequestItem {
 }
 
 export const ScalingPage: React.FC = () => {
+  const navigate = useNavigate();
   const user = getStoredUser();
   const userId = user?.id || user?.userId || 'usr_default';
 
@@ -98,6 +102,7 @@ export const ScalingPage: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedRequest, setSelectedRequest] = useState<ScalingRequestItem | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<any | null>(null);
 
   // Submission Modal & Form State
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
@@ -132,25 +137,60 @@ export const ScalingPage: React.FC = () => {
     'Business Owner';
 
   // Load member's scaling requests strictly from API
-  const loadScalingRequests = async () => {
-    setLoading(true);
+  const loadScalingRequests = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await apiRequest('/scaling/me');
       if (res?.success && Array.isArray(res.data)) {
         setScalingRequests(res.data);
+
+        // Keep open modal synchronized with latest server data in real-time
+        if (selectedRequest) {
+          const targetId = selectedRequest._id || selectedRequest.requestId;
+          const fresh = res.data.find(
+            (item: any) =>
+              (item._id && item._id === targetId) ||
+              (item.requestId && item.requestId === targetId)
+          );
+          if (fresh) {
+            setSelectedRequest((prev) => (prev ? { ...prev, ...fresh } : fresh));
+          }
+        }
       } else {
         setScalingRequests([]);
       }
     } catch (err: any) {
-      console.warn('Failed to load scaling requests:', err);
-      setScalingRequests([]);
+      if (!silent) {
+        console.warn('Failed to load scaling requests:', err);
+        setScalingRequests([]);
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     loadScalingRequests();
+
+    // Auto-polling sync every 6 seconds when document is visible
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        loadScalingRequests(true);
+      }
+    }, 6000);
+
+    const handleFocusSync = () => {
+      loadScalingRequests(true);
+    };
+
+    window.addEventListener('focus', handleFocusSync);
+    document.addEventListener('visibilitychange', handleFocusSync);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocusSync);
+      document.removeEventListener('visibilitychange', handleFocusSync);
+    };
   }, [userId]);
 
   // Handle Document Upload
@@ -181,12 +221,17 @@ export const ScalingPage: React.FC = () => {
 
       if (uploadRes) {
         const docAsset = uploadRes.document || uploadRes;
+        const docId =
+          docAsset.documentId ||
+          docAsset.id ||
+          docAsset.viewUrl?.match(/\/documents\/([A-Za-z0-9_-]+)/)?.[1];
         const newDoc: ScalingSupportingDocument = {
           name: docAsset.originalFileName || file.name,
           fileUrl: docAsset.viewUrl || docAsset.fileUrl || '',
           fileType: file.type,
           fileSize: file.size,
-          uploadedAt: new Date().toISOString()
+          uploadedAt: new Date().toISOString(),
+          ...(docId ? { documentId: docId } : {})
         };
         setUploadedDocs([...uploadedDocs, newDoc]);
       }
@@ -362,7 +407,7 @@ export const ScalingPage: React.FC = () => {
           <div className="text-xs font-bold text-[#82776E] self-end sm:self-auto flex items-center gap-2">
             <span>Total Requests: {scalingRequests.length}</span>
             <button
-              onClick={loadScalingRequests}
+              onClick={() => loadScalingRequests()}
               className="p-1.5 rounded-lg border border-[#EDE2D7] bg-white hover:bg-[#FAF7F2] text-[#8064B1] transition-all cursor-pointer"
               title="Refresh Requests"
             >
@@ -490,18 +535,18 @@ export const ScalingPage: React.FC = () => {
                           {req.meetingDetails.mode === 'IN_PERSON' ? 'Venue Location: ' : 'Meeting Link: '}
                         </span>
                         {req.meetingDetails.mode === 'VIRTUAL' && req.meetingDetails.linkOrLocation ? (
-                          <a
-                            href={
-                              req.meetingDetails.linkOrLocation.startsWith('http')
-                                ? req.meetingDetails.linkOrLocation
-                                : `https://${req.meetingDetails.linkOrLocation}`
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(
+                                `/meetings?highlight=${req.meetingDetails?.meetingId || req.requestId}`
+                              )
                             }
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[#8064B1] underline hover:text-[#6A4D9C] inline-flex items-center gap-1"
+                            className="px-3 py-1 bg-[#8064B1] hover:bg-[#6E529F] text-white rounded-lg text-xs font-bold inline-flex items-center gap-1 transition-colors cursor-pointer"
                           >
-                            Join Online Meeting &rarr;
-                          </a>
+                            <span>Go to Meeting Desk</span>
+                            <ArrowRightIcon size={12} />
+                          </button>
                         ) : (
                           <span>{req.meetingDetails.linkOrLocation || 'Coordinated by FIC'}</span>
                         )}
@@ -1097,14 +1142,13 @@ export const ScalingPage: React.FC = () => {
                           <span className="font-semibold text-[#51463F] truncate">{doc.name}</span>
                         </div>
                         {doc.fileUrl && doc.fileUrl !== '#' && (
-                          <a
-                            href={doc.fileUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-bold text-[#8064B1] hover:underline shrink-0 ml-2"
+                          <button
+                            type="button"
+                            onClick={() => setViewingDoc(doc)}
+                            className="text-xs font-bold text-[#8064B1] hover:underline shrink-0 ml-2 cursor-pointer inline-flex items-center gap-1"
                           >
-                            View
-                          </a>
+                            <span>View</span>
+                          </button>
                         )}
                       </div>
                     ))}
@@ -1121,6 +1165,21 @@ export const ScalingPage: React.FC = () => {
           </div>
         )}
       </AnimatedModal>
+
+      {/* In-App Document Inspection / Preview Modal */}
+      <DocumentViewerModal
+        isOpen={Boolean(viewingDoc)}
+        onClose={() => setViewingDoc(null)}
+        documentId={
+          viewingDoc?.documentId ||
+          viewingDoc?.fileUrl?.match(/\/documents\/([A-Za-z0-9_-]+)/)?.[1] ||
+          ''
+        }
+        documentLabel={viewingDoc?.name || 'Scaling Supporting Document'}
+        originalFileName={viewingDoc?.name}
+        originalMimeType={viewingDoc?.fileType}
+        originalFileSize={viewingDoc?.fileSize}
+      />
     </WorkspaceShell>
   );
 };
