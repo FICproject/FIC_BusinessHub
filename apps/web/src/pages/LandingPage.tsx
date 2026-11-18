@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion, useReducedMotion } from 'motion/react';
 import { getStoredUser, fetchPlatformPricingConfig } from '../services/api';
 import {
   BriefcaseIcon,
@@ -16,6 +17,7 @@ import {
 
 export const LandingPage: React.FC = () => {
   const user = getStoredUser();
+  const shouldReduceMotion = useReducedMotion();
 
   const [platformPricing, setPlatformPricing] = useState({
     firstYearMembershipFee: 99,
@@ -35,400 +37,573 @@ export const LandingPage: React.FC = () => {
       .catch((err) => console.warn('Pricing config load note:', err));
   }, []);
 
+  // Standard animation ease and durations
+  const transitionSmooth = {
+    duration: 0.55,
+    ease: [0.22, 1, 0.36, 1] as const
+  };
+
   return (
-    <div id="home" className="w-full bg-[#FAF8F5] text-[#2D2520] selection:bg-[#4F46E5] selection:text-white">
+    <div
+      id="home"
+      className="w-full bg-[#FAF7F2] text-[#51463F] selection:bg-[#6D28D9] selection:text-white relative overflow-hidden"
+    >
+      {/* =========================================================================
+          BACKGROUND AMBIENT GLOWS & MESH (Phase 9)
+          Light, subtle, non-intrusive ambient radial glows to make page feel premium
+         ========================================================================= */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-[#EDE5FF]/50 rounded-full blur-[140px] pointer-events-none -z-10" />
+      <div className="absolute top-48 right-[-100px] w-[450px] h-[450px] bg-[#E8795B]/10 rounded-full blur-[150px] pointer-events-none -z-10" />
+      <div className="absolute top-[1200px] left-[-150px] w-[500px] h-[500px] bg-[#E5A23B]/10 rounded-full blur-[160px] pointer-events-none -z-10" />
+      <div className="absolute top-[2200px] right-[-100px] w-[550px] h-[550px] bg-[#EDE5FF]/40 rounded-full blur-[150px] pointer-events-none -z-10" />
+
       {/* =========================================================================
           SECTION 1: HERO SECTION
-          Two-column simple layout communicating the core purpose of FIC immediately
+          Two-column simple layout with professional page load animations
          ========================================================================= */}
-      <section className="relative pt-12 pb-16 md:pt-16 md:pb-24 overflow-hidden border-b border-[#E8E2D9]">
+      <section className="relative pt-12 pb-16 md:pt-18 md:pb-24 overflow-hidden border-b border-[#EDE2D7]">
         <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
             
             {/* Left Column: Heading, Description & Action Buttons */}
             <div className="lg:col-span-7 space-y-6">
-              {/* Trust Badge */}
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#E8E2D9] shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-[#4F46E5] animate-pulse" />
-                <span className="text-[11.5px] font-bold text-[#574D45] tracking-wide uppercase">
+              
+              {/* Trust Badge with subtle pop entrance */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-[#EDE2D7] shadow-xs"
+              >
+                <span className="w-2 h-2 rounded-full bg-[#1C6960] animate-pulse" />
+                <span className="text-[11.5px] font-bold text-[#51463F] tracking-wide uppercase">
                   Verified B2B & Opportunity Ecosystem
                 </span>
-              </div>
+              </motion.div>
 
-              {/* Main Heading */}
-              <h1 className="text-3xl sm:text-5xl lg:text-5xl font-black text-[#2D2520] tracking-tight leading-[1.15]">
-                Grow Your Business with{' '}
-                <span className="text-[#4F46E5]">FIC Business Hub</span>
-              </h1>
+              {/* Main Heading with line-by-line reveal */}
+              <motion.h1
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                className="text-3xl sm:text-5xl lg:text-5xl font-black text-[#51463F] tracking-tight leading-[1.15]"
+              >
+                <span>Grow Your Business with </span>
+                <span className="bg-gradient-to-r from-[#6D28D9] via-[#8B5CF6] to-[#E8795B] bg-clip-text text-transparent">
+                  FIC Business Hub
+                </span>
+              </motion.h1>
 
               {/* Core Description */}
-              <p className="text-base sm:text-lg text-[#574D45] leading-relaxed max-w-2xl font-normal">
+              <motion.p
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.55, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                className="text-base sm:text-lg text-[#82776E] leading-relaxed max-w-2xl font-normal"
+              >
                 A trusted business ecosystem connecting entrepreneurs, MSMEs, professionals, mentors, and students to discover opportunities, access services, and grow together.
-              </p>
+              </motion.p>
 
               {/* Primary Call to Action Buttons */}
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                className="flex flex-wrap items-center gap-3.5 pt-2"
+              >
                 <Link to={user ? '/dashboard' : '/register'}>
-                  <button
+                  <motion.button
+                    whileHover={shouldReduceMotion ? {} : { scale: 1.03, y: -1 }}
+                    whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+                    transition={{ duration: 0.18 }}
                     type="button"
-                    className="px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base bg-[#4F46E5] hover:bg-[#4338CA] text-white shadow-sm hover:shadow transition-all flex items-center gap-2 cursor-pointer"
+                    className="group px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#E8795B] text-white shadow-[0_4px_16px_rgba(109,40,217,0.25)] hover:shadow-[0_10px_25px_-4px_rgba(109,40,217,0.4)] transition-all flex items-center gap-2 cursor-pointer"
                   >
                     <span>{user ? 'Go to Dashboard' : 'Become a Member'}</span>
-                    <ArrowRightIcon size={16} />
-                  </button>
+                    <ArrowRightIcon
+                      size={16}
+                      className="transition-transform duration-200 group-hover:translate-x-1"
+                    />
+                  </motion.button>
                 </Link>
 
                 <a href="#services">
-                  <button
+                  <motion.button
+                    whileHover={shouldReduceMotion ? {} : { scale: 1.02, y: -1 }}
+                    whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+                    transition={{ duration: 0.18 }}
                     type="button"
-                    className="px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base text-[#2D2520] bg-white border border-[#E8E2D9] hover:bg-[#FAF8F5] hover:border-[#D9D1C5] transition-all cursor-pointer"
+                    className="px-6 py-3.5 rounded-xl font-bold text-sm sm:text-base text-[#51463F] bg-white border border-[#EDE2D7] hover:border-[#6D28D9]/40 hover:bg-[#FAF7F2] hover:text-[#6D28D9] shadow-xs hover:shadow-sm transition-all cursor-pointer"
                   >
                     Learn More
-                  </button>
+                  </motion.button>
                 </a>
-              </div>
+              </motion.div>
 
               {/* Trust & Verification Safeguards */}
-              <div className="pt-4 border-t border-[#E8E2D9]/80 flex flex-wrap items-center gap-y-2 gap-x-6 text-xs text-[#73685F]">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircleIcon size={15} className="text-[#15803D]" />
+              <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.45 }}
+                className="pt-4 border-t border-[#EDE2D7] flex flex-wrap items-center gap-y-2.5 gap-x-6 text-xs text-[#82776E]"
+              >
+                <div className="flex items-center gap-1.5 hover:text-[#51463F] transition-colors">
+                  <CheckCircleIcon size={15} className="text-[#1C6960]" />
                   <span>Mandatory Sector KYC Verification</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <ShieldCheckIcon size={15} className="text-[#4F46E5]" />
+                <div className="flex items-center gap-1.5 hover:text-[#51463F] transition-colors">
+                  <ShieldCheckIcon size={15} className="text-[#6D28D9]" />
                   <span>Confidential Intermediary Privacy</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircleIcon size={15} className="text-[#15803D]" />
+                <div className="flex items-center gap-1.5 hover:text-[#51463F] transition-colors">
+                  <CheckCircleIcon size={15} className="text-[#1C6960]" />
                   <span>Indian MSME & Enterprise Network</span>
                 </div>
-              </div>
+              </motion.div>
             </div>
 
-            {/* Right Column: Clean, Single Business Image */}
-            <div className="lg:col-span-5">
-              <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden border border-[#E8E2D9] bg-white shadow-sm">
-                <img
-                  src="/hero-business.jpg"
-                  alt="Entrepreneurs and professionals collaborating at FIC Business Hub"
-                  className="w-full h-[320px] sm:h-[400px] lg:h-[440px] object-cover object-center"
-                  loading="eager"
-                  onError={(e) => {
-                    // Fallback to collab option if first image fails
-                    const target = e.currentTarget;
-                    if (!target.src.includes('hero-business-collab')) {
-                      target.src = '/hero-business-collab.jpg';
-                    }
-                  }}
-                />
+            {/* Right Column: Clean, Single Business Image with entrance & hover reveal */}
+            <motion.div
+              initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.65, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="lg:col-span-5"
+            >
+              <div className="group relative rounded-3xl overflow-hidden border border-[#EDE2D7] bg-white shadow-sm hover:shadow-xl transition-shadow duration-300">
+                {/* Floating ambient badge in corner */}
+                <div className="absolute top-3.5 right-3.5 z-10 bg-white/90 backdrop-blur-md border border-[#EDE2D7] px-3 py-1.5 rounded-full shadow-xs flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[#E5A23B]" />
+                  <span className="text-[10.5px] font-bold text-[#51463F] uppercase tracking-wider">
+                    Verified Network
+                  </span>
+                </div>
+
+                <div className="overflow-hidden">
+                  <img
+                    src="/hero-business.jpg"
+                    alt="Entrepreneurs and professionals collaborating at FIC Business Hub"
+                    className="w-full h-[320px] sm:h-[400px] lg:h-[440px] object-cover object-center group-hover:scale-[1.03] transition-transform duration-500 ease-out"
+                    loading="eager"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (!target.src.includes('hero-business-collab')) {
+                        target.src = '/hero-business-collab.jpg';
+                      }
+                    }}
+                  />
+                </div>
+
                 {/* Subtle Clean Caption */}
-                <div className="p-4 bg-white/95 backdrop-blur-xs border-t border-[#E8E2D9] flex items-center justify-between">
+                <div className="p-4 bg-white/95 backdrop-blur-xs border-t border-[#EDE2D7] flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-bold text-[#2D2520]">FIC Ecosystem Collaboration</p>
-                    <p className="text-[11px] text-[#73685F]">Verified Indian entrepreneurs, MSMEs & advisors</p>
+                    <p className="text-xs font-bold text-[#51463F]">FIC Ecosystem Collaboration</p>
+                    <p className="text-[11px] text-[#82776E]">Verified Indian entrepreneurs, MSMEs & advisors</p>
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#4F46E5] bg-[#4F46E5]/10 px-2.5 py-1 rounded-full border border-[#4F46E5]/20">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#6D28D9] bg-[#EDE5FF] px-2.5 py-1 rounded-full border border-[#6D28D9]/20">
                     Trusted Hub
                   </span>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
           </div>
         </div>
       </section>
 
       {/* =========================================================================
-          SECTION 2: WHAT YOU CAN DO ON FIC
-          Six simple, clean service cards accurately representing project modules
+          SECTION 2: WHAT YOU CAN DO ON FIC (Phase 5)
+          Six interactive service cards with entrance and micro-interactions
          ========================================================================= */}
-      <section id="services" className="py-16 md:py-24 bg-white border-b border-[#E8E2D9]">
+      <section id="services" className="py-16 md:py-24 bg-white border-b border-[#EDE2D7] relative">
         <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8">
           
-          {/* Section Header */}
-          <div className="max-w-2xl mb-12 sm:mb-16">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#4F46E5]">
+          {/* Section Header with decorative underline reveal */}
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={transitionSmooth}
+            className="max-w-2xl mb-12 sm:mb-16"
+          >
+            <span className="text-xs font-bold uppercase tracking-wider text-[#6D28D9]">
               Core Ecosystem Services
             </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-[#2D2520] tracking-tight mt-1.5">
-              What You Can Do on FIC
-            </h2>
-            <p className="text-sm sm:text-base text-[#574D45] mt-2.5 leading-relaxed">
+            <div className="relative inline-block mt-1.5">
+              <h2 className="text-2xl sm:text-4xl font-black text-[#51463F] tracking-tight">
+                What You Can Do on FIC
+              </h2>
+              {/* Subtle decorative underline reveal */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.7, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                style={{ originX: 0 }}
+                className="h-[3px] bg-gradient-to-r from-[#6D28D9] to-[#E8795B] rounded-full mt-2 w-28"
+              />
+            </div>
+            <p className="text-sm sm:text-base text-[#82776E] mt-3 leading-relaxed">
               Explore six core capability areas designed to connect, validate, and scale your business ventures within a structured, confidential ecosystem.
             </p>
-          </div>
+          </motion.div>
 
-          {/* 6 Simple Service Cards Grid */}
+          {/* 6 Service Cards Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             
-            {/* 1. Marketplace */}
-            <div className="p-6 rounded-2xl bg-white border border-[#E8E2D9] shadow-xs hover:shadow-md hover:border-[#D9D1C5] transition-all flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] flex items-center justify-center text-[#4F46E5]">
-                  <BriefcaseIcon size={22} />
-                </div>
-                <h3 className="text-lg font-bold text-[#2D2520]">Marketplace</h3>
-                <p className="text-xs sm:text-sm text-[#574D45] leading-relaxed">
-                  Discover products and professional services.
-                </p>
-              </div>
-              <div className="pt-5 mt-4 border-t border-[#E8E2D9]/60">
-                <Link
-                  to={user ? '/marketplace' : '/register'}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] transition-colors"
-                >
-                  <span>Learn More</span>
-                  <ArrowRightIcon size={14} />
-                </Link>
-              </div>
-            </div>
-
-            {/* 2. Business Ideas */}
-            <div className="p-6 rounded-2xl bg-white border border-[#E8E2D9] shadow-xs hover:shadow-md hover:border-[#D9D1C5] transition-all flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] flex items-center justify-center text-[#D97706]">
-                  <LightbulbIcon size={22} />
-                </div>
-                <h3 className="text-lg font-bold text-[#2D2520]">Business Ideas</h3>
-                <p className="text-xs sm:text-sm text-[#574D45] leading-relaxed">
-                  Submit ideas and explore incubation support.
-                </p>
-              </div>
-              <div className="pt-5 mt-4 border-t border-[#E8E2D9]/60">
-                <Link
-                  to={user ? '/business-ideas' : '/register'}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] transition-colors"
-                >
-                  <span>Learn More</span>
-                  <ArrowRightIcon size={14} />
-                </Link>
-              </div>
-            </div>
-
-            {/* 3. Business Growth */}
-            <div className="p-6 rounded-2xl bg-white border border-[#E8E2D9] shadow-xs hover:shadow-md hover:border-[#D9D1C5] transition-all flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] flex items-center justify-center text-[#15803D]">
-                  <TrendingUpIcon size={22} />
-                </div>
-                <h3 className="text-lg font-bold text-[#2D2520]">Business Growth</h3>
-                <p className="text-xs sm:text-sm text-[#574D45] leading-relaxed">
-                  Explore business development and scaling support.
-                </p>
-              </div>
-              <div className="pt-5 mt-4 border-t border-[#E8E2D9]/60">
-                <Link
-                  to={user ? '/business-development' : '/register'}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] transition-colors"
-                >
-                  <span>Learn More</span>
-                  <ArrowRightIcon size={14} />
-                </Link>
-              </div>
-            </div>
-
-            {/* 4. Funding & Investment */}
-            <div className="p-6 rounded-2xl bg-white border border-[#E8E2D9] shadow-xs hover:shadow-md hover:border-[#D9D1C5] transition-all flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] flex items-center justify-center text-[#6D28D9]">
+            {[
+              {
+                id: 'marketplace',
+                title: 'Marketplace',
+                desc: 'Discover products and professional services.',
+                route: '/marketplace',
+                icon: <BriefcaseIcon size={22} />,
+                accentColor: '#6D28D9',
+                softBg: 'bg-[#EDE5FF]',
+                borderColor: 'hover:border-[#6D28D9]/40',
+                glowColor: 'group-hover:shadow-[rgba(109,40,217,0.08)]'
+              },
+              {
+                id: 'business-ideas',
+                title: 'Business Ideas',
+                desc: 'Submit ideas and explore incubation support.',
+                route: '/business-ideas',
+                icon: <LightbulbIcon size={22} />,
+                accentColor: '#E5A23B',
+                softBg: 'bg-[#FEF3C7]',
+                borderColor: 'hover:border-[#E5A23B]/50',
+                glowColor: 'group-hover:shadow-[rgba(229,162,59,0.08)]'
+              },
+              {
+                id: 'business-development',
+                title: 'Business Growth',
+                desc: 'Explore business development and scaling support.',
+                route: '/business-development',
+                icon: <TrendingUpIcon size={22} />,
+                accentColor: '#1C6960',
+                softBg: 'bg-[#CCFBF1]',
+                borderColor: 'hover:border-[#1C6960]/40',
+                glowColor: 'group-hover:shadow-[rgba(28,105,96,0.08)]'
+              },
+              {
+                id: 'investment',
+                title: 'Funding & Investment',
+                desc: 'Explore funding and investment opportunities through FIC.',
+                route: '/investment',
+                icon: (
                   <svg className="w-5 h-5 text-[#6D28D9]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                </div>
-                <h3 className="text-lg font-bold text-[#2D2520]">Funding & Investment</h3>
-                <p className="text-xs sm:text-sm text-[#574D45] leading-relaxed">
-                  Explore funding and investment opportunities through FIC.
-                </p>
-              </div>
-              <div className="pt-5 mt-4 border-t border-[#E8E2D9]/60">
-                <Link
-                  to={user ? '/investment' : '/register'}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] transition-colors"
-                >
-                  <span>Learn More</span>
-                  <ArrowRightIcon size={14} />
-                </Link>
-              </div>
-            </div>
+                ),
+                accentColor: '#6D28D9',
+                softBg: 'bg-[#EDE5FF]',
+                borderColor: 'hover:border-[#6D28D9]/40',
+                glowColor: 'group-hover:shadow-[rgba(109,40,217,0.08)]'
+              },
+              {
+                id: 'skill-development',
+                title: 'Skill Development',
+                desc: 'Discover training, masterclasses, and mentorship.',
+                route: '/skill-development',
+                icon: <GraduationCapIcon size={22} />,
+                accentColor: '#E8795B',
+                softBg: 'bg-[#FFE4E6]',
+                borderColor: 'hover:border-[#E8795B]/40',
+                glowColor: 'group-hover:shadow-[rgba(232,121,91,0.08)]'
+              },
+              {
+                id: 'meetings',
+                title: 'Meetings',
+                desc: 'Participate in FIC-coordinated business consultations.',
+                route: '/meetings',
+                icon: <HandshakeIcon size={22} />,
+                accentColor: '#51463F',
+                softBg: 'bg-[#EDE5FF]',
+                borderColor: 'hover:border-[#51463F]/40',
+                glowColor: 'group-hover:shadow-[rgba(81,70,63,0.08)]'
+              }
+            ].map((card, idx) => (
+              <motion.div
+                key={card.id}
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 22 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.15 }}
+                transition={{
+                  duration: 0.45,
+                  delay: idx * 0.08,
+                  ease: [0.22, 1, 0.36, 1]
+                }}
+                whileHover={shouldReduceMotion ? {} : { y: -6 }}
+                className={`group p-6 rounded-2xl bg-white border border-[#EDE2D7] ${card.borderColor} shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between relative overflow-hidden`}
+              >
+                {/* Top Subtle Accent Strip on hover */}
+                <div
+                  className="absolute top-0 left-0 right-0 h-[3px] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  style={{ backgroundColor: card.accentColor }}
+                />
 
-            {/* 5. Skill Development */}
-            <div className="p-6 rounded-2xl bg-white border border-[#E8E2D9] shadow-xs hover:shadow-md hover:border-[#D9D1C5] transition-all flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] flex items-center justify-center text-[#0284C7]">
-                  <GraduationCapIcon size={22} />
+                <div className="space-y-3.5">
+                  <div
+                    className={`w-11 h-11 rounded-xl ${card.softBg} border border-[#EDE2D7] flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:rotate-1`}
+                    style={{ color: card.accentColor }}
+                  >
+                    {card.icon}
+                  </div>
+                  <h3 className="text-lg font-bold text-[#51463F] group-hover:text-[#6D28D9] transition-colors duration-200">
+                    {card.title}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#82776E] leading-relaxed">
+                    {card.desc}
+                  </p>
                 </div>
-                <h3 className="text-lg font-bold text-[#2D2520]">Skill Development</h3>
-                <p className="text-xs sm:text-sm text-[#574D45] leading-relaxed">
-                  Discover training, masterclasses, and mentorship.
-                </p>
-              </div>
-              <div className="pt-5 mt-4 border-t border-[#E8E2D9]/60">
-                <Link
-                  to={user ? '/skill-development' : '/register'}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] transition-colors"
-                >
-                  <span>Learn More</span>
-                  <ArrowRightIcon size={14} />
-                </Link>
-              </div>
-            </div>
 
-            {/* 6. Meetings */}
-            <div className="p-6 rounded-2xl bg-white border border-[#E8E2D9] shadow-xs hover:shadow-md hover:border-[#D9D1C5] transition-all flex flex-col justify-between">
-              <div className="space-y-3">
-                <div className="w-11 h-11 rounded-xl bg-[#FAF8F5] border border-[#E8E2D9] flex items-center justify-center text-[#E06D53]">
-                  <HandshakeIcon size={22} />
+                <div className="pt-5 mt-4 border-t border-[#EDE2D7]">
+                  <Link
+                    to={user ? card.route : '/register'}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[#6D28D9] hover:text-[#5B21B6] transition-colors"
+                  >
+                    <span>Learn More</span>
+                    <ArrowRightIcon
+                      size={14}
+                      className="transition-transform duration-200 group-hover:translate-x-1.5"
+                    />
+                  </Link>
                 </div>
-                <h3 className="text-lg font-bold text-[#2D2520]">Meetings</h3>
-                <p className="text-xs sm:text-sm text-[#574D45] leading-relaxed">
-                  Participate in FIC-coordinated business consultations.
-                </p>
-              </div>
-              <div className="pt-5 mt-4 border-t border-[#E8E2D9]/60">
-                <Link
-                  to={user ? '/meetings' : '/register'}
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4F46E5] hover:text-[#4338CA] transition-colors"
-                >
-                  <span>Learn More</span>
-                  <ArrowRightIcon size={14} />
-                </Link>
-              </div>
-            </div>
+              </motion.div>
+            ))}
 
           </div>
         </div>
       </section>
 
       {/* =========================================================================
-          SECTION 3: HOW IT WORKS
-          Three simple connected steps for first-time visitors
+          SECTION 3: HOW IT WORKS (Phase 6)
+          Three connected steps with smooth flow line & sequential entrance
          ========================================================================= */}
-      <section id="how-it-works" className="py-16 md:py-24 bg-[#FAF8F5] border-b border-[#E8E2D9]">
+      <section id="how-it-works" className="py-16 md:py-24 bg-[#FAF7F2] border-b border-[#EDE2D7] relative">
         <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Section Header */}
-          <div className="text-center max-w-xl mx-auto mb-12 sm:mb-16">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#4F46E5]">
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={transitionSmooth}
+            className="text-center max-w-xl mx-auto mb-12 sm:mb-16"
+          >
+            <span className="text-xs font-bold uppercase tracking-wider text-[#E8795B]">
               Quick Onboarding Process
             </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-[#2D2520] tracking-tight mt-1.5">
-              How It Works
-            </h2>
-            <p className="text-sm sm:text-base text-[#574D45] mt-2 leading-relaxed">
+            <div className="relative inline-block mt-1.5">
+              <h2 className="text-2xl sm:text-4xl font-black text-[#51463F] tracking-tight">
+                How It Works
+              </h2>
+              {/* Centered decorative underline */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.7, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="h-[3px] bg-gradient-to-r from-[#E8795B] via-[#E5A23B] to-[#6D28D9] rounded-full mt-2 w-20 mx-auto"
+              />
+            </div>
+            <p className="text-sm sm:text-base text-[#82776E] mt-3 leading-relaxed">
               Join the ecosystem in three transparent steps designed to safeguard authentic businesses.
             </p>
-          </div>
+          </motion.div>
 
-          {/* Three Connected Steps */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            
-            {/* Step 1: Register */}
-            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-[#E8E2D9] shadow-xs relative text-center flex flex-col items-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-[#4F46E5]/10 text-[#4F46E5] flex items-center justify-center font-bold text-lg border border-[#4F46E5]/20">
-                <UserIcon size={26} />
-              </div>
-              <span className="text-[11px] font-black uppercase tracking-wider text-[#4F46E5] bg-[#4F46E5]/10 px-3 py-0.5 rounded-full">
-                Step 1
-              </span>
-              <h3 className="text-xl font-bold text-[#2D2520]">Register</h3>
-              <p className="text-xs sm:text-sm text-[#574D45] leading-relaxed max-w-xs">
-                Create your FIC account.
-              </p>
+          {/* Connected Steps Container */}
+          <div className="relative">
+            {/* Desktop Horizontal Connecting Progress Line (fills left-to-right) */}
+            <div className="hidden md:block absolute top-[52px] left-[16%] right-[16%] h-[2px] bg-[#EDE2D7] -z-0">
+              <motion.div
+                initial={shouldReduceMotion ? false : { scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 1.1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                style={{ originX: 0 }}
+                className="h-full bg-gradient-to-r from-[#6D28D9] via-[#1C6960] to-[#E5A23B]"
+              />
             </div>
 
-            {/* Step 2: Verify */}
-            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-[#E8E2D9] shadow-xs relative text-center flex flex-col items-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-[#15803D]/10 text-[#15803D] flex items-center justify-center font-bold text-lg border border-[#15803D]/20">
-                <ShieldCheckIcon size={26} />
-              </div>
-              <span className="text-[11px] font-black uppercase tracking-wider text-[#15803D] bg-[#15803D]/10 px-3 py-0.5 rounded-full">
-                Step 2
-              </span>
-              <h3 className="text-xl font-bold text-[#2D2520]">Verify</h3>
-              <p className="text-xs sm:text-sm text-[#574D45] leading-relaxed max-w-xs">
-                Complete your KYC verification.
-              </p>
-            </div>
+            {/* Three Steps Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+              
+              {/* Step 1: Register */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={shouldReduceMotion ? {} : { y: -5 }}
+                className="p-6 sm:p-8 rounded-2xl bg-white border border-[#EDE2D7] hover:border-[#6D28D9]/40 shadow-xs hover:shadow-lg transition-all duration-300 relative text-center flex flex-col items-center space-y-4 group"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-[#EDE5FF] text-[#6D28D9] flex items-center justify-center font-bold text-lg border border-[#6D28D9]/20 transition-transform duration-300 group-hover:scale-110 shadow-xs">
+                  <UserIcon size={26} />
+                </div>
+                <motion.span
+                  initial={shouldReduceMotion ? false : { scale: 0.8 }}
+                  whileInView={{ scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.2 }}
+                  className="text-[11px] font-black uppercase tracking-wider text-[#6D28D9] bg-[#EDE5FF] px-3 py-0.5 rounded-full"
+                >
+                  Step 1
+                </motion.span>
+                <h3 className="text-xl font-bold text-[#51463F] group-hover:text-[#6D28D9] transition-colors">
+                  Register
+                </h3>
+                <p className="text-xs sm:text-sm text-[#82776E] leading-relaxed max-w-xs">
+                  Create your FIC account.
+                </p>
+              </motion.div>
 
-            {/* Step 3: Explore */}
-            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-[#E8E2D9] shadow-xs relative text-center flex flex-col items-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-[#D97706]/10 text-[#D97706] flex items-center justify-center font-bold text-lg border border-[#D97706]/20">
-                <RocketIcon size={26} />
-              </div>
-              <span className="text-[11px] font-black uppercase tracking-wider text-[#D97706] bg-[#D97706]/10 px-3 py-0.5 rounded-full">
-                Step 3
-              </span>
-              <h3 className="text-xl font-bold text-[#2D2520]">Explore</h3>
-              <p className="text-xs sm:text-sm text-[#574D45] leading-relaxed max-w-xs">
-                Access available services and opportunities.
-              </p>
-            </div>
+              {/* Step 2: Verify */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.5, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={shouldReduceMotion ? {} : { y: -5 }}
+                className="p-6 sm:p-8 rounded-2xl bg-white border border-[#EDE2D7] hover:border-[#1C6960]/40 shadow-xs hover:shadow-lg transition-all duration-300 relative text-center flex flex-col items-center space-y-4 group"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-[#CCFBF1] text-[#1C6960] flex items-center justify-center font-bold text-lg border border-[#1C6960]/20 transition-transform duration-300 group-hover:scale-110 shadow-xs">
+                  <ShieldCheckIcon size={26} />
+                </div>
+                <motion.span
+                  initial={shouldReduceMotion ? false : { scale: 0.8 }}
+                  whileInView={{ scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.35 }}
+                  className="text-[11px] font-black uppercase tracking-wider text-[#1C6960] bg-[#CCFBF1] px-3 py-0.5 rounded-full"
+                >
+                  Step 2
+                </motion.span>
+                <h3 className="text-xl font-bold text-[#51463F] group-hover:text-[#1C6960] transition-colors">
+                  Verify
+                </h3>
+                <p className="text-xs sm:text-sm text-[#82776E] leading-relaxed max-w-xs">
+                  Complete your KYC verification.
+                </p>
+              </motion.div>
 
+              {/* Step 3: Explore */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.2 }}
+                transition={{ duration: 0.5, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                whileHover={shouldReduceMotion ? {} : { y: -5 }}
+                className="p-6 sm:p-8 rounded-2xl bg-white border border-[#EDE2D7] hover:border-[#E5A23B]/40 shadow-xs hover:shadow-lg transition-all duration-300 relative text-center flex flex-col items-center space-y-4 group"
+              >
+                <div className="w-14 h-14 rounded-2xl bg-[#FEF3C7] text-[#E5A23B] flex items-center justify-center font-bold text-lg border border-[#E5A23B]/30 transition-transform duration-300 group-hover:scale-110 shadow-xs">
+                  <RocketIcon size={26} />
+                </div>
+                <motion.span
+                  initial={shouldReduceMotion ? false : { scale: 0.8 }}
+                  whileInView={{ scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20, delay: 0.5 }}
+                  className="text-[11px] font-black uppercase tracking-wider text-[#E5A23B] bg-[#FEF3C7] px-3 py-0.5 rounded-full"
+                >
+                  Step 3
+                </motion.span>
+                <h3 className="text-xl font-bold text-[#51463F] group-hover:text-[#E5A23B] transition-colors">
+                  Explore
+                </h3>
+                <p className="text-xs sm:text-sm text-[#82776E] leading-relaxed max-w-xs">
+                  Access available services and opportunities.
+                </p>
+              </motion.div>
+
+            </div>
           </div>
         </div>
       </section>
 
       {/* =========================================================================
-          SECTION 4: MEMBERSHIP PLANS
-          Three cards: Silver, Gold, Diamond (utilizing real platform pricing)
+          SECTION 4: MEMBERSHIP PLANS (Phase 7)
+          Three cards: Silver, Gold, Diamond with real platform pricing & premium feel
          ========================================================================= */}
-      <section id="membership" className="py-16 md:py-24 bg-white border-b border-[#E8E2D9]">
+      <section id="membership" className="py-16 md:py-24 bg-white border-b border-[#EDE2D7]">
         <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Section Header */}
-          <div className="text-center max-w-2xl mx-auto mb-12 sm:mb-16">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#4F46E5]">
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 18 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={transitionSmooth}
+            className="text-center max-w-2xl mx-auto mb-12 sm:mb-16"
+          >
+            <span className="text-xs font-bold uppercase tracking-wider text-[#6D28D9]">
               Straightforward Membership
             </span>
-            <h2 className="text-2xl sm:text-4xl font-black text-[#2D2520] tracking-tight mt-1.5">
-              Membership Plans
-            </h2>
-            <p className="text-sm sm:text-base text-[#574D45] mt-2 leading-relaxed">
+            <div className="relative inline-block mt-1.5">
+              <h2 className="text-2xl sm:text-4xl font-black text-[#51463F] tracking-tight">
+                Membership Plans
+              </h2>
+              {/* Centered decorative underline */}
+              <motion.div
+                initial={shouldReduceMotion ? false : { scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.7, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="h-[3px] bg-gradient-to-r from-[#6D28D9] via-[#E8795B] to-[#E5A23B] rounded-full mt-2 w-24 mx-auto"
+              />
+            </div>
+            <p className="text-sm sm:text-base text-[#82776E] mt-3 leading-relaxed">
               Transparent access designed for verified business operators. Compare plans and choose your gateway into the FIC ecosystem.
             </p>
-          </div>
+          </motion.div>
 
           {/* Three Membership Cards Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
             
             {/* Card 1: Silver Plan */}
-            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-[#E8E2D9] shadow-xs flex flex-col justify-between space-y-6">
+            <motion.div
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 26 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.15 }}
+              transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+              whileHover={shouldReduceMotion ? {} : { y: -6 }}
+              className="p-6 sm:p-8 rounded-2xl bg-white border border-[#EDE2D7] hover:border-[#51463F]/30 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between space-y-6"
+            >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-black text-[#2D2520]">Silver</h3>
-                  <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#FAF8F5] text-[#73685F] border border-[#E8E2D9]">
+                  <h3 className="text-2xl font-black text-[#51463F]">Silver</h3>
+                  <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#FAF7F2] text-[#82776E] border border-[#EDE2D7]">
                     Introductory
                   </span>
                 </div>
-                <p className="text-xs text-[#574D45] leading-relaxed">
+                <p className="text-xs text-[#82776E] leading-relaxed">
                   Essential entry access for new entrepreneurs and emerging enterprises.
                 </p>
                 <div className="pt-2 flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-black text-[#2D2520]">
+                  <span className="text-3xl sm:text-4xl font-black text-[#51463F]">
                     ₹{platformPricing.firstYearMembershipFee}
                   </span>
-                  <span className="text-xs text-[#73685F] font-medium">/ 1st year access</span>
+                  <span className="text-xs text-[#82776E] font-medium">/ 1st year access</span>
                 </div>
 
-                <div className="pt-4 border-t border-[#E8E2D9] space-y-3">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#73685F] block">
+                <div className="pt-4 border-t border-[#EDE2D7] space-y-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#82776E] block">
                     Included Benefits:
                   </span>
-                  <ul className="space-y-2.5 text-xs text-[#574D45]">
+                  <ul className="space-y-2.5 text-xs text-[#51463F]">
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Full access across all 10 core business sectors</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Confidential service requests via FIC intermediary desk</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Business ideas submission & validation support</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Standard sector KYC verification & profile credentials</span>
                     </li>
                   </ul>
@@ -437,66 +612,77 @@ export const LandingPage: React.FC = () => {
 
               <div className="space-y-3 pt-4">
                 <Link to="/register">
-                  <button
+                  <motion.button
+                    whileHover={shouldReduceMotion ? {} : { scale: 1.02 }}
+                    whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+                    transition={{ duration: 0.15 }}
                     type="button"
-                    className="w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-white border border-[#2D2520] text-[#2D2520] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+                    className="w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-white border border-[#51463F] text-[#51463F] hover:bg-[#FAF7F2] hover:border-[#6D28D9] hover:text-[#6D28D9] transition-all cursor-pointer shadow-xs"
                   >
                     Get Started (₹{platformPricing.firstYearMembershipFee})
-                  </button>
+                  </motion.button>
                 </Link>
                 <div className="text-center">
                   <Link
                     to="/membership"
-                    className="text-[11.5px] font-bold text-[#4F46E5] hover:underline"
+                    className="text-[11.5px] font-bold text-[#6D28D9] hover:underline"
                   >
                     View Benefits &rarr;
                   </Link>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Card 2: Gold Plan (Highlighted / Most Popular) */}
-            <div className="p-6 sm:p-8 rounded-2xl bg-[#FAF8F5] border-2 border-[#4F46E5] shadow-sm flex flex-col justify-between space-y-6 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#4F46E5] text-white text-[10px] font-black uppercase tracking-wider px-3 py-0.5 rounded-full shadow-xs">
+            <motion.div
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 26 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.15 }}
+              transition={{ duration: 0.5, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              whileHover={shouldReduceMotion ? {} : { y: -7 }}
+              className="p-6 sm:p-8 rounded-2xl bg-[#FAF7F2] border-2 border-[#6D28D9] shadow-md hover:shadow-2xl transition-all duration-300 flex flex-col justify-between space-y-6 relative"
+            >
+              {/* Premium Most Popular Badge */}
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#E8795B] text-white text-[10px] font-black uppercase tracking-wider px-3.5 py-1 rounded-full shadow-[0_2px_8px_rgba(109,40,217,0.3)]">
                 Most Popular
               </div>
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-black text-[#2D2520]">Gold</h3>
-                  <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#4F46E5]/10 text-[#4F46E5]">
+                  <h3 className="text-2xl font-black text-[#51463F]">Gold</h3>
+                  <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#EDE5FF] text-[#6D28D9] border border-[#6D28D9]/20">
                     Growth & Scaling
                   </span>
                 </div>
-                <p className="text-xs text-[#574D45] leading-relaxed">
+                <p className="text-xs text-[#82776E] leading-relaxed">
                   Comprehensive scaling support for active commercial entities and growing MSMEs.
                 </p>
                 <div className="pt-2 flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-black text-[#2D2520]">
+                  <span className="text-3xl sm:text-4xl font-black text-[#51463F]">
                     ₹{platformPricing.renewalMembershipFee.toLocaleString('en-IN')}
                   </span>
-                  <span className="text-xs text-[#73685F] font-medium">/ year annual renewal</span>
+                  <span className="text-xs text-[#82776E] font-medium">/ year annual renewal</span>
                 </div>
 
-                <div className="pt-4 border-t border-[#E8E2D9] space-y-3">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#73685F] block">
+                <div className="pt-4 border-t border-[#EDE2D7] space-y-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#82776E] block">
                     Everything in Silver, plus:
                   </span>
-                  <ul className="space-y-2.5 text-xs text-[#574D45]">
+                  <ul className="space-y-2.5 text-xs text-[#51463F]">
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Priority queue in FIC proposal & meeting coordination</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Direct incubation roadmap & consultation advisory</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Unlimited proposal submissions & verified investor queries</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Priority discovery status across universal marketplace</span>
                     </li>
                   </ul>
@@ -505,62 +691,72 @@ export const LandingPage: React.FC = () => {
 
               <div className="space-y-3 pt-4">
                 <Link to="/register">
-                  <button
+                  <motion.button
+                    whileHover={shouldReduceMotion ? {} : { scale: 1.02 }}
+                    whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+                    transition={{ duration: 0.15 }}
                     type="button"
-                    className="w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-[#4F46E5] hover:bg-[#4338CA] text-white shadow-xs transition-colors cursor-pointer"
+                    className="w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#E8795B] text-white shadow-[0_4px_14px_rgba(109,40,217,0.25)] hover:shadow-[0_8px_20px_-4px_rgba(109,40,217,0.4)] transition-all cursor-pointer"
                   >
                     Join as Gold Member
-                  </button>
+                  </motion.button>
                 </Link>
                 <div className="text-center">
                   <Link
                     to="/membership"
-                    className="text-[11.5px] font-bold text-[#4F46E5] hover:underline"
+                    className="text-[11.5px] font-bold text-[#6D28D9] hover:underline"
                   >
                     View Benefits &rarr;
                   </Link>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Card 3: Diamond Plan */}
-            <div className="p-6 sm:p-8 rounded-2xl bg-white border border-[#E8E2D9] shadow-xs flex flex-col justify-between space-y-6">
+            <motion.div
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 26 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.15 }}
+              transition={{ duration: 0.5, delay: 0.34, ease: [0.22, 1, 0.36, 1] }}
+              whileHover={shouldReduceMotion ? {} : { y: -6 }}
+              className="p-6 sm:p-8 rounded-2xl bg-white border border-[#EDE2D7] hover:border-[#51463F]/30 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between space-y-6"
+            >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-2xl font-black text-[#2D2520]">Diamond</h3>
-                  <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#FAF8F5] text-[#73685F] border border-[#E8E2D9]">
+                  <h3 className="text-2xl font-black text-[#51463F]">Diamond</h3>
+                  <span className="text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[#FAF7F2] text-[#82776E] border border-[#EDE2D7]">
                     Enterprise Tier
                   </span>
                 </div>
-                <p className="text-xs text-[#574D45] leading-relaxed">
+                <p className="text-xs text-[#82776E] leading-relaxed">
                   Tailored corporate ecosystem coordination for high-growth enterprises and investors.
                 </p>
                 <div className="pt-2 flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-[#2D2520]">
+                  <span className="text-2xl sm:text-3xl font-black text-[#51463F]">
                     Enterprise
                   </span>
-                  <span className="text-xs text-[#73685F] font-medium">/ custom onboarding</span>
+                  <span className="text-xs text-[#82776E] font-medium">/ custom onboarding</span>
                 </div>
 
-                <div className="pt-4 border-t border-[#E8E2D9] space-y-3">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#73685F] block">
+                <div className="pt-4 border-t border-[#EDE2D7] space-y-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#82776E] block">
                     Everything in Gold, plus:
                   </span>
-                  <ul className="space-y-2.5 text-xs text-[#574D45]">
+                  <ul className="space-y-2.5 text-xs text-[#51463F]">
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Dedicated senior FIC relationship coordinator</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Priority private funding & investor desk facilitation</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Specialized enterprise scaling & strategic advisory</span>
                     </li>
                     <li className="flex items-start gap-2">
-                      <CheckCircleIcon size={15} className="text-[#15803D] shrink-0 mt-0.5" />
+                      <CheckCircleIcon size={15} className="text-[#1C6960] shrink-0 mt-0.5" />
                       <span>Institutional onboarding & corporate governance support</span>
                     </li>
                   </ul>
@@ -569,59 +765,82 @@ export const LandingPage: React.FC = () => {
 
               <div className="space-y-3 pt-4">
                 <Link to="/contact">
-                  <button
+                  <motion.button
+                    whileHover={shouldReduceMotion ? {} : { scale: 1.02 }}
+                    whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+                    transition={{ duration: 0.15 }}
                     type="button"
-                    className="w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-white border border-[#2D2520] text-[#2D2520] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+                    className="w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-white border border-[#51463F] text-[#51463F] hover:bg-[#FAF7F2] hover:border-[#6D28D9] hover:text-[#6D28D9] transition-all cursor-pointer shadow-xs"
                   >
                     Contact Enterprise Desk
-                  </button>
+                  </motion.button>
                 </Link>
                 <div className="text-center">
                   <Link
                     to="/membership"
-                    className="text-[11.5px] font-bold text-[#4F46E5] hover:underline"
+                    className="text-[11.5px] font-bold text-[#6D28D9] hover:underline"
                   >
                     View Benefits &rarr;
                   </Link>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
           </div>
         </div>
       </section>
 
       {/* =========================================================================
-          SECTION 5: SIMPLE PRE-FOOTER CALL TO ACTION
+          SECTION 5: SIMPLE PRE-FOOTER CALL TO ACTION (Phase 8 & 9)
          ========================================================================= */}
-      <section className="py-14 sm:py-16 bg-[#FAF8F5]">
+      <section className="py-14 sm:py-18 bg-[#FAF7F2] relative">
         <div className="max-w-[1320px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="p-8 sm:p-12 rounded-3xl bg-white border border-[#E8E2D9] text-center max-w-3xl mx-auto shadow-xs space-y-5">
-            <h2 className="text-2xl sm:text-3xl font-black text-[#2D2520] tracking-tight">
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 22 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.2 }}
+            transition={transitionSmooth}
+            className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-white via-white to-[#EDE5FF]/30 border border-[#EDE2D7] text-center max-w-3xl mx-auto shadow-sm space-y-5 relative overflow-hidden"
+          >
+            {/* Ambient decorative glow inside CTA card */}
+            <div className="absolute top-0 right-0 w-48 h-48 bg-[#E8795B]/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#6D28D9]/10 rounded-full blur-2xl pointer-events-none" />
+
+            <h2 className="text-2xl sm:text-3xl font-black text-[#51463F] tracking-tight relative z-10">
               Ready to Join the FIC Business Ecosystem?
             </h2>
-            <p className="text-sm sm:text-base text-[#574D45] leading-relaxed max-w-xl mx-auto">
+            <p className="text-sm sm:text-base text-[#82776E] leading-relaxed max-w-xl mx-auto relative z-10">
               Connect with verified entrepreneurs, access essential business services, and discover new commercial opportunities.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3.5 pt-2 relative z-10">
               <Link to="/register">
-                <button
+                <motion.button
+                  whileHover={shouldReduceMotion ? {} : { scale: 1.03, y: -1 }}
+                  whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+                  transition={{ duration: 0.18 }}
                   type="button"
-                  className="px-6 py-3 rounded-xl font-bold text-sm bg-[#4F46E5] hover:bg-[#4338CA] text-white shadow-xs transition-colors cursor-pointer"
+                  className="group px-6 py-3 rounded-xl font-bold text-sm bg-gradient-to-r from-[#6D28D9] via-[#7C3AED] to-[#E8795B] text-white shadow-[0_4px_14px_rgba(109,40,217,0.25)] hover:shadow-[0_8px_20px_-4px_rgba(109,40,217,0.35)] transition-all flex items-center gap-2 cursor-pointer"
                 >
-                  Become a Member
-                </button>
+                  <span>Become a Member</span>
+                  <ArrowRightIcon
+                    size={14}
+                    className="transition-transform duration-200 group-hover:translate-x-1"
+                  />
+                </motion.button>
               </Link>
               <Link to="/contact">
-                <button
+                <motion.button
+                  whileHover={shouldReduceMotion ? {} : { scale: 1.02, y: -1 }}
+                  whileTap={shouldReduceMotion ? {} : { scale: 0.98 }}
+                  transition={{ duration: 0.18 }}
                   type="button"
-                  className="px-6 py-3 rounded-xl font-bold text-sm text-[#2D2520] bg-white border border-[#E8E2D9] hover:bg-[#FAF8F5] transition-colors cursor-pointer"
+                  className="px-6 py-3 rounded-xl font-bold text-sm text-[#51463F] bg-white border border-[#EDE2D7] hover:border-[#6D28D9]/40 hover:bg-[#FAF7F2] hover:text-[#6D28D9] shadow-xs hover:shadow-sm transition-all cursor-pointer"
                 >
                   Contact Us
-                </button>
+                </motion.button>
               </Link>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
