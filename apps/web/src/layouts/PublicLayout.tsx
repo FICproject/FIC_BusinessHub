@@ -1,12 +1,11 @@
 import React from 'react';
-import { Outlet, useLocation, Navigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
-import { getStoredUser } from '../services/api';
 
 export const PublicLayout: React.FC = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-[#FCFAF6] text-[#29302D] font-sans selection:bg-[#C66B52] selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-[#2D2520] font-sans selection:bg-[#4F46E5] selection:text-white">
       {/* Public Header */}
       <Navbar />
       
@@ -15,11 +14,10 @@ export const PublicLayout: React.FC = () => {
         <Outlet />
       </main>
 
-      {/* Complete Public Footer - strictly contained inside PublicLayout */}
+      {/* Complete Public Footer */}
       <Footer />
     </div>
   );
 };
 
 export default PublicLayout;
-
